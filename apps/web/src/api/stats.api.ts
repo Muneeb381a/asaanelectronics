@@ -1,0 +1,42 @@
+import { api } from './client.ts';
+
+export interface RecentInstallment {
+  id: string;
+  customerName: string;
+  productName: string;
+  remaining: string;
+  monthly: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface Stats {
+  todayCollections: number;
+  monthCollections: number;
+  activeCount: number;
+  overdueCount: number;
+  recentInstallments: RecentInstallment[];
+  lowStockItems: Array<{ id: string; name: string; stock: number }>;
+  promisesDueCount: number;
+}
+
+export interface Reports {
+  monthlyCollections: Array<{ month: string; label: string; total: number }>;
+  collectionRate: { totalBilled: number; totalCollected: number; rate: number };
+  agingBuckets: { current: number; days1_30: number; days31_60: number; days60plus: number };
+  topDebtors: Array<{ name: string; phone: string; remaining: number; count: number }>;
+  topProducts: Array<{ name: string; totalAmount: number; count: number }>;
+}
+
+export interface Advanced {
+  cashflowForecast: Array<{ date: string; expected: number }>;
+  recovery: { efficiency: number; totalDue: number; totalCollected: number; overdueCount: number };
+  staffProductivity: Array<{ userId: string; name: string; count: number; total: number }>;
+  areaHeatmap: Array<{ city: string; overdueCount: number; defaultedCount: number }>;
+}
+
+export const statsApi = {
+  get:         () => api.get<{ data: Stats }>('/stats').then((r) => r.data.data),
+  getReports:  () => api.get<{ data: Reports }>('/stats/reports').then((r) => r.data.data),
+  getAdvanced: () => api.get<{ data: Advanced }>('/stats/advanced').then((r) => r.data.data),
+};

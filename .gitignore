@@ -1,0 +1,46 @@
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+
+# ── Build outputs ─────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+.output/
+
+# ── Environment variables ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── TypeScript ────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor ────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.sw?
+*.ntvs*
+*.njsproj
+*.sln
+
+# ── Test / Coverage ───────────────────────────────────────────
+coverage/
+
+# ── Misc ──────────────────────────────────────────────────────
+*.local
+drizzle/*.sql

@@ -1,0 +1,87 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import { rateLimit } from 'express-rate-limit';
+import { env } from './config/env.js';
+import { errorMiddleware } from './middleware/error.js';
+import { ipBlockMiddleware } from './middleware/ipBlock.js';
+import { requestSigningMiddleware } from './middleware/requestSigning.js';
+import authRoutes from './modules/auth/auth.routes.js';
+import sellersRoutes from './modules/sellers/sellers.routes.js';
+import productsRoutes from './modules/products/products.routes.js';
+import customersRoutes from './modules/customers/customers.routes.js';
+import installmentsRoutes from './modules/installments/installments.routes.js';
+import paymentsRoutes from './modules/payments/payments.routes.js';
+import statsRoutes from './modules/stats/stats.routes.js';
+import ownerRoutes from './modules/owner/owner.routes.js';
+import profileRoutes from './modules/profile/profile.routes.js';
+import staffRoutes from './modules/staff/staff.routes.js';
+import uploadRoutes from './modules/upload/upload.routes.js';
+import verificationsRoutes from './modules/verifications/verifications.routes.js';
+import expensesRoutes from './modules/expenses/expenses.routes.js';
+import ledgerRoutes from './modules/ledger/ledger.routes.js';
+import auditRoutes from './modules/audit/audit.routes.js';
+import recoveryRoutes from './modules/recovery/recovery.routes.js';
+import sessionsRoutes from './modules/sessions/sessions.routes.js';
+import billingRoutes  from './modules/billing/billing.routes.js';
+import returnsRoutes          from './modules/returns/returns.routes.js';
+import accountingRoutes        from './modules/accounting/accounting.routes.js';
+import reconciliationRoutes    from './modules/reconciliation/reconciliation.routes.js';
+import portalRoutes            from './modules/portal/portal.routes.js';
+
+const app = express();
+
+app.use(helmet());
+app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+app.use(express.json({ limit: '10kb' }));
+
+// ── Rate limiters ─────────────────────────────────────────────────────────
+import { paymentLimiter } from './middleware/limiters.js';
+
+// General auth (register, refresh, forgot-password, etc.): 30/15 min
+const authLimiter = rateLimit({
+  windowMs: 15 * 60_000, max: 30,
+  standardHeaders: true, legacyHeaders: false,
+});
+
+// General API: 300/min (raised — auth/payment have their own guards)
+const apiLimiter = rateLimit({
+  windowMs: 60_000, max: 300,
+  standardHeaders: true, legacyHeaders: false,
+  skip: (req) => req.path === '/health',
+});
+
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Request signing — opt-in via REQUEST_SIGNING_SECRET env var
+app.use('/api', requestSigningMiddleware);
+app.use('/api', apiLimiter);
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/sellers', sellersRoutes);
+app.use('/api/products', productsRoutes);
+app.use('/api/customers', customersRoutes);
+app.use('/api/installments', installmentsRoutes);
+app.use('/api/payments', paymentLimiter, paymentsRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/owner', ownerRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/verifications', verificationsRoutes);
+app.use('/api/expenses', expensesRoutes);
+app.use('/api/ledger', ledgerRoutes);
+app.use('/api/audit', auditRoutes);
+app.use('/api/recovery', recoveryRoutes);
+app.use('/api/sessions', sessionsRoutes);
+app.use('/api/billing',  billingRoutes);
+app.use('/api/returns',     returnsRoutes);
+app.use('/api/accounting',      accountingRoutes);
+app.use('/api/reconciliation', reconciliationRoutes);
+app.use('/api/portal',         portalRoutes);
+
+app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
+app.use(errorMiddleware);
+
+export default app;

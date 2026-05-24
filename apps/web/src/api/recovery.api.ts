@@ -1,0 +1,27 @@
+import { api } from './client.ts';
+
+export type RecoveryActionType = 'CALLED' | 'VISITED' | 'PROMISE_TO_PAY' | 'REFUSED' | 'LEGAL_WARNING';
+
+export interface RecoveryAction {
+  id: string;
+  installmentId: string;
+  type: RecoveryActionType;
+  note: string | null;
+  promiseDate: string | null;
+  createdAt: string;
+  actorName: string | null;
+  actorRole: string | null;
+}
+
+const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
+
+export const recoveryApi = {
+  list: (installmentId: string) =>
+    api.get<{ data: RecoveryAction[] }>('/recovery', { params: { installmentId } }).then(unwrap<RecoveryAction[]>),
+
+  create: (body: { installmentId: string; type: RecoveryActionType; note?: string; promiseDate?: string }) =>
+    api.post<{ data: RecoveryAction }>('/recovery', body).then(unwrap<RecoveryAction>),
+
+  remove: (id: string) =>
+    api.delete(`/recovery/${id}`),
+};

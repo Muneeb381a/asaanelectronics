@@ -1,0 +1,41 @@
+import { api } from './client.ts';
+
+export type StaffPermissions = {
+  canAddCustomer: boolean;
+  canEditCustomer: boolean;
+  canAddInstallment: boolean;
+  canRecordPayment: boolean;
+  canViewReports: boolean;
+  canManageProducts: boolean;
+  canVerifyCustomers: boolean;
+};
+
+export type StaffMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  permissions: StaffPermissions | null;
+  createdAt: string;
+};
+
+const PERM_LABELS: Record<keyof StaffPermissions, string> = {
+  canAddCustomer: 'Add customers',
+  canEditCustomer: 'Edit customers',
+  canAddInstallment: 'Add installments',
+  canRecordPayment: 'Record payments',
+  canViewReports: 'View reports',
+  canManageProducts: 'Manage products',
+  canVerifyCustomers: 'AVO — Verify customers',
+};
+
+export { PERM_LABELS };
+
+export const staffApi = {
+  list: () => api.get<{ data: StaffMember[] }>('/staff').then((r) => r.data.data),
+  create: (body: { name: string; email: string; password: string; permissions?: StaffPermissions }) =>
+    api.post<{ data: StaffMember }>('/staff', body).then((r) => r.data.data),
+  updatePermissions: (id: string, permissions: Partial<StaffPermissions>) =>
+    api.patch<{ data: StaffMember }>(`/staff/${id}/permissions`, permissions).then((r) => r.data.data),
+  remove: (id: string) => api.delete(`/staff/${id}`),
+};

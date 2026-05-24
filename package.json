@@ -1,0 +1,21 @@
+{
+  "name": "assaan-electronics",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter @assaan/api dev",
+    "dev:web": "pnpm --filter @assaan/web dev",
+    "build:api": "pnpm --filter @assaan/api build",
+    "build:web": "pnpm --filter @assaan/web build"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["tesseract.js", "bcrypt", "esbuild", "sharp", "better-sqlite3"]
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.1.2",
+      "onFail": "download"
+    }
+  }
+}
