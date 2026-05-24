@@ -1,9 +1,23 @@
 import { and, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { customers, installments, sellers } from '../../db/schema.js';
+import { customers, installments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { hashCnic, maskCnic } from '../../utils/hash.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
+
+type BureauShopRow = { shopName: string; activeCount: number; defaultedCount: number; completedCount: number; cancelledCount: number; totalRemaining: string };
+
+function buildBureau(rows: BureauShopRow[]) {
+  return {
+    totalActive:    rows.reduce((s, r) => s + r.activeCount, 0),
+    totalDefaulted: rows.reduce((s, r) => s + r.defaultedCount, 0),
+    totalCompleted: rows.reduce((s, r) => s + r.completedCount, 0),
+    totalRemaining: rows.reduce((s, r) => s + Number(r.totalRemaining), 0).toFixed(2),
+    shops: rows.map(({ shopName, activeCount, defaultedCount, completedCount, cancelledCount, totalRemaining }) => ({
+      shopName, activeCount, defaultedCount, completedCount, cancelledCount, totalRemaining,
+    })),
+  };
+}
 
 function riskLabel(score: number): 'GOOD' | 'AVERAGE' | 'RISKY' | 'BLACKLIST' {
   if (score <= 30) return 'GOOD';
@@ -203,6 +217,116 @@ export class CustomersService {
     };
     for (const r of rows) counts[r.stage] = r.count;
     return counts;
+  }
+
+  async lookupByCnic(sellerId: string, cnic: string) {
+    const hash = hashCnic(cnic);
+
+    const riskScore = sql<number>`LEAST(100, (
+      CASE
+        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL) THEN 40
+        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND i.start_date + (i.months * INTERVAL '1 month') < NOW()) THEN 22
+        ELSE 0
+      END
+      + CASE WHEN ${customers.guarantorName} IS NULL THEN 20 WHEN ${customers.guarantor2Cnic} IS NOT NULL THEN 0 WHEN ${customers.guarantorCnic} IS NOT NULL THEN 8 ELSE 14 END
+      + CASE ${customers.verificationStatus} WHEN 'APPROVED' THEN 0 WHEN 'UNDER_REVIEW' THEN 8 WHEN 'PENDING' THEN 15 WHEN 'REJECTED' THEN 20 ELSE 15 END
+      + CASE WHEN ${customers.occupation} IS NULL AND ${customers.employer} IS NULL THEN 10 WHEN ${customers.employer} IS NULL THEN 5 ELSE 0 END
+      + CASE WHEN (SELECT COUNT(*) FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL) >= 3 THEN 10
+             WHEN (SELECT COUNT(*) FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL) = 2  THEN 5
+             ELSE 0 END
+    )::int)`;
+
+    const rows = await db.select({
+      id: customers.id,
+      name: customers.name,
+      cnicMasked: customers.cnicMasked,
+      phone: customers.phone,
+      address: customers.address,
+      officeAddress: customers.officeAddress,
+      occupation: customers.occupation,
+      employer: customers.employer,
+      salary: customers.salary,
+      fatherName: customers.fatherName,
+      cnicExpiry: customers.cnicExpiry,
+      photoUrl: customers.photoUrl,
+      verificationStatus: customers.verificationStatus,
+      createdAt: customers.createdAt,
+      riskScore,
+      lifecycleStage: lifecycleSQL,
+    }).from(customers).where(and(
+      eq(customers.sellerId, sellerId),
+      eq(customers.cnicHash, hash),
+      isNull(customers.deletedAt),
+    ));
+
+    // Run own-record query + cross-shop bureau query in parallel
+    type BureauRow = {
+      shopName: string;
+      activeCount: number;
+      defaultedCount: number;
+      completedCount: number;
+      cancelledCount: number;
+      totalRemaining: string;
+    };
+
+    const bureauPromise = db.execute<BureauRow>(sql`
+      SELECT
+        s.shop_name                                                                          AS "shopName",
+        COUNT(CASE WHEN i.status = 'ACTIVE'    THEN 1 END)::int                             AS "activeCount",
+        COUNT(CASE WHEN i.status = 'DEFAULTED' THEN 1 END)::int                             AS "defaultedCount",
+        COUNT(CASE WHEN i.status = 'COMPLETED' THEN 1 END)::int                             AS "completedCount",
+        COUNT(CASE WHEN i.status = 'CANCELLED' THEN 1 END)::int                             AS "cancelledCount",
+        COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' THEN i.remaining::numeric ELSE 0 END), 0)::text AS "totalRemaining"
+      FROM customers c
+      JOIN sellers s ON c.seller_id = s.id
+      LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
+      WHERE c.cnic_hash = ${hash}
+        AND c.seller_id != ${sellerId}
+        AND c.deleted_at IS NULL
+      GROUP BY s.shop_name, s.id, c.id
+      ORDER BY "activeCount" DESC, "defaultedCount" DESC
+    `);
+
+    if (!rows.length) {
+      // Customer not in this shop — still return bureau data
+      const bureauRows = await bureauPromise;
+      return {
+        ownRecord: null,
+        bureau: bureauRows.length > 0 ? buildBureau(bureauRows) : null,
+      };
+    }
+
+    const customer = rows[0]!;
+
+    const [custInstallments, bureauRows] = await Promise.all([
+      db.select({
+        id: installments.id,
+        status: installments.status,
+        totalAmount: installments.totalAmount,
+        downPayment: installments.downPayment,
+        remaining: installments.remaining,
+        monthly: installments.monthly,
+        months: installments.months,
+        startDate: installments.startDate,
+        createdAt: installments.createdAt,
+        productName: products.name,
+        productId: installments.productId,
+      }).from(installments)
+        .innerJoin(products, eq(installments.productId, products.id))
+        .where(and(eq(installments.customerId, customer.id), isNull(installments.deletedAt)))
+        .orderBy(desc(installments.createdAt)),
+      bureauPromise,
+    ]);
+
+    return {
+      ownRecord: {
+        ...customer,
+        riskScore: Number(customer.riskScore),
+        riskLabel: riskLabel(Number(customer.riskScore)),
+        installments: custInstallments,
+      },
+      bureau: bureauRows.length > 0 ? buildBureau(bureauRows) : null,
+    };
   }
 
   async getOne(id: string, sellerId: string) {

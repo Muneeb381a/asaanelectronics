@@ -55,6 +55,63 @@ interface ListResponse {
   limit: number;
 }
 
+export interface BureauShop {
+  shopName: string;
+  activeCount: number;
+  defaultedCount: number;
+  completedCount: number;
+  cancelledCount: number;
+  totalRemaining: string;
+}
+
+export interface BureauData {
+  totalActive: number;
+  totalDefaulted: number;
+  totalCompleted: number;
+  totalRemaining: string;
+  shops: BureauShop[];
+}
+
+export interface LookupResponse {
+  ownRecord: CustomerLookupResult | null;
+  bureau: BureauData | null;
+}
+
+export interface CustomerLookupInstallment {
+  id: string;
+  status: string;
+  totalAmount: string;
+  downPayment: string;
+  remaining: string;
+  monthly: string;
+  months: number;
+  startDate: string;
+  createdAt: string;
+  productName: string;
+  productId: string;
+}
+
+export interface CustomerLookupResult {
+  id: string;
+  name: string;
+  cnicMasked: string;
+  phone: string;
+  address: string | null;
+  officeAddress: string | null;
+  occupation: string | null;
+  employer: string | null;
+  salary: string | null;
+  fatherName: string | null;
+  cnicExpiry: string | null;
+  photoUrl: string | null;
+  verificationStatus: string;
+  createdAt: string;
+  riskScore: number;
+  riskLabel: 'GOOD' | 'AVERAGE' | 'RISKY' | 'BLACKLIST';
+  lifecycleStage: string;
+  installments: CustomerLookupInstallment[];
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const customersApi = {
@@ -75,6 +132,9 @@ export const customersApi = {
 
   remove: (id: string) =>
     api.delete(`/customers/${id}`),
+
+  lookup: (cnic: string) =>
+    api.get<{ data: LookupResponse }>('/customers/lookup', { params: { cnic } }).then(unwrap<LookupResponse>),
 
   getRiskBreakdown: (id: string) =>
     api.get<{ data: {

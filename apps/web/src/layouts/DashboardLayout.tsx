@@ -3,13 +3,14 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
-  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall,
+  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
 import { statsApi } from '../api/stats.api.ts';
 import { profileApi } from '../api/profile.api.ts';
 import ProfileModal from '../components/ProfileModal.tsx';
+import GlobalSearch from '../components/GlobalSearch.tsx';
 
 const allNavItems = [
   { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard, end: true      as boolean | undefined, perm: 'canAddCustomer' },
@@ -24,8 +25,9 @@ export default function DashboardLayout() {
   const isOwner = user?.role === 'SELLER_OWNER';
   const perms = user?.permissions;
   const navigate = useNavigate();
-  const [showProfile, setShowProfile] = useState(false);
-  const [showBell, setShowBell] = useState(false);
+  const [showProfile,  setShowProfile]  = useState(false);
+  const [showBell,     setShowBell]     = useState(false);
+  const [searchOpen,   setSearchOpen]   = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
 
   useQuery({
@@ -57,6 +59,17 @@ export default function DashboardLayout() {
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
   const { mutate: logout } = useMutation({
@@ -115,6 +128,20 @@ export default function DashboardLayout() {
             </NavLink>
           ))}
         </nav>
+
+        {/* Global CNIC search */}
+        {isOwner && (
+          <div className="px-3 pb-1">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-indigo-50 border border-gray-100 hover:border-indigo-200 transition group text-left"
+            >
+              <Search size={15} className="text-gray-400 group-hover:text-indigo-500 transition shrink-0" />
+              <span className="text-sm text-gray-400 group-hover:text-indigo-600 flex-1 transition">CNIC search…</span>
+              <kbd className="hidden sm:block text-[9px] text-gray-300 group-hover:text-indigo-400 font-mono transition">⌃K</kbd>
+            </button>
+          </div>
+        )}
 
         {/* Notification bell */}
         <div className="px-3 pb-1 relative" ref={bellRef}>
@@ -214,6 +241,7 @@ export default function DashboardLayout() {
       </main>
 
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

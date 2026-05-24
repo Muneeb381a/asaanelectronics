@@ -5,7 +5,7 @@ import { validate } from '../../middleware/validate.js';
 import { createCustomerSchema, updateCustomerSchema } from '@assaan/shared';
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer, assignAvo,
-  getLifecycleCounts, getRiskBreakdown,
+  getLifecycleCounts, getRiskBreakdown, lookupByCnic,
 } from './customers.controller.js';
 import { listNotes, addNote, deleteNote } from './customer-notes.controller.js';
 
@@ -14,6 +14,7 @@ const router = Router();
 router.use(authenticate, requireSeller);
 
 router.get('/lifecycle-counts', getLifecycleCounts);
+router.get('/lookup',           lookupByCnic);
 router.get('/',                 listCustomers);
 router.get('/:id',              getCustomer);
 router.get('/:id/risk-breakdown', getRiskBreakdown);
