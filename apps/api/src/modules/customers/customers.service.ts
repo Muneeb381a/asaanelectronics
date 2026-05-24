@@ -87,14 +87,15 @@ type CreateBody = {
 type UpdateBody = Partial<CreateBody>;
 
 export class CustomersService {
-  async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string) {
+  async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string, verificationStatus?: string) {
     const base = and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt));
     const searchCond = search
       ? and(base, or(ilike(customers.name, `%${search}%`), ilike(customers.phone, `%${search}%`)))
       : base;
-    const where = lifecycle
-      ? and(searchCond, sql`${lifecycleSQL} = ${lifecycle}`)
-      : searchCond;
+    const lifecycleCond = lifecycle ? and(searchCond, sql`${lifecycleSQL} = ${lifecycle}`) : searchCond;
+    const where = verificationStatus
+      ? and(lifecycleCond, eq(customers.verificationStatus, verificationStatus as 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED'))
+      : lifecycleCond;
 
     const riskScore = sql<number>`LEAST(100, (
       CASE

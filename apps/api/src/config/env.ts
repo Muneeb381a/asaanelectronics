@@ -6,6 +6,8 @@ const schema = z.object({
   DIRECT_URL: z.string().url(),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_OTP_SECRET: z.string().min(32),
+  JWT_PORTAL_SECRET: z.string().min(32),
   CNIC_HASH_PEPPER: z.string().min(16),
   CLOUDINARY_URL: z.string(),
   RESEND_API_KEY: z.string(),

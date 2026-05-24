@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-  Receipt, Plus, Trash2, X, Loader2,
+  Receipt, Plus, Trash2, X, Loader2, ChevronLeft, ChevronRight,
   Home, Users, Zap, ShoppingCart, Wrench, Truck, MoreHorizontal,
 } from 'lucide-react';
 import { expensesApi, type ExpenseCategory, type Expense } from '../api/expenses.api.ts';
@@ -199,18 +199,44 @@ export default function ExpensesPage() {
 
       {/* Date range filter */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="flex items-center gap-2 text-sm">
-          <label className="text-gray-500 text-xs font-semibold">From</label>
+        {/* Month navigator */}
+        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1">
+          <button
+            onClick={() => {
+              const d = new Date(from);
+              d.setMonth(d.getMonth() - 1);
+              setFrom(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`);
+              setTo(new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10));
+            }}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition">
+            <ChevronLeft size={15} />
+          </button>
+          <span className="text-sm font-semibold text-gray-700 px-2 min-w-28 text-center">
+            {new Date(from + 'T12:00:00').toLocaleDateString('en-PK', { month: 'long', year: 'numeric' })}
+          </span>
+          <button
+            onClick={() => {
+              const d = new Date(from);
+              d.setMonth(d.getMonth() + 1);
+              setFrom(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`);
+              setTo(new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10));
+            }}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition">
+            <ChevronRight size={15} />
+          </button>
+        </div>
+
+        <button onClick={() => { setFrom(bounds.from); setTo(bounds.to); }}
+          className="text-xs text-blue-600 hover:underline font-medium">This month</button>
+
+        {/* Custom range */}
+        <div className="flex items-center gap-2 text-sm ml-auto">
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
             className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <label className="text-gray-500 text-xs font-semibold">To</label>
+          <span className="text-gray-400 text-xs">to</span>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
             className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
-        <button onClick={() => { setFrom(bounds.from); setTo(bounds.to); }}
-          className="text-xs text-blue-600 hover:underline font-medium">This month</button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

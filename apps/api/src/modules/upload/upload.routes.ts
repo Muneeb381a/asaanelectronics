@@ -22,6 +22,14 @@ const upload = multer({
 
 router.use(authenticate);
 
+const ALLOWED_FOLDERS: Record<string, 'cnic' | 'cheque' | 'other'> = {
+  'assaan/cnic':          'cnic',
+  'assaan/guarantors':    'cnic',
+  'assaan/customers':     'other',
+  'assaan/cheques':       'cheque',
+  'assaan/verifications': 'other',
+};
+
 router.post('/', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.file) throw new AppError('No file provided', 400);
@@ -30,14 +38,13 @@ router.post('/', upload.single('file'), async (req: Request, res: Response, next
       throw new AppError('Image is too small or blank. Please upload a clear photo.', 400);
     }
 
-    const folder = (req.body['folder'] as string | undefined) ?? 'assaan';
-    const hash   = createHash('sha256').update(req.file.buffer).digest('hex');
+    const folder = (req.body['folder'] as string | undefined) ?? '';
+    if (!ALLOWED_FOLDERS[folder]) throw new AppError('Invalid upload folder', 400);
 
-    const docType = folder.includes('cnic') || folder.includes('guarantor') ? 'cnic'
-      : folder.includes('cheque') ? 'cheque'
-      : 'other';
+    const hash    = createHash('sha256').update(req.file.buffer).digest('hex');
+    const docType = ALLOWED_FOLDERS[folder];
 
-    const { extracted, _ocrRaw } = await extractDocumentData(req.file.buffer, docType as 'cnic' | 'cheque' | 'other');
+    const { extracted, _ocrRaw } = await extractDocumentData(req.file.buffer, docType);
 
     const url = await uploadToCloudinary(req.file.buffer, folder);
     res.json({ success: true, data: { url, hash, extracted, _ocrRaw } });

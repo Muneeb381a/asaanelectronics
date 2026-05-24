@@ -52,8 +52,12 @@ export class AuditService {
     const limit = Math.min(Math.max(1, filters.limit ?? 50), 200);
 
     const conds = [eq(auditLogs.sellerId, sellerId)];
-    if (filters.from)       conds.push(gte(auditLogs.createdAt, new Date(filters.from)));
-    if (filters.to)         conds.push(lte(auditLogs.createdAt, new Date(filters.to)));
+    if (filters.from) conds.push(gte(auditLogs.createdAt, new Date(filters.from)));
+    if (filters.to) {
+      const toEnd = new Date(filters.to);
+      toEnd.setUTCHours(23, 59, 59, 999);
+      conds.push(lte(auditLogs.createdAt, toEnd));
+    }
     if (filters.userId)     conds.push(eq(auditLogs.userId,     filters.userId));
     if (filters.action)     conds.push(eq(auditLogs.action,     filters.action));
     if (filters.entityType) conds.push(eq(auditLogs.entityType, filters.entityType));

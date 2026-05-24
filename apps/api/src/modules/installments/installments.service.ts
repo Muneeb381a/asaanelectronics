@@ -6,12 +6,15 @@ import { AppError } from '../../middleware/error.js';
 import { fsm } from '../../utils/fsm.js';
 
 type CreateBody = {
-  customerId: string;
-  productId: string;
-  totalAmount: number;
-  downPayment: number;
-  months: number;
-  startDate: string;
+  customerId:   string;
+  productId:    string;
+  totalAmount:  number;
+  downPayment:  number;
+  months:       number;
+  startDate:    string;
+  imeiNumber?:  string;
+  cashPrice?:   number;
+  profitMarkup?: number;
 };
 
 export class InstallmentsService {
@@ -40,6 +43,10 @@ export class InstallmentsService {
           customerName: customers.name,
           customerPhone: customers.phone,
           productName: products.name,
+          imeiNumber:   installments.imeiNumber,
+          cashPrice:    installments.cashPrice,
+          profitMarkup: installments.profitMarkup,
+          isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (${installments.startDate} + (${installments.months} || ' months')::interval) < now())`,
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -76,6 +83,10 @@ export class InstallmentsService {
         customerName: customers.name,
         customerPhone: customers.phone,
         productName: products.name,
+        imeiNumber:   installments.imeiNumber,
+        cashPrice:    installments.cashPrice,
+        profitMarkup: installments.profitMarkup,
+        isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (${installments.startDate} + (${installments.months} || ' months')::interval) < now())`,
       })
       .from(installments)
       .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -106,7 +117,7 @@ export class InstallmentsService {
     if (blacklisted) throw new AppError('Customer is blacklisted due to a defaulted installment', 403);
 
     const remaining = body.totalAmount - body.downPayment;
-    const monthly = remaining / body.months;
+    const monthly = Math.round((remaining / body.months) / 25) * 25;
 
     return db.transaction(async (tx) => {
       // Advisory lock prevents concurrent invoice number generation for same seller
@@ -129,15 +140,18 @@ export class InstallmentsService {
       const [installment] = await tx
         .insert(installments)
         .values({
-          customerId: body.customerId,
-          productId: body.productId,
-          totalAmount: String(body.totalAmount),
-          downPayment: String(body.downPayment),
-          remaining: String(remaining),
-          monthly: String(monthly.toFixed(2)),
-          months: body.months,
-          startDate: new Date(body.startDate),
+          customerId:   body.customerId,
+          productId:    body.productId,
+          totalAmount:  String(body.totalAmount),
+          downPayment:  String(body.downPayment),
+          remaining:    String(remaining),
+          monthly:      String(monthly.toFixed(2)),
+          months:       body.months,
+          startDate:    new Date(body.startDate),
           invoiceNumber,
+          imeiNumber:   body.imeiNumber ?? null,
+          cashPrice:    body.cashPrice   != null ? String(body.cashPrice)   : null,
+          profitMarkup: body.profitMarkup != null ? String(body.profitMarkup) : null,
         })
         .returning();
 
@@ -237,7 +251,7 @@ export class InstallmentsService {
     if (body.newMonths != null) {
       if (body.newMonths < 1) throw new AppError('Duration must be at least 1 month', 400);
       newMonths  = body.newMonths;
-      newMonthly = remaining / newMonths;
+      newMonthly = Math.round((remaining / newMonths) / 25) * 25;
     } else if (body.newMonthly != null) {
       if (body.newMonthly <= 0)        throw new AppError('Monthly amount must be positive', 400);
       if (body.newMonthly > remaining) throw new AppError('Monthly amount cannot exceed remaining balance', 400);

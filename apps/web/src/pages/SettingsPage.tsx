@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Monitor, Smartphone, Tablet, AlertTriangle, Trash2, LogOut, Shield,
-  Users, TrendingUp, Package,
+  Users, TrendingUp, Package, BookOpen,
 } from 'lucide-react';
 import { sellersApi } from '../api/sellers.api.ts';
 import { sessionsApi, type Session } from '../api/sessions.api.ts';
@@ -132,6 +132,59 @@ function BillingSection({ usage }: { usage: BillingUsage }) {
   );
 }
 
+// ── Murabaha Mode toggle ──────────────────────────────────────────────────────
+function MurabahaToggle({ murabahaMode, sellerId }: { murabahaMode: boolean; sellerId?: string }) {
+  const qc = useQueryClient();
+
+  const toggleMutation = useMutation({
+    mutationFn: (val: boolean) => sellersApi.update({ murabahaMode: val }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['shop-me'] });
+      toast.success(murabahaMode ? 'Murabaha mode disabled' : 'Murabaha mode enabled');
+    },
+    onError: () => toast.error('Failed to update setting'),
+  });
+
+  if (!sellerId) return null;
+
+  return (
+    <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <BookOpen size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Murabaha Mode</p>
+            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              Discloses cost price + profit markup separately on all installment agreements —
+              Shariah-compliant structure where profit is disclosed upfront.
+            </p>
+          </div>
+        </div>
+        <button
+          role="switch"
+          aria-checked={murabahaMode}
+          onClick={() => toggleMutation.mutate(!murabahaMode)}
+          disabled={toggleMutation.isPending}
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 disabled:opacity-50 focus:outline-none ${
+            murabahaMode ? 'bg-emerald-500' : 'bg-gray-200'
+          }`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+              murabahaMode ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+      {murabahaMode && (
+        <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+          New installments will show Cash Price + Profit Markup breakdown instead of a single Total Amount.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Sessions section ──────────────────────────────────────────────────────────
 function SessionsSection() {
   const qc = useQueryClient();
@@ -240,7 +293,7 @@ function SessionsSection() {
               </div>
 
               <button
-                onClick={() => revokeMutation.mutate(session.id)}
+                onClick={() => { if (confirm('Revoke this session? That device will be signed out.')) revokeMutation.mutate(session.id); }}
                 disabled={revokeMutation.isPending}
                 title="Revoke this session"
                 className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 shrink-0"
@@ -333,6 +386,9 @@ export default function SettingsPage() {
 
           {/* Billing / plan usage */}
           {usage && <BillingSection usage={usage} />}
+
+          {/* Murabaha Mode toggle */}
+          <MurabahaToggle murabahaMode={shop?.murabahaMode ?? false} sellerId={shop?.id} />
         </div>
       )}
 

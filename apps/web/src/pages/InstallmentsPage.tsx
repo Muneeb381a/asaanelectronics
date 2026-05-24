@@ -258,7 +258,7 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
   const preview = useMemo(() => {
     const n = Number(value);
     if (!n || n <= 0) return null;
-    if (mode === 'months')  return { months: n,                    monthly: remaining / n };
+    if (mode === 'months')  return { months: n, monthly: Math.round((remaining / n) / 25) * 25 };
     if (mode === 'monthly') return { months: Math.ceil(remaining / n), monthly: n };
     return null;
   }, [value, mode, remaining]);
@@ -357,6 +357,7 @@ export default function InstallmentsPage() {
   const [showForm, setShowForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
   const [payInst, setPayInst] = useState<Installment | null>(null);
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
@@ -365,9 +366,11 @@ export default function InstallmentsPage() {
 
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
 
+  const LIMIT = 20;
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['installments', statusFilter, debouncedSearch],
-    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, search: debouncedSearch || undefined }),
+    queryKey: ['installments', statusFilter, debouncedSearch, page],
+    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT }),
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['installments'] });
@@ -444,7 +447,7 @@ export default function InstallmentsPage() {
         <div className="flex gap-1">
           {STATUS_FILTERS.map((f) => (
             <button key={f.value}
-              onClick={() => setStatusFilter(f.value)}
+              onClick={() => { setStatusFilter(f.value); setPage(1); }}
               className={`px-3 py-1.5 rounded-lg text-sm transition ${
                 statusFilter === f.value
                   ? 'bg-blue-600 text-white font-medium'
@@ -495,7 +498,12 @@ export default function InstallmentsPage() {
                       <p className="font-medium text-gray-900">{inst.customerName}</p>
                       <p className="text-xs text-gray-400">{inst.customerPhone}</p>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{inst.productName}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-gray-700">{inst.productName}</p>
+                      {inst.imeiNumber && (
+                        <p className="text-[11px] text-gray-400 font-mono mt-0.5">IMEI: {inst.imeiNumber}</p>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right text-gray-900">{pkr(inst.totalAmount)}</td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900">{pkr(inst.monthly)}</td>
                     <td className="px-4 py-3 text-right">
@@ -637,6 +645,32 @@ export default function InstallmentsPage() {
         )}
       </div>
 
+      {/* Pagination */}
+      {data && data.total > LIMIT && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-sm text-gray-500">
+            Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, data.total)} of {data.total}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
+              Previous
+            </button>
+            <span className="text-sm text-gray-600 font-medium">
+              {page} / {Math.ceil(data.total / LIMIT)}
+            </span>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page * LIMIT >= data.total}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Create modal */}
       {showForm && (
         <div
@@ -654,6 +688,7 @@ export default function InstallmentsPage() {
               isPending={createMutation.isPending}
               onCancel={() => setShowForm(false)}
               onSubmit={(data) => createMutation.mutate(data)}
+              murabahaMode={shopData?.murabahaMode ?? false}
             />
           </div>
         </div>

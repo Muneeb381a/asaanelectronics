@@ -615,11 +615,16 @@ export default function CustomersPage() {
   const [assignAvoFor, setAssignAvoFor] = useState<Customer | null>(null);
   const [search,    setSearch]    = useState('');
   const [lifecycle, setLifecycle] = useState('');
+  const [verifFilter, setVerifFilter] = useState('');
   const debouncedSearch = useDebounce(search, 300);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['customers', debouncedSearch, lifecycle],
-    queryFn: () => customersApi.list({ search: debouncedSearch || undefined, lifecycle: lifecycle || undefined }),
+    queryKey: ['customers', debouncedSearch, lifecycle, verifFilter],
+    queryFn: () => customersApi.list({
+      search: debouncedSearch || undefined,
+      lifecycle: lifecycle || undefined,
+      verificationStatus: verifFilter || undefined,
+    }),
   });
 
   const { data: lifecycleCounts = {} } = useQuery({
@@ -678,7 +683,7 @@ export default function CustomersPage() {
         </button>
       </div>
 
-      <div className="mb-4">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
         <input
           type="text"
           placeholder="Search by name or phone…"
@@ -686,6 +691,27 @@ export default function CustomersPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
         />
+        <div className="flex items-center gap-1.5">
+          {([
+            { value: '',             label: 'All' },
+            { value: 'PENDING',      label: 'Pending' },
+            { value: 'UNDER_REVIEW', label: 'In Review' },
+            { value: 'APPROVED',     label: 'Verified' },
+            { value: 'REJECTED',     label: 'Rejected' },
+          ]).map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setVerifFilter(value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                verifFilter === value
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <LifecycleFunnel

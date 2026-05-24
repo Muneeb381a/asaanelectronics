@@ -37,7 +37,8 @@ export class RecoveryService {
       .from(recoveryActions)
       .leftJoin(users, eq(recoveryActions.userId, users.id))
       .where(eq(recoveryActions.installmentId, installmentId))
-      .orderBy(desc(recoveryActions.createdAt));
+      .orderBy(desc(recoveryActions.createdAt))
+      .limit(200);
   }
 
   async create(sellerId: string, userId: string, body: CreateBody) {

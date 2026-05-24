@@ -40,15 +40,16 @@ export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['CREDIT', 'DEBIT
 export const ledgerRefTypeEnum   = pgEnum('ledger_ref_type',   ['PAYMENT', 'EXPENSE', 'MANUAL']);
 
 export const sellers = pgTable('sellers', {
-  id:           text('id').primaryKey().$defaultFn(() => randomUUID()),
-  shopName:     text('shop_name').notNull(),
-  phone:        text('phone').notNull(),
-  address:      text('address'),
-  plan:         planEnum('plan').default('TRIAL').notNull(),
-  trialEndsAt:  timestamp('trial_ends_at'),
-  planExpiresAt:timestamp('plan_expires_at'),
-  isActive:     boolean('is_active').default(true).notNull(),
-  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
+  shopName:      text('shop_name').notNull(),
+  phone:         text('phone').notNull(),
+  address:       text('address'),
+  plan:          planEnum('plan').default('TRIAL').notNull(),
+  trialEndsAt:   timestamp('trial_ends_at'),
+  planExpiresAt: timestamp('plan_expires_at'),
+  isActive:      boolean('is_active').default(true).notNull(),
+  murabahaMode:  boolean('murabaha_mode').default(false).notNull(),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
 });
 
 export type StaffPermissions = {
@@ -216,17 +217,20 @@ export const installments = pgTable('installments', {
   productId: text('product_id')
     .notNull()
     .references(() => products.id),
-  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
-  downPayment: decimal('down_payment', { precision: 12, scale: 2 }).notNull(),
-  remaining: decimal('remaining', { precision: 12, scale: 2 }).notNull(),
-  monthly: decimal('monthly', { precision: 12, scale: 2 }).notNull(),
-  months: integer('months').notNull(),
-  startDate: timestamp('start_date').notNull(),
+  totalAmount:  decimal('total_amount',  { precision: 12, scale: 2 }).notNull(),
+  downPayment:  decimal('down_payment',  { precision: 12, scale: 2 }).notNull(),
+  remaining:    decimal('remaining',     { precision: 12, scale: 2 }).notNull(),
+  monthly:      decimal('monthly',       { precision: 12, scale: 2 }).notNull(),
+  months:       integer('months').notNull(),
+  startDate:    timestamp('start_date').notNull(),
   invoiceNumber: text('invoice_number'),
-  status: installmentStatusEnum('status').default('PENDING').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  deletedAt: timestamp('deleted_at'),
-  deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+  status:       installmentStatusEnum('status').default('PENDING').notNull(),
+  imeiNumber:   text('imei_number'),
+  cashPrice:    decimal('cash_price',    { precision: 12, scale: 2 }),
+  profitMarkup: decimal('profit_markup', { precision: 12, scale: 2 }),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  deletedAt:    timestamp('deleted_at'),
+  deletedBy:    text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [
   index('idx_installments_customer').on(t.customerId),
   index('idx_installments_status').on(t.status),

@@ -5,7 +5,7 @@ type AccessPayload    = { userId: string; sellerId: string | null; role: string;
 type OtpPayload       = { userId: string; purpose: 'LOGIN' | 'PASSWORD_RESET' };
 type CustomerPayload  = { customerId: string; sellerId: string; type: 'CUSTOMER' };
 
-const OTP_SECRET = env.JWT_ACCESS_SECRET + '-otp';
+const OTP_SECRET = env.JWT_OTP_SECRET;
 
 export function signAccess(payload: AccessPayload) {
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: '15m' });
@@ -31,7 +31,7 @@ export function verifyOtpToken(token: string) {
   return jwt.verify(token, OTP_SECRET) as OtpPayload & jwt.JwtPayload;
 }
 
-const PORTAL_SECRET = env.JWT_ACCESS_SECRET + '-portal';
+const PORTAL_SECRET = env.JWT_PORTAL_SECRET;
 
 export function signCustomerToken(payload: CustomerPayload) {
   return jwt.sign(payload, PORTAL_SECRET, { expiresIn: '24h' });

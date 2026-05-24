@@ -29,9 +29,10 @@ export async function lookupByCnic(req: AuthRequest, res: Response) {
 export async function listCustomers(req: AuthRequest, res: Response) {
   const page      = Math.max(1, Number(req.query['page']) || 1);
   const limit     = Math.min(Math.max(1, Number(req.query['limit']) || 20), 100);
-  const search    = req.query['search']    as string | undefined;
-  const lifecycle = req.query['lifecycle'] as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, search, lifecycle));
+  const search             = req.query['search']             as string | undefined;
+  const lifecycle          = req.query['lifecycle']          as string | undefined;
+  const verificationStatus = req.query['verificationStatus'] as string | undefined;
+  success(res, await svc.list(req.user!.sellerId!, page, limit, search, lifecycle, verificationStatus));
 }
 
 export async function getLifecycleCounts(req: AuthRequest, res: Response) {

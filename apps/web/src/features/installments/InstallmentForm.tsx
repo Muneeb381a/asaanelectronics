@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,12 +8,15 @@ import { customersApi } from '../../api/customers.api.ts';
 import { productsApi } from '../../api/products.api.ts';
 
 const formSchema = z.object({
-  customerId:  z.string().min(1, 'Select a customer'),
-  productId:   z.string().min(1, 'Select a product'),
-  totalAmount: z.number({ invalid_type_error: 'Required' }).positive(),
-  downPayment: z.number({ invalid_type_error: 'Required' }).min(0),
-  months:      z.number().int().min(1).max(60),
-  startDate:   z.string().min(1, 'Required'),
+  customerId:   z.string().min(1, 'Select a customer'),
+  productId:    z.string().min(1, 'Select a product'),
+  totalAmount:  z.number({ invalid_type_error: 'Required' }).positive(),
+  downPayment:  z.number({ invalid_type_error: 'Required' }).min(0),
+  months:       z.number().int().min(1).max(60),
+  startDate:    z.string().min(1, 'Required'),
+  imeiNumber:   z.string().max(20).optional(),
+  cashPrice:    z.number({ invalid_type_error: 'Required' }).positive().optional(),
+  profitMarkup: z.number({ invalid_type_error: 'Required' }).min(0).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -21,6 +25,7 @@ interface Props {
   onSubmit: (data: FormData) => void;
   isPending: boolean;
   onCancel: () => void;
+  murabahaMode?: boolean;
 }
 
 const MONTH_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
@@ -57,16 +62,25 @@ function Divider() {
   return <div className="border-t border-gray-100" />;
 }
 
-export default function InstallmentForm({ onSubmit, isPending, onCancel }: Props) {
+export default function InstallmentForm({ onSubmit, isPending, onCancel, murabahaMode = false }: Props) {
   const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { months: 12, startDate: new Date().toISOString().slice(0, 10), downPayment: 0 },
   });
 
-  const [customerId, productId, totalAmount, downPayment, months, startDate] = useWatch({
+  const [customerId, productId, totalAmount, downPayment, months, startDate, cashPrice, profitMarkup] = useWatch({
     control,
-    name: ['customerId', 'productId', 'totalAmount', 'downPayment', 'months', 'startDate'],
+    name: ['customerId', 'productId', 'totalAmount', 'downPayment', 'months', 'startDate', 'cashPrice', 'profitMarkup'],
   });
+
+  // Auto-compute totalAmount from cashPrice + profitMarkup in murabaha mode
+  useEffect(() => {
+    if (murabahaMode) {
+      const cp = cashPrice ?? 0;
+      const pm = profitMarkup ?? 0;
+      if (cp > 0 || pm > 0) setValue('totalAmount', cp + pm);
+    }
+  }, [murabahaMode, cashPrice, profitMarkup, setValue]);
 
   const { data: customers } = useQuery({
     queryKey: ['customers-all'],
@@ -81,19 +95,30 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel }: Props
   const selectedCustomer = customers?.data.find((c) => c.id === customerId);
   const selectedProduct  = products?.data.find((p) => p.id === productId);
 
-  const cashPrice = selectedProduct ? Number(selectedProduct.price) : null;
+  const cashPriceDisplay = selectedProduct ? Number(selectedProduct.price) : null;
   const instPrice = selectedProduct?.installmentPrice ? Number(selectedProduct.installmentPrice) : null;
-  const markupPct = cashPrice && instPrice && instPrice > cashPrice
-    ? ((instPrice - cashPrice) / cashPrice * 100).toFixed(1) : null;
+  const markupPct = cashPriceDisplay && instPrice && instPrice > cashPriceDisplay
+    ? ((instPrice - cashPriceDisplay) / cashPriceDisplay * 100).toFixed(1) : null;
 
   function handleProductChange(id: string) {
     setValue('productId', id);
     const p = products?.data.find((x) => x.id === id);
-    if (p) setValue('totalAmount', p.installmentPrice ? Number(p.installmentPrice) : Number(p.price));
+    if (p) {
+      const price = p.installmentPrice ? Number(p.installmentPrice) : Number(p.price);
+      if (murabahaMode) {
+        setValue('cashPrice', Number(p.price));
+        if (p.installmentPrice && Number(p.installmentPrice) > Number(p.price)) {
+          setValue('profitMarkup', Number(p.installmentPrice) - Number(p.price));
+        }
+      } else {
+        setValue('totalAmount', price);
+      }
+    }
   }
 
-  const remaining = (totalAmount || 0) - (downPayment || 0);
-  const monthly   = months && remaining > 0 ? remaining / months : 0;
+  const effectiveTotal = murabahaMode ? ((cashPrice ?? 0) + (profitMarkup ?? 0)) : (totalAmount || 0);
+  const remaining = effectiveTotal - (downPayment || 0);
+  const monthly   = months && remaining > 0 ? Math.round((remaining / months) / 25) * 25 : 0;
 
   const schedule: { date: Date; amount: number }[] = [];
   if (monthly > 0 && startDate) {
@@ -101,11 +126,23 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel }: Props
     for (let i = 1; i <= months; i++) schedule.push({ date: addMonths(base, i), amount: monthly });
   }
 
+  const murabahaPct = (cashPrice ?? 0) > 0 && (profitMarkup ?? 0) > 0
+    ? (((profitMarkup ?? 0) / (cashPrice ?? 1)) * 100).toFixed(1)
+    : null;
+
   return (
     <form
       onSubmit={handleSubmit((d) => onSubmit({ ...d, startDate: new Date(d.startDate).toISOString() }))}
       className="space-y-5"
     >
+      {/* Murabaha mode banner */}
+      {murabahaMode && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-medium">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+          Murabaha Mode — cost price + profit markup disclosed separately
+        </div>
+      )}
+
       {/* Customer */}
       <div>
         <Label>Customer</Label>
@@ -166,24 +203,63 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel }: Props
       <Divider />
 
       {/* Amounts */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label>Total Amount (PKR)</Label>
-          <input type="number" step="1" placeholder="0" {...register('totalAmount', { valueAsNumber: true })} className={inp} />
-          {errors.totalAmount && <p className="text-xs text-red-500 mt-1">Required</p>}
+      {murabahaMode ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Cash Price (PKR)</Label>
+              <input type="number" step="1" placeholder="0" {...register('cashPrice', { valueAsNumber: true })} className={inp} />
+              {errors.cashPrice && <p className="text-xs text-red-500 mt-1">Required</p>}
+            </div>
+            <div>
+              <Label>Profit Markup (PKR)</Label>
+              <input type="number" step="1" placeholder="0" {...register('profitMarkup', { valueAsNumber: true })} className={inp} />
+            </div>
+          </div>
+
+          {/* Murabaha breakdown */}
+          {(cashPrice ?? 0) > 0 && (
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-xs space-y-1.5">
+              <div className="flex justify-between text-gray-600">
+                <span>Cash Price</span>
+                <span className="font-semibold text-gray-800">{pkr(cashPrice ?? 0)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Profit Markup{murabahaPct ? ` (${murabahaPct}%)` : ''}</span>
+                <span className="font-semibold text-emerald-700">+ {pkr(profitMarkup ?? 0)}</span>
+              </div>
+              <div className="border-t border-emerald-200 pt-1.5 flex justify-between">
+                <span className="font-semibold text-gray-700">Murabaha Total</span>
+                <span className="font-bold text-gray-900">{pkr((cashPrice ?? 0) + (profitMarkup ?? 0))}</span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <Label>Down Payment (PKR)</Label>
+            <input type="number" step="1" placeholder="0" {...register('downPayment', { valueAsNumber: true })} className={inp} />
+          </div>
         </div>
-        <div>
-          <Label>Down Payment (PKR)</Label>
-          <input type="number" step="1" placeholder="0" {...register('downPayment', { valueAsNumber: true })} className={inp} />
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Total Amount (PKR)</Label>
+            <input type="number" step="1" placeholder="0" {...register('totalAmount', { valueAsNumber: true })} className={inp} />
+            {errors.totalAmount && <p className="text-xs text-red-500 mt-1">Required</p>}
+          </div>
+          <div>
+            <Label>Down Payment (PKR)</Label>
+            <input type="number" step="1" placeholder="0" {...register('downPayment', { valueAsNumber: true })} className={inp} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Down payment presets */}
-      {(totalAmount || 0) > 0 && (
+      {effectiveTotal > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap -mt-1">
           {DOWN_PRESETS.map((pct) => (
             <button key={pct} type="button"
-              onClick={() => setValue('downPayment', Math.round(totalAmount * pct / 100))}
+              onClick={() => setValue('downPayment', Math.round(effectiveTotal * pct / 100))}
               className="px-2.5 py-1 rounded-lg text-xs text-gray-500 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 transition font-medium">
               {pct}%
             </button>
@@ -220,6 +296,19 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel }: Props
       <div>
         <Label>First Instalment Date</Label>
         <input type="date" {...register('startDate')} className={inp} />
+      </div>
+
+      {/* IMEI number */}
+      <div>
+        <Label>IMEI Number <span className="text-gray-400 font-normal">(optional — for phones)</span></Label>
+        <input
+          type="text"
+          maxLength={20}
+          placeholder="e.g. 352088123456789"
+          {...register('imeiNumber')}
+          className={inp}
+        />
+        <p className="text-[11px] text-gray-400 mt-1">Dial *#06# on the device to find IMEI</p>
       </div>
 
       <Divider />

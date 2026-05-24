@@ -10,6 +10,7 @@ interface Seller {
   plan: string;
   trialEndsAt: string | null;
   createdAt: string;
+  murabahaMode: boolean;
 }
 
 interface CreateSellerResponse extends AuthResponse {
@@ -27,6 +28,6 @@ export const sellersApi = {
   getMe: () =>
     api.get<{ data: Seller }>('/sellers/me').then(unwrap<Seller>),
 
-  update: (data: { shopName?: string; phone?: string; address?: string }) =>
+  update: (data: { shopName?: string; phone?: string; address?: string; murabahaMode?: boolean }) =>
     api.patch<{ data: Seller }>('/sellers/me', data).then(unwrap<Seller>),
 };

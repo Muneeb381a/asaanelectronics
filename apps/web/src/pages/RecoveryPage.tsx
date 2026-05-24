@@ -15,12 +15,6 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function isOverdue(inst: Installment) {
-  const end = new Date(inst.startDate);
-  end.setMonth(end.getMonth() + inst.months);
-  return end < new Date();
-}
-
 function daysSince(d: string) {
   const diff = Date.now() - new Date(d).getTime();
   return Math.floor(diff / 86_400_000);
@@ -155,7 +149,7 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
     onError: () => toast.error('Failed to remove action'),
   });
 
-  const overdue = isOverdue(inst);
+  const overdue = inst.isOverdue;
 
   return (
     <div className="flex flex-col h-full">
@@ -213,7 +207,7 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
                       {fmtDate(a.createdAt)} {a.actorName && `· ${a.actorName}`}
                     </p>
                   </div>
-                  <button onClick={() => remove(a.id)}
+                  <button onClick={() => { if (confirm('Remove this action?')) remove(a.id); }}
                     className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition shrink-0">
                     <Trash2 size={14} />
                   </button>
@@ -234,7 +228,7 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
 function InstallmentRow({
   inst, selectedId, onSelect,
 }: { inst: Installment; selectedId: string | null; onSelect: (i: Installment) => void }) {
-  const overdue = isOverdue(inst);
+  const overdue = inst.isOverdue;
   return (
     <button
       onClick={() => onSelect(inst)}
@@ -260,8 +254,25 @@ function InstallmentRow({
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
+type SortKey = 'default' | 'remaining_desc' | 'remaining_asc' | 'name_asc';
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'default',        label: 'Default' },
+  { value: 'remaining_desc', label: 'Highest debt' },
+  { value: 'remaining_asc',  label: 'Lowest debt' },
+  { value: 'name_asc',       label: 'Name A–Z' },
+];
+
+function sortList(list: Installment[], key: SortKey): Installment[] {
+  if (key === 'remaining_desc') return [...list].sort((a, b) => Number(b.remaining) - Number(a.remaining));
+  if (key === 'remaining_asc')  return [...list].sort((a, b) => Number(a.remaining) - Number(b.remaining));
+  if (key === 'name_asc')       return [...list].sort((a, b) => a.customerName.localeCompare(b.customerName));
+  return list;
+}
+
 export default function RecoveryPage() {
   const [search,   setSearch]   = useState('');
+  const [sortBy,   setSortBy]   = useState<SortKey>('default');
   const [selected, setSelected] = useState<Installment | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -282,8 +293,8 @@ export default function RecoveryPage() {
     );
   });
 
-  const overdueList  = filtered.filter(isOverdue);
-  const currentList  = filtered.filter((i) => !isOverdue(i));
+  const overdueList  = sortList(filtered.filter((i) => i.isOverdue),  sortBy);
+  const currentList  = sortList(filtered.filter((i) => !i.isOverdue), sortBy);
 
   return (
     <div className="h-screen flex flex-col">
@@ -296,7 +307,7 @@ export default function RecoveryPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left — installment list */}
         <aside className="w-80 border-r border-gray-100 bg-white flex flex-col shrink-0">
-          <div className="p-4 border-b border-gray-100">
+          <div className="p-4 border-b border-gray-100 space-y-2">
             <input
               type="text"
               placeholder="Search by name or phone…"
@@ -304,6 +315,15 @@ export default function RecoveryPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
+              className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-0.5">

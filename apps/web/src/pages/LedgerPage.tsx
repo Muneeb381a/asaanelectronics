@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import {
   Wallet, TrendingUp, TrendingDown, BookOpen, Calendar, BarChart3,
   Plus, Trash2, ArrowUpCircle, ArrowDownCircle, X,
@@ -49,7 +50,7 @@ function BalanceTab() {
   return (
     <div className="max-w-xl mx-auto mt-6 space-y-4">
       {/* Main balance card */}
-      <div className={`rounded-2xl p-8 text-white text-center ${balance >= 0 ? 'bg-gradient-to-br from-blue-600 to-indigo-700' : 'bg-gradient-to-br from-red-500 to-rose-700'}`}>
+      <div className={`rounded-2xl p-8 text-white text-center ${balance >= 0 ? 'bg-linear-to-br from-blue-600 to-indigo-700' : 'bg-linear-to-br from-red-500 to-rose-700'}`}>
         <p className="text-sm font-medium opacity-80 mb-1">Shop Wallet Balance</p>
         <p className="text-4xl font-bold tracking-tight">{fmt(balance)}</p>
         <p className="text-sm opacity-70 mt-2">All time · money in minus money out</p>
@@ -336,6 +337,14 @@ function ExpensesTab() {
     staleTime: 30_000,
   });
 
+  const invalidateLedger = () => {
+    void qc.invalidateQueries({ queryKey: ['expenses'] });
+    void qc.invalidateQueries({ queryKey: ['ledger-balance'] });
+    void qc.invalidateQueries({ queryKey: ['ledger-cashbook'] });
+    void qc.invalidateQueries({ queryKey: ['ledger-daily'] });
+    void qc.invalidateQueries({ queryKey: ['ledger-pl'] });
+  };
+
   const createMutation = useMutation({
     mutationFn: () => expensesApi.create({
       category: form.category,
@@ -344,25 +353,18 @@ function ExpensesTab() {
       date: form.date || undefined,
     }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['expenses'] });
-      void qc.invalidateQueries({ queryKey: ['ledger-balance'] });
-      void qc.invalidateQueries({ queryKey: ['ledger-cashbook'] });
-      void qc.invalidateQueries({ queryKey: ['ledger-daily'] });
-      void qc.invalidateQueries({ queryKey: ['ledger-pl'] });
+      invalidateLedger();
       setShowForm(false);
       setForm({ category: 'OTHER', amount: '', description: '', date: today() });
+      toast.success('Expense saved');
     },
+    onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed to save expense'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => expensesApi.remove(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['expenses'] });
-      void qc.invalidateQueries({ queryKey: ['ledger-balance'] });
-      void qc.invalidateQueries({ queryKey: ['ledger-cashbook'] });
-      void qc.invalidateQueries({ queryKey: ['ledger-daily'] });
-      void qc.invalidateQueries({ queryKey: ['ledger-pl'] });
-    },
+    onSuccess: () => { invalidateLedger(); toast.success('Expense deleted'); },
+    onError: () => toast.error('Failed to delete expense'),
   });
 
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -709,7 +711,9 @@ function ReconcileTab() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['recon-latest'] });
       void qc.invalidateQueries({ queryKey: ['recon-history'] });
+      toast.success('Reconciliation complete');
     },
+    onError: () => toast.error('Reconciliation failed'),
   });
 
   const pkr = (v: string | null) =>
@@ -867,7 +871,8 @@ export default function LedgerPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mb-6 w-fit">
+      <div className="overflow-x-auto mb-6">
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -882,6 +887,7 @@ export default function LedgerPage() {
             {label}
           </button>
         ))}
+      </div>
       </div>
 
       {/* Tab content */}

@@ -19,6 +19,10 @@ export interface Installment {
   customerName: string;
   customerPhone: string;
   productName: string;
+  isOverdue: boolean;
+  imeiNumber:   string | null;
+  cashPrice:    string | null;
+  profitMarkup: string | null;
 }
 
 interface ListResponse {
