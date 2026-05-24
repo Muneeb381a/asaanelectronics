@@ -229,6 +229,35 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
   );
 }
 
+// ── Installment Row ────────────────────────────────────────────────────────────
+
+function InstallmentRow({
+  inst, selectedId, onSelect,
+}: { inst: Installment; selectedId: string | null; onSelect: (i: Installment) => void }) {
+  const overdue = isOverdue(inst);
+  return (
+    <button
+      onClick={() => onSelect(inst)}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
+        selectedId === inst.id
+          ? 'bg-blue-50 border border-blue-200'
+          : 'hover:bg-gray-50 border border-transparent'
+      }`}
+    >
+      <div className={`w-2 h-2 rounded-full shrink-0 ${overdue ? 'bg-red-500' : 'bg-emerald-400'}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{inst.customerName}</p>
+        <p className="text-xs text-gray-400 truncate">{inst.productName} · {inst.customerPhone}</p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-xs font-semibold text-gray-700">{pkr(inst.remaining)}</p>
+        {overdue && <p className="text-[10px] text-red-500 font-medium">Overdue</p>}
+      </div>
+      <ChevronRight size={14} className="text-gray-300 shrink-0" />
+    </button>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function RecoveryPage() {
@@ -243,39 +272,18 @@ export default function RecoveryPage() {
 
   const installments = data?.data ?? [];
 
-  const filtered = installments.filter((i) =>
-    !search ||
-    i.customerName.toLowerCase().includes(search.toLowerCase()) ||
-    i.customerPhone.includes(search)
-  );
+  const filtered = installments.filter((i) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      i.customerName.toLowerCase().includes(q) ||
+      i.customerPhone.includes(search) ||
+      i.productName.toLowerCase().includes(q)
+    );
+  });
 
   const overdueList  = filtered.filter(isOverdue);
   const currentList  = filtered.filter((i) => !isOverdue(i));
-
-  function InstallmentRow({ inst }: { inst: Installment }) {
-    const overdue = isOverdue(inst);
-    return (
-      <button
-        onClick={() => setSelected(inst)}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
-          selected?.id === inst.id
-            ? 'bg-blue-50 border border-blue-200'
-            : 'hover:bg-gray-50 border border-transparent'
-        }`}
-      >
-        <div className={`w-2 h-2 rounded-full shrink-0 ${overdue ? 'bg-red-500' : 'bg-emerald-400'}`} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{inst.customerName}</p>
-          <p className="text-xs text-gray-400 truncate">{inst.productName} · {inst.customerPhone}</p>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="text-xs font-semibold text-gray-700">{pkr(inst.remaining)}</p>
-          {overdue && <p className="text-[10px] text-red-500 font-medium">Overdue</p>}
-        </div>
-        <ChevronRight size={14} className="text-gray-300 shrink-0" />
-      </button>
-    );
-  }
 
   return (
     <div className="h-screen flex flex-col">
@@ -304,7 +312,9 @@ export default function RecoveryPage() {
                 <Loader2 size={18} className="animate-spin" />
               </div>
             ) : filtered.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-12">No active installments</p>
+              <p className="text-sm text-gray-400 text-center py-12">
+                {search ? `No results for "${search}"` : 'No active installments'}
+              </p>
             ) : (
               <>
                 {overdueList.length > 0 && (
@@ -312,7 +322,9 @@ export default function RecoveryPage() {
                     <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider px-2 py-1">
                       Overdue ({overdueList.length})
                     </p>
-                    {overdueList.map((i) => <InstallmentRow key={i.id} inst={i} />)}
+                    {overdueList.map((i) => (
+                      <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} />
+                    ))}
                     {currentList.length > 0 && (
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 pt-3">
                         Current ({currentList.length})
@@ -320,7 +332,9 @@ export default function RecoveryPage() {
                     )}
                   </>
                 )}
-                {currentList.map((i) => <InstallmentRow key={i.id} inst={i} />)}
+                {currentList.map((i) => (
+                  <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} />
+                ))}
               </>
             )}
           </div>
