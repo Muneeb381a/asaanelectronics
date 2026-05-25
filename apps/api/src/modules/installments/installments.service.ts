@@ -46,6 +46,7 @@ export class InstallmentsService {
           imeiNumber:   installments.imeiNumber,
           cashPrice:    installments.cashPrice,
           profitMarkup: installments.profitMarkup,
+          customerArea: customers.area,
           isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (${installments.startDate} + (${installments.months} || ' months')::interval) < now())`,
         })
         .from(installments)
@@ -86,6 +87,7 @@ export class InstallmentsService {
         imeiNumber:   installments.imeiNumber,
         cashPrice:    installments.cashPrice,
         profitMarkup: installments.profitMarkup,
+        customerArea: customers.area,
         isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (${installments.startDate} + (${installments.months} || ' months')::interval) < now())`,
       })
       .from(installments)

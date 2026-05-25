@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   PhoneCall, MapPin, HandCoins, XCircle, AlertOctagon,
-  Plus, Trash2, Loader2, ChevronRight, Clock,
+  Plus, Trash2, Loader2, ChevronRight, Clock, LayoutList, Map as MapIcon,
 } from 'lucide-react';
 import { installmentsApi, type Installment } from '../api/installments.api.ts';
 import { recoveryApi, type RecoveryActionType, type RecoveryAction } from '../api/recovery.api.ts';
@@ -270,9 +270,27 @@ function sortList(list: Installment[], key: SortKey): Installment[] {
   return list;
 }
 
+function groupByArea(list: Installment[]): { area: string; items: Installment[] }[] {
+  const map = new Map<string, Installment[]>();
+  for (const inst of list) {
+    const key = inst.customerArea?.trim() || 'بغیر علاقہ / No Area';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(inst);
+  }
+  const NO_AREA = 'بغیر علاقہ / No Area';
+  return Array.from(map.entries() as Iterable<[string, Installment[]]>)
+    .sort((a, b) => {
+      if (a[0] === NO_AREA) return 1;
+      if (b[0] === NO_AREA) return -1;
+      return a[0].localeCompare(b[0], 'ur');
+    })
+    .map((entry) => ({ area: entry[0], items: entry[1] }));
+}
+
 export default function RecoveryPage() {
   const [search,   setSearch]   = useState('');
   const [sortBy,   setSortBy]   = useState<SortKey>('default');
+  const [groupMode, setGroupMode] = useState<'status' | 'area'>('status');
   const [selected, setSelected] = useState<Installment | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -289,12 +307,14 @@ export default function RecoveryPage() {
     return (
       i.customerName.toLowerCase().includes(q) ||
       i.customerPhone.includes(search) ||
-      i.productName.toLowerCase().includes(q)
+      i.productName.toLowerCase().includes(q) ||
+      (i.customerArea ?? '').toLowerCase().includes(q)
     );
   });
 
   const overdueList  = sortList(filtered.filter((i) => i.isOverdue),  sortBy);
   const currentList  = sortList(filtered.filter((i) => !i.isOverdue), sortBy);
+  const areaGroups   = groupByArea(sortList(filtered, sortBy));
 
   return (
     <div className="h-screen flex flex-col">
@@ -310,20 +330,34 @@ export default function RecoveryPage() {
           <div className="p-4 border-b border-gray-100 space-y-2">
             <input
               type="text"
-              placeholder="Search by name or phone…"
+              placeholder="Search by name, phone, or area…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortKey)}
-              className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortKey)}
+                className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setGroupMode((m) => m === 'status' ? 'area' : 'status')}
+                title={groupMode === 'status' ? 'Group by Area' : 'Group by Status'}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1 transition ${
+                  groupMode === 'area'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}
+              >
+                {groupMode === 'area' ? <MapIcon size={13} /> : <LayoutList size={13} />}
+                {groupMode === 'area' ? 'Area' : 'Status'}
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
@@ -335,7 +369,30 @@ export default function RecoveryPage() {
               <p className="text-sm text-gray-400 text-center py-12">
                 {search ? `No results for "${search}"` : 'No active installments'}
               </p>
+            ) : groupMode === 'area' ? (
+              /* ── Area grouping ── */
+              <>
+                {areaGroups.map(({ area, items }) => {
+                  const areaOverdue = items.filter((i) => i.isOverdue).length;
+                  return (
+                    <div key={area}>
+                      <div className="flex items-center gap-1.5 px-2 py-1.5 mt-1">
+                        <MapPin size={11} className="text-blue-500 shrink-0" />
+                        <p className="text-[11px] font-bold text-gray-700 truncate">{area}</p>
+                        <span className="text-[10px] text-gray-400 shrink-0">({items.length})</span>
+                        {areaOverdue > 0 && (
+                          <span className="ml-auto text-[10px] font-bold text-red-500 shrink-0">{areaOverdue} overdue</span>
+                        )}
+                      </div>
+                      {items.map((i) => (
+                        <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} />
+                      ))}
+                    </div>
+                  );
+                })}
+              </>
             ) : (
+              /* ── Status grouping (default) ── */
               <>
                 {overdueList.length > 0 && (
                   <>

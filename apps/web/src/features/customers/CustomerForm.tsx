@@ -231,7 +231,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
     defaultValues: customer ? {
       name: customer.name, phone: customer.phone,
       fatherName: customer.fatherName ?? '', cnicExpiry: customer.cnicExpiry ?? '',
-      address: customer.address ?? '', officeAddress: customer.officeAddress ?? '',
+      address: customer.address ?? '', area: customer.area ?? '', officeAddress: customer.officeAddress ?? '',
       salary: customer.salary ? Number(customer.salary) : undefined,
       occupation: customer.occupation ?? '', employer: customer.employer ?? '',
       cnic: '',
@@ -362,6 +362,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
             </Field>
             <Field label="Home Address" optional>
               <input {...register('address')} placeholder="House 5, Street 3, Sialkot" className={inp} />
+            </Field>
+            <Field label="Area / Mohalla" optional>
+              <input {...register('area')} placeholder="e.g. Model Town, Johar Town, Gulberg" className={inp} />
             </Field>
             <Field label="Office / Work Address" error={errors.officeAddress?.message}>
               <input {...register('officeAddress')} placeholder="Office building, area, city" className={inp} />

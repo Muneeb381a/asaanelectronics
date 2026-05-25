@@ -13,6 +13,7 @@ export interface Customer {
   fatherName: string | null;
   cnicExpiry: string | null;
   address: string | null;
+  area: string | null;
   officeAddress: string | null;
   salary: string | null;
   occupation: string | null;

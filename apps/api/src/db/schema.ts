@@ -124,6 +124,7 @@ export const customers = pgTable(
     address: text('address'),
     occupation: text('occupation'),
     employer: text('employer'),
+    area: text('area'),
     fatherName: text('father_name'),
     cnicExpiry: text('cnic_expiry'),
     guarantorName: text('guarantor_name'),

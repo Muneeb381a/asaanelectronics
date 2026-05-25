@@ -9,6 +9,7 @@ export const createCustomerSchema = z.object({
   fatherName: z.string().optional(),
   cnicExpiry: z.string().optional(),
   address: z.string().optional(),
+  area: z.string().optional(),
   officeAddress: z.string().min(1, 'Office address is required'),
   salary: z.preprocess(
     (v) => (v === '' || v === null || v === undefined || (typeof v === 'number' && isNaN(v))) ? undefined : Number(v),

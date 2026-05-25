@@ -23,6 +23,7 @@ export interface Installment {
   imeiNumber:   string | null;
   cashPrice:    string | null;
   profitMarkup: string | null;
+  customerArea: string | null;
 }
 
 interface ListResponse {

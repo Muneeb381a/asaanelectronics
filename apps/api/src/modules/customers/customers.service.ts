@@ -54,6 +54,7 @@ type CreateBody = {
   fatherName?: string;
   cnicExpiry?: string;
   address?: string;
+  area?: string;
   officeAddress?: string;
   salary?: number;
   occupation?: string;
@@ -140,6 +141,7 @@ export class CustomersService {
         cnicMasked: customers.cnicMasked,
         phone: customers.phone,
         address: customers.address,
+        area: customers.area,
         occupation: customers.occupation,
         employer: customers.employer,
         guarantorName: customers.guarantorName,

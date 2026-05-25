@@ -548,7 +548,7 @@ export default function InstallmentsPage() {
                         <button
                           onClick={() => shopData && void openBill({
                             shop: shopData,
-                            customer: { name: inst.customerName, phone: inst.customerPhone },
+                            customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
                             product: inst.productName,
                             totalAmount: inst.totalAmount,
                             downPayment: inst.downPayment,
@@ -559,6 +559,10 @@ export default function InstallmentsPage() {
                             startDate: inst.startDate,
                             installmentId: inst.id,
                             invoiceNumber: inst.invoiceNumber,
+                            imeiNumber: inst.imeiNumber,
+                            cashPrice: inst.cashPrice,
+                            profitMarkup: inst.profitMarkup,
+                            murabahaMode: shopData.murabahaMode,
                           })}
                           title="Bill"
                           className="p-1 text-gray-400 hover:text-indigo-600 transition rounded">

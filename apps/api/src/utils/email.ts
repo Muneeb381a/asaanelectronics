@@ -39,11 +39,7 @@ export async function sendOtpEmail(to: string, name: string, code: string, purpo
   });
 
   if (error) {
-    if (isDev) {
-      console.warn('[email] Resend skipped (no verified domain) — OTP logged above');
-    } else {
-      console.error('[email] Resend error:', error);
-      throw new Error(`Failed to send email: ${error.message}`);
-    }
+    console.error('[email] Resend error:', error);
+    throw new Error(`Failed to send email: ${error.message}`);
   }
 }
