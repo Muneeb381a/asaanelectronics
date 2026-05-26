@@ -11,12 +11,5 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": ["tesseract.js", "bcrypt", "esbuild", "sharp", "better-sqlite3"]
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.1.2",
-      "onFail": "download"
-    }
   }
 }
