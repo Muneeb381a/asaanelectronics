@@ -12,7 +12,7 @@ const schema = z.object({
   CLOUDINARY_URL: z.string(),
   RESEND_API_KEY: z.string(),
   EMAIL_FROM: z.string().optional(),
-  CORS_ORIGIN: z.string().url(),
+  CORS_ORIGIN: z.string(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
 });
