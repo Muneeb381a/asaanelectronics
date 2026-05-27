@@ -6,6 +6,7 @@ import {
   Home, Users, Zap, ShoppingCart, Wrench, Truck, MoreHorizontal,
 } from 'lucide-react';
 import { expensesApi, type ExpenseCategory, type Expense } from '../api/expenses.api.ts';
+import { getErrorMessage } from '../utils/error.ts';
 
 // ── Category meta ──────────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
       qc.invalidateQueries({ queryKey: ['expenses'] });
       onClose();
     },
-    onError: (e: any) => toast.error(e.message ?? 'Failed to record expense'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to record expense')),
   });
 
   return (

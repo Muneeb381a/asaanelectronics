@@ -6,6 +6,7 @@ import {
   Users, TrendingUp, Package, BookOpen,
 } from 'lucide-react';
 import { sellersApi } from '../api/sellers.api.ts';
+import { getErrorMessage } from '../utils/error.ts';
 import { sessionsApi, type Session } from '../api/sessions.api.ts';
 import { billingApi, type BillingUsage, type UsageStat } from '../api/billing.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -339,7 +340,7 @@ export default function SettingsPage() {
       qc.invalidateQueries({ queryKey: ['shop-me'] });
       toast.success('Shop settings saved');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to save'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save')),
   });
 
   const dirty = shop && (shopName !== shop.shopName || phone !== shop.phone || address !== (shop.address ?? ''));

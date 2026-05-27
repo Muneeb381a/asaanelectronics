@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../utils/error.ts';
 import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users } from 'lucide-react';
 import { customersApi, type Customer, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
@@ -46,7 +47,7 @@ function AssignAvoModal({ customer, avos, onClose }: { customer: Customer; avos:
       toast.success('AVO assigned');
       onClose();
     },
-    onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed'),
+    onError: (e: any) => toast.error(getErrorMessage(e)),
   });
 
   return (
@@ -194,13 +195,13 @@ function NotesPanel({ customer }: { customer: Customer }) {
       setDraft('');
       toast.success('Note added');
     },
-    onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed'),
+    onError: (e: any) => toast.error(getErrorMessage(e)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (noteId: string) => customerNotesApi.remove(customer.id, noteId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['customer-notes', customer.id] }),
-    onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed'),
+    onError: (e: any) => toast.error(getErrorMessage(e)),
   });
 
   return (
@@ -326,7 +327,7 @@ function ReVerifyButton({ customerId }: { customerId: string }) {
       qc.invalidateQueries({ queryKey: ['verif-report', customerId] });
       toast.success('Customer reset to Pending — assign an AVO to re-verify');
     },
-    onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed'),
+    onError: (e: any) => toast.error(getErrorMessage(e)),
   });
 
   return (
@@ -650,20 +651,20 @@ export default function CustomersPage() {
   const createMutation = useMutation({
     mutationFn: customersApi.create,
     onSuccess: () => { invalidate(); setModal(null); toast.success('Customer added'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to add customer'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to add customer')),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof customersApi.update>[1] }) =>
       customersApi.update(id, data),
     onSuccess: () => { invalidate(); setModal(null); toast.success('Customer updated'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to update customer'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to update customer')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: customersApi.remove,
     onSuccess: () => { invalidate(); toast.success('Customer deleted'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to delete customer'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to delete customer')),
   });
 
   const handleDelete = (id: string) => {

@@ -8,6 +8,7 @@ import {
 import type { CreateProductInput } from '@assaan/shared';
 import ProductForm from '../features/products/ProductForm.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
+import { getErrorMessage } from '../utils/error.ts';
 import {
   Package, Pencil, Trash2, TrendingUp, TrendingDown, Minus,
   AlertTriangle, Zap, BarChart3, ShoppingCart, Brain,
@@ -251,19 +252,19 @@ export default function ProductsPage() {
   const createMutation = useMutation({
     mutationFn: productsApi.create,
     onSuccess: () => { invalidate(); setModal(null); toast.success('Product added'); },
-    onError:   (e) => toast.error(e instanceof Error ? e.message : 'Failed to add product'),
+    onError:   (e) => toast.error(getErrorMessage(e, 'Failed to add product')),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CreateProductInput }) => productsApi.update(id, data),
     onSuccess: () => { invalidate(); setModal(null); toast.success('Product updated'); },
-    onError:   (e) => toast.error(e instanceof Error ? e.message : 'Failed to update product'),
+    onError:   (e) => toast.error(getErrorMessage(e, 'Failed to update product')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: productsApi.remove,
     onSuccess: () => { invalidate(); toast.success('Product deleted'); },
-    onError:   (e) => toast.error(e instanceof Error ? e.message : 'Failed to delete product'),
+    onError:   (e) => toast.error(getErrorMessage(e, 'Failed to delete product')),
   });
 
   const handleDelete = (id: string) => {

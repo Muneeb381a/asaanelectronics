@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
+import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { CardSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 
@@ -42,7 +43,7 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
   const { mutate, isPending } = useMutation({
     mutationFn: () => staffApi.create({ ...form, permissions: staffType === 'AVO' ? AVO_PERMS : DEFAULT_PERMS }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['staff'] }); onClose(); },
-    onError: (e: any) => setErr(e.response?.data?.error ?? 'Failed to add staff'),
+    onError: (e) => setErr(getErrorMessage(e, 'Failed to add staff')),
   });
 
   const field = (key: keyof typeof form, label: string, type = 'text') => (

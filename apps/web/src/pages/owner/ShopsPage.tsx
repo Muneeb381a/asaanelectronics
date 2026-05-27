@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck, CreditCard, Calendar } from 'lucide-react';
 import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan } from '../../api/owner.api.ts';
+import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
 
 const PLAN_STYLES: Record<string, string> = {
@@ -275,20 +276,20 @@ export default function ShopsPage() {
   const createShopMutation = useMutation({
     mutationFn: ownerApi.createShop,
     onSuccess: () => { invalidate(); setModal(null); toast.success('Shop created'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const createOwnerMutation = useMutation({
     mutationFn: ({ shopId, data }: { shopId: string; data: CreateShopOwnerInput }) =>
       ownerApi.createShopOwner(shopId, data),
     onSuccess: () => { invalidate(); setModal(null); toast.success('Shop owner created'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const deleteShopMutation = useMutation({
     mutationFn: ownerApi.deleteShop,
     onSuccess: () => { invalidate(); toast.success('Shop deleted'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const toggleStatusMutation = useMutation({
@@ -298,14 +299,14 @@ export default function ShopsPage() {
       invalidate();
       toast.success(vars.isActive ? 'Shop activated' : 'Shop suspended');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const changePlanMutation = useMutation({
     mutationFn: ({ id, plan, expiresAt }: { id: string; plan: Plan; expiresAt?: string }) =>
       ownerApi.changePlan(id, plan, expiresAt),
     onSuccess: () => { invalidate(); setModal(null); toast.success('Plan updated'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const total = shops?.length ?? 0;

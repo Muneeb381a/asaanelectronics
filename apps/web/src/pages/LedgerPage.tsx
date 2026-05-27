@@ -7,6 +7,7 @@ import {
   ShieldCheck, AlertTriangle, CheckCircle2, RefreshCw, Clock,
 } from 'lucide-react';
 import { ledgerApi } from '../api/ledger.api.ts';
+import { getErrorMessage } from '../utils/error.ts';
 import { expensesApi, type ExpenseCategory } from '../api/expenses.api.ts';
 import { accountingApi } from '../api/accounting.api.ts';
 import { reconciliationApi, type Anomaly } from '../api/reconciliation.api.ts';
@@ -358,7 +359,7 @@ function ExpensesTab() {
       setForm({ category: 'OTHER', amount: '', description: '', date: today() });
       toast.success('Expense saved');
     },
-    onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed to save expense'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save expense')),
   });
 
   const deleteMutation = useMutation({

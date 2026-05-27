@@ -7,6 +7,7 @@ import {
 import { verificationsApi, type QueueCustomer } from '../api/verifications.api.ts';
 import { api } from '../api/client.ts';
 import { avoDb } from '../lib/avoOfflineDb.ts';
+import { getErrorMessage } from '../utils/error.ts';
 import { useOfflineSync } from '../hooks/useOfflineSync.ts';
 import toast from 'react-hot-toast';
 
@@ -187,7 +188,7 @@ function VerifyModal({
       qc.invalidateQueries({ queryKey: ['my-queue'] });
       onClose();
     },
-    onError: (e: any) => toast.error(e.response?.data?.error ?? e.message ?? 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   // Offline submit — save to IndexedDB

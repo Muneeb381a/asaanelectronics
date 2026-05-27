@@ -6,6 +6,7 @@ import {
   Plus, Trash2, Loader2, ChevronRight, Clock, LayoutList, Map as MapIcon,
 } from 'lucide-react';
 import { installmentsApi, type Installment } from '../api/installments.api.ts';
+import { getErrorMessage } from '../utils/error.ts';
 import { recoveryApi, type RecoveryActionType, type RecoveryAction } from '../api/recovery.api.ts';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -52,7 +53,7 @@ function LogModal({ installmentId, onClose }: { installmentId: string; onClose: 
       qc.invalidateQueries({ queryKey: ['recovery', installmentId] });
       onClose();
     },
-    onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed to log action'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to log action')),
   });
 
   return (

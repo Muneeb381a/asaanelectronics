@@ -6,6 +6,7 @@ import {
   AlertTriangle, RefreshCw, ShieldCheck,
 } from 'lucide-react';
 import { returnsApi, type Return, type ReturnType, type ReturnReason, type ReturnCondition, type ResolutionType } from '../api/returns.api.ts';
+import { getErrorMessage } from '../utils/error.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { productsApi } from '../api/products.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -113,7 +114,7 @@ function CreateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       notes:         form.notes || undefined,
     }),
     onSuccess: () => { toast.success('Return request created'); onSuccess(); onClose(); },
-    onError:   (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError:   (e) => toast.error(getErrorMessage(e)),
   });
 
   const valid = form.customerId && form.productId;
@@ -242,7 +243,7 @@ function ResolveModal({ ret, onClose, onSuccess }: { ret: Return; onClose: () =>
       notes: notes || undefined,
     }),
     onSuccess: () => { toast.success(`Return ${status === 'APPROVED' ? 'approved' : 'rejected'}`); onSuccess(); onClose(); },
-    onError:   (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError:   (e) => toast.error(getErrorMessage(e)),
   });
 
   const valid = status === 'REJECTED' || (status === 'APPROVED' && (resolution !== 'REPLACEMENT_SENT' || replProdId));

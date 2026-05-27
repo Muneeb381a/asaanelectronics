@@ -11,6 +11,7 @@ import RecoveryDrawer from '../features/installments/RecoveryDrawer.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { openBill } from '../utils/bill.ts';
+import { getErrorMessage } from '../utils/error.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 
 function calcNextDueDate(inst: Installment): Date | null {
@@ -106,7 +107,7 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
       onClose();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Payment failed'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Payment failed')),
   });
 
   const deleteMutation = useMutation({
@@ -116,7 +117,7 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
       qc.invalidateQueries({ queryKey: ['payments', inst.id] });
       toast.success('Payment deleted');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to delete'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to delete')),
   });
 
   const remaining = Number(inst.remaining);
@@ -272,7 +273,7 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
       toast.success('Installment rescheduled');
       onClose();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const isValid = !!preview && (mode === 'months' ? preview.months >= 1 : preview.monthly <= remaining);
@@ -386,31 +387,31 @@ export default function InstallmentsPage() {
   const createMutation = useMutation({
     mutationFn: installmentsApi.create,
     onSuccess: () => { invalidate(); setShowForm(false); toast.success('Installment created'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to create installment'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to create installment')),
   });
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.approve(id),
     onSuccess: () => { invalidate(); toast.success('Installment approved'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to approve'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to approve')),
   });
 
   const closeMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.close(id),
     onSuccess: () => { invalidate(); toast.success('Installment closed'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to close'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to close')),
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.cancel(id),
     onSuccess: () => { invalidate(); toast.success('Installment cancelled'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to cancel'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to cancel')),
   });
 
   const defaultMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.markDefault(id),
     onSuccess: () => { invalidate(); toast.success('Marked as defaulted'); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   return (

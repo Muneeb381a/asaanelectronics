@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { X } from 'lucide-react';
 import { profileApi } from '../api/profile.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
+import { getErrorMessage } from '../utils/error.ts';
 
 interface Props { onClose: () => void }
 
@@ -25,13 +26,13 @@ export default function ProfileModal({ onClose }: Props) {
       toast.success('Profile updated');
       onClose();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Update failed'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to update profile')),
   });
 
   const pwMutation = useMutation({
     mutationFn: () => profileApi.changePassword({ currentPassword: cur, newPassword: newPw }),
     onSuccess: () => { toast.success('Password changed'); onClose(); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to change password')),
   });
 
   const pwInvalid = newPw.length < 8 || newPw !== confirmPw || !cur;
