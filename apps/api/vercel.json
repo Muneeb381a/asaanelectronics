@@ -1,7 +1,5 @@
 {
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm --filter @assaan/shared build && cd apps/api && tsc",
-  "rewrites": [
+"rewrites": [
     { "source": "/(.*)", "destination": "/api/index" }
   ],
   "functions": {

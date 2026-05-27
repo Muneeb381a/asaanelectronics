@@ -5,7 +5,7 @@
     "moduleResolution": "Bundler",
     "baseUrl": ".",
     "paths": {
-      "@assaan/shared": ["../../packages/shared/dist/index"]
+      "@assaan/shared": ["src/_shared/index"]
     },
     "outDir": "./dist",
     "rootDir": "./src",
