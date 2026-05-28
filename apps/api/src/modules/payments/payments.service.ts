@@ -90,7 +90,14 @@ export class PaymentsService {
 
   async remove(id: string, sellerId: string, deletedBy: string) {
     const [pmt] = await db
-      .select({ id: payments.id, amount: payments.amount, method: payments.method, installmentId: payments.installmentId })
+      .select({
+        id: payments.id,
+        amount: payments.amount,
+        method: payments.method,
+        installmentId: payments.installmentId,
+        instRemaining: installments.remaining,
+        instStatus: installments.status,
+      })
       .from(payments)
       .innerJoin(installments, eq(payments.installmentId, installments.id))
       .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -98,9 +105,21 @@ export class PaymentsService {
 
     if (!pmt) throw new AppError('Payment not found', 404);
 
-    await db.update(payments)
-      .set({ deletedAt: new Date(), deletedBy })
-      .where(eq(payments.id, id));
+    const restoredRemaining = Number(pmt.instRemaining) + Number(pmt.amount);
+    // If the installment was COMPLETED and we're restoring balance, revert to ACTIVE
+    const statusRevert = pmt.instStatus === 'COMPLETED' && restoredRemaining > 0
+      ? { status: 'ACTIVE' as const }
+      : {};
+
+    await db.transaction(async (tx) => {
+      await tx.update(payments)
+        .set({ deletedAt: new Date(), deletedBy })
+        .where(eq(payments.id, id));
+
+      await tx.update(installments)
+        .set({ remaining: String(restoredRemaining.toFixed(2)), ...statusRevert })
+        .where(eq(installments.id, pmt.installmentId));
+    });
 
     return pmt;
   }

@@ -33,12 +33,16 @@ function calcNextDueDate(inst: Installment): Date | null {
 }
 
 function exportCSV(rows: Installment[]) {
-  const header = ['Customer', 'Phone', 'Product', 'Total (PKR)', 'Down Payment', 'Monthly', 'Remaining', 'Status', 'Start Date', 'Next Due'];
+  const header = ['Customer', 'Phone', 'Product', 'Total (PKR)', 'Down Payment', 'Per Period', 'Remaining', 'Frequency', 'Duration', 'Status', 'Start Date', 'Next Due'];
   const body = rows.map((i) => {
     const next = calcNextDueDate(i);
+    const isDaily = i.paymentFrequency === 'daily';
     return [
       i.customerName, i.customerPhone, i.productName,
-      i.totalAmount, i.downPayment, i.monthly, i.remaining, i.status,
+      i.totalAmount, i.downPayment, i.monthly, i.remaining,
+      isDaily ? 'Daily' : 'Monthly',
+      isDaily ? `${i.months} days` : `${i.months} months`,
+      i.status,
       new Date(i.startDate).toLocaleDateString('en-PK'),
       next ? next.toLocaleDateString('en-PK') : '',
     ].map((v) => `"${v}"`).join(',');
