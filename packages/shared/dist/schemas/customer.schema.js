@@ -25,7 +25,7 @@ export const createCustomerSchema = z.object({
     photoUrl: z.string().url('Customer photo is required'),
     cnicFrontUrl: z.string().url('CNIC front image is required'),
     cnicBackUrl: z.string().url('CNIC back image is required'),
-    blankChequeUrl: z.string().url('Blank cheque image is required'),
+    blankChequeUrl: z.string().url().optional(),
     guarantorCnicFrontUrl: z.string().url().optional(),
     guarantorCnicBackUrl: z.string().url().optional(),
     guarantor2CnicFrontUrl: z.string().url().optional(),

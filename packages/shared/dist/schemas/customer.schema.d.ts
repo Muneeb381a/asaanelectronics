@@ -24,7 +24,7 @@ export declare const createCustomerSchema: z.ZodObject<{
     photoUrl: z.ZodString;
     cnicFrontUrl: z.ZodString;
     cnicBackUrl: z.ZodString;
-    blankChequeUrl: z.ZodString;
+    blankChequeUrl: z.ZodOptional<z.ZodString>;
     guarantorCnicFrontUrl: z.ZodOptional<z.ZodString>;
     guarantorCnicBackUrl: z.ZodOptional<z.ZodString>;
     guarantor2CnicFrontUrl: z.ZodOptional<z.ZodString>;
@@ -44,7 +44,6 @@ export declare const createCustomerSchema: z.ZodObject<{
     photoUrl: string;
     cnicFrontUrl: string;
     cnicBackUrl: string;
-    blankChequeUrl: string;
     address?: string | undefined;
     fatherName?: string | undefined;
     cnicExpiry?: string | undefined;
@@ -61,6 +60,7 @@ export declare const createCustomerSchema: z.ZodObject<{
     guarantor2Cnic?: string | undefined;
     guarantor2Address?: string | undefined;
     guarantor2Relation?: string | undefined;
+    blankChequeUrl?: string | undefined;
     guarantorCnicFrontUrl?: string | undefined;
     guarantorCnicBackUrl?: string | undefined;
     guarantor2CnicFrontUrl?: string | undefined;
@@ -79,7 +79,6 @@ export declare const createCustomerSchema: z.ZodObject<{
     photoUrl: string;
     cnicFrontUrl: string;
     cnicBackUrl: string;
-    blankChequeUrl: string;
     address?: string | undefined;
     fatherName?: string | undefined;
     cnicExpiry?: string | undefined;
@@ -97,6 +96,7 @@ export declare const createCustomerSchema: z.ZodObject<{
     guarantor2Cnic?: string | undefined;
     guarantor2Address?: string | undefined;
     guarantor2Relation?: string | undefined;
+    blankChequeUrl?: string | undefined;
     guarantorCnicFrontUrl?: string | undefined;
     guarantorCnicBackUrl?: string | undefined;
     guarantor2CnicFrontUrl?: string | undefined;
@@ -132,7 +132,7 @@ export declare const updateCustomerSchema: z.ZodObject<{
     photoUrl: z.ZodOptional<z.ZodString>;
     cnicFrontUrl: z.ZodOptional<z.ZodString>;
     cnicBackUrl: z.ZodOptional<z.ZodString>;
-    blankChequeUrl: z.ZodOptional<z.ZodString>;
+    blankChequeUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     guarantorCnicFrontUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     guarantorCnicBackUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     guarantor2CnicFrontUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;

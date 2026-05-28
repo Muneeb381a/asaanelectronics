@@ -14,6 +14,4 @@ export const createStaffSchema = z.object({
     password: z.string().min(6),
     permissions: permissionsSchema.optional(),
 });
-export const updateStaffPermissionsSchema = z.object({
-    permissions: permissionsSchema,
-});
+export const updateStaffPermissionsSchema = permissionsSchema.partial();
