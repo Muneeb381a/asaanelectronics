@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, TrendingUp, Users, Banknote, Calendar, Image, Phone } from 'lucide-react';
+import { ArrowLeft, Users, Calendar, Image, Phone } from 'lucide-react';
 import { recoveryAgentsApi, type AgentStat, type AgentCollection } from '../api/recovery-agents.api.ts';
-import { RowSkeleton, TableSkeleton } from '../components/ui/Skeleton.tsx';
+import { RowSkeleton } from '../components/ui/Skeleton.tsx';
 
 function pkr(v: number) {
   return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });

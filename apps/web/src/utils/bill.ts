@@ -74,14 +74,13 @@ function buildSchedule(data: BillData): { month: number; due: string; amount: st
 export async function openBill(data: BillData) {
   const invoiceNo  = data.invoiceNumber ?? `INV-${new Date().getFullYear()}-${data.installmentId.slice(0, 6).toUpperCase()}`;
   const printDate  = new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' });
+  const isDaily    = data.paymentFrequency === 'daily';
   const startDate  = fmtDate(new Date(data.startDate));
   const endDate    = fmtDate(isDaily
     ? addDays(new Date(data.startDate), data.months)
     : addMonths(new Date(data.startDate), data.months));
   const paid       = Number(data.totalAmount) - Number(data.remaining);
   const schedule   = buildSchedule(data);
-
-  const isDaily    = data.paymentFrequency === 'daily';
   const isMurabaha = (data.murabahaMode || isDaily) && data.cashPrice != null && Number(data.cashPrice) > 0;
   const markup     = isMurabaha ? Number(data.profitMarkup ?? 0) : 0;
   const markupPct  = isMurabaha && Number(data.cashPrice) > 0

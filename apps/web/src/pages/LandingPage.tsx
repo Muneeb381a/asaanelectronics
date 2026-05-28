@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   CreditCard, Users, Package, BarChart3, Shield, Smartphone,
   Check, ArrowRight, Star, Zap, TrendingUp, Clock, PhoneCall,
-  Receipt, Banknote, AlertTriangle, FileText, UserCheck, BookOpen,
+  Banknote, AlertTriangle, FileText, UserCheck, BookOpen,
   ChevronRight, Wallet,
 } from 'lucide-react';
 
@@ -35,32 +35,32 @@ const steps = [
   {
     number: '01',
     icon: UserCheck,
-    title: 'Customer Register Karo',
-    desc: 'CNIC upload karo — naam, date of birth, address automatically fill ho jaata hai. Guarantor ka record bhi saath add karo. Ek baar add kiya, hamesha available.',
+    title: 'Register the Customer',
+    desc: 'Upload the CNIC — name, date of birth, and address auto-fill instantly. Add guarantor details alongside. One registration, always accessible.',
     color: 'blue',
     tags: ['CNIC Scan', 'Auto-fill', 'Guarantor Record'],
   },
   {
     number: '02',
     icon: Package,
-    title: 'Product & Plan Banao',
-    desc: 'Apni inventory mein se product select karo, down payment set karo, aur monthly ya daily installment plan generate karo. Murabaha mode bhi available hai.',
+    title: 'Build the Installment Plan',
+    desc: 'Pick a product from your inventory, set the down payment, and generate a monthly or daily plan. Murabaha mode available for Islamic financing.',
     color: 'violet',
     tags: ['Monthly / Daily', 'Murabaha Mode', 'Auto Invoice'],
   },
   {
     number: '03',
     icon: Banknote,
-    title: 'Payment Record Karo',
-    desc: 'Har payment ka record rakho — cash, bank, JazzCash, Easypaisa. Remaining balance khud update hota hai. Receipt print karo ya WhatsApp par bhejo.',
+    title: 'Record Every Payment',
+    desc: 'Log payments via cash, bank transfer, JazzCash, or Easypaisa. The remaining balance updates automatically. Print or WhatsApp the receipt instantly.',
     color: 'emerald',
     tags: ['All Methods', 'Auto Balance', 'Instant Bill'],
   },
   {
     number: '04',
     icon: BarChart3,
-    title: 'Reports & Recovery',
-    desc: "Aaj ki collections, overdue customers, agent performance — sab ek jagah. Overdue customers ko bulk WhatsApp reminder bhejo. Poora hisaab saaf.",
+    title: 'Track Reports & Recovery',
+    desc: "Today's collections, overdue accounts, and agent performance — all in one dashboard. Send bulk WhatsApp reminders to overdue customers in one click.",
     color: 'orange',
     tags: ['Live Dashboard', 'Agent Tracking', 'Bulk Reminders'],
   },
@@ -77,44 +77,44 @@ const features = [
   {
     icon: CreditCard,
     title: 'Installment Management',
-    desc: 'Monthly aur daily plans. Automatic balance tracking, overdue alerts, reschedule option. Ek customer ki poori history ek jagah.',
+    desc: 'Monthly and daily plans with automatic balance tracking, overdue alerts, and a reschedule option. Every customer\'s complete history in one view.',
     color: 'blue',
     points: ['Auto remaining balance', 'Reschedule any plan', 'Status timeline'],
   },
   {
     icon: Users,
     title: 'Customer Records',
-    desc: 'CNIC se auto-fill, guarantor records, area tagging, complete payment history. Koi bhi customer dhundna seconds ka kaam.',
+    desc: 'CNIC auto-fill, guarantor records, area tagging, and a complete payment history per customer. Find anyone in seconds.',
     color: 'violet',
-    points: ['CNIC verification', 'Guarantor tracking', 'Full pay history'],
+    points: ['CNIC verification', 'Guarantor tracking', 'Full payment history'],
   },
   {
     icon: PhoneCall,
     title: 'Recovery & Agents',
-    desc: 'Recovery agents assign karo, unki collections track karo. Har agent ka monthly performance dekho — kaun kitna recover karta hai.',
+    desc: 'Assign recovery agents and track exactly how much each one has collected. Monthly performance per agent — who collected how, from whom.',
     color: 'emerald',
     points: ['Agent performance', 'Collection attribution', 'Proof image upload'],
   },
   {
     icon: BookOpen,
     title: 'Accounting & Ledger',
-    desc: 'Expenses record karo, income track karo, complete ledger dekho. Cash book, P&L, aur reconciliation — sab built-in.',
+    desc: 'Record expenses, track income, and view a complete double-entry ledger. Cash book, P&L summary, and reconciliation — all built in.',
     color: 'orange',
     points: ['Full ledger', 'Expense tracking', 'P&L overview'],
   },
   {
     icon: Shield,
     title: 'Security & Staff',
-    desc: 'Har staff member ko alag permissions do. Owner ka OTP login. CNIC data hashed. Aapka data sirf aapka.',
+    desc: 'Give each staff member separate permissions. Owner login requires a one-time code. CNIC data is hashed before storage. Your data stays yours.',
     color: 'red',
-    points: ['Role-based access', 'OTP login', 'Audit log'],
+    points: ['Role-based access', 'OTP login', 'Full audit log'],
   },
   {
     icon: Smartphone,
     title: 'Works Everywhere',
-    desc: 'Mobile, tablet, ya desktop — poori app responsive hai. Counter par bhi, ghar par bhi. Internet chale to kaam chale.',
+    desc: 'Fully responsive on mobile, tablet, or desktop. Run it at the counter, in the back office, or from home — any device, any browser.',
     color: 'indigo',
-    points: ['Mobile-first', 'Any browser', 'Fast loading'],
+    points: ['Mobile-first design', 'Any browser', 'Fast loading'],
   },
 ];
 
@@ -130,18 +130,18 @@ const fColorMap: Record<string, { bg: string; text: string; border: string }> = 
 const problems = [
   {
     icon: FileText,
-    title: 'Register aur notebooks',
-    desc: 'Alag alag notebooks mein likhna, phir dhundna, phir bhool jaana — yeh sab band.',
+    title: 'Paper registers & notebooks',
+    desc: 'Writing in separate notebooks, searching through pages, then forgetting — all of that ends here.',
   },
   {
     icon: AlertTriangle,
-    title: 'Missed payments',
-    desc: 'Kisko kitna dena hai, kab dena tha — yeh manually yaad karna impossible hai. System khud remind karta hai.',
+    title: 'Missed due payments',
+    desc: 'Remembering who owes what and when is impossible manually. The system reminds you automatically.',
   },
   {
     icon: Wallet,
-    title: 'Hisaab ka confusion',
-    desc: 'Aaj kitna aaya, mahine mein kitna? Cash kahan gaya? Ab sab kuch ek jagah, real time.',
+    title: 'No clear financial picture',
+    desc: "How much came in today? This month? Where did the cash go? Now it's all in one place, in real time.",
   },
 ];
 
@@ -184,7 +184,7 @@ const testimonials = [
     name: 'Ahmed Raza',
     role: 'Owner, City Electronics',
     city: 'Lahore',
-    text: 'Pehle sab kuch notebooks mein tha. Ab har payment, har customer, har balance yahan hai. Bilkul zameen-aasmaan ka farq hai.',
+    text: 'We used to track everything in notebooks. Now every payment, every customer, every balance is right here. It has completely transformed how we operate.',
     stars: 5,
     initials: 'AR',
   },
@@ -192,7 +192,7 @@ const testimonials = [
     name: 'Usman Tariq',
     role: 'Manager, Star Mobile',
     city: 'Karachi',
-    text: 'Overdue customers ko yaad rakhna nightmare tha. Ab system khud bata deta hai — aur bulk WhatsApp reminder bhi ek click mein.',
+    text: 'Keeping track of overdue customers was a nightmare. Now the system alerts us automatically — and we can send bulk WhatsApp reminders with one click.',
     stars: 5,
     initials: 'UT',
   },
@@ -200,7 +200,7 @@ const testimonials = [
     name: 'Bilal Khan',
     role: 'Owner, Metro Electronics',
     city: 'Islamabad',
-    text: 'CNIC data safe hai, payment history crystal clear hai, aur dashboard roz subah sara hisaab bata deta hai bina kuch poochhe.',
+    text: 'Customer CNIC data is secure, payment history is crystal clear, and the dashboard shows me the full picture every morning without me asking.',
     stars: 5,
     initials: 'BK',
   },
@@ -256,17 +256,17 @@ export default function LandingPage() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-6 shadow-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                Pakistani electronics shops ke liye
+                Built for Pakistani electronics shops
               </div>
 
               <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5">
-                Installment business<br />
-                <span className="text-blue-600">asaan kar do</span>
+                The smarter way to run<br />
+                <span className="text-blue-600">installment sales</span>
               </h1>
 
               <p className="text-lg text-gray-500 leading-relaxed mb-4">
-                Notebook aur spreadsheet band karo. Customers, products, payments — sab ek jagah.
-                Overdue yaad dilaye, agents track kare, hisaab saaf rakhe.
+                Replace paper registers and spreadsheets with one clean system.
+                Track customers, products, and payments — get overdue alerts, manage agents, and keep accounts straight.
               </p>
 
               <div className="flex flex-wrap gap-2 mb-8">
@@ -280,7 +280,7 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link to="/register"
                   className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-lg shadow-blue-200">
-                  Start karo — bilkul free <ArrowRight size={15} />
+                  Start free — no credit card <ArrowRight size={15} />
                 </Link>
                 <Link to="/login"
                   className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-xl transition shadow-sm">
@@ -397,7 +397,7 @@ export default function LandingPage() {
       {/* ── Pain points ── */}
       <section className="py-14 bg-gray-950">
         <div className="max-w-5xl mx-auto px-5">
-          <p className="text-center text-gray-400 text-sm font-medium mb-8">Yeh problems pehchante ho?</p>
+          <p className="text-center text-gray-400 text-sm font-medium mb-8">Sound familiar?</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {problems.map((p) => (
               <div key={p.title} className="flex gap-4 items-start bg-gray-900 rounded-2xl p-5 border border-gray-800">
@@ -412,8 +412,8 @@ export default function LandingPage() {
             ))}
           </div>
           <p className="text-center text-gray-500 text-xs mt-6">
-            Assaan Electronics in sab problems permanently solve karta hai.
-            <Link to="/register" className="text-blue-400 hover:text-blue-300 ml-1 underline underline-offset-2">Try karo — free hai →</Link>
+            Assaan Electronics solves all of these problems permanently.
+            <Link to="/register" className="text-blue-400 hover:text-blue-300 ml-1 underline underline-offset-2">Try it free →</Link>
           </p>
         </div>
       </section>
@@ -422,10 +422,10 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-24 bg-white">
         <div className="max-w-6xl mx-auto px-5">
           <div className="text-center mb-16">
-            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">Kaise kaam karta hai</p>
+            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">How it works</p>
             <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">4 simple steps</h2>
             <p className="text-gray-500 mt-3 max-w-lg mx-auto">
-              Setup se lekar hisaab tak — har kaam ka ek saaf tareeqa.
+              From setup to accounting — a clear workflow for every task.
             </p>
           </div>
 
@@ -471,9 +471,9 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-5">
           <div className="text-center mb-14">
             <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">Features</p>
-            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Sab kuch ek jagah</h2>
+            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Everything in one place</h2>
             <p className="text-lg text-gray-500 mt-3 max-w-xl mx-auto">
-              Notebooks, spreadsheets, aur alag alag apps — sab ki zaroorat khatam.
+              Notebooks, spreadsheets, and scattered apps — all replaced by one clean system.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -516,8 +516,8 @@ export default function LandingPage() {
               <div>
                 <h3 className="text-xl font-bold mb-2">Security first</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  OTP login har owner ke liye. CNIC hashed — raw data store nahi hota.
-                  Aapka data sirf aapka.
+                  OTP login for every owner. CNIC data is hashed — raw numbers never stored.
+                  Your data stays yours, always.
                 </p>
               </div>
             </div>
@@ -529,8 +529,8 @@ export default function LandingPage() {
               <div>
                 <h3 className="text-xl font-bold mb-2">2 minute setup</h3>
                 <p className="text-blue-100 text-sm leading-relaxed">
-                  Account banao, shop setup karo, pehla customer add karo —
-                  sab kuch agli customer ke aane se pehle.
+                  Create an account, set up your shop, add your first customer —
+                  all done before your next customer walks in.
                 </p>
               </div>
             </div>
@@ -542,7 +542,7 @@ export default function LandingPage() {
               <div>
                 <h3 className="text-xl font-bold mb-2">Real-time reports</h3>
                 <p className="text-violet-100 text-sm leading-relaxed">
-                  Roz ka collection, mahine ka revenue, agent performance — dashboard login karo aur sab saamne hai.
+                  Daily collections, monthly revenue, agent performance — log in to the dashboard and everything is right there.
                 </p>
               </div>
             </div>
@@ -570,8 +570,8 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-5">
           <div className="text-center mb-14">
             <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">Pricing</p>
-            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Seedha, honest pricing</h2>
-            <p className="text-lg text-gray-500 mt-3">14 din free. Credit card ki zaroorat nahi.</p>
+            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Simple, honest pricing</h2>
+            <p className="text-lg text-gray-500 mt-3">14-day free trial. No credit card required.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-start">
@@ -632,7 +632,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-5">
           <div className="text-center mb-14">
             <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">Reviews</p>
-            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Shop owners kya kehte hain</h2>
+            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">What shop owners say</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {testimonials.map((t) => (
@@ -673,14 +673,14 @@ export default function LandingPage() {
             500+ shops already using this
           </div>
           <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 tracking-tight">
-            Apni dukaan modernize karo
+            Modernize your shop today
           </h2>
           <p className="text-gray-400 text-lg mb-10 leading-relaxed">
-            Notebook band karo. Digital ho jao. Start free — koi commitment nahi.
+            Leave paper registers behind. Go digital today. Start free — no commitment.
           </p>
           <Link to="/register"
             className="inline-flex items-center gap-2 px-8 py-4 text-sm font-bold text-gray-900 bg-white hover:bg-gray-100 rounded-xl transition shadow-xl">
-            Free account banao <ArrowRight size={15} />
+            Create your free account <ArrowRight size={15} />
           </Link>
           <p className="text-gray-600 text-xs mt-5">14-day free trial · No credit card · Cancel anytime</p>
         </div>
