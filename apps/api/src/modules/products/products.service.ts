@@ -1,4 +1,4 @@
-import { eq, and, asc, ilike, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { products, installments } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -6,9 +6,10 @@ import type { CreateProductInput, UpdateProductInput } from '@assaan/shared';
 
 export class ProductsService {
   async list(sellerId: string, page: number, limit: number, search?: string) {
+    const base = and(eq(products.sellerId, sellerId), isNull(products.deletedAt));
     const where = search
-      ? and(eq(products.sellerId, sellerId), ilike(products.name, `%${search}%`))
-      : eq(products.sellerId, sellerId);
+      ? and(base, ilike(products.name, `%${search}%`))
+      : base;
 
     const [rows, [{ count }]] = await Promise.all([
       db.select().from(products).where(where).limit(limit).offset((page - 1) * limit).orderBy(asc(products.name)),
@@ -34,7 +35,7 @@ export class ProductsService {
 
   async update(id: string, sellerId: string, body: UpdateProductInput) {
     const existing = await db.query.products.findFirst({
-      where: and(eq(products.id, id), eq(products.sellerId, sellerId)),
+      where: and(eq(products.id, id), eq(products.sellerId, sellerId), isNull(products.deletedAt)),
     });
     if (!existing) throw new AppError('Product not found', 404);
 
@@ -52,13 +53,15 @@ export class ProductsService {
     return updated;
   }
 
-  async remove(id: string, sellerId: string) {
+  async remove(id: string, sellerId: string, deletedBy?: string) {
     const existing = await db.query.products.findFirst({
-      where: and(eq(products.id, id), eq(products.sellerId, sellerId)),
+      where: and(eq(products.id, id), eq(products.sellerId, sellerId), isNull(products.deletedAt)),
     });
     if (!existing) throw new AppError('Product not found', 404);
 
-    await db.delete(products).where(and(eq(products.id, id), eq(products.sellerId, sellerId)));
+    await db.update(products)
+      .set({ deletedAt: new Date(), deletedBy })
+      .where(and(eq(products.id, id), eq(products.sellerId, sellerId)));
     return existing;
   }
 
@@ -80,7 +83,7 @@ export class ProductsService {
           MAX(CASE WHEN i.status != 'CANCELLED' AND i.deleted_at IS NULL THEN i.created_at END) AS last_sale_at
         FROM products p
         LEFT JOIN installments i ON i.product_id = p.id AND i.deleted_at IS NULL AND i.status != 'CANCELLED'
-        WHERE p.seller_id = ${sellerId}
+        WHERE p.seller_id = ${sellerId} AND p.deleted_at IS NULL
         GROUP BY p.id, p.name, p.stock, p.purchase_price
       )
       SELECT *,

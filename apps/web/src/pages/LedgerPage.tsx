@@ -39,10 +39,15 @@ function monthStart() {
 }
 
 // ── Wallet Balance ────────────────────────────────────────────────────────────
+function LedgerError() {
+  return <p className="py-10 text-center text-sm text-red-500">Failed to load data. Please try again.</p>;
+}
+
 function BalanceTab() {
-  const { data, isLoading } = useQuery({ queryKey: ['ledger-balance'], queryFn: ledgerApi.balance, staleTime: 30_000 });
+  const { data, isLoading, isError } = useQuery({ queryKey: ['ledger-balance'], queryFn: ledgerApi.balance, staleTime: 30_000 });
 
   if (isLoading) return <RowSkeleton rows={3} />;
+  if (isError) return <LedgerError />;
 
   const balance = data?.balance ?? 0;
   const credits = data?.credits ?? 0;
@@ -89,7 +94,7 @@ function CashBookTab() {
   const [from, setFrom] = useState(monthStart());
   const [to,   setTo]   = useState(today());
 
-  const { data: entries = [], isLoading } = useQuery({
+  const { data: entries = [], isLoading, isError } = useQuery({
     queryKey: ['ledger-cashbook', from, to],
     queryFn: () => ledgerApi.cashBook(from, to, 200),
     staleTime: 30_000,
@@ -119,7 +124,7 @@ function CashBookTab() {
         </div>
       </div>
 
-      {isLoading ? <RowSkeleton rows={3} /> : entries.length === 0 ? (
+      {isLoading ? <RowSkeleton rows={3} /> : isError ? <LedgerError /> : entries.length === 0 ? (
         <EmptyState message="No transactions in this period" />
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -159,7 +164,7 @@ function CashBookTab() {
 function DailyTab() {
   const [date, setDate] = useState(today());
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['ledger-daily', date],
     queryFn: () => ledgerApi.daily(date),
     staleTime: 30_000,
@@ -175,7 +180,7 @@ function DailyTab() {
         </label>
       </div>
 
-      {isLoading ? <RowSkeleton rows={3} /> : !data ? null : (
+      {isLoading ? <RowSkeleton rows={3} /> : isError ? <LedgerError /> : !data ? null : (
         <div className="space-y-4">
           {/* Summary strip */}
           <div className="grid grid-cols-3 gap-4">
@@ -228,7 +233,7 @@ function PLTab() {
   const [from, setFrom] = useState(`${now.getFullYear()}-01-01`);
   const [to,   setTo]   = useState(today());
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['ledger-pl', from, to],
     queryFn: () => ledgerApi.pl(from, to),
     staleTime: 30_000,
@@ -249,7 +254,7 @@ function PLTab() {
         </label>
       </div>
 
-      {isLoading ? <RowSkeleton rows={3} /> : !data ? null : (
+      {isLoading ? <RowSkeleton rows={3} /> : isError ? <LedgerError /> : !data ? null : (
         <div className="space-y-5">
           {/* Top KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -332,7 +337,7 @@ function ExpensesTab() {
     category: ExpenseCategory; amount: string; description: string; date: string;
   }>({ category: 'OTHER', amount: '', description: '', date: today() });
 
-  const { data: expenses = [], isLoading } = useQuery({
+  const { data: expenses = [], isLoading, isError } = useQuery({
     queryKey: ['expenses', from, to],
     queryFn: () => expensesApi.list(from, to),
     staleTime: 30_000,
@@ -459,7 +464,7 @@ function ExpensesTab() {
         </div>
       )}
 
-      {isLoading ? <RowSkeleton rows={3} /> : expenses.length === 0 ? (
+      {isLoading ? <RowSkeleton rows={3} /> : isError ? <LedgerError /> : expenses.length === 0 ? (
         <EmptyState message="No expenses in this period" />
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -535,7 +540,7 @@ function JournalTab() {
   const [page, setPage] = useState(1);
   const limit = 20;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['accounting-journal', from, to, page],
     queryFn: () => accountingApi.listJournal({ from, to, page, limit }),
     staleTime: 30_000,
@@ -561,7 +566,7 @@ function JournalTab() {
         {total > 0 && <span className="ml-auto text-xs text-gray-400">{total} entries</span>}
       </div>
 
-      {isLoading ? <RowSkeleton rows={4} /> : entries.length === 0 ? (
+      {isLoading ? <RowSkeleton rows={4} /> : isError ? <LedgerError /> : entries.length === 0 ? (
         <EmptyState message="No journal entries in this period" />
       ) : (
         <div className="space-y-3">
@@ -613,13 +618,14 @@ function JournalTab() {
 
 // ── Trial Balance / Accounts ───────────────────────────────────────────────────
 function AccountsTab() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['accounting-balances'],
     queryFn: () => accountingApi.getBalances(),
     staleTime: 30_000,
   });
 
   if (isLoading) return <RowSkeleton rows={6} />;
+  if (isError) return <LedgerError />;
   if (!data) return null;
 
   const groups: Record<string, typeof data.accounts> = {};
@@ -695,7 +701,7 @@ function timeAgo(iso: string) {
 function ReconcileTab() {
   const qc = useQueryClient();
 
-  const { data: latest, isLoading } = useQuery({
+  const { data: latest, isLoading, isError } = useQuery({
     queryKey: ['recon-latest'],
     queryFn:  reconciliationApi.latest,
     staleTime: 60_000,
@@ -721,6 +727,7 @@ function ReconcileTab() {
     v ? 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 }) : '—';
 
   if (isLoading) return <RowSkeleton rows={4} />;
+  if (isError) return <LedgerError />;
 
   return (
     <div className="space-y-5">

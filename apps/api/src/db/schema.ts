@@ -172,6 +172,7 @@ export const customers = pgTable(
     index('idx_cnic_hash').on(t.cnicHash),
     index('idx_cnic_seller').on(t.sellerId, t.cnicHash),
     index('idx_customers_seller').on(t.sellerId),
+    index('idx_customers_seller_deleted').on(t.sellerId, t.deletedAt),
     index('idx_cnic_front_hash').on(t.sellerId, t.cnicFrontHash),
     index('idx_cnic_back_hash').on(t.sellerId, t.cnicBackHash),
     index('idx_blank_cheque_hash').on(t.sellerId, t.blankChequeHash),
@@ -214,6 +215,8 @@ export const products = pgTable('products', {
   serial: text('serial'),
   warrantyMonths: integer('warranty_months'),
   description: text('description'),
+  deletedAt: timestamp('deleted_at'),
+  deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [
   index('idx_products_seller').on(t.sellerId),
 ]);
@@ -244,6 +247,7 @@ export const installments = pgTable('installments', {
 }, (t) => [
   index('idx_installments_customer').on(t.customerId),
   index('idx_installments_status').on(t.status),
+  index('idx_installments_customer_deleted').on(t.customerId, t.deletedAt),
 ]);
 
 export const expenses = pgTable('expenses', {
@@ -331,6 +335,7 @@ export const payments = pgTable('payments', {
 }, (t) => [
   index('idx_payments_installment').on(t.installmentId),
   index('idx_payments_paid_on').on(t.paidOn),
+  index('idx_payments_installment_deleted').on(t.installmentId, t.deletedAt),
 ]);
 
 // ── Double-entry accounting ───────────────────────────────────────────────────

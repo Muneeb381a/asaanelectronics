@@ -361,7 +361,7 @@ export class CustomersService {
     const seller = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { plan: true } });
     const limit = PLAN_LIMITS[seller?.plan ?? 'TRIAL'].customers;
     if (!isUnlimited(limit)) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(customers).where(eq(customers.sellerId, sellerId));
+      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(customers).where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt)));
       if (count >= limit) throw new AppError(`Customer limit reached (${limit} on ${seller?.plan ?? 'TRIAL'} plan). Please upgrade.`, 402);
     }
 

@@ -68,7 +68,7 @@ export class StatsService {
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .innerJoin(products, eq(installments.productId, products.id))
-        .where(and(eq(customers.sellerId, sellerId), isNull(installments.deletedAt), isNull(customers.deletedAt)))
+        .where(and(eq(customers.sellerId, sellerId), isNull(installments.deletedAt), isNull(customers.deletedAt), isNull(products.deletedAt)))
         .groupBy(products.name)
         .orderBy(desc(count()))
         .limit(6),
@@ -183,14 +183,14 @@ export class StatsService {
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .innerJoin(products, eq(installments.productId, products.id))
-        .where(and(eq(customers.sellerId, sellerId), isNull(installments.deletedAt), isNull(customers.deletedAt)))
+        .where(and(eq(customers.sellerId, sellerId), isNull(installments.deletedAt), isNull(customers.deletedAt), isNull(products.deletedAt)))
         .orderBy(desc(installments.createdAt))
         .limit(5),
 
       db
         .select({ id: products.id, name: products.name, stock: products.stock })
         .from(products)
-        .where(and(eq(products.sellerId, sellerId), lte(products.stock, LOW_STOCK)))
+        .where(and(eq(products.sellerId, sellerId), lte(products.stock, LOW_STOCK), isNull(products.deletedAt)))
         .orderBy(asc(products.stock))
         .limit(10),
 

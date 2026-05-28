@@ -169,7 +169,7 @@ export default function ExpensesPage() {
   const [from, setFrom] = useState(bounds.from);
   const [to,   setTo]   = useState(bounds.to);
 
-  const { data: expenses = [], isLoading } = useQuery({
+  const { data: expenses = [], isLoading, isError } = useQuery({
     queryKey: ['expenses', from, to],
     queryFn:  () => expensesApi.list(from, to),
   });
@@ -282,6 +282,11 @@ export default function ExpensesPage() {
             {isLoading ? (
               <div className="space-y-px">
                 {[1,2,3,4,5].map((i) => <div key={i} className="h-14 bg-gray-50 animate-pulse border-b border-gray-100" />)}
+              </div>
+            ) : isError ? (
+              <div className="flex flex-col items-center justify-center py-12 text-red-500">
+                <Receipt size={24} className="mb-2 opacity-50" />
+                <p className="text-sm font-medium">Failed to load expenses</p>
               </div>
             ) : !filtered.length ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-400">

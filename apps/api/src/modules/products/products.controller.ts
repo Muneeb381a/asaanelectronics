@@ -46,7 +46,7 @@ export async function getInventoryIntelligence(req: AuthRequest, res: Response) 
 }
 
 export async function deleteProduct(req: AuthRequest, res: Response) {
-  const removed = await svc.remove(req.params['id']!, req.user!.sellerId!);
+  const removed = await svc.remove(req.params['id']!, req.user!.sellerId!, req.user!.userId);
   success(res, null);
   void audit.log({
     sellerId: req.user!.sellerId!, userId: req.user!.userId,
