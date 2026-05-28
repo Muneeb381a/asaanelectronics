@@ -6,6 +6,7 @@ import { createCustomerSchema } from '@assaan/shared';
 import { User, Shield, Image, ChevronRight, ChevronLeft, Check, ImageIcon, X } from 'lucide-react';
 import { api } from '../../api/client.ts';
 import type { Customer } from '../../api/customers.api.ts';
+import LocationPicker from '../../components/LocationPicker.tsx';
 
 interface DocumentExtracted {
   cnic: string | null; name: string | null; fatherName: string | null;
@@ -363,9 +364,11 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
             <Field label="Home Address" optional>
               <input {...register('address')} placeholder="House 5, Street 3, Sialkot" className={inp} />
             </Field>
-            <Field label="Area / Mohalla" optional>
-              <input {...register('area')} placeholder="e.g. Model Town, Johar Town, Gulberg" className={inp} />
-            </Field>
+            <LocationPicker
+              value={customer?.area ?? ''}
+              onChange={(v) => setValue('area', v, { shouldValidate: true })}
+              error={errors.area?.message}
+            />
             <Field label="Office / Work Address" error={errors.officeAddress?.message}>
               <input {...register('officeAddress')} placeholder="Office building, area, city" className={inp} />
             </Field>
