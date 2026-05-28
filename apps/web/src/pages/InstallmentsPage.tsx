@@ -262,15 +262,19 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
   const [mode, setMode] = useState<'months' | 'monthly'>('months');
   const [value, setValue] = useState('');
 
-  const remaining = Number(inst.remaining);
+  const remaining  = Number(inst.remaining);
+  const isDaily    = inst.paymentFrequency === 'daily';
+  const roundStep  = isDaily ? 5 : 25;
+  const unit       = isDaily ? 'day' : 'month';
+  const unitPlural = isDaily ? 'days' : 'months';
 
   const preview = useMemo(() => {
     const n = Number(value);
     if (!n || n <= 0) return null;
-    if (mode === 'months')  return { months: n, monthly: Math.round((remaining / n) / 25) * 25 };
+    if (mode === 'months')  return { months: n, monthly: Math.round((remaining / n) / roundStep) * roundStep };
     if (mode === 'monthly') return { months: Math.ceil(remaining / n), monthly: n };
     return null;
-  }, [value, mode, remaining]);
+  }, [value, mode, remaining, roundStep]);
 
   const mutation = useMutation({
     mutationFn: () => installmentsApi.reschedule(inst.id, mode === 'months'
@@ -310,20 +314,20 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
               className={`px-3 py-1.5 text-sm capitalize transition border-b-2 -mb-px ${
                 mode === m ? 'border-blue-600 text-blue-600 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}>
-              {m === 'months' ? 'New Duration' : 'New Monthly'}
+              {m === 'months' ? `New Duration` : `New Per-${unit}`}
             </button>
           ))}
         </div>
 
         <div className="mb-4">
           <label className="block text-xs font-medium text-gray-600 mb-1.5">
-            {mode === 'months' ? 'New number of months' : 'New monthly amount (PKR)'}
+            {mode === 'months' ? `New number of ${unitPlural}` : `New per-${unit} amount (PKR)`}
           </label>
           <input
             type="number"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={mode === 'months' ? 'e.g. 12' : 'e.g. 5000'}
+            placeholder={mode === 'months' ? (isDaily ? 'e.g. 30' : 'e.g. 12') : 'e.g. 5000'}
             min={1}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -332,12 +336,12 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
         {preview && (
           <div className="bg-gray-50 rounded-xl px-4 py-3 mb-4 grid grid-cols-2 gap-3 text-center">
             <div>
-              <p className="text-xs text-gray-400">New monthly</p>
+              <p className="text-xs text-gray-400">Per {unit}</p>
               <p className="font-bold text-gray-900 text-sm">{pkr(preview.monthly)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-400">New duration</p>
-              <p className="font-bold text-gray-900 text-sm">{preview.months} months</p>
+              <p className="text-xs text-gray-400">Duration</p>
+              <p className="font-bold text-gray-900 text-sm">{preview.months} {unitPlural}</p>
             </div>
           </div>
         )}
@@ -596,6 +600,7 @@ export default function InstallmentsPage() {
                                 productName: inst.productName,
                                 monthly: inst.monthly,
                                 remaining: inst.remaining,
+                                paymentFrequency: inst.paymentFrequency,
                               })
                             )}
                             title="WhatsApp reminder"

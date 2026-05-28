@@ -557,6 +557,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                             productName: inst.productName,
                             monthly: inst.monthly,
                             remaining: inst.remaining,
+                            paymentFrequency: inst.paymentFrequency,
                           })
                         )}
                         className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 text-xs font-medium transition">

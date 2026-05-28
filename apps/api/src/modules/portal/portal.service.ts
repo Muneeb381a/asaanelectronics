@@ -63,7 +63,10 @@ export class PortalService {
             WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL)
               THEN 'DEFAULT'
             WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL
-              AND i.start_date + (i.months * INTERVAL '1 month') < NOW())
+              AND (CASE WHEN i.payment_frequency = 'daily'
+                THEN i.start_date + (i.months || ' days')::interval
+                ELSE i.start_date + (i.months || ' months')::interval
+              END) < NOW())
               THEN 'AT_RISK'
             WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL)
              AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
@@ -83,7 +86,10 @@ export class PortalService {
           COALESCE(SUM(i.remaining), 0)::numeric                                    AS total_remaining,
           COUNT(CASE WHEN i.status = 'ACTIVE' THEN 1 END)::int                     AS active_count,
           MIN(CASE WHEN i.status = 'ACTIVE'
-            THEN (i.start_date + (i.months * INTERVAL '1 month'))::date END)::text  AS next_due
+            THEN (CASE WHEN i.payment_frequency = 'daily'
+              THEN i.start_date + (i.months || ' days')::interval
+              ELSE i.start_date + (i.months || ' months')::interval
+            END)::date END)::text  AS next_due
         FROM installments i
         WHERE i.customer_id = ${customerId} AND i.deleted_at IS NULL
           AND i.status IN ('ACTIVE', 'PENDING')
@@ -92,7 +98,7 @@ export class PortalService {
         SELECT LEAST(100, (
           CASE
             WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL) THEN 40
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND i.start_date + (i.months * INTERVAL '1 month') < NOW()) THEN 22
+            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (CASE WHEN i.payment_frequency = 'daily' THEN i.start_date + (i.months || ' days')::interval ELSE i.start_date + (i.months || ' months')::interval END) < NOW()) THEN 22
             ELSE 0
           END
           + CASE WHEN c.guarantor_name IS NULL THEN 20 WHEN c.guarantor2_cnic IS NOT NULL THEN 0 WHEN c.guarantor_cnic IS NOT NULL THEN 8 ELSE 14 END

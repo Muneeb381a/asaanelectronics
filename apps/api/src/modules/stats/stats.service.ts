@@ -8,7 +8,10 @@ export class StatsService {
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
-    const dueExpr: SQL = sql`${installments.startDate} + (${installments.months} * interval '1 month')`;
+    const dueExpr: SQL = sql`(CASE WHEN ${installments.paymentFrequency} = 'daily'
+      THEN ${installments.startDate} + (${installments.months} || ' days')::interval
+      ELSE ${installments.startDate} + (${installments.months} || ' months')::interval
+    END)`;
 
     const [monthlyRaw, collectionData, agingData, topDebtors, topProducts] = await Promise.all([
       db
@@ -147,10 +150,10 @@ export class StatsService {
         .where(and(
           eq(customers.sellerId, sellerId),
           eq(installments.status, 'ACTIVE'),
-          lt(
-            sql`${installments.startDate} + (${installments.months} * interval '1 month')`,
-            sql`now()`,
-          ),
+          sql`(CASE WHEN ${installments.paymentFrequency} = 'daily'
+            THEN ${installments.startDate} + (${installments.months} || ' days')::interval
+            ELSE ${installments.startDate} + (${installments.months} || ' months')::interval
+          END) < now()`,
         )),
 
       db
@@ -206,7 +209,10 @@ export class StatsService {
       // Cashflow forecast: installment payment due dates in next 30 days
       db.execute<{ due_date: string; expected: number }>(sql`
         SELECT
-          (i.start_date + gs.n * INTERVAL '1 month')::date AS due_date,
+          (CASE WHEN i.payment_frequency = 'daily'
+            THEN i.start_date + (gs.n || ' days')::interval
+            ELSE i.start_date + (gs.n || ' months')::interval
+          END)::date AS due_date,
           SUM(i.monthly)::numeric AS expected
         FROM installments i
         INNER JOIN customers c ON i.customer_id = c.id
@@ -214,7 +220,10 @@ export class StatsService {
         WHERE c.seller_id = ${sellerId}
           AND i.status = 'ACTIVE'
           AND i.deleted_at IS NULL
-          AND (i.start_date + gs.n * INTERVAL '1 month') BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+          AND (CASE WHEN i.payment_frequency = 'daily'
+            THEN i.start_date + (gs.n || ' days')::interval
+            ELSE i.start_date + (gs.n || ' months')::interval
+          END) BETWEEN NOW() AND NOW() + INTERVAL '30 days'
         GROUP BY due_date
         ORDER BY due_date
       `),
@@ -231,7 +240,10 @@ export class StatsService {
           AND i.deleted_at IS NULL
           AND (
             i.status = 'DEFAULTED'
-            OR (i.status = 'ACTIVE' AND i.start_date + (i.months * INTERVAL '1 month') < NOW())
+            OR (i.status = 'ACTIVE' AND (CASE WHEN i.payment_frequency = 'daily'
+              THEN i.start_date + (i.months || ' days')::interval
+              ELSE i.start_date + (i.months || ' months')::interval
+            END) < NOW())
           )
       `),
 
@@ -258,14 +270,20 @@ export class StatsService {
         SELECT
           COALESCE(NULLIF(TRIM(SPLIT_PART(c.address, ',', -1)), ''), 'Unknown') AS city,
           COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE'
-            AND i.start_date + (i.months * INTERVAL '1 month') < NOW() THEN c.id END)::int   AS overdue_count,
+            AND (CASE WHEN i.payment_frequency = 'daily'
+              THEN i.start_date + (i.months || ' days')::interval
+              ELSE i.start_date + (i.months || ' months')::interval
+            END) < NOW() THEN c.id END)::int   AS overdue_count,
           COUNT(DISTINCT CASE WHEN i.status = 'DEFAULTED' THEN c.id END)::int               AS defaulted_count
         FROM customers c
         LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
         WHERE c.seller_id = ${sellerId}
           AND c.deleted_at IS NULL
           AND (
-            (i.status = 'ACTIVE' AND i.start_date + (i.months * INTERVAL '1 month') < NOW())
+            (i.status = 'ACTIVE' AND (CASE WHEN i.payment_frequency = 'daily'
+              THEN i.start_date + (i.months || ' days')::interval
+              ELSE i.start_date + (i.months || ' months')::interval
+            END) < NOW())
             OR i.status = 'DEFAULTED'
           )
         GROUP BY city

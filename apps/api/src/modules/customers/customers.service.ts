@@ -32,7 +32,10 @@ const lifecycleSQL = sql<string>`(
     WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL)
       THEN 'DEFAULT'
     WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL
-      AND i.start_date + (i.months * INTERVAL '1 month') < NOW())
+      AND (CASE WHEN i.payment_frequency = 'daily'
+        THEN i.start_date + (i.months || ' days')::interval
+        ELSE i.start_date + (i.months || ' months')::interval
+      END) < NOW())
       THEN 'AT_RISK'
     WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE'    AND i.deleted_at IS NULL)
      AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
@@ -109,7 +112,7 @@ export class CustomersService {
     const riskScore = sql<number>`LEAST(100, (
       CASE
         WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'DEFAULTED'  AND i.deleted_at IS NULL) THEN 40
-        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND i.start_date + (i.months * INTERVAL '1 month') < NOW()) THEN 22
+        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (CASE WHEN i.payment_frequency = 'daily' THEN i.start_date + (i.months || ' days')::interval ELSE i.start_date + (i.months || ' months')::interval END) < NOW()) THEN 22
         ELSE 0
       END
       +
@@ -207,7 +210,10 @@ export class CustomersService {
             WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL)
               THEN 'DEFAULT'
             WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'ACTIVE' AND i.deleted_at IS NULL
-              AND i.start_date + (i.months * INTERVAL '1 month') < NOW())
+              AND (CASE WHEN i.payment_frequency = 'daily'
+                THEN i.start_date + (i.months || ' days')::interval
+                ELSE i.start_date + (i.months || ' months')::interval
+              END) < NOW())
               THEN 'AT_RISK'
             WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'ACTIVE'    AND i.deleted_at IS NULL)
              AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
@@ -238,7 +244,7 @@ export class CustomersService {
     const riskScore = sql<number>`LEAST(100, (
       CASE
         WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL) THEN 40
-        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND i.start_date + (i.months * INTERVAL '1 month') < NOW()) THEN 22
+        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (CASE WHEN i.payment_frequency = 'daily' THEN i.start_date + (i.months || ' days')::interval ELSE i.start_date + (i.months || ' months')::interval END) < NOW()) THEN 22
         ELSE 0
       END
       + CASE WHEN ${customers.guarantorName} IS NULL THEN 20 WHEN ${customers.guarantor2Cnic} IS NOT NULL THEN 0 WHEN ${customers.guarantorCnic} IS NOT NULL THEN 8 ELSE 14 END
@@ -360,14 +366,21 @@ export class CustomersService {
     }
 
     const hash = hashCnic(body.cnic);
-    const existing = await db.query.customers.findFirst({
-      where: and(eq(customers.sellerId, sellerId), eq(customers.cnicHash, hash)),
-      columns: { id: true, deletedAt: true },
-    });
-    if (existing) {
-      if (!existing.deletedAt) throw new AppError('A customer with this CNIC already exists', 409);
+    const [existingCnic, existingPhone] = await Promise.all([
+      db.query.customers.findFirst({
+        where: and(eq(customers.sellerId, sellerId), eq(customers.cnicHash, hash)),
+        columns: { id: true, deletedAt: true },
+      }),
+      db.query.customers.findFirst({
+        where: and(eq(customers.sellerId, sellerId), eq(customers.phone, body.phone), isNull(customers.deletedAt)),
+        columns: { id: true, cnicMasked: true },
+      }),
+    ]);
+    if (existingCnic) {
+      if (!existingCnic.deletedAt) throw new AppError('A customer with this CNIC already exists', 409);
       throw new AppError('A deleted customer record with this CNIC exists. Contact support to restore the account.', 409);
     }
+    if (existingPhone) throw new AppError(`Phone number already registered to customer ${existingPhone.cnicMasked}`, 409);
 
     const hashConds: SQL[] = [];
     if (body.cnicFrontHash)   hashConds.push(eq(customers.cnicFrontHash,   body.cnicFrontHash));
@@ -530,7 +543,10 @@ export class CustomersService {
           WHERE customer_id = ${id}
             AND status = 'ACTIVE'
             AND deleted_at IS NULL
-            AND start_date + (months * INTERVAL '1 month') < NOW()
+            AND (CASE WHEN payment_frequency = 'daily'
+              THEN start_date + (months || ' days')::interval
+              ELSE start_date + (months || ' months')::interval
+            END) < NOW()
         ) AS overdue
       `),
     ]);

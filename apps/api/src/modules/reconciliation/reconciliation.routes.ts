@@ -3,10 +3,10 @@ import { authenticate, requireSeller, requireOwner } from '../../middleware/auth
 import { getLatest, getHistory, runNow } from './reconciliation.controller.js';
 
 const router = Router();
-router.use(authenticate, requireSeller);
+router.use(authenticate, requireSeller, requireOwner);
 
 router.get('/latest',  getLatest);
 router.get('/history', getHistory);
-router.post('/run',    requireOwner, runNow);
+router.post('/run',    runNow);
 
 export default router;

@@ -91,11 +91,17 @@ export class InstallmentsService {
         customerName: customers.name,
         customerPhone: customers.phone,
         productName: products.name,
-        imeiNumber:   installments.imeiNumber,
-        cashPrice:    installments.cashPrice,
-        profitMarkup: installments.profitMarkup,
-        customerArea: customers.area,
-        isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (${installments.startDate} + (${installments.months} || ' months')::interval) < now())`,
+        imeiNumber:        installments.imeiNumber,
+        cashPrice:         installments.cashPrice,
+        profitMarkup:      installments.profitMarkup,
+        paymentFrequency:  installments.paymentFrequency,
+        customerArea:      customers.area,
+        isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
+          CASE WHEN ${installments.paymentFrequency} = 'daily'
+            THEN (${installments.startDate} + (${installments.months} || ' days')::interval) < now()
+            ELSE (${installments.startDate} + (${installments.months} || ' months')::interval) < now()
+          END
+        ))`,
       })
       .from(installments)
       .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -258,17 +264,20 @@ export class InstallmentsService {
       throw new AppError('Only active or defaulted installments can be rescheduled', 400);
     }
 
+    const isDaily   = row.paymentFrequency === 'daily';
+    const unit      = isDaily ? 'day' : 'month';
+    const roundStep = isDaily ? 5 : 25;
     const remaining = Number(row.remaining);
     let newMonthly: number;
     let newMonths: number;
 
     if (body.newMonths != null) {
-      if (body.newMonths < 1) throw new AppError('Duration must be at least 1 month', 400);
+      if (body.newMonths < 1) throw new AppError(`Duration must be at least 1 ${unit}`, 400);
       newMonths  = body.newMonths;
-      newMonthly = Math.round((remaining / newMonths) / 25) * 25;
+      newMonthly = Math.round((remaining / newMonths) / roundStep) * roundStep;
     } else if (body.newMonthly != null) {
-      if (body.newMonthly <= 0)        throw new AppError('Monthly amount must be positive', 400);
-      if (body.newMonthly > remaining) throw new AppError('Monthly amount cannot exceed remaining balance', 400);
+      if (body.newMonthly <= 0)        throw new AppError(`Per-${unit} amount must be positive`, 400);
+      if (body.newMonthly > remaining) throw new AppError(`Per-${unit} amount cannot exceed remaining balance`, 400);
       newMonthly = body.newMonthly;
       newMonths  = Math.ceil(remaining / newMonthly);
     } else {

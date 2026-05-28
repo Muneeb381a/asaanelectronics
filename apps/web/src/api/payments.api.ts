@@ -28,7 +28,9 @@ const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const paymentsApi = {
   list: (installmentId: string) =>
-    api.get<{ data: Payment[] }>('/payments', { params: { installmentId } }).then(unwrap<Payment[]>),
+    api.get<{ data: { data: Payment[]; total: number; page: number; limit: number } }>(
+      '/payments', { params: { installmentId, limit: 100 } }
+    ).then((res) => res.data.data.data),
 
   record: (data: RecordPaymentInput) =>
     api.post<{ data: RecordResult }>('/payments', data).then(unwrap<RecordResult>),

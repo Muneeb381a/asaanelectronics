@@ -16,14 +16,17 @@ export function reminderMessage(opts: {
   productName: string;
   monthly: string | number;
   remaining: string | number;
+  paymentFrequency?: string | null;
 }) {
+  const isDaily   = opts.paymentFrequency === 'daily';
   const monthly   = 'PKR ' + Number(opts.monthly).toLocaleString('en-PK',   { maximumFractionDigits: 0 });
   const remaining = 'PKR ' + Number(opts.remaining).toLocaleString('en-PK', { maximumFractionDigits: 0 });
+  const instLabel = isDaily ? 'Daily Installment' : 'Monthly Installment';
   return (
     `Dear ${opts.customerName},\n\n` +
     `This is a payment reminder from *${opts.shopName}*.\n\n` +
     `📦 *Product:* ${opts.productName}\n` +
-    `💰 *Monthly Installment:* ${monthly}\n` +
+    `💰 *${instLabel}:* ${monthly}\n` +
     `⏳ *Remaining Balance:* ${remaining}\n\n` +
     `Please arrange your payment at your earliest convenience.\n\n` +
     `— ${opts.shopName}`
@@ -40,16 +43,19 @@ export function billMessage(opts: {
   months: number;
   remaining: string | number;
   status: string;
+  paymentFrequency?: string | null;
 }) {
-  const fmt    = (v: string | number) => 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
-  const paid   = Number(opts.totalAmount) - Number(opts.remaining);
+  const isDaily  = opts.paymentFrequency === 'daily';
+  const fmt      = (v: string | number) => 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
+  const paid     = Number(opts.totalAmount) - Number(opts.remaining);
+  const periods  = isDaily ? `Daily × ${opts.months} days` : `Monthly × ${opts.months}`;
   return (
     `Dear ${opts.customerName},\n\n` +
     `Here is your installment summary from *${opts.shopName}*:\n\n` +
     `📦 *Product:* ${opts.productName}\n` +
     `💵 *Total Amount:* ${fmt(opts.totalAmount)}\n` +
     `⬇️ *Down Payment:* ${fmt(opts.downPayment)}\n` +
-    `📅 *Monthly × ${opts.months}:* ${fmt(opts.monthly)}\n` +
+    `📅 *${periods}:* ${fmt(opts.monthly)}\n` +
     `✅ *Total Paid:* ${fmt(paid)}\n` +
     `⏳ *Remaining:* ${fmt(opts.remaining)}\n` +
     `📊 *Status:* ${opts.status}\n\n` +

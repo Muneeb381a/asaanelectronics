@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -11,7 +11,10 @@ type CreateBody = {
 };
 
 export class PaymentsService {
-  async listByInstallment(installmentId: string, sellerId: string) {
+  async listByInstallment(installmentId: string, sellerId: string, page = 1, limit = 50) {
+    const safeLimit = Math.min(limit, 100);
+    const offset = (page - 1) * safeLimit;
+
     // Verify ownership first
     const [inst] = await db
       .select({ id: installments.id })
@@ -21,11 +24,21 @@ export class PaymentsService {
 
     if (!inst) throw new AppError('Installment not found', 404);
 
-    return db
-      .select()
-      .from(payments)
-      .where(and(eq(payments.installmentId, installmentId), isNull(payments.deletedAt)))
-      .orderBy(desc(payments.paidOn));
+    const [rows, [{ count }]] = await Promise.all([
+      db
+        .select()
+        .from(payments)
+        .where(and(eq(payments.installmentId, installmentId), isNull(payments.deletedAt)))
+        .orderBy(desc(payments.paidOn))
+        .limit(safeLimit)
+        .offset(offset),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(payments)
+        .where(and(eq(payments.installmentId, installmentId), isNull(payments.deletedAt))),
+    ]);
+
+    return { data: rows, total: count, page, limit: safeLimit };
   }
 
   async record(sellerId: string, body: CreateBody) {

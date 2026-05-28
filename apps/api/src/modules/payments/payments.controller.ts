@@ -13,7 +13,9 @@ export async function listPayments(req: AuthRequest, res: Response) {
     res.status(400).json({ success: false, data: null, error: 'installmentId required' });
     return;
   }
-  success(res, await svc.listByInstallment(installmentId, req.user!.sellerId!));
+  const page  = Math.max(1, parseInt(req.query['page']  as string) || 1);
+  const limit = Math.max(1, parseInt(req.query['limit'] as string) || 50);
+  success(res, await svc.listByInstallment(installmentId, req.user!.sellerId!, page, limit));
 }
 
 export async function deletePayment(req: AuthRequest, res: Response) {
