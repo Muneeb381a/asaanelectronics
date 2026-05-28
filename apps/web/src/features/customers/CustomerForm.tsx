@@ -18,7 +18,7 @@ const cnicRegex = /^\d{5}-\d{7}-\d$/;
 
 const editSchema = createCustomerSchema.partial().extend({
   name: z.string().min(2),
-  phone: z.string().min(10),
+  phone: z.string().regex(/^03\d{9}$/, 'Enter a valid 11-digit mobile number (03XXXXXXXXX)'),
   cnic: z.string().regex(cnicRegex, 'Format: XXXXX-XXXXXXX-X').optional().or(z.literal('')),
   guarantorCnic: z.string().regex(cnicRegex, 'Format: XXXXX-XXXXXXX-X').optional().or(z.literal('')),
   guarantor2Cnic: z.string().regex(cnicRegex, 'Format: XXXXX-XXXXXXX-X').optional().or(z.literal('')),
@@ -182,7 +182,9 @@ function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, c
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Phone" optional>
-          <input {...register(phoneKey)} placeholder="03XXXXXXXXX" className={inp} />
+          <input {...register(phoneKey)} placeholder="03XXXXXXXXX" maxLength={11}
+            onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 11); e.target.value = v; register(phoneKey).onChange(e); }}
+            className={inp} />
         </Field>
         <Field label="CNIC" optional error={(errors as Record<string, { message?: string }>)[cnicKey]?.message}>
           <input {...register(cnicKey)} placeholder="XXXXX-XXXXXXX-X" className={inp} />
@@ -359,7 +361,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
               </Field>
             </div>
             <Field label="Phone" error={errors.phone?.message}>
-              <input {...register('phone')} placeholder="03001234567" className={inp} />
+              <input {...register('phone')} placeholder="03001234567" maxLength={11}
+                onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 11); e.target.value = v; register('phone').onChange(e); }}
+                className={inp} />
             </Field>
             <Field label="Home Address" optional>
               <input {...register('address')} placeholder="House 5, Street 3, Sialkot" className={inp} />
