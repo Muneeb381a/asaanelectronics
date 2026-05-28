@@ -403,7 +403,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
           <>
             {!isEdit && (
               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-                Customer photo and blank cheque are required.
+                Customer photo is required. Blank cheque is optional.
               </p>
             )}
             <div className="grid grid-cols-2 gap-3">
@@ -411,7 +411,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
                 required={!isEdit} hasError={!!errors.photoUrl}
                 onChange={(v) => { setPhotoUrl(v); setValue('photoUrl', v ?? undefined, { shouldValidate: true }); }} />
               <PhotoUpload label="Blank Cheque" folder="assaan/cheques" value={blankChequeUrl}
-                required={!isEdit} hasError={!!errors.blankChequeUrl}
+                required={false} hasError={!!errors.blankChequeUrl}
                 onChange={(v, hash, extracted) => {
                   setBlankChequeUrl(v);
                   if (hash) setBlankChequeHash(hash);
