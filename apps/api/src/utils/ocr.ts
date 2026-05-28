@@ -1,4 +1,5 @@
 import Tesseract from 'tesseract.js';
+import sharp from 'sharp';
 
 export interface DocumentExtracted {
   cnic: string | null;
@@ -45,23 +46,18 @@ function tryDate8(s: string): string | null {
   return null;
 }
 
-// Extract a name from a line that may have OCR junk.
-// Tries all-caps words first (formal CNIC), then title-case (many real CNICs).
 function extractNameWords(line: string): string | null {
   const clean = line.replace(/[|:;\-–—]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // All-caps: MUHAMMAD ALI KHAN
   const caps = (clean.match(/\b[A-Z]{2,}\b/g) ?? []).filter((w) => !NON_NAME.test(w));
   if (caps.length >= 2 && caps.length <= 5) return titleCase(caps.join(' '));
 
-  // Title-case: Afeera Bibi / Muhammad Umar
   const title = (clean.match(/\b[A-Z][a-z]{1,}\b/g) ?? []).filter((w) => !NON_NAME.test(w));
   if (title.length >= 2 && title.length <= 5) return title.join(' ');
 
   return null;
 }
 
-// When the label ("Name", "Father") is on the same line as the name, extract name words after keyword
 function capWordsAfter(line: string, kw: RegExp): string | null {
   const m = kw.exec(line.toLowerCase());
   if (!m) return null;
@@ -90,12 +86,10 @@ function parseCnic(lines: string[]) {
     const low  = line.toLowerCase();
     const next = lines[i + 1] ?? '';
 
-    // "Name" label — name may be inline or on the next line
     if (!name && /\bname\b/.test(low) && !/father|husband/.test(low)) {
       name = capWordsAfter(line, /\bname\b/) ?? extractNameWords(next);
     }
 
-    // "Father's Name" / "Husband's Name" label
     if (!fatherName && /\b(?:father|husband)\b/.test(low)) {
       fatherName = capWordsAfter(line, /\b(?:father|husband)\b/) ?? extractNameWords(next);
     }
@@ -122,15 +116,12 @@ function parseCnic(lines: string[]) {
     }
   }
 
-  // Structural fallback for name (clean all-caps lines, e.g. older CNIC format)
   if (!name || !fatherName) {
     const nameLines = lines.filter(isNameLine);
     if (!name       && nameLines[0]) name       = titleCase(nameLines[0]);
     if (!fatherName && nameLines[1]) fatherName = titleCase(nameLines[1]);
   }
 
-  // Expiry fallback: OCR often garbles the "Date of Expiry" label.
-  // Scan all lines for an 8-digit DDMMYYYY date not already captured as DOB.
   if (!expiryDate) {
     for (const line of lines) {
       const d = tryDate8(line);
@@ -141,9 +132,58 @@ function parseCnic(lines: string[]) {
   return { name, fatherName, dob, expiryDate, address };
 }
 
-async function ocr(buffer: Buffer): Promise<string> {
-  const { data: { text } } = await Tesseract.recognize(buffer, 'eng', { logger: () => {} });
-  return text;
+/**
+ * Preprocess image with sharp: fix EXIF orientation, upscale to 1600px wide
+ * (without enlarging), convert to grayscale, auto-normalize contrast, sharpen.
+ * Returns a clean PNG buffer ready for Tesseract.
+ */
+async function preprocess(buffer: Buffer, extraRotation = 0): Promise<Buffer> {
+  let pipeline = sharp(buffer)
+    .rotate()                                        // auto-fix EXIF/HEIC orientation
+    .resize({ width: 1600, withoutEnlargement: true })
+    .grayscale()
+    .normalize()
+    .sharpen({ sigma: 1.5 });
+
+  if (extraRotation !== 0) {
+    // Apply extra rotation on top of EXIF-corrected image
+    const base = await pipeline.png().toBuffer();
+    return sharp(base).rotate(extraRotation).png().toBuffer();
+  }
+
+  return pipeline.png().toBuffer();
+}
+
+async function runOcr(buffer: Buffer): Promise<{ text: string; confidence: number }> {
+  const { data } = await Tesseract.recognize(buffer, 'eng', { logger: () => {} });
+  return { text: data.text, confidence: data.confidence };
+}
+
+/**
+ * OCR with automatic orientation correction.
+ * 1. Fix EXIF rotation and preprocess the image.
+ * 2. If Tesseract confidence is ≥ 60 (or CNIC pattern found), return immediately.
+ * 3. Otherwise try 90°, 180°, 270° rotations and return the best result.
+ */
+async function ocrWithAutoRotate(buffer: Buffer, docType: 'cnic' | 'cheque'): Promise<string> {
+  const base = await preprocess(buffer);
+  const r0 = await runOcr(base);
+
+  // For CNIC: a detected CNIC number is the strongest signal we have the right angle
+  if (docType === 'cnic' && CNIC_REGEX.test(r0.text)) return r0.text;
+  if (r0.confidence >= 60) return r0.text;
+
+  let best = r0;
+  for (const deg of [90, 180, 270]) {
+    const rotated = await sharp(base).rotate(deg).png().toBuffer();
+    const r = await runOcr(rotated);
+
+    if (docType === 'cnic' && CNIC_REGEX.test(r.text)) return r.text;
+    if (r.confidence > best.confidence) best = r;
+    if (r.confidence >= 60) break;
+  }
+
+  return best.text;
 }
 
 export async function extractDocumentData(
@@ -152,7 +192,7 @@ export async function extractDocumentData(
 ): Promise<{ extracted: DocumentExtracted; _ocrRaw: string }> {
   if (docType === 'other') return { extracted: EMPTY, _ocrRaw: '' };
   try {
-    const rawText = await ocr(buffer);
+    const rawText = await ocrWithAutoRotate(buffer, docType);
     const _ocrRaw = rawText.slice(0, 800);
 
     if (docType === 'cnic') {
@@ -171,7 +211,6 @@ export async function extractDocumentData(
       const lines = rawText.split('\n').map(ascii).filter(Boolean);
       console.log('[OCR cheque lines]:', JSON.stringify(lines));
 
-      // Map keyword → clean bank name (checked in order, first match wins)
       const BANK_MAP: [string, string][] = [
         ['meezan',             'Meezan Bank'],
         ['hbl',                'HBL'],
@@ -199,7 +238,6 @@ export async function extractDocumentData(
       const fullText = lines.join(' ').toLowerCase();
       const bankName = BANK_MAP.find(([kw]) => fullText.includes(kw))?.[1] ?? null;
 
-      // Account number: extract from IBAN (PK + 2 digits + 4-letter bank code + 16 digits)
       let accountNo: string | null = null;
       for (const line of lines) {
         const m = line.match(/[Pp][Kk]\d{2}\s*[A-Za-z]{4}([\d\s]{16,})/);
@@ -208,19 +246,16 @@ export async function extractDocumentData(
           if (digits.length >= 12) { accountNo = digits; break; }
         }
       }
-      // Fallback: longest digit run 10–18 chars (avoids 6-8 digit cheque/branch numbers)
       if (!accountNo) {
         const ac = rawText.match(/\b(\d{10,18})\b/);
         accountNo = ac?.[1] ?? null;
       }
 
-      // Cheque number: look for "Cheque No" label → grab digits after it
       let chequeNo: string | null = null;
       for (const line of lines) {
         const m = line.match(/cheque\s*no\.?\s*[A-Z0-9]*[-]?(\d{4,10})/i);
         if (m) { chequeNo = m[1]; break; }
       }
-      // Fallback: first standalone 6-digit number
       if (!chequeNo) {
         const m = rawText.match(/\b(\d{6})\b/);
         chequeNo = m?.[1] ?? null;
