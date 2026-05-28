@@ -137,7 +137,7 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
       amount: Number(amount),
       method,
       note: note.trim() || undefined,
-      collectedBy: collectedBy || undefined,
+      collectedBy: isOwner ? (collectedBy || undefined) : (user?.id ?? undefined),
       proofImageUrl: proofImageUrl || undefined,
     }),
     onSuccess: (data) => {
@@ -240,6 +240,13 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            {!isOwner && (
+              <div className="flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2 text-xs text-violet-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
+                This payment will be recorded under your name
+              </div>
+            )}
 
             {isOwner && staff.length > 0 && (
               <div>
