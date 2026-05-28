@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -478,6 +479,7 @@ export default function InstallmentsPage() {
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
   const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
 
@@ -491,11 +493,16 @@ export default function InstallmentsPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ['installments'] });
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('[data-menu]')) setOpenMenu(null);
+    const close = () => { setOpenMenu(null); setMenuPos(null); };
+    const onMouse = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('[data-menu]')) close();
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', onMouse);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('mousedown', onMouse);
+      window.removeEventListener('scroll', close, true);
+    };
   }, []);
 
   const createMutation = useMutation({
@@ -710,67 +717,18 @@ export default function InstallmentsPage() {
                             <MessageCircle size={14} />
                           </button>
                         )}
-                        {/* ⋮ dropdown */}
-                        <div data-menu className="relative">
-                          <button
-                            onClick={() => setOpenMenu(openMenu === inst.id ? null : inst.id)}
-                            className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 transition">
-                            <MoreVertical size={15} />
-                          </button>
-                          {openMenu === inst.id && (
-                            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-20 min-w-37.5 py-1 overflow-hidden">
-                              {inst.status !== 'CANCELLED' && inst.status !== 'CLOSED' && (
-                                <button
-                                  onClick={() => { setOpenMenu(null); setScheduleInst(inst); }}
-                                  className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
-                                  View Schedule
-                                </button>
-                              )}
-                              {inst.status !== 'ACTIVE' && inst.status !== 'PENDING' && (
-                                <button
-                                  onClick={() => { setOpenMenu(null); setPayInst(inst); }}
-                                  className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
-                                  History
-                                </button>
-                              )}
-                              {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && isOwner && (
-                                <button
-                                  onClick={() => { setOpenMenu(null); setRescheduleInst(inst); }}
-                                  className="w-full text-left px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 transition">
-                                  Reschedule
-                                </button>
-                              )}
-                              {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && (
-                                <button
-                                  onClick={() => { setOpenMenu(null); setRecoveryInst(inst); }}
-                                  className="w-full text-left px-3 py-2 text-xs text-violet-600 hover:bg-violet-50 transition">
-                                  Recovery
-                                </button>
-                              )}
-                              {inst.status === 'ACTIVE' && isOwner && (
-                                <button
-                                  onClick={() => { setOpenMenu(null); if (confirm('Mark as defaulted?')) defaultMutation.mutate(inst.id); }}
-                                  className="w-full text-left px-3 py-2 text-xs text-orange-600 hover:bg-orange-50 transition">
-                                  Mark Default
-                                </button>
-                              )}
-                              {(inst.status === 'COMPLETED' || inst.status === 'DEFAULTED') && isOwner && (
-                                <button
-                                  onClick={() => { setOpenMenu(null); if (confirm('Archive this installment as closed?')) closeMutation.mutate(inst.id); }}
-                                  className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition">
-                                  Close
-                                </button>
-                              )}
-                              {(inst.status === 'PENDING' || inst.status === 'ACTIVE') && isOwner && (
-                                <button
-                                  onClick={() => { setOpenMenu(null); if (confirm('Cancel this installment?')) cancelMutation.mutate(inst.id); }}
-                                  className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition">
-                                  Cancel
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        {/* ⋮ trigger */}
+                        <button
+                          data-menu
+                          onClick={(e) => {
+                            if (openMenu === inst.id) { setOpenMenu(null); setMenuPos(null); return; }
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                            setOpenMenu(inst.id);
+                          }}
+                          className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 transition">
+                          <MoreVertical size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -806,6 +764,64 @@ export default function InstallmentsPage() {
           </div>
         </div>
       )}
+
+      {/* ⋮ actions dropdown — portal so it escapes table overflow-hidden */}
+      {(() => {
+        const inst = data?.data.find((i) => i.id === openMenu);
+        if (!openMenu || !inst || !menuPos) return null;
+        const close = () => { setOpenMenu(null); setMenuPos(null); };
+        return createPortal(
+          <div
+            data-menu
+            style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            className="bg-white border border-gray-100 rounded-xl shadow-xl w-44 py-1 overflow-hidden"
+          >
+            {inst.status !== 'CANCELLED' && inst.status !== 'CLOSED' && (
+              <button onClick={() => { close(); setScheduleInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
+                View Schedule
+              </button>
+            )}
+            {inst.status !== 'ACTIVE' && inst.status !== 'PENDING' && (
+              <button onClick={() => { close(); setPayInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
+                History
+              </button>
+            )}
+            {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && isOwner && (
+              <button onClick={() => { close(); setRescheduleInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 transition">
+                Reschedule
+              </button>
+            )}
+            {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && (
+              <button onClick={() => { close(); setRecoveryInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-violet-600 hover:bg-violet-50 transition">
+                Recovery
+              </button>
+            )}
+            {inst.status === 'ACTIVE' && isOwner && (
+              <button onClick={() => { close(); if (confirm('Mark as defaulted?')) defaultMutation.mutate(inst.id); }}
+                className="w-full text-left px-3 py-2 text-xs text-orange-600 hover:bg-orange-50 transition">
+                Mark Default
+              </button>
+            )}
+            {(inst.status === 'COMPLETED' || inst.status === 'DEFAULTED') && isOwner && (
+              <button onClick={() => { close(); if (confirm('Archive this installment as closed?')) closeMutation.mutate(inst.id); }}
+                className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition">
+                Close
+              </button>
+            )}
+            {(inst.status === 'PENDING' || inst.status === 'ACTIVE') && isOwner && (
+              <button onClick={() => { close(); if (confirm('Cancel this installment?')) cancelMutation.mutate(inst.id); }}
+                className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition">
+                Cancel
+              </button>
+            )}
+          </div>,
+          document.body,
+        );
+      })()}
 
       {/* Create modal */}
       {showForm && (
