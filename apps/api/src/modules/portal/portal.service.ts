@@ -133,19 +133,20 @@ export class PortalService {
   async getInstallments(customerId: string) {
     const rows = await db
       .select({
-        id:            installments.id,
-        totalAmount:   installments.totalAmount,
-        downPayment:   installments.downPayment,
-        remaining:     installments.remaining,
-        monthly:       installments.monthly,
-        months:        installments.months,
-        startDate:     installments.startDate,
-        status:        installments.status,
-        invoiceNumber: installments.invoiceNumber,
-        createdAt:     installments.createdAt,
-        productName:   products.name,
-        productBrand:  products.brand,
-        totalPaid:     sum(payments.amount),
+        id:               installments.id,
+        totalAmount:      installments.totalAmount,
+        downPayment:      installments.downPayment,
+        remaining:        installments.remaining,
+        monthly:          installments.monthly,
+        months:           installments.months,
+        startDate:        installments.startDate,
+        status:           installments.status,
+        invoiceNumber:    installments.invoiceNumber,
+        paymentFrequency: installments.paymentFrequency,
+        createdAt:        installments.createdAt,
+        productName:      products.name,
+        productBrand:     products.brand,
+        totalPaid:        sum(payments.amount),
       })
       .from(installments)
       .innerJoin(products, eq(installments.productId, products.id))
@@ -158,7 +159,7 @@ export class PortalService {
         installments.id, installments.totalAmount, installments.downPayment,
         installments.remaining, installments.monthly, installments.months,
         installments.startDate, installments.status, installments.invoiceNumber,
-        installments.createdAt, products.name, products.brand,
+        installments.paymentFrequency, installments.createdAt, products.name, products.brand,
       )
       .orderBy(desc(installments.createdAt));
 
@@ -170,27 +171,33 @@ export class PortalService {
       const months        = r.months;
       const installmentDue = totalAmount - downPayment;
       const paid          = Number(r.totalPaid ?? 0);
-      const paidMonths    = monthly > 0 ? Math.round(paid / monthly) : 0;
-      const dueDate       = new Date(r.startDate);
-      dueDate.setMonth(dueDate.getMonth() + months);
+      const isDaily     = r.paymentFrequency === 'daily';
+      const paidMonths  = monthly > 0 ? Math.round(paid / monthly) : 0;
+      const dueDate     = new Date(r.startDate);
+      if (isDaily) {
+        dueDate.setDate(dueDate.getDate() + months);
+      } else {
+        dueDate.setMonth(dueDate.getMonth() + months);
+      }
 
       return {
-        id:            r.id,
-        invoiceNumber: r.invoiceNumber,
-        productName:   r.productName,
-        productBrand:  r.productBrand,
+        id:               r.id,
+        invoiceNumber:    r.invoiceNumber,
+        productName:      r.productName,
+        productBrand:     r.productBrand,
         totalAmount,
         downPayment,
         monthly,
         months,
         remaining,
-        status:        r.status,
-        startDate:     r.startDate,
+        status:           r.status,
+        startDate:        r.startDate,
+        paymentFrequency: r.paymentFrequency,
         dueDate,
         paidMonths,
-        totalMonths:   months,
-        progressPct:   months > 0 ? Math.min(100, Math.round((paidMonths / months) * 100)) : 0,
-        amountPaid:    installmentDue - remaining,
+        totalMonths:      months,
+        progressPct:      months > 0 ? Math.min(100, Math.round((paidMonths / months) * 100)) : 0,
+        amountPaid:       installmentDue - remaining,
       };
     });
   }

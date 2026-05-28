@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { customers, installments, products, sellers } from '../../db/schema.js';
+import { customers, installments, payments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { hashCnic, maskCnic } from '../../utils/hash.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
@@ -593,6 +593,14 @@ export class CustomersService {
       db.update(customers).set({ deletedAt: now, deletedBy }).where(eq(customers.id, id)),
       db.update(installments).set({ deletedAt: now }).where(
         and(eq(installments.customerId, id), isNull(installments.deletedAt))
+      ),
+      db.update(payments).set({ deletedAt: now }).where(
+        and(
+          isNull(payments.deletedAt),
+          sql`${payments.installmentId} IN (
+            SELECT id FROM installments WHERE customer_id = ${id}
+          )`,
+        )
       ),
     ]);
     return existing;

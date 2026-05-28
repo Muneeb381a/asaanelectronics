@@ -252,9 +252,13 @@ export class InstallmentsService {
 
   async remove(id: string, sellerId: string, deletedBy: string) {
     const row = await this.getOne(id, sellerId);
-    await db.update(installments)
-      .set({ deletedAt: new Date(), deletedBy })
-      .where(eq(installments.id, id));
+    const now = new Date();
+    await Promise.all([
+      db.update(installments).set({ deletedAt: now, deletedBy }).where(eq(installments.id, id)),
+      db.update(payments).set({ deletedAt: now }).where(
+        and(eq(payments.installmentId, id), isNull(payments.deletedAt)),
+      ),
+    ]);
     return row;
   }
 

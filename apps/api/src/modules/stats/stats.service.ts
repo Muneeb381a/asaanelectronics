@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, lt, lte, sql, sum } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNull, lt, lte, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { auditLogs, customers, installments, payments, products, recoveryActions, users } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
@@ -22,7 +22,13 @@ export class StatsService {
         .from(payments)
         .innerJoin(installments, eq(payments.installmentId, installments.id))
         .innerJoin(customers, eq(installments.customerId, customers.id))
-        .where(and(eq(customers.sellerId, sellerId), gte(payments.paidOn, twelveMonthsAgo)))
+        .where(and(
+          eq(customers.sellerId, sellerId),
+          gte(payments.paidOn, twelveMonthsAgo),
+          isNull(payments.deletedAt),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
+        ))
         .groupBy(sql`DATE_TRUNC('month', ${payments.paidOn})`)
         .orderBy(sql`DATE_TRUNC('month', ${payments.paidOn})`),
 
@@ -30,7 +36,7 @@ export class StatsService {
         .select({ totalBilled: sum(installments.totalAmount), totalRemaining: sum(installments.remaining) })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
-        .where(eq(customers.sellerId, sellerId)),
+        .where(and(eq(customers.sellerId, sellerId), isNull(installments.deletedAt), isNull(customers.deletedAt))),
 
       db
         .select({
@@ -41,7 +47,7 @@ export class StatsService {
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
-        .where(and(eq(customers.sellerId, sellerId), eq(installments.status, 'ACTIVE'))),
+        .where(and(eq(customers.sellerId, sellerId), eq(installments.status, 'ACTIVE'), isNull(installments.deletedAt), isNull(customers.deletedAt))),
 
       db
         .select({
@@ -52,7 +58,7 @@ export class StatsService {
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
-        .where(and(eq(customers.sellerId, sellerId), eq(installments.status, 'ACTIVE')))
+        .where(and(eq(customers.sellerId, sellerId), eq(installments.status, 'ACTIVE'), isNull(installments.deletedAt), isNull(customers.deletedAt)))
         .groupBy(customers.id, customers.name, customers.phone)
         .orderBy(desc(sum(installments.remaining)))
         .limit(8),
@@ -62,7 +68,7 @@ export class StatsService {
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .innerJoin(products, eq(installments.productId, products.id))
-        .where(eq(customers.sellerId, sellerId))
+        .where(and(eq(customers.sellerId, sellerId), isNull(installments.deletedAt), isNull(customers.deletedAt)))
         .groupBy(products.name)
         .orderBy(desc(count()))
         .limit(6),
@@ -125,6 +131,9 @@ export class StatsService {
           eq(customers.sellerId, sellerId),
           gte(payments.paidOn, todayStart),
           lt(payments.paidOn, todayEnd),
+          isNull(payments.deletedAt),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
         )),
 
       db
@@ -135,13 +144,16 @@ export class StatsService {
         .where(and(
           eq(customers.sellerId, sellerId),
           gte(payments.paidOn, monthStart),
+          isNull(payments.deletedAt),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
         )),
 
       db
         .select({ total: count() })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
-        .where(and(eq(customers.sellerId, sellerId), eq(installments.status, 'ACTIVE'))),
+        .where(and(eq(customers.sellerId, sellerId), eq(installments.status, 'ACTIVE'), isNull(installments.deletedAt), isNull(customers.deletedAt))),
 
       db
         .select({ total: count() })
@@ -150,6 +162,8 @@ export class StatsService {
         .where(and(
           eq(customers.sellerId, sellerId),
           eq(installments.status, 'ACTIVE'),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
           sql`(CASE WHEN ${installments.paymentFrequency} = 'daily'
             THEN ${installments.startDate} + (${installments.months} || ' days')::interval
             ELSE ${installments.startDate} + (${installments.months} || ' months')::interval
@@ -169,7 +183,7 @@ export class StatsService {
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .innerJoin(products, eq(installments.productId, products.id))
-        .where(eq(customers.sellerId, sellerId))
+        .where(and(eq(customers.sellerId, sellerId), isNull(installments.deletedAt), isNull(customers.deletedAt)))
         .orderBy(desc(installments.createdAt))
         .limit(5),
 
@@ -218,6 +232,7 @@ export class StatsService {
         INNER JOIN customers c ON i.customer_id = c.id
         CROSS JOIN LATERAL generate_series(1, i.months) AS gs(n)
         WHERE c.seller_id = ${sellerId}
+          AND c.deleted_at IS NULL
           AND i.status = 'ACTIVE'
           AND i.deleted_at IS NULL
           AND (CASE WHEN i.payment_frequency = 'daily'
@@ -237,6 +252,7 @@ export class StatsService {
         FROM installments i
         INNER JOIN customers c ON i.customer_id = c.id
         WHERE c.seller_id = ${sellerId}
+          AND c.deleted_at IS NULL
           AND i.deleted_at IS NULL
           AND (
             i.status = 'DEFAULTED'

@@ -98,12 +98,15 @@ function Skeleton({ className }: { className: string }) {
 
 export default function ReportsPage() {
   const user = useAuthStore((s) => s.user);
-  const isOwner = user?.role === 'SELLER_OWNER';
+  const isOwner    = user?.role === 'SELLER_OWNER';
+  const canReports = isOwner || !!user?.permissions?.canViewReports;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['reports'],
     queryFn:  statsApi.getReports,
     staleTime: 60_000,
+    enabled:  canReports,
+    retry:    false,
   });
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
   const { data: avoStats = [] } = useQuery({
@@ -112,6 +115,26 @@ export default function ReportsPage() {
     staleTime: 60_000,
     enabled:  isOwner,
   });
+
+  if (!canReports) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-64 text-center">
+        <BarChart3 size={36} className="text-gray-200 mb-3" />
+        <p className="text-sm font-semibold text-gray-500">Access restricted</p>
+        <p className="text-xs text-gray-400 mt-1">Your account doesn't have permission to view analytics.</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-64 text-center">
+        <BarChart3 size={36} className="text-gray-200 mb-3" />
+        <p className="text-sm font-semibold text-gray-500">Failed to load analytics</p>
+        <p className="text-xs text-gray-400 mt-1">Please refresh the page and try again.</p>
+      </div>
+    );
+  }
 
   if (isLoading || !data) {
     return (

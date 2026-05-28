@@ -51,6 +51,7 @@ export interface PortalInstallment {
   remaining: number;
   status: InstallmentStatus;
   startDate: string;
+  paymentFrequency: string | null;
   dueDate: string;
   paidMonths: number;
   totalMonths: number;

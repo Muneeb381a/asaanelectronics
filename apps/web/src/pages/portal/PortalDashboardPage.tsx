@@ -196,7 +196,7 @@ function InstallmentCard({ inst }: { inst: PortalInstallment }) {
         {/* Progress bar */}
         <div className="mb-3">
           <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-            <span>{inst.paidMonths}/{inst.totalMonths} installments</span>
+            <span>{inst.paidMonths}/{inst.totalMonths} {inst.paymentFrequency === 'daily' ? 'days' : 'installments'}</span>
             <span>{inst.progressPct}%</span>
           </div>
           <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
@@ -214,7 +214,7 @@ function InstallmentCard({ inst }: { inst: PortalInstallment }) {
         {/* Amounts grid */}
         <div className="grid grid-cols-3 gap-2 text-center">
           {[
-            { label: 'Monthly',   value: pkr(inst.monthly),       sub: 'installment' },
+            { label: inst.paymentFrequency === 'daily' ? 'Daily' : 'Monthly', value: pkr(inst.monthly), sub: inst.paymentFrequency === 'daily' ? 'per day' : 'installment' },
             { label: 'Paid',      value: pkr(inst.amountPaid),    sub: 'total' },
             { label: 'Remaining', value: pkr(inst.remaining),     sub: 'balance', red: inst.remaining > 0 && inst.status === 'ACTIVE' },
           ].map((item) => (

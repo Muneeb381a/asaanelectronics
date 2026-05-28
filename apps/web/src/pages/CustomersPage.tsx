@@ -375,6 +375,9 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-bold text-gray-900">{customer.name}</h2>
+                {customer.customerType === 'dukaan-dar' && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">Dukaan-Dar</span>
+                )}
                 <LifecycleBadge stage={customer.lifecycleStage ?? 'LEAD'} />
                 <RiskBadge score={customer.riskScore ?? 0} label={customer.riskLabel ?? 'GOOD'} />
               </div>
@@ -754,12 +757,17 @@ export default function CustomersPage() {
               {data.data.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50 transition">
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => setHistoryCustomer(c)}
-                      className="font-medium text-gray-900 hover:text-blue-600 text-left transition"
-                    >
-                      {c.name}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setHistoryCustomer(c)}
+                        className="font-medium text-gray-900 hover:text-blue-600 text-left transition"
+                      >
+                        {c.name}
+                      </button>
+                      {c.customerType === 'dukaan-dar' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 whitespace-nowrap">Dukaan-Dar</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">{c.cnicMasked}</td>
                   <td className="px-4 py-3 text-gray-700">{c.phone}</td>

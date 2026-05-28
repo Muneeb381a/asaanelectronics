@@ -39,6 +39,8 @@ export interface Customer {
   chequeBank: string | null;
   chequeAccountNo: string | null;
   chequeNo: string | null;
+  customerType: string | null;
+  shopName: string | null;
   verificationStatus: VerificationStatus;
   assignedAvoId: string | null;
   createdByUserId: string | null;
