@@ -9,6 +9,10 @@ export interface Payment {
   method: PaymentMethod;
   note: string | null;
   paidOn: string;
+  deletedAt: string | null;
+  collectedBy: string | null;
+  collectorName: string | null;
+  proofImageUrl: string | null;
 }
 
 export interface RecordPaymentInput {
@@ -16,6 +20,8 @@ export interface RecordPaymentInput {
   amount: number;
   method: PaymentMethod;
   note?: string;
+  collectedBy?: string;
+  proofImageUrl?: string;
 }
 
 interface RecordResult {

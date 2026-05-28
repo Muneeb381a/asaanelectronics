@@ -28,6 +28,7 @@ const ALLOWED_FOLDERS: Record<string, 'cnic' | 'cheque' | 'other'> = {
   'assaan/customers':     'other',
   'assaan/cheques':       'cheque',
   'assaan/verifications': 'other',
+  'assaan/payments':      'other',   // payment proof images
 };
 
 router.post('/', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {

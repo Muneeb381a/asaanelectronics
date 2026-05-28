@@ -11,6 +11,8 @@ export declare const createStaffSchema: z.ZodObject<{
         canViewReports: z.ZodBoolean;
         canManageProducts: z.ZodBoolean;
         canVerifyCustomers: z.ZodBoolean;
+        canRecordExpense: z.ZodBoolean;
+        canManageReturns: z.ZodBoolean;
     }, "strip", z.ZodTypeAny, {
         canAddCustomer: boolean;
         canEditCustomer: boolean;
@@ -19,6 +21,8 @@ export declare const createStaffSchema: z.ZodObject<{
         canViewReports: boolean;
         canManageProducts: boolean;
         canVerifyCustomers: boolean;
+        canRecordExpense: boolean;
+        canManageReturns: boolean;
     }, {
         canAddCustomer: boolean;
         canEditCustomer: boolean;
@@ -27,6 +31,8 @@ export declare const createStaffSchema: z.ZodObject<{
         canViewReports: boolean;
         canManageProducts: boolean;
         canVerifyCustomers: boolean;
+        canRecordExpense: boolean;
+        canManageReturns: boolean;
     }>>;
 }, "strip", z.ZodTypeAny, {
     name: string;
@@ -40,6 +46,8 @@ export declare const createStaffSchema: z.ZodObject<{
         canViewReports: boolean;
         canManageProducts: boolean;
         canVerifyCustomers: boolean;
+        canRecordExpense: boolean;
+        canManageReturns: boolean;
     } | undefined;
 }, {
     name: string;
@@ -53,6 +61,8 @@ export declare const createStaffSchema: z.ZodObject<{
         canViewReports: boolean;
         canManageProducts: boolean;
         canVerifyCustomers: boolean;
+        canRecordExpense: boolean;
+        canManageReturns: boolean;
     } | undefined;
 }>;
 export declare const updateStaffPermissionsSchema: z.ZodObject<{
@@ -63,6 +73,8 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canViewReports: z.ZodOptional<z.ZodBoolean>;
     canManageProducts: z.ZodOptional<z.ZodBoolean>;
     canVerifyCustomers: z.ZodOptional<z.ZodBoolean>;
+    canRecordExpense: z.ZodOptional<z.ZodBoolean>;
+    canManageReturns: z.ZodOptional<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
     canAddCustomer?: boolean | undefined;
     canEditCustomer?: boolean | undefined;
@@ -71,6 +83,8 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canViewReports?: boolean | undefined;
     canManageProducts?: boolean | undefined;
     canVerifyCustomers?: boolean | undefined;
+    canRecordExpense?: boolean | undefined;
+    canManageReturns?: boolean | undefined;
 }, {
     canAddCustomer?: boolean | undefined;
     canEditCustomer?: boolean | undefined;
@@ -79,6 +93,8 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canViewReports?: boolean | undefined;
     canManageProducts?: boolean | undefined;
     canVerifyCustomers?: boolean | undefined;
+    canRecordExpense?: boolean | undefined;
+    canManageReturns?: boolean | undefined;
 }>;
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 export type UpdateStaffPermissionsInput = z.infer<typeof updateStaffPermissionsSchema>;

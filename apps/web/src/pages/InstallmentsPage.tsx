@@ -1,12 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, Trash2, MoreVertical, CreditCard, Loader2 } from 'lucide-react';
+import { FileText, MessageCircle, Download, Trash2, MoreVertical, CreditCard, Loader2, Upload, X } from 'lucide-react';
 import { TableSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
 import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
+import { staffApi } from '../api/staff.api.ts';
+import { api } from '../api/client.ts';
 import InstallmentForm from '../features/installments/InstallmentForm.tsx';
 import RecoveryDrawer from '../features/installments/RecoveryDrawer.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
@@ -93,7 +95,17 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
   const [amount, setAmount] = useState(String(Number(inst.monthly)));
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [note, setNote] = useState('');
+  const [collectedBy, setCollectedBy] = useState('');
+  const [proofImageUrl, setProofImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [tab, setTab] = useState<'pay' | 'history'>('pay');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const { data: staff = [] } = useQuery({
+    queryKey: ['staff'],
+    queryFn: staffApi.list,
+    enabled: isOwner,
+  });
 
   const { data: history, isLoading: histLoading } = useQuery({
     queryKey: ['payments', inst.id],
@@ -101,16 +113,37 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
     enabled: tab === 'history',
   });
 
+  async function handleProofFile(file: File) {
+    if (!file.type.startsWith('image/')) { toast.error('Only image files allowed'); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('folder', 'assaan/payments');
+      const res = await api.post<{ data: { url: string } }>('/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setProofImageUrl(res.data.data.url);
+    } catch {
+      toast.error('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const mutation = useMutation({
     mutationFn: () => paymentsApi.record({
       installmentId: inst.id,
       amount: Number(amount),
       method,
       note: note.trim() || undefined,
+      collectedBy: collectedBy || undefined,
+      proofImageUrl: proofImageUrl || undefined,
     }),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['installments'] });
       qc.invalidateQueries({ queryKey: ['payments', inst.id] });
+      qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
       onClose();
     },
@@ -122,6 +155,7 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['installments'] });
       qc.invalidateQueries({ queryKey: ['payments', inst.id] });
+      qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
       toast.success('Payment deleted');
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to delete')),
@@ -207,6 +241,47 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
               />
             </div>
 
+            {isOwner && staff.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Collected by (optional)</label>
+                <select
+                  value={collectedBy}
+                  onChange={(e) => setCollectedBy(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="">— Owner collected —</option>
+                  {staff.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Proof / Receipt (optional)</label>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProofFile(f); }} />
+              {proofImageUrl ? (
+                <div className="relative inline-block">
+                  <img src={proofImageUrl} alt="proof" className="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setProofImageUrl('')}
+                    className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5">
+                    <X size={11} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-200 rounded-lg text-xs text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50">
+                  {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                  {uploading ? 'Uploading…' : 'Upload receipt image'}
+                </button>
+              )}
+            </div>
+
             <div className="flex gap-2 pt-1">
               <button onClick={onClose}
                 className="flex-1 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
@@ -214,7 +289,7 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
               </button>
               <button
                 onClick={() => mutation.mutate()}
-                disabled={amountInvalid || mutation.isPending}
+                disabled={amountInvalid || mutation.isPending || uploading}
                 className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50">
                 {mutation.isPending ? <><Loader2 size={14} className='animate-spin' /> Recording…</> : 'Record Payment'}
               </button>
@@ -229,22 +304,33 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
             ) : (
               <div className="divide-y divide-gray-100">
                 {history.map((p) => (
-                  <div key={p.id} className="py-2.5 flex items-center justify-between group">
-                    <div>
+                  <div key={p.id} className="py-2.5 flex items-start justify-between group gap-3">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-900">{pkr(p.amount)}</p>
                       <p className="text-xs text-gray-400">
                         {p.method} · {new Date(p.paidOn).toLocaleDateString('en-PK')}
                         {p.note && ` · ${p.note}`}
                       </p>
+                      {p.collectorName && (
+                        <p className="text-[11px] text-violet-600 font-medium mt-0.5">by {p.collectorName}</p>
+                      )}
                     </div>
-                    {isOwner && (
-                      <button
-                        onClick={() => { if (confirm('Delete this payment? This will restore the remaining balance.')) deleteMutation.mutate(p.id); }}
-                        disabled={deleteMutation.isPending}
-                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition disabled:opacity-40">
-                        <Trash2 size={13} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {p.proofImageUrl && (
+                        <a href={p.proofImageUrl} target="_blank" rel="noreferrer"
+                          className="text-[11px] text-blue-500 hover:underline">
+                          Receipt
+                        </a>
+                      )}
+                      {isOwner && (
+                        <button
+                          onClick={() => { if (confirm('Delete this payment? This will restore the remaining balance.')) deleteMutation.mutate(p.id); }}
+                          disabled={deleteMutation.isPending}
+                          className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition disabled:opacity-40">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

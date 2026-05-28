@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
+import { customers, installments, ledgerEntries, payments, products, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 
 type CreateBody = {
@@ -8,6 +8,8 @@ type CreateBody = {
   amount: number;
   method: 'CASH' | 'BANK' | 'JAZZCASH' | 'EASYPAISA' | 'OTHER';
   note?: string;
+  collectedBy?: string;
+  proofImageUrl?: string;
 };
 
 export class PaymentsService {
@@ -15,7 +17,6 @@ export class PaymentsService {
     const safeLimit = Math.min(limit, 100);
     const offset = (page - 1) * safeLimit;
 
-    // Verify ownership first
     const [inst] = await db
       .select({ id: installments.id })
       .from(installments)
@@ -26,8 +27,20 @@ export class PaymentsService {
 
     const [rows, [{ count }]] = await Promise.all([
       db
-        .select()
+        .select({
+          id:            payments.id,
+          installmentId: payments.installmentId,
+          amount:        payments.amount,
+          paidOn:        payments.paidOn,
+          method:        payments.method,
+          note:          payments.note,
+          deletedAt:     payments.deletedAt,
+          collectedBy:   payments.collectedBy,
+          proofImageUrl: payments.proofImageUrl,
+          collectorName: users.name,
+        })
         .from(payments)
+        .leftJoin(users, eq(payments.collectedBy, users.id))
         .where(and(eq(payments.installmentId, installmentId), isNull(payments.deletedAt)))
         .orderBy(desc(payments.paidOn))
         .limit(safeLimit)
@@ -43,13 +56,8 @@ export class PaymentsService {
 
   async record(sellerId: string, body: CreateBody) {
     return db.transaction(async (tx) => {
-      // Lock + verify installment belongs to this seller
       const [inst] = await tx
-        .select({
-          id: installments.id,
-          remaining: installments.remaining,
-          status: installments.status,
-        })
+        .select({ id: installments.id, remaining: installments.remaining, status: installments.status })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .where(and(eq(installments.id, body.installmentId), eq(customers.sellerId, sellerId)));
@@ -65,7 +73,6 @@ export class PaymentsService {
       const newRemaining = Math.max(0, currentRemaining - body.amount);
       const isCleared = newRemaining === 0;
 
-      // Fetch product name for ledger description
       const [instDetail] = await tx
         .select({ productName: products.name, customerName: customers.name })
         .from(installments)
@@ -76,9 +83,11 @@ export class PaymentsService {
       const [[payment]] = await Promise.all([
         tx.insert(payments).values({
           installmentId: body.installmentId,
-          amount: String(body.amount),
-          method: body.method,
-          note: body.note,
+          amount:        String(body.amount),
+          method:        body.method,
+          note:          body.note,
+          collectedBy:   body.collectedBy ?? null,
+          proofImageUrl: body.proofImageUrl ?? null,
         }).returning(),
         tx.update(installments).set({
           remaining: String(newRemaining),
@@ -86,15 +95,14 @@ export class PaymentsService {
         }).where(eq(installments.id, body.installmentId)),
       ]);
 
-      // Auto-post CREDIT to general ledger
       await tx.insert(ledgerEntries).values({
         sellerId,
-        type: 'CREDIT',
-        category: body.method,
-        amount: String(body.amount),
+        type:        'CREDIT',
+        category:    body.method,
+        amount:      String(body.amount),
         description: `Payment — ${instDetail?.customerName ?? ''} · ${instDetail?.productName ?? ''}${body.note ? ` · ${body.note}` : ''}`,
         referenceId: payment.id,
-        refType: 'PAYMENT',
+        refType:     'PAYMENT',
       });
 
       return { payment, remaining: newRemaining, completed: isCleared };
@@ -104,22 +112,21 @@ export class PaymentsService {
   async remove(id: string, sellerId: string, deletedBy: string) {
     const [pmt] = await db
       .select({
-        id: payments.id,
-        amount: payments.amount,
-        method: payments.method,
+        id:            payments.id,
+        amount:        payments.amount,
+        method:        payments.method,
         installmentId: payments.installmentId,
         instRemaining: installments.remaining,
-        instStatus: installments.status,
+        instStatus:    installments.status,
       })
       .from(payments)
       .innerJoin(installments, eq(payments.installmentId, installments.id))
-      .innerJoin(customers, eq(installments.customerId, customers.id))
+      .innerJoin(customers,    eq(installments.customerId, customers.id))
       .where(and(eq(payments.id, id), eq(customers.sellerId, sellerId), isNull(payments.deletedAt)));
 
     if (!pmt) throw new AppError('Payment not found', 404);
 
     const restoredRemaining = Number(pmt.instRemaining) + Number(pmt.amount);
-    // If the installment was COMPLETED and we're restoring balance, revert to ACTIVE
     const statusRevert = pmt.instStatus === 'COMPLETED' && restoredRemaining > 0
       ? { status: 'ACTIVE' as const }
       : {};
@@ -133,7 +140,6 @@ export class PaymentsService {
         .set({ remaining: String(restoredRemaining.toFixed(2)), ...statusRevert })
         .where(eq(installments.id, pmt.installmentId));
 
-      // Remove the ledger entry that was created when this payment was recorded
       await tx.delete(ledgerEntries).where(
         and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'PAYMENT')),
       );

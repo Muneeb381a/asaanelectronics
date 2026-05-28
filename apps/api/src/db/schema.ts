@@ -60,6 +60,8 @@ export type StaffPermissions = {
   canViewReports: boolean;
   canManageProducts: boolean;
   canVerifyCustomers: boolean;
+  canRecordExpense: boolean;
+  canManageReturns: boolean;
 };
 
 export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
@@ -70,6 +72,8 @@ export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
   canViewReports: true,
   canManageProducts: true,
   canVerifyCustomers: false,
+  canRecordExpense: false,
+  canManageReturns: false,
 };
 
 export const users = pgTable('users', {
@@ -330,6 +334,8 @@ export const payments = pgTable('payments', {
   paidOn: timestamp('paid_on').defaultNow().notNull(),
   method: paymentMethodEnum('method').notNull(),
   note: text('note'),
+  collectedBy:   text('collected_by').references(() => users.id, { onDelete: 'set null' }),
+  proofImageUrl: text('proof_image_url'),
   deletedAt: timestamp('deleted_at'),
   deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [

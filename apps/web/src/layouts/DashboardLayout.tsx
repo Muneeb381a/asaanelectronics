@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
-  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu,
+  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, TrendingUp,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -101,7 +101,8 @@ export default function DashboardLayout() {
       ? [
           { to: '/expenses',  label: 'Expenses',   icon: Receipt,     end: undefined },
           { to: '/returns',   label: 'Returns',    icon: RotateCcw,   end: undefined },
-          { to: '/recovery',  label: 'Recovery',   icon: PhoneCall,   end: undefined },
+          { to: '/recovery',        label: 'Recovery',   icon: PhoneCall,   end: undefined },
+          { to: '/recovery-agents', label: 'Agents',     icon: TrendingUp,  end: undefined },
           { to: '/ledger',    label: 'Accounting', icon: BookOpen,    end: undefined },
           { to: '/audit',     label: 'Audit Log',  icon: ShieldCheck, end: undefined },
           { to: '/staff',     label: 'Staff',      icon: UserCog,     end: undefined },

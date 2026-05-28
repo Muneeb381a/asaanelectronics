@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ShieldCheck, UserPlus, UserMinus, UserCog, Package, PackageMinus, PackagePlus,
   CreditCard, Wallet, Receipt, Trash2, ChevronDown, ChevronUp, Shield, Monitor, Smartphone,
+  RotateCcw, CheckCircle, PhoneCall, XCircle,
 } from 'lucide-react';
 import { auditApi, type AuditLog } from '../api/audit.api.ts';
 import { CardSkeleton } from '../components/ui/Skeleton.tsx';
@@ -11,19 +12,38 @@ import { CardSkeleton } from '../components/ui/Skeleton.tsx';
 type ActionMeta = { label: string; color: string; bg: string; icon: typeof Shield };
 
 const ACTION_MAP: Record<string, ActionMeta> = {
-  CUSTOMER_CREATED:        { label: 'Customer Added',     color: 'text-green-700',  bg: 'bg-green-100',  icon: UserPlus },
-  CUSTOMER_UPDATED:        { label: 'Customer Updated',   color: 'text-amber-700',  bg: 'bg-amber-100',  icon: UserCog },
-  CUSTOMER_DELETED:        { label: 'Customer Deleted',   color: 'text-red-700',    bg: 'bg-red-100',    icon: UserMinus },
-  INSTALLMENT_CREATED:     { label: 'Installment Created',color: 'text-blue-700',   bg: 'bg-blue-100',   icon: CreditCard },
-  INSTALLMENT_CANCELLED:   { label: 'Installment Cancelled',color:'text-orange-700',bg: 'bg-orange-100', icon: CreditCard },
-  INSTALLMENT_DEFAULTED:   { label: 'Marked Defaulted',  color: 'text-red-700',    bg: 'bg-red-100',    icon: CreditCard },
-  INSTALLMENT_RESCHEDULED: { label: 'Rescheduled',        color: 'text-purple-700', bg: 'bg-purple-100', icon: CreditCard },
-  PAYMENT_RECORDED:        { label: 'Payment Recorded',   color: 'text-green-700',  bg: 'bg-green-100',  icon: Wallet },
-  PRODUCT_CREATED:         { label: 'Product Added',      color: 'text-green-700',  bg: 'bg-green-100',  icon: PackagePlus },
-  PRODUCT_UPDATED:         { label: 'Product Updated',    color: 'text-amber-700',  bg: 'bg-amber-100',  icon: Package },
-  PRODUCT_DELETED:         { label: 'Product Deleted',    color: 'text-red-700',    bg: 'bg-red-100',    icon: PackageMinus },
-  EXPENSE_CREATED:         { label: 'Expense Recorded',   color: 'text-red-700',    bg: 'bg-red-100',    icon: Receipt },
-  EXPENSE_DELETED:         { label: 'Expense Deleted',    color: 'text-red-700',    bg: 'bg-red-100',    icon: Trash2 },
+  // Customers
+  CUSTOMER_CREATED:            { label: 'Customer Added',          color: 'text-green-700',  bg: 'bg-green-100',  icon: UserPlus },
+  CUSTOMER_UPDATED:            { label: 'Customer Updated',        color: 'text-amber-700',  bg: 'bg-amber-100',  icon: UserCog },
+  CUSTOMER_DELETED:            { label: 'Customer Deleted',        color: 'text-red-700',    bg: 'bg-red-100',    icon: UserMinus },
+  // Installments
+  INSTALLMENT_CREATED:         { label: 'Installment Created',     color: 'text-blue-700',   bg: 'bg-blue-100',   icon: CreditCard },
+  INSTALLMENT_APPROVED:        { label: 'Installment Approved',    color: 'text-green-700',  bg: 'bg-green-100',  icon: CheckCircle },
+  INSTALLMENT_CANCELLED:       { label: 'Installment Cancelled',   color: 'text-orange-700', bg: 'bg-orange-100', icon: XCircle },
+  INSTALLMENT_DEFAULTED:       { label: 'Marked Defaulted',        color: 'text-red-700',    bg: 'bg-red-100',    icon: CreditCard },
+  INSTALLMENT_RESCHEDULED:     { label: 'Rescheduled',             color: 'text-purple-700', bg: 'bg-purple-100', icon: CreditCard },
+  INSTALLMENT_CLOSED:          { label: 'Installment Closed',      color: 'text-slate-700',  bg: 'bg-slate-100',  icon: CreditCard },
+  INSTALLMENT_DELETED:         { label: 'Installment Deleted',     color: 'text-red-700',    bg: 'bg-red-100',    icon: Trash2 },
+  // Payments
+  PAYMENT_RECORDED:            { label: 'Payment Recorded',        color: 'text-green-700',  bg: 'bg-green-100',  icon: Wallet },
+  PAYMENT_DELETED:             { label: 'Payment Deleted',         color: 'text-red-700',    bg: 'bg-red-100',    icon: Trash2 },
+  // Products
+  PRODUCT_CREATED:             { label: 'Product Added',           color: 'text-green-700',  bg: 'bg-green-100',  icon: PackagePlus },
+  PRODUCT_UPDATED:             { label: 'Product Updated',         color: 'text-amber-700',  bg: 'bg-amber-100',  icon: Package },
+  PRODUCT_DELETED:             { label: 'Product Deleted',         color: 'text-red-700',    bg: 'bg-red-100',    icon: PackageMinus },
+  // Expenses
+  EXPENSE_CREATED:             { label: 'Expense Recorded',        color: 'text-red-700',    bg: 'bg-red-100',    icon: Receipt },
+  EXPENSE_DELETED:             { label: 'Expense Deleted',         color: 'text-red-700',    bg: 'bg-red-100',    icon: Trash2 },
+  // Returns
+  RETURN_CREATED:              { label: 'Return Requested',        color: 'text-orange-700', bg: 'bg-orange-100', icon: RotateCcw },
+  RETURN_RESOLVED:             { label: 'Return Resolved',         color: 'text-green-700',  bg: 'bg-green-100',  icon: CheckCircle },
+  // Staff
+  STAFF_CREATED:               { label: 'Staff Added',             color: 'text-blue-700',   bg: 'bg-blue-100',   icon: UserPlus },
+  STAFF_REMOVED:               { label: 'Staff Removed',           color: 'text-red-700',    bg: 'bg-red-100',    icon: UserMinus },
+  STAFF_PERMISSIONS_CHANGED:   { label: 'Permissions Changed',     color: 'text-violet-700', bg: 'bg-violet-100', icon: Shield },
+  // Recovery
+  RECOVERY_ACTION_CREATED:     { label: 'Recovery Action',         color: 'text-violet-700', bg: 'bg-violet-100', icon: PhoneCall },
+  RECOVERY_ACTION_DELETED:     { label: 'Recovery Action Deleted', color: 'text-red-700',    bg: 'bg-red-100',    icon: Trash2 },
 };
 
 const ENTITY_COLORS: Record<string, string> = {
@@ -32,10 +52,13 @@ const ENTITY_COLORS: Record<string, string> = {
   PAYMENT:     'bg-green-100  text-green-700',
   PRODUCT:     'bg-amber-100  text-amber-700',
   EXPENSE:     'bg-red-100    text-red-700',
+  RETURN:      'bg-orange-100 text-orange-700',
+  STAFF:       'bg-indigo-100 text-indigo-700',
+  RECOVERY:    'bg-violet-100 text-violet-700',
 };
 
 const ALL_ACTIONS = Object.keys(ACTION_MAP);
-const ALL_ENTITIES = ['CUSTOMER', 'INSTALLMENT', 'PAYMENT', 'PRODUCT', 'EXPENSE'];
+const ALL_ENTITIES = ['CUSTOMER', 'INSTALLMENT', 'PAYMENT', 'PRODUCT', 'EXPENSE', 'RETURN', 'STAFF', 'RECOVERY'];
 
 function today() { return new Date().toISOString().slice(0, 10); }
 function sevenDaysAgo() {
@@ -123,7 +146,7 @@ function LogRow({ log }: { log: AuditLog }) {
     <div className="bg-white border border-gray-100 rounded-2xl p-4 hover:border-gray-200 transition-colors">
       <div className="flex items-start gap-4">
         {/* Actor avatar */}
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">
+        <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">
           {initials(log.actorName)}
         </div>
 

@@ -9,15 +9,16 @@ import { CardSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 type StaffType = 'ACCOUNT' | 'AVO' | 'MANAGER' | 'CASHIER' | 'CUSTOM';
 
 const PRESET_PERMS: Record<Exclude<StaffType, 'CUSTOM'>, StaffPermissions> = {
-  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: false },
-  AVO:     { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: false, canViewReports: false, canManageProducts: false, canVerifyCustomers: true  },
-  MANAGER: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: true  },
-  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: true,  canManageProducts: false, canVerifyCustomers: false },
+  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false },
+  AVO:     { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: false, canViewReports: false, canManageProducts: false, canVerifyCustomers: true,  canRecordExpense: false, canManageReturns: false },
+  MANAGER: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: true,  canRecordExpense: true,  canManageReturns: true  },
+  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: true,  canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false },
 };
 
 const DEFAULT_CUSTOM_PERMS: StaffPermissions = {
   canAddCustomer: true, canEditCustomer: true, canAddInstallment: true,
-  canRecordPayment: true, canViewReports: true, canManageProducts: true, canVerifyCustomers: false,
+  canRecordPayment: true, canViewReports: true, canManageProducts: true,
+  canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false,
 };
 
 const STAFF_TYPES: { value: StaffType; label: string; desc: string }[] = [

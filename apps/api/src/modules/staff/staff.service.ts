@@ -88,4 +88,21 @@ export class StaffService {
     if (!member) throw new AppError('Staff member not found', 404);
     await db.delete(users).where(eq(users.id, id));
   }
+
+  async getOne(id: string, sellerId: string) {
+    const member = await db.query.users.findFirst({
+      where: and(eq(users.id, id), eq(users.sellerId, sellerId), eq(users.role, 'SELLER_STAFF')),
+      columns: { id: true, name: true, email: true, role: true, permissions: true },
+    });
+    if (!member) throw new AppError('Staff member not found', 404);
+    return member;
+  }
+
+  async getPermissions(id: string, sellerId: string) {
+    const member = await db.query.users.findFirst({
+      where: and(eq(users.id, id), eq(users.sellerId, sellerId), eq(users.role, 'SELLER_STAFF')),
+      columns: { permissions: true },
+    });
+    return member?.permissions ?? DEFAULT_STAFF_PERMISSIONS;
+  }
 }

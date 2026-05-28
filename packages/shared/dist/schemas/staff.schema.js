@@ -7,6 +7,8 @@ const permissionsSchema = z.object({
     canViewReports: z.boolean(),
     canManageProducts: z.boolean(),
     canVerifyCustomers: z.boolean(),
+    canRecordExpense: z.boolean(),
+    canManageReturns: z.boolean(),
 });
 export const createStaffSchema = z.object({
     name: z.string().min(1).max(100),

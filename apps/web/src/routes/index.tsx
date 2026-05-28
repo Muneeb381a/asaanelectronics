@@ -26,6 +26,7 @@ import ReturnsPage from '../pages/ReturnsPage.tsx';
 import ExpensesPage from '../pages/ExpensesPage.tsx';
 import BillingPage from '../pages/BillingPage.tsx';
 import RecoveryPage from '../pages/RecoveryPage.tsx';
+import RecoveryAgentsPage from '../pages/RecoveryAgentsPage.tsx';
 import PortalLoginPage from '../pages/portal/PortalLoginPage.tsx';
 import PortalDashboardPage from '../pages/portal/PortalDashboardPage.tsx';
 
@@ -108,7 +109,8 @@ export const router = createBrowserRouter([
       { path: '/audit',          element: <AuditLogPage /> },
       { path: '/staff',          element: <StaffPage /> },
       { path: '/billing',        element: <BillingPage /> },
-      { path: '/recovery',       element: <RecoveryPage /> },
+      { path: '/recovery',        element: <RecoveryPage /> },
+      { path: '/recovery-agents', element: <RecoveryAgentsPage /> },
       { path: '/settings',       element: <SettingsPage /> },
       { path: '/verifications',  element: <VerificationQueuePage /> },
     ],
