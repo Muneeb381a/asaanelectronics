@@ -17,6 +17,7 @@ export interface BillData {
   cashPrice?: string | number | null;
   profitMarkup?: string | number | null;
   murabahaMode?: boolean;
+  paymentFrequency?: string | null;
 }
 
 function pkr(v: string | number) {
@@ -26,6 +27,12 @@ function pkr(v: string | number) {
 function addMonths(date: Date, n: number): Date {
   const d = new Date(date);
   d.setMonth(d.getMonth() + n);
+  return d;
+}
+
+function addDays(date: Date, n: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
   return d;
 }
 
@@ -39,17 +46,18 @@ const STATUS_UR: Record<string, string> = {
 };
 
 function buildSchedule(data: BillData): { month: number; due: string; amount: string; paid: boolean }[] {
-  const start    = new Date(data.startDate);
-  const monthly  = Number(data.monthly);
-  const total    = Number(data.totalAmount);
+  const start     = new Date(data.startDate);
+  const monthly   = Number(data.monthly);
+  const total     = Number(data.totalAmount);
   const remaining = Number(data.remaining);
-  const paid     = total - remaining;
-  const downPmt  = Number(data.downPayment);
+  const paid      = total - remaining;
+  const downPmt   = Number(data.downPayment);
+  const isDaily   = data.paymentFrequency === 'daily';
   const installsPaid = downPmt >= remaining ? data.months : Math.floor((paid - downPmt) / monthly);
 
   return Array.from({ length: data.months }, (_, i) => ({
     month:  i + 1,
-    due:    fmtDate(addMonths(start, i + 1)),
+    due:    fmtDate(isDaily ? addDays(start, i + 1) : addMonths(start, i + 1)),
     amount: pkr(monthly),
     paid:   i < installsPaid,
   }));
@@ -59,11 +67,14 @@ export async function openBill(data: BillData) {
   const invoiceNo  = data.invoiceNumber ?? `INV-${new Date().getFullYear()}-${data.installmentId.slice(0, 6).toUpperCase()}`;
   const printDate  = new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' });
   const startDate  = fmtDate(new Date(data.startDate));
-  const endDate    = fmtDate(addMonths(new Date(data.startDate), data.months));
+  const endDate    = fmtDate(isDaily
+    ? addDays(new Date(data.startDate), data.months)
+    : addMonths(new Date(data.startDate), data.months));
   const paid       = Number(data.totalAmount) - Number(data.remaining);
   const schedule   = buildSchedule(data);
 
-  const isMurabaha = data.murabahaMode && data.cashPrice != null && Number(data.cashPrice) > 0;
+  const isDaily    = data.paymentFrequency === 'daily';
+  const isMurabaha = (data.murabahaMode || isDaily) && data.cashPrice != null && Number(data.cashPrice) > 0;
   const markup     = isMurabaha ? Number(data.profitMarkup ?? 0) : 0;
   const markupPct  = isMurabaha && Number(data.cashPrice) > 0
     ? ((markup / Number(data.cashPrice)) * 100).toFixed(1) : null;
@@ -98,10 +109,10 @@ export async function openBill(data: BillData) {
     </tr>`).join('');
 
   const murabahaBox = isMurabaha ? `
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;margin-bottom:20px">
-      <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#166534;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
-        <span>Murabaha Breakdown</span>
-        <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:13px;direction:rtl;text-transform:none;letter-spacing:0">مرابحہ کی تفصیل</span>
+    <div style="background:${isDaily ? '#fff7ed' : '#f0fdf4'};border:1px solid ${isDaily ? '#fed7aa' : '#bbf7d0'};border-radius:8px;padding:14px 18px;margin-bottom:20px">
+      <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${isDaily ? '#9a3412' : '#166534'};margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+        <span>${isDaily ? 'Dukaan-Dar Breakdown' : 'Murabaha Breakdown'}</span>
+        <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:13px;direction:rtl;text-transform:none;letter-spacing:0">${isDaily ? 'دکاندار تفصیل' : 'مرابحہ کی تفصیل'}</span>
       </div>
       <table style="width:100%;font-size:12px;border-collapse:collapse">
         <tr>
@@ -110,10 +121,10 @@ export async function openBill(data: BillData) {
         </tr>
         <tr>
           <td style="padding:4px 0;color:#374151">Profit Markup${markupPct ? ` (${markupPct}%)` : ''} &nbsp;<span style="font-family:'Noto Nastaliq Urdu',serif;font-size:12px;color:#6b7280">منافع</span></td>
-          <td style="text-align:right;font-weight:600;color:#059669">+ ${pkr(markup)}</td>
+          <td style="text-align:right;font-weight:600;color:${isDaily ? '#c2410c' : '#059669'}">+ ${pkr(markup)}</td>
         </tr>
         <tr style="border-top:1px solid #bbf7d0">
-          <td style="padding:8px 0 4px;font-weight:700;color:#0f172a">Murabaha Total &nbsp;<span style="font-family:'Noto Nastaliq Urdu',serif;font-size:12px">مرابحہ قیمت</span></td>
+          <td style="padding:8px 0 4px;font-weight:700;color:#0f172a">${isDaily ? 'Total Price' : 'Murabaha Total'} &nbsp;<span style="font-family:'Noto Nastaliq Urdu',serif;font-size:12px">${isDaily ? 'کل قیمت' : 'مرابحہ قیمت'}</span></td>
           <td style="padding:8px 0 4px;text-align:right;font-weight:800;color:#0f172a;font-size:14px">${pkr(data.totalAmount)}</td>
         </tr>
       </table>
@@ -144,7 +155,7 @@ export async function openBill(data: BillData) {
   .inv-no{font-size:13px;font-weight:700;color:#fff;margin-top:4px;letter-spacing:.5px}
   .inv-date{font-size:11px;color:#64748b;margin-top:3px}
   .accent-bar{height:4px;background:linear-gradient(90deg,#f59e0b,#3b82f6,#f59e0b);margin:20px -40px 0}
-  ${isMurabaha ? '.murabaha-tag{display:inline-block;background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:6px;letter-spacing:.3px}' : ''}
+  ${isMurabaha || isDaily ? '.plan-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:6px;letter-spacing:.3px}' : ''}
 
   .body{padding:32px 40px;font-size:13px;color:#374151}
   .section{margin-bottom:24px}
@@ -223,7 +234,9 @@ export async function openBill(data: BillData) {
           ${data.shop.phone}<br/>
           ${data.shop.address ?? ''}
         </div>
-        ${isMurabaha ? '<div class="murabaha-tag">Murabaha · مرابحہ</div>' : ''}
+        ${isDaily
+          ? '<div class="plan-tag" style="background:#fed7aa;color:#9a3412">Dukaan-Dar Daily · روزانہ</div>'
+          : isMurabaha ? '<div class="plan-tag" style="background:#d1fae5;color:#065f46">Murabaha · مرابحہ</div>' : ''}
       </div>
       <div class="inv-badge">
         <h2>INVOICE<span class="ur-title ur">اقساط نامہ</span></h2>
@@ -278,8 +291,8 @@ export async function openBill(data: BillData) {
         <div class="info-box">
           <label>Duration</label>
           <span class="ur-label">مدت</span>
-          <p>${data.months} months <span class="ur" style="font-size:11px;color:#64748b">${data.months} ماہ</span></p>
-          <small>${pkr(data.monthly)} / month <span class="ur" style="font-size:10px">ماہانہ</span></small>
+          <p>${data.months} ${isDaily ? 'days' : 'months'} <span class="ur" style="font-size:11px;color:#64748b">${data.months} ${isDaily ? 'دن' : 'ماہ'}</span></p>
+          <small>${pkr(data.monthly)} / ${isDaily ? 'day' : 'month'} <span class="ur" style="font-size:10px">${isDaily ? 'روزانہ' : 'ماہانہ'}</span></small>
         </div>
       </div>
     </div>
@@ -303,8 +316,8 @@ export async function openBill(data: BillData) {
           <span>${pkr(data.downPayment)}</span>
         </div>
         <div class="total-row">
-          <span><span class="ur-lbl">ماہانہ × ${data.months}</span>Monthly × ${data.months}</span>
-          <span>${pkr(data.monthly)} / mo</span>
+          <span><span class="ur-lbl">${isDaily ? 'روزانہ' : 'ماہانہ'} × ${data.months}</span>${isDaily ? 'Daily' : 'Monthly'} × ${data.months}</span>
+          <span>${pkr(data.monthly)} / ${isDaily ? 'day' : 'mo'}</span>
         </div>
         <div class="total-row paid-row">
           <span><span class="ur-lbl">ادا شدہ</span>Total Paid</span>
@@ -324,8 +337,8 @@ export async function openBill(data: BillData) {
     <!-- PAYMENT SCHEDULE -->
     <div class="section">
       <div class="section-title">
-        Monthly Payment Schedule
-        <span class="sec-ur">ماہانہ ادائیگی کا شیڈول</span>
+        ${isDaily ? 'Daily Payment Schedule' : 'Monthly Payment Schedule'}
+        <span class="sec-ur">${isDaily ? 'روزانہ ادائیگی کا شیڈول' : 'ماہانہ ادائیگی کا شیڈول'}</span>
         <span></span>
       </div>
       <div class="sched-scroll">
@@ -348,28 +361,32 @@ export async function openBill(data: BillData) {
       <div class="legal-en">
         <div class="legal-title">Terms &amp; Conditions</div>
         <ol>
-          <li>The customer <strong>${data.customer.name}</strong> agrees to pay <strong>${pkr(data.monthly)}</strong> on or before the due date each month without delay.</li>
+          <li>The customer <strong>${data.customer.name}</strong> agrees to pay <strong>${pkr(data.monthly)}</strong> on or before the due date each ${isDaily ? 'day' : 'month'} without delay.</li>
           <li>The product <strong>"${data.product}"</strong> remains the sole property of <strong>${data.shop.shopName}</strong> until all installments are fully paid.</li>
           ${data.imeiNumber ? `<li>IMEI <strong>${data.imeiNumber}</strong> is registered against this agreement. The product cannot be sold or transferred while installments are outstanding.</li>` : ''}
           <li>Default exceeding 30 days may trigger legal recovery. All guarantors are jointly liable for the outstanding balance of <strong>${pkr(data.remaining)}</strong>.</li>
           <li>Any damage, loss, or theft of the product while installments are pending is the sole responsibility of the buyer.</li>
-          ${isMurabaha
-            ? `<li>This agreement is structured as <strong>Murabaha</strong> — the seller purchased the product at <strong>${pkr(data.cashPrice!)}</strong> and disclosed a profit of <strong>${pkr(markup)}</strong>, making the total price <strong>${pkr(data.totalAmount)}</strong>. No hidden interest is charged.</li>`
-            : '<li>Early settlement is permitted at any time; any markup adjustment is at the discretion of <strong>' + data.shop.shopName + '</strong>.</li>'}
+          ${isDaily
+            ? `<li>This is a <strong>Dukaan-Dar Daily Plan</strong> — cost price <strong>${pkr(data.cashPrice!)}</strong> with 25% profit markup of <strong>${pkr(markup)}</strong>, total <strong>${pkr(data.totalAmount)}</strong>. The customer pays <strong>${pkr(data.monthly)} daily</strong> for ${data.months} days.</li>`
+            : isMurabaha
+              ? `<li>This agreement is structured as <strong>Murabaha</strong> — the seller purchased the product at <strong>${pkr(data.cashPrice!)}</strong> and disclosed a profit of <strong>${pkr(markup)}</strong>, making the total price <strong>${pkr(data.totalAmount)}</strong>. No hidden interest is charged.</li>`
+              : `<li>Early settlement is permitted at any time; any markup adjustment is at the discretion of <strong>${data.shop.shopName}</strong>.</li>`}
           <li>This invoice (<strong>${invoiceNo}</strong>) is a legally binding document. Scan the QR code to verify authenticity.</li>
         </ol>
       </div>
       <div class="legal-ur">
         <div class="legal-ur-title">قواعد و شرائط</div>
         <ol>
-          <li>گاہک <strong>${data.customer.name}</strong> اس بات کے پابند ہیں کہ وہ ہر ماہ مقررہ تاریخ پر <strong>${pkr(data.monthly)}</strong> ادا کریں گے۔</li>
+          <li>گاہک <strong>${data.customer.name}</strong> اس بات کے پابند ہیں کہ وہ ${isDaily ? 'ہر روز' : 'ہر ماہ مقررہ تاریخ پر'} <strong>${pkr(data.monthly)}</strong> ادا کریں گے۔</li>
           <li>مصنوعہ "<strong>${data.product}</strong>" <strong>${data.shop.shopName}</strong> کی ملکیت رہے گا جب تک تمام اقساط ادا نہ ہو جائیں۔</li>
           ${data.imeiNumber ? `<li>آئی ایم ای آئی <strong>${data.imeiNumber}</strong> اس معاہدے سے منسلک ہے۔ اقساط کی ادائیگی مکمل ہونے سے پہلے مصنوعہ فروخت یا منتقل نہیں کیا جا سکتا۔</li>` : ''}
           <li>30 دن کی تاخیر کی صورت میں قانونی کارروائی کی جا سکتی ہے۔ تمام ضامن باقی رقم <strong>${pkr(data.remaining)}</strong> کے مشترکہ طور پر ذمہ دار ہوں گے۔</li>
           <li>اقساط کی ادائیگی کے دوران مصنوعہ کا نقصان، ٹوٹ پھوٹ یا چوری خریدار کی ذمہ داری ہے۔</li>
-          ${isMurabaha
-            ? `<li>یہ معاہدہ <strong>مرابحہ</strong> کی بنیاد پر ہے — بیچنے والے نے مصنوعہ <strong>${pkr(data.cashPrice!)}</strong> میں خریدا اور <strong>${pkr(markup)}</strong> منافع ظاہر کر کے کل قیمت <strong>${pkr(data.totalAmount)}</strong> مقرر کی۔ کوئی چھپا ہوا سود نہیں لیا جاتا۔</li>`
-            : `<li>وقت سے پہلے مکمل ادائیگی جائز ہے۔ منافع کی واپسی <strong>${data.shop.shopName}</strong> کی صوابدید پر ہے۔</li>`}
+          ${isDaily
+            ? `<li>یہ <strong>دکاندار روزانہ پلان</strong> ہے — لاگت <strong>${pkr(data.cashPrice!)}</strong>، منافع <strong>${pkr(markup)}</strong> (25%)، کل قیمت <strong>${pkr(data.totalAmount)}</strong>۔ گاہک ${data.months} دن تک روزانہ <strong>${pkr(data.monthly)}</strong> ادا کریں گے۔</li>`
+            : isMurabaha
+              ? `<li>یہ معاہدہ <strong>مرابحہ</strong> کی بنیاد پر ہے — بیچنے والے نے مصنوعہ <strong>${pkr(data.cashPrice!)}</strong> میں خریدا اور <strong>${pkr(markup)}</strong> منافع ظاہر کر کے کل قیمت <strong>${pkr(data.totalAmount)}</strong> مقرر کی۔ کوئی چھپا ہوا سود نہیں لیا جاتا۔</li>`
+              : `<li>وقت سے پہلے مکمل ادائیگی جائز ہے۔ منافع کی واپسی <strong>${data.shop.shopName}</strong> کی صوابدید پر ہے۔</li>`}
           <li>یہ دستاویز (<strong>${invoiceNo}</strong>) ایک قانونی مالیاتی معاہدہ ہے۔ صداقت کی تصدیق کے لیے QR کوڈ اسکین کریں۔</li>
         </ol>
       </div>

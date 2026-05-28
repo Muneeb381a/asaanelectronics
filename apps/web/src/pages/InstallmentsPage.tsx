@@ -580,6 +580,7 @@ export default function InstallmentsPage() {
                             cashPrice: inst.cashPrice,
                             profitMarkup: inst.profitMarkup,
                             murabahaMode: shopData.murabahaMode,
+                            paymentFrequency: inst.paymentFrequency,
                           })}
                           title="Bill"
                           className="p-1 text-gray-400 hover:text-indigo-600 transition rounded">
