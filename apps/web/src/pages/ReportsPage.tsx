@@ -163,7 +163,7 @@ export default function ReportsPage() {
   const totalOverdue = agingBuckets.days1_30 + agingBuckets.days31_60 + agingBuckets.days60plus;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="px-4 py-5 sm:p-6 max-w-7xl mx-auto space-y-6">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -312,7 +312,7 @@ export default function ReportsPage() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                      <p className="text-sm font-medium text-gray-800 truncate" title={p.name}>{p.name}</p>
                       <span className="text-xs text-gray-400 shrink-0 ml-2">{p.count} plans</span>
                     </div>
                     <HBar value={p.count} max={maxProduct} color="bg-blue-500" />
@@ -341,7 +341,7 @@ export default function ReportsPage() {
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{d.name}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate" title={d.name}>{d.name}</p>
                   <p className="text-xs text-gray-400">{d.phone} · {d.count} active plan{d.count !== 1 ? 's' : ''}</p>
                 </div>
                 <div className="text-right shrink-0">

@@ -349,7 +349,7 @@ export default function VerificationQueuePage() {
   const done    = queue.filter((c) => c.verificationStatus !== 'UNDER_REVIEW');
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="px-4 py-5 sm:p-6 max-w-2xl mx-auto">
 
       {/* Header */}
       <div className="mb-5 flex items-start justify-between">

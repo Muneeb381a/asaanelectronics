@@ -50,7 +50,7 @@ function Field({ label, optional, error, children }: {
   return (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">
-        {label}{optional && <span className="text-gray-400 font-normal"> (optional)</span>}
+        {label}{optional ? <span className="text-gray-400 font-normal"> (optional)</span> : <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   PhoneCall, MapPin, HandCoins, XCircle, AlertOctagon,
-  Plus, Trash2, Loader2, ChevronRight, Clock, LayoutList, Map as MapIcon,
+  Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Clock, LayoutList, Map as MapIcon,
 } from 'lucide-react';
 import { installmentsApi, type Installment } from '../api/installments.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -107,6 +107,7 @@ function LogModal({ installmentId, onClose }: { installmentId: string; onClose: 
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
+              autoFocus
               placeholder="Any additional details…"
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -318,16 +319,16 @@ export default function RecoveryPage() {
   const areaGroups   = groupByArea(sortList(filtered, sortBy));
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Page header */}
-      <div className="px-8 py-6 border-b border-gray-100 bg-white">
+      <div className="px-4 py-4 sm:px-8 sm:py-6 border-b border-gray-100 bg-white">
         <h1 className="text-xl font-bold text-gray-900">Recovery Management</h1>
         <p className="text-sm text-gray-500 mt-0.5">Track follow-up actions on active installments</p>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left — installment list */}
-        <aside className="w-80 border-r border-gray-100 bg-white flex flex-col shrink-0">
+        {/* Left — installment list (hidden on mobile when an item is selected) */}
+        <aside className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-gray-100 bg-white flex-col shrink-0`}>
           <div className="p-4 border-b border-gray-100 space-y-2">
             <input
               type="text"
@@ -430,10 +431,24 @@ export default function RecoveryPage() {
           </div>
         </aside>
 
-        {/* Right — recovery panel */}
-        <main className="flex-1 overflow-hidden bg-white">
+        {/* Right — recovery panel (full screen on mobile when selected) */}
+        <main className={`${selected ? 'flex' : 'hidden md:flex'} flex-1 overflow-hidden bg-white flex-col`}>
           {selected ? (
-            <RecoveryPanel key={selected.id} inst={selected} />
+            <>
+              {/* Mobile back button */}
+              <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
+                <button
+                  onClick={() => setSelected(null)}
+                  className="flex items-center gap-1.5 text-sm text-blue-600 font-medium"
+                >
+                  <ChevronLeft size={16} />
+                  Back to list
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <RecoveryPanel key={selected.id} inst={selected} />
+              </div>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
               <PhoneCall size={40} className="opacity-25" />

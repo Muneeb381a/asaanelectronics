@@ -205,7 +205,7 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan }: 
           <button
             onClick={onChangePlan}
             title="Change plan"
-            className="p-1.5 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
+            className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
             <CreditCard size={14} />
           </button>
           <button
@@ -216,7 +216,7 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan }: 
           </button>
           {!shop.ownerName && (
             <button onClick={onDelete}
-              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+              className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
               <Trash2 size={14} />
             </button>
           )}
@@ -315,7 +315,7 @@ export default function ShopsPage() {
   const proCount = shops?.filter((s) => s.plan === 'PRO').length ?? 0;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="px-4 py-5 sm:p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
-  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search,
+  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -28,7 +28,9 @@ export default function DashboardLayout() {
   const [showProfile,  setShowProfile]  = useState(false);
   const [showBell,     setShowBell]     = useState(false);
   const [searchOpen,   setSearchOpen]   = useState(false);
-  const bellRef = useRef<HTMLDivElement>(null);
+  const [mobileOpen,   setMobileOpen]   = useState(false);
+  const bellRef       = useRef<HTMLDivElement>(null);
+  const mobileBellRef = useRef<HTMLDivElement>(null);
 
   useQuery({
     queryKey: ['profile-perms'],
@@ -48,14 +50,16 @@ export default function DashboardLayout() {
     enabled: isOwner || !!perms?.canViewReports,
   });
 
-  const overdueCount   = stats?.overdueCount ?? 0;
-  const lowStockItems  = stats?.lowStockItems ?? [];
-  const promisesDue    = stats?.promisesDueCount ?? 0;
-  const totalAlerts    = overdueCount + lowStockItems.length + promisesDue;
+  const overdueCount  = stats?.overdueCount ?? 0;
+  const lowStockItems = stats?.lowStockItems ?? [];
+  const promisesDue   = stats?.promisesDueCount ?? 0;
+  const totalAlerts   = overdueCount + lowStockItems.length + promisesDue;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setShowBell(false);
+      const inDesktop = bellRef.current?.contains(e.target as Node);
+      const inMobile  = mobileBellRef.current?.contains(e.target as Node);
+      if (!inDesktop && !inMobile) setShowBell(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -67,10 +71,19 @@ export default function DashboardLayout() {
         e.preventDefault();
         setSearchOpen((v) => !v);
       }
+      if (e.key === 'Escape') {
+        setMobileOpen(false);
+        setShowBell(false);
+      }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
 
   const { mutate: logout } = useMutation({
     mutationFn: () => authApi.logout(localStorage.getItem('refresh_token') ?? ''),
@@ -79,9 +92,85 @@ export default function DashboardLayout() {
 
   const initials = user?.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() ?? '?';
 
+  const navItems = [
+    ...(isOwner
+      ? allNavItems
+      : allNavItems.filter(({ perm }) => !!perms?.[perm as keyof typeof perms])
+    ),
+    ...(isOwner
+      ? [
+          { to: '/expenses',  label: 'Expenses',   icon: Receipt,     end: undefined },
+          { to: '/returns',   label: 'Returns',    icon: RotateCcw,   end: undefined },
+          { to: '/recovery',  label: 'Recovery',   icon: PhoneCall,   end: undefined },
+          { to: '/ledger',    label: 'Accounting', icon: BookOpen,    end: undefined },
+          { to: '/audit',     label: 'Audit Log',  icon: ShieldCheck, end: undefined },
+          { to: '/staff',     label: 'Staff',      icon: UserCog,     end: undefined },
+          { to: '/billing',   label: 'Billing',    icon: Wallet,      end: undefined },
+          { to: '/settings',  label: 'Settings',   icon: Settings,    end: undefined },
+        ]
+      : perms?.canVerifyCustomers
+        ? [{ to: '/verifications', label: 'Verifications', icon: ClipboardCheck, end: undefined }]
+        : []
+    ),
+  ];
+
+  const bellDropdownContent = (
+    <div className="max-h-64 overflow-y-auto">
+      {totalAlerts === 0 && (
+        <p className="text-xs text-gray-400 text-center py-5">No alerts right now</p>
+      )}
+      {overdueCount > 0 && (
+        <button
+          onClick={() => { navigate('/installments?status=ACTIVE'); setShowBell(false); }}
+          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-red-50 transition text-left border-b border-gray-50"
+        >
+          <AlertTriangle size={14} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{overdueCount} overdue installment{overdueCount !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400">Requires follow-up</p>
+          </div>
+        </button>
+      )}
+      {promisesDue > 0 && (
+        <button
+          onClick={() => { navigate('/installments'); setShowBell(false); }}
+          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-orange-50 transition text-left border-b border-gray-50"
+        >
+          <AlertTriangle size={14} className="text-orange-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{promisesDue} promise{promisesDue !== 1 ? 's' : ''} due</p>
+            <p className="text-xs text-gray-400">Customers promised to pay today</p>
+          </div>
+        </button>
+      )}
+      {lowStockItems.map((p) => (
+        <button
+          key={p.id}
+          onClick={() => { navigate('/products'); setShowBell(false); }}
+          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-amber-50 transition text-left border-b border-gray-50 last:border-0"
+        >
+          <Package size={14} className="text-amber-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{p.name}</p>
+            <p className="text-xs text-gray-400">{p.stock === 0 ? 'Out of stock' : `Only ${p.stock} left`}</p>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <aside className="w-60 bg-white border-r border-gray-100 flex flex-col shadow-sm">
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — fixed overlay on mobile, static on desktop */}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-60 bg-white border-r border-gray-100 flex flex-col shadow-sm transition-transform duration-300 ease-in-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         {/* Brand */}
         <div className="px-5 py-5 border-b border-gray-100">
           <p className="font-bold text-gray-900 tracking-tight">Assaan Electronics</p>
@@ -89,29 +178,10 @@ export default function DashboardLayout() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-0.5">
-          {[
-            ...(isOwner
-              ? allNavItems
-              : allNavItems.filter(({ perm }) => !!perms?.[perm as keyof typeof perms])
-            ),
-            ...(isOwner
-              ? [
-                  { to: '/expenses',  label: 'Expenses',   icon: Receipt,     end: undefined },
-                  { to: '/returns',   label: 'Returns',    icon: RotateCcw,   end: undefined },
-                  { to: '/recovery',  label: 'Recovery',   icon: PhoneCall,   end: undefined },
-                  { to: '/ledger',    label: 'Accounting', icon: BookOpen,    end: undefined },
-                  { to: '/audit',     label: 'Audit Log',  icon: ShieldCheck, end: undefined },
-                  { to: '/staff',     label: 'Staff',      icon: UserCog,     end: undefined },
-                  { to: '/billing',   label: 'Billing',    icon: Wallet,      end: undefined },
-                  { to: '/settings',  label: 'Settings',   icon: Settings,    end: undefined },
-                ]
-              : perms?.canVerifyCustomers
-                ? [{ to: '/verifications', label: 'Verifications', icon: ClipboardCheck, end: undefined }]
-                : []
-            ),
-          ].map(({ to, label, icon: Icon, end }) => (
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end}
+              onClick={() => setMobileOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
@@ -133,7 +203,7 @@ export default function DashboardLayout() {
         {isOwner && (
           <div className="px-3 pb-1">
             <button
-              onClick={() => setSearchOpen(true)}
+              onClick={() => { setSearchOpen(true); setMobileOpen(false); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-indigo-50 border border-gray-100 hover:border-indigo-200 transition group text-left"
             >
               <Search size={15} className="text-gray-400 group-hover:text-indigo-500 transition shrink-0" />
@@ -143,8 +213,8 @@ export default function DashboardLayout() {
           </div>
         )}
 
-        {/* Notification bell */}
-        <div className="px-3 pb-1 relative" ref={bellRef}>
+        {/* Notification bell — desktop sidebar only */}
+        <div className="px-3 pb-1 relative hidden lg:block" ref={bellRef}>
           <button
             onClick={() => setShowBell((v) => !v)}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition text-left"
@@ -167,57 +237,14 @@ export default function DashboardLayout() {
                   {totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}
                 </p>
               </div>
-              <div className="max-h-64 overflow-y-auto">
-                {totalAlerts === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-5">No alerts right now</p>
-                )}
-                {overdueCount > 0 && (
-                  <button
-                    onClick={() => { navigate('/installments?status=ACTIVE'); setShowBell(false); }}
-                    className="w-full flex items-start gap-3 px-4 py-3 hover:bg-red-50 transition text-left border-b border-gray-50"
-                  >
-                    <AlertTriangle size={14} className="text-red-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{overdueCount} overdue installment{overdueCount !== 1 ? 's' : ''}</p>
-                      <p className="text-xs text-gray-400">Requires follow-up</p>
-                    </div>
-                  </button>
-                )}
-                {promisesDue > 0 && (
-                  <button
-                    onClick={() => { navigate('/installments'); setShowBell(false); }}
-                    className="w-full flex items-start gap-3 px-4 py-3 hover:bg-orange-50 transition text-left border-b border-gray-50"
-                  >
-                    <AlertTriangle size={14} className="text-orange-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{promisesDue} promise{promisesDue !== 1 ? 's' : ''} due</p>
-                      <p className="text-xs text-gray-400">Customers promised to pay today</p>
-                    </div>
-                  </button>
-                )}
-                {lowStockItems.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => { navigate('/products'); setShowBell(false); }}
-                    className="w-full flex items-start gap-3 px-4 py-3 hover:bg-amber-50 transition text-left border-b border-gray-50 last:border-0"
-                  >
-                    <Package size={14} className="text-amber-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                      <p className="text-xs text-gray-400">
-                        {p.stock === 0 ? 'Out of stock' : `Only ${p.stock} left`}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {bellDropdownContent}
             </div>
           )}
         </div>
 
         {/* User section */}
         <div className="p-3 border-t border-gray-100 space-y-1">
-          <button onClick={() => setShowProfile(true)}
+          <button onClick={() => { setShowProfile(true); setMobileOpen(false); }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition group text-left">
             <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
               {initials}
@@ -236,9 +263,51 @@ export default function DashboardLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
-        <Outlet />
-      </main>
+      {/* Content wrapper */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile top bar */}
+        <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm flex items-center gap-3 px-4 h-14 shrink-0">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-2 rounded-xl hover:bg-gray-100 transition"
+            aria-label="Open menu"
+          >
+            <Menu size={20} className="text-gray-600" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm tracking-tight">Assaan Electronics</p>
+          </div>
+          {/* Bell — mobile header */}
+          <div className="relative" ref={mobileBellRef}>
+            <button
+              onClick={() => setShowBell((v) => !v)}
+              className="p-2 rounded-xl hover:bg-gray-100 transition relative"
+              aria-label="Notifications"
+            >
+              <Bell size={18} className="text-gray-600" />
+              {totalAlerts > 0 && (
+                <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 rounded-full text-white text-[8px] font-bold flex items-center justify-center">
+                  {totalAlerts > 9 ? '9+' : totalAlerts}
+                </span>
+              )}
+            </button>
+            {showBell && (
+              <div className="absolute right-0 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-xs font-semibold text-gray-700">
+                    {totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+                {bellDropdownContent}
+              </div>
+            )}
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
 
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />

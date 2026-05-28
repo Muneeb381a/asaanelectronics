@@ -59,7 +59,7 @@ export default function BillingPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-4">
+      <div className="px-4 py-5 sm:p-6 max-w-3xl mx-auto space-y-4">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="h-32 bg-white border border-gray-100 rounded-2xl animate-pulse" />
         ))}
@@ -84,7 +84,7 @@ export default function BillingPage() {
     : 'Active';
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="px-4 py-5 sm:p-6 max-w-3xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-900">Billing & Usage</h1>
         <p className="text-sm text-gray-400 mt-0.5">Your plan details and resource usage</p>

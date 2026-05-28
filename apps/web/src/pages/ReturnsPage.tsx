@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   RotateCcw, Plus, X, CheckCircle, XCircle, Clock, PackageCheck,
-  AlertTriangle, RefreshCw, ShieldCheck,
+  AlertTriangle, RefreshCw, ShieldCheck, Loader2,
 } from 'lucide-react';
 import { returnsApi, type Return, type ReturnType, type ReturnReason, type ReturnCondition, type ResolutionType } from '../api/returns.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -210,7 +210,7 @@ function CreateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
           </button>
           <button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}
             className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition disabled:opacity-50">
-            {mutation.isPending ? 'Submitting…' : 'Submit Request'}
+            {mutation.isPending ? <><Loader2 size={14} className='animate-spin' /> Submitting…</> : 'Submit Request'}
           </button>
         </div>
       </div>
@@ -337,7 +337,7 @@ function ResolveModal({ ret, onClose, onSuccess }: { ret: Return; onClose: () =>
           </button>
           <button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}
             className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition disabled:opacity-50">
-            {mutation.isPending ? 'Saving…' : 'Confirm'}
+            {mutation.isPending ? <><Loader2 size={14} className='animate-spin' /> Saving…</> : 'Confirm'}
           </button>
         </div>
       </div>
@@ -431,7 +431,7 @@ export default function ReturnsPage() {
   const pendingCount = rows.filter((r) => r.status === 'PENDING').length;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="px-4 py-5 sm:p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
@@ -344,7 +344,21 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   const [showPrint, setShowPrint] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
   const [activeTab, setActiveTab] = useState<'history' | 'notes'>('history');
+  const [visible, setVisible] = useState(false);
   const isOwnerInDrawer = useAuthStore((s) => s.user)?.role === 'SELLER_OWNER';
+
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') handleClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  });
+
+  function handleClose() {
+    setVisible(false);
+    setTimeout(onClose, 280);
+  }
   const { data, isLoading } = useQuery({
     queryKey: ['customer-installments', customer.id],
     queryFn: () => installmentsApi.list({ customerId: customer.id, limit: 100 }),
@@ -364,8 +378,8 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   return (
     <>
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-xl bg-white h-full flex flex-col shadow-2xl overflow-hidden">
+      <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
+      <div className={`relative w-full max-w-xl bg-white h-full flex flex-col shadow-2xl overflow-hidden transition-transform duration-300 ease-out ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -400,7 +414,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               <Printer size={13} />
               Agreement
             </button>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition">
+            <button onClick={handleClose} className="p-1.5 text-gray-400 hover:text-gray-700 transition rounded-lg hover:bg-gray-100">
               <X size={18} />
             </button>
           </div>
@@ -511,7 +525,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                   <div key={inst.id} className="bg-white border border-gray-100 rounded-2xl p-4 hover:border-gray-200 transition">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="min-w-0">
-                        <p className="font-semibold text-sm text-gray-900 truncate">{inst.productName}</p>
+                        <p className="font-semibold text-sm text-gray-900 truncate" title={inst.productName}>{inst.productName}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           Started {new Date(inst.startDate).toLocaleDateString('en-PK', { month: 'short', year: 'numeric' })}
                           {' · '}{inst.months} months
@@ -621,14 +635,20 @@ export default function CustomersPage() {
   const [search,    setSearch]    = useState('');
   const [lifecycle, setLifecycle] = useState('');
   const [verifFilter, setVerifFilter] = useState('');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
 
+  useEffect(() => { setPage(1); }, [debouncedSearch, lifecycle, verifFilter]);
+
+  const LIMIT = 20;
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['customers', debouncedSearch, lifecycle, verifFilter],
+    queryKey: ['customers', debouncedSearch, lifecycle, verifFilter, page],
     queryFn: () => customersApi.list({
       search: debouncedSearch || undefined,
       lifecycle: lifecycle || undefined,
       verificationStatus: verifFilter || undefined,
+      page,
+      limit: LIMIT,
     }),
   });
 
@@ -676,7 +696,7 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="px-4 py-5 sm:p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Customers</h1>
@@ -725,7 +745,7 @@ export default function CustomersPage() {
         onSelect={(s) => { setLifecycle(s); }}
       />
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
         {isLoading ? (
           <TableSkeleton rows={5} cols={5} />
         ) : isError ? (
@@ -742,8 +762,9 @@ export default function CustomersPage() {
             }
           />
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">CNIC</th>
@@ -797,15 +818,42 @@ export default function CustomersPage() {
                       className="text-blue-600 hover:underline mr-3 text-xs">Edit</button>
                     {isOwner && (
                       <button onClick={() => handleDelete(c.id)} disabled={deleteMutation.isPending}
-                        className="text-red-500 hover:underline disabled:opacity-40 text-xs">Delete</button>
+                        className="px-2.5 py-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs transition disabled:opacity-40">Delete</button>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {data && data.total > LIMIT && (
+        <div className="flex items-center justify-between mt-4 text-sm">
+          <p className="text-gray-400 text-xs">
+            {((page - 1) * LIMIT) + 1}–{Math.min(page * LIMIT, data.total)} of {data.total}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+            >
+              Previous
+            </button>
+            <span className="text-gray-500 text-xs">Page {page} of {Math.ceil(data.total / LIMIT)}</span>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page * LIMIT >= data.total}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit / Add modal */}
       {modal && (

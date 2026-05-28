@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import {
   Wallet, TrendingUp, TrendingDown, BookOpen, Calendar, BarChart3,
   Plus, Trash2, ArrowUpCircle, ArrowDownCircle, X,
-  ShieldCheck, AlertTriangle, CheckCircle2, RefreshCw, Clock,
+  ShieldCheck, AlertTriangle, CheckCircle2, RefreshCw, Clock, Loader2,
 } from 'lucide-react';
 import { ledgerApi } from '../api/ledger.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -127,7 +127,7 @@ function CashBookTab() {
       {isLoading ? <RowSkeleton rows={3} /> : isError ? <LedgerError /> : entries.length === 0 ? (
         <EmptyState message="No transactions in this period" />
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wide">
@@ -194,7 +194,7 @@ function DailyTab() {
           {data.entries.length === 0 ? (
             <EmptyState message="No transactions on this date" />
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wide">
@@ -269,7 +269,7 @@ function PLTab() {
 
           {/* Monthly breakdown */}
           {data.monthly.length > 0 && (
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
               <div className="px-5 py-3 border-b border-gray-100">
                 <p className="text-sm font-semibold text-gray-900">Monthly Breakdown</p>
               </div>
@@ -425,7 +425,7 @@ function ExpensesTab() {
             <div>
               <label className="block text-xs text-gray-500 mb-1">Amount (PKR)</label>
               <input
-                type="number" min="1" placeholder="e.g. 5000"
+                type="number" min="1" placeholder="e.g. 5000" autoFocus
                 value={form.amount}
                 onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -458,7 +458,7 @@ function ExpensesTab() {
               disabled={!form.amount || Number(form.amount) <= 0 || createMutation.isPending}
               className="px-5 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
             >
-              {createMutation.isPending ? 'Saving…' : 'Save Expense'}
+              {createMutation.isPending ? <><Loader2 size={14} className='animate-spin' /> Saving…</> : 'Save Expense'}
             </button>
           </div>
         </div>
@@ -467,7 +467,7 @@ function ExpensesTab() {
       {isLoading ? <RowSkeleton rows={3} /> : isError ? <LedgerError /> : expenses.length === 0 ? (
         <EmptyState message="No expenses in this period" />
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wide">
@@ -493,7 +493,7 @@ function ExpensesTab() {
                     <button
                       onClick={() => { if (confirm('Delete this expense?')) deleteMutation.mutate(e.id); }}
                       disabled={deleteMutation.isPending}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -581,6 +581,7 @@ function JournalTab() {
                   <span className="text-xs text-gray-400">{new Date(je.postedAt).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                 </div>
               </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-gray-400 text-left">
@@ -599,6 +600,7 @@ function JournalTab() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           ))}
           {pages > 1 && (
@@ -650,7 +652,7 @@ function AccountsTab() {
 
       {/* Account groups */}
       {typeOrder.filter((t) => groups[t]?.length).map((type) => (
-        <div key={type} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div key={type} className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
           <div className="px-5 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">{typeLabel[type]}</p>
           </div>
@@ -812,7 +814,7 @@ function ReconcileTab() {
 
       {/* ── History ── */}
       {history.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
           <div className="px-5 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">Run History</p>
           </div>
@@ -871,7 +873,7 @@ export default function LedgerPage() {
   const [tab, setTab] = useState<Tab>('balance');
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="px-4 py-5 sm:p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-900">Accounting</h1>

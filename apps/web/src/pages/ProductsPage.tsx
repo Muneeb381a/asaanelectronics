@@ -278,7 +278,7 @@ export default function ProductsPage() {
   const criticalSlow   = intelligence?.slowMoving.filter((s) => s.severity === 'CRITICAL').length ?? 0;
 
   return (
-    <div className="p-6">
+    <div className="px-4 py-5 sm:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -334,7 +334,7 @@ export default function ProductsPage() {
               className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" />
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
             {isLoading ? <TableSkeleton rows={5} cols={5} />
               : isError ? <div className="p-8 text-center text-sm text-red-500">Failed to load products.</div>
               : !data?.data.length ? (
@@ -346,8 +346,9 @@ export default function ProductsPage() {
                     </button>
                   } />
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-600">Serial</th>
@@ -385,11 +386,11 @@ export default function ProductsPage() {
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button onClick={() => setModal({ mode: 'edit', product: p })} title="Edit"
-                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                               <Pencil size={14} />
                             </button>
                             <button onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending} title="Delete"
-                              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
+                              className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
                               <Trash2 size={14} />
                             </button>
                           </div>
@@ -398,6 +399,7 @@ export default function ProductsPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
           </div>
         </>

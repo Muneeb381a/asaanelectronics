@@ -297,7 +297,7 @@ function SessionsSection() {
                 onClick={() => { if (confirm('Revoke this session? That device will be signed out.')) revokeMutation.mutate(session.id); }}
                 disabled={revokeMutation.isPending}
                 title="Revoke this session"
-                className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 shrink-0"
+                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 shrink-0"
               >
                 <Trash2 size={14} />
               </button>
@@ -346,7 +346,7 @@ export default function SettingsPage() {
   const dirty = shop && (shopName !== shop.shopName || phone !== shop.phone || address !== (shop.address ?? ''));
 
   return (
-    <div className="p-6 max-w-lg">
+    <div className="px-4 py-5 sm:p-6 max-w-lg">
       <h1 className="text-xl font-semibold text-gray-900 mb-1">Settings</h1>
       <p className="text-sm text-gray-400 mb-6">Shop info and security</p>
 

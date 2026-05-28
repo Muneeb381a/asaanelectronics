@@ -86,6 +86,7 @@ function parseDevice(ua: string | null): { label: string; mobile: boolean } {
 function DiffTable({ before, after }: { before: Record<string, unknown>; after: Record<string, unknown> }) {
   const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
   return (
+    <div className="overflow-x-auto">
     <table className="w-full text-xs mt-2 border-collapse">
       <thead>
         <tr className="text-gray-400 text-left">
@@ -104,6 +105,7 @@ function DiffTable({ before, after }: { before: Record<string, unknown>; after: 
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
 
@@ -219,7 +221,7 @@ export default function AuditLogPage() {
   function resetPage() { setPage(1); }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="px-4 py-5 sm:p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>

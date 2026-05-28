@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, Trash2, MoreVertical, CreditCard } from 'lucide-react';
+import { FileText, MessageCircle, Download, Trash2, MoreVertical, CreditCard, Loader2 } from 'lucide-react';
 import { TableSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
 import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
@@ -217,7 +217,7 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
                 onClick={() => mutation.mutate()}
                 disabled={amountInvalid || mutation.isPending}
                 className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50">
-                {mutation.isPending ? 'Recording…' : 'Record Payment'}
+                {mutation.isPending ? <><Loader2 size={14} className='animate-spin' /> Recording…</> : 'Record Payment'}
               </button>
             </div>
           </div>
@@ -355,7 +355,7 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
             onClick={() => mutation.mutate()}
             disabled={!isValid || mutation.isPending}
             className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50">
-            {mutation.isPending ? 'Saving…' : 'Confirm Reschedule'}
+            {mutation.isPending ? <><Loader2 size={14} className='animate-spin' /> Saving…</> : 'Confirm Reschedule'}
           </button>
         </div>
       </div>
@@ -427,7 +427,7 @@ export default function InstallmentsPage() {
   });
 
   return (
-    <div className="p-6">
+    <div className="px-4 py-5 sm:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -587,7 +587,7 @@ export default function InstallmentsPage() {
                             paymentFrequency: inst.paymentFrequency,
                           })}
                           title="Bill"
-                          className="p-1 text-gray-400 hover:text-indigo-600 transition rounded">
+                          className="p-2 text-gray-400 hover:text-indigo-600 transition rounded">
                           <FileText size={14} />
                         </button>
                         {inst.status === 'ACTIVE' && shopData && (
@@ -604,7 +604,7 @@ export default function InstallmentsPage() {
                               })
                             )}
                             title="WhatsApp reminder"
-                            className="p-1 text-gray-400 hover:text-green-600 transition rounded">
+                            className="p-2 text-gray-400 hover:text-green-600 transition rounded">
                             <MessageCircle size={14} />
                           </button>
                         )}
@@ -612,7 +612,7 @@ export default function InstallmentsPage() {
                         <div data-menu className="relative">
                           <button
                             onClick={() => setOpenMenu(openMenu === inst.id ? null : inst.id)}
-                            className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 transition">
+                            className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 transition">
                             <MoreVertical size={15} />
                           </button>
                           {openMenu === inst.id && (
