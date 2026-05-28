@@ -257,6 +257,107 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
   );
 }
 
+function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
+  const isDaily      = inst.paymentFrequency === 'daily';
+  const monthly      = Number(inst.monthly);
+  const remaining    = Number(inst.remaining);
+  const totalMinusDP = Number(inst.totalAmount) - Number(inst.downPayment);
+  const totalPaid    = totalMinusDP - remaining;
+  const periodsPaid  = Math.floor(totalPaid / monthly + 0.001);
+  const periodsLeft  = inst.months - periodsPaid;
+  const now          = new Date();
+
+  const rows = Array.from({ length: inst.months }, (_, i) => {
+    const dueDate = new Date(inst.startDate);
+    if (isDaily) dueDate.setDate(dueDate.getDate() + i + 1);
+    else dueDate.setMonth(dueDate.getMonth() + i + 1);
+
+    const isPaid    = i < periodsPaid;
+    const isCurrent = i === periodsPaid;
+    const isOverdue = isCurrent && dueDate < now;
+
+    let amount = monthly;
+    if (!isPaid && i === inst.months - 1) {
+      amount = remaining - monthly * (periodsLeft - 1);
+      if (amount <= 0) amount = monthly;
+    }
+
+    return { period: i + 1, dueDate, isPaid, isCurrent, isOverdue, amount };
+  });
+
+  const unit = isDaily ? 'day' : 'month';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[85vh] flex flex-col">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Payment Schedule</h2>
+            <p className="text-xs text-gray-400">{inst.customerName} · {inst.productName}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-green-50 rounded-xl px-3 py-2 text-center">
+            <p className="text-[11px] text-gray-400">Paid</p>
+            <p className="font-bold text-green-700">{periodsPaid}</p>
+          </div>
+          <div className="bg-orange-50 rounded-xl px-3 py-2 text-center">
+            <p className="text-[11px] text-gray-400">Remaining</p>
+            <p className="font-bold text-orange-700">{periodsLeft}</p>
+          </div>
+          <div className="bg-blue-50 rounded-xl px-3 py-2 text-center">
+            <p className="text-[11px] text-gray-400">Total</p>
+            <p className="font-bold text-blue-700">{inst.months}</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100 rounded-xl border border-gray-100">
+          {rows.map((row) => (
+            <div
+              key={row.period}
+              className={`flex items-center justify-between px-4 py-2.5 text-sm ${
+                row.isPaid ? 'bg-white' : row.isOverdue ? 'bg-red-50' : ''
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className={`w-6 h-6 shrink-0 flex items-center justify-center rounded-full text-xs font-bold ${
+                  row.isPaid    ? 'bg-green-100 text-green-700' :
+                  row.isOverdue ? 'bg-red-100 text-red-700'     :
+                  row.isCurrent ? 'bg-blue-100 text-blue-700'   :
+                                  'bg-gray-100 text-gray-500'
+                }`}>
+                  {row.isPaid ? '✓' : row.period}
+                </span>
+                <div>
+                  <p className={`${row.isPaid ? 'text-gray-400' : row.isOverdue ? 'text-red-700 font-medium' : 'text-gray-900'}`}>
+                    {row.dueDate.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {row.isOverdue  && <span className="ml-1.5 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">Overdue</span>}
+                    {row.isCurrent && !row.isOverdue && <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">Due now</span>}
+                  </p>
+                  <p className="text-[11px] text-gray-400 capitalize">{unit} {row.period}</p>
+                </div>
+              </div>
+              <p className={`font-medium text-sm ${row.isPaid ? 'text-green-600 line-through decoration-green-300' : 'text-gray-900'}`}>
+                {pkr(row.amount)}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={onClose}
+          className="mt-4 w-full px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
   const qc = useQueryClient();
   const [mode, setMode] = useState<'months' | 'monthly'>('months');
@@ -375,6 +476,7 @@ export default function InstallmentsPage() {
   const [payInst, setPayInst] = useState<Installment | null>(null);
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
+  const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
@@ -617,6 +719,13 @@ export default function InstallmentsPage() {
                           </button>
                           {openMenu === inst.id && (
                             <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-20 min-w-37.5 py-1 overflow-hidden">
+                              {inst.status !== 'CANCELLED' && inst.status !== 'CLOSED' && (
+                                <button
+                                  onClick={() => { setOpenMenu(null); setScheduleInst(inst); }}
+                                  className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
+                                  View Schedule
+                                </button>
+                              )}
                               {inst.status !== 'ACTIVE' && inst.status !== 'PENDING' && (
                                 <button
                                   onClick={() => { setOpenMenu(null); setPayInst(inst); }}
@@ -729,6 +838,9 @@ export default function InstallmentsPage() {
 
       {/* Recovery drawer */}
       {recoveryInst && <RecoveryDrawer inst={recoveryInst} onClose={() => setRecoveryInst(null)} />}
+
+      {/* Schedule modal */}
+      {scheduleInst && <ScheduleModal inst={scheduleInst} onClose={() => setScheduleInst(null)} />}
     </div>
   );
 }
