@@ -17,6 +17,17 @@ interface CreateSellerResponse extends AuthResponse {
   seller: Seller;
 }
 
+export type PaymentAccountType = 'BANK' | 'JAZZCASH' | 'EASYPAISA' | 'SADAPAY' | 'NAYAPAY' | 'OTHER';
+
+export interface PaymentAccount {
+  id: string;
+  type: PaymentAccountType;
+  accountTitle: string;
+  accountNumber: string;
+  bankName: string | null;
+  createdAt: string;
+}
+
 function unwrap<T>(res: { data: { data: T } }) {
   return res.data.data;
 }
@@ -30,4 +41,13 @@ export const sellersApi = {
 
   update: (data: { shopName?: string; phone?: string; address?: string; murabahaMode?: boolean }) =>
     api.patch<{ data: Seller }>('/sellers/me', data).then(unwrap<Seller>),
+
+  listPaymentAccounts: () =>
+    api.get<{ data: PaymentAccount[] }>('/sellers/me/payment-accounts').then(unwrap<PaymentAccount[]>),
+
+  addPaymentAccount: (data: { type: PaymentAccountType; accountTitle: string; accountNumber: string; bankName?: string }) =>
+    api.post<{ data: PaymentAccount }>('/sellers/me/payment-accounts', data).then(unwrap<PaymentAccount>),
+
+  removePaymentAccount: (id: string) =>
+    api.delete(`/sellers/me/payment-accounts/${id}`),
 };

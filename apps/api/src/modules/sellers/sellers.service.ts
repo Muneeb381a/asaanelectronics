@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { sellers, users, refreshTokens } from '../../db/schema.js';
+import { sellers, users, refreshTokens, paymentAccounts } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { signAccess, signRefresh } from '../../utils/jwt.js';
 
@@ -60,5 +60,35 @@ export class SellersService {
     const seller = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId) });
     if (!seller) throw new AppError('Shop not found', 404);
     return seller;
+  }
+
+  async listPaymentAccounts(sellerId: string) {
+    return db.select().from(paymentAccounts)
+      .where(eq(paymentAccounts.sellerId, sellerId))
+      .orderBy(asc(paymentAccounts.createdAt));
+  }
+
+  async addPaymentAccount(sellerId: string, body: {
+    type: 'BANK' | 'JAZZCASH' | 'EASYPAISA' | 'SADAPAY' | 'NAYAPAY' | 'OTHER';
+    accountTitle: string;
+    accountNumber: string;
+    bankName?: string;
+  }) {
+    const [account] = await db.insert(paymentAccounts).values({
+      sellerId,
+      type: body.type,
+      accountTitle: body.accountTitle,
+      accountNumber: body.accountNumber,
+      bankName: body.bankName ?? null,
+    }).returning();
+    return account;
+  }
+
+  async removePaymentAccount(id: string, sellerId: string) {
+    const [deleted] = await db.delete(paymentAccounts)
+      .where(and(eq(paymentAccounts.id, id), eq(paymentAccounts.sellerId, sellerId)))
+      .returning();
+    if (!deleted) throw new AppError('Account not found', 404);
+    return deleted;
   }
 }

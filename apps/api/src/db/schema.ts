@@ -448,3 +448,19 @@ export interface Anomaly {
   entityId?: string;
   diff: number;
 }
+
+export const paymentAccountTypeEnum = pgEnum('payment_account_type', [
+  'BANK', 'JAZZCASH', 'EASYPAISA', 'SADAPAY', 'NAYAPAY', 'OTHER',
+]);
+
+export const paymentAccounts = pgTable('payment_accounts', {
+  id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:      text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  type:          paymentAccountTypeEnum('type').notNull(),
+  accountTitle:  text('account_title').notNull(),
+  accountNumber: text('account_number').notNull(),
+  bankName:      text('bank_name'),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_payment_accounts_seller').on(t.sellerId),
+]);

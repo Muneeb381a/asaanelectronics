@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Monitor, Smartphone, Tablet, AlertTriangle, Trash2, LogOut, Shield,
-  Users, TrendingUp, Package, BookOpen,
+  Users, TrendingUp, Package, BookOpen, Plus, CreditCard,
 } from 'lucide-react';
-import { sellersApi } from '../api/sellers.api.ts';
+import { sellersApi, type PaymentAccount, type PaymentAccountType } from '../api/sellers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { sessionsApi, type Session } from '../api/sessions.api.ts';
 import { billingApi, type BillingUsage, type UsageStat } from '../api/billing.api.ts';
@@ -186,6 +186,173 @@ function MurabahaToggle({ murabahaMode, sellerId }: { murabahaMode: boolean; sel
   );
 }
 
+// ── Payment accounts ──────────────────────────────────────────────────────────
+const ACCOUNT_TYPES: { value: PaymentAccountType; label: string; color: string }[] = [
+  { value: 'BANK',      label: 'Bank',       color: 'bg-blue-100 text-blue-700' },
+  { value: 'JAZZCASH',  label: 'JazzCash',   color: 'bg-red-100 text-red-700' },
+  { value: 'EASYPAISA', label: 'EasyPaisa',  color: 'bg-green-100 text-green-700' },
+  { value: 'SADAPAY',   label: 'SadaPay',    color: 'bg-purple-100 text-purple-700' },
+  { value: 'NAYAPAY',   label: 'NayaPay',    color: 'bg-orange-100 text-orange-700' },
+  { value: 'OTHER',     label: 'Other',      color: 'bg-gray-100 text-gray-600' },
+];
+
+function TypeBadge({ type }: { type: PaymentAccountType }) {
+  const t = ACCOUNT_TYPES.find((a) => a.value === type);
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold ${t?.color ?? 'bg-gray-100 text-gray-600'}`}>
+      {t?.label ?? type}
+    </span>
+  );
+}
+
+function PaymentAccountsSection({ isOwner }: { isOwner: boolean }) {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [type, setType]               = useState<PaymentAccountType>('BANK');
+  const [accountTitle, setAccountTitle] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [bankName, setBankName]         = useState('');
+
+  const { data: accounts = [], isLoading } = useQuery({
+    queryKey: ['payment-accounts'],
+    queryFn: sellersApi.listPaymentAccounts,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: () => sellersApi.addPaymentAccount({
+      type,
+      accountTitle: accountTitle.trim(),
+      accountNumber: accountNumber.trim(),
+      bankName: type === 'BANK' && bankName.trim() ? bankName.trim() : undefined,
+    }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['payment-accounts'] });
+      toast.success('Account added');
+      setShowForm(false);
+      setAccountTitle(''); setAccountNumber(''); setBankName(''); setType('BANK');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to add')),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => sellersApi.removePaymentAccount(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['payment-accounts'] });
+      toast.success('Account removed');
+    },
+    onError: () => toast.error('Failed to remove'),
+  });
+
+  const canSubmit = accountTitle.trim() && accountNumber.trim();
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <CreditCard size={15} className="text-gray-500" />
+          Payment Accounts
+        </h2>
+        {isOwner && (
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition">
+            <Plus size={12} /> Add Account
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-gray-400 mb-3">
+        Customers see these accounts on bills to pay you online.
+      </p>
+
+      {/* Add form */}
+      {showForm && isOwner && (
+        <div className="mb-4 p-4 bg-gray-50 border border-gray-100 rounded-xl space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Type</label>
+            <div className="flex flex-wrap gap-1.5">
+              {ACCOUNT_TYPES.map((t) => (
+                <button key={t.value} onClick={() => setType(t.value)}
+                  className={`px-3 py-1 text-xs rounded-lg border font-medium transition ${
+                    type === t.value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:border-blue-300'
+                  }`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Account Title <span className="text-red-500">*</span></label>
+            <input value={accountTitle} onChange={(e) => setAccountTitle(e.target.value)}
+              placeholder="e.g. Muhammad Ali"
+              className={inp} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              {type === 'BANK' ? 'Account Number' : 'Phone Number'} <span className="text-red-500">*</span>
+            </label>
+            <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)}
+              placeholder={type === 'BANK' ? 'e.g. 0123456789012345' : 'e.g. 03001234567'}
+              className={inp} />
+          </div>
+          {type === 'BANK' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Bank Name</label>
+              <input value={bankName} onChange={(e) => setBankName(e.target.value)}
+                placeholder="e.g. HBL, Meezan, UBL"
+                className={inp} />
+            </div>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => setShowForm(false)}
+              className="flex-1 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 transition">
+              Cancel
+            </button>
+            <button
+              onClick={() => addMutation.mutate()}
+              disabled={!canSubmit || addMutation.isPending}
+              className="flex-1 px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition disabled:opacity-50">
+              {addMutation.isPending ? 'Adding…' : 'Add Account'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Accounts list */}
+      {isLoading ? (
+        <RowSkeleton rows={2} />
+      ) : accounts.length === 0 ? (
+        <div className="text-center py-6 text-gray-400 border border-dashed border-gray-200 rounded-xl">
+          <CreditCard size={22} className="mx-auto mb-1.5 opacity-30" />
+          <p className="text-xs">No payment accounts added yet</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {accounts.map((acc: PaymentAccount) => (
+            <div key={acc.id} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl">
+              <TypeBadge type={acc.type} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{acc.accountTitle}</p>
+                <p className="text-xs text-gray-400">
+                  {acc.accountNumber}
+                  {acc.bankName && ` · ${acc.bankName}`}
+                </p>
+              </div>
+              {isOwner && (
+                <button
+                  onClick={() => { if (confirm('Remove this account?')) removeMutation.mutate(acc.id); }}
+                  disabled={removeMutation.isPending}
+                  className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Sessions section ──────────────────────────────────────────────────────────
 function SessionsSection() {
   const qc = useQueryClient();
@@ -319,6 +486,8 @@ function SessionsSection() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const isOwner = user?.role === 'SELLER_OWNER';
   const { data: shop, isLoading } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
   const { data: usage } = useQuery({ queryKey: ['billing-usage'], queryFn: billingApi.getUsage, staleTime: 60_000 });
 
@@ -392,6 +561,9 @@ export default function SettingsPage() {
           <MurabahaToggle murabahaMode={shop?.murabahaMode ?? false} sellerId={shop?.id} />
         </div>
       )}
+
+      {/* Payment accounts */}
+      <PaymentAccountsSection isOwner={isOwner} />
 
       {/* Sessions */}
       <SessionsSection />

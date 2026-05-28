@@ -10,7 +10,7 @@ import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
 import InstallmentForm from '../features/installments/InstallmentForm.tsx';
 import RecoveryDrawer from '../features/installments/RecoveryDrawer.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
-import { sellersApi } from '../api/sellers.api.ts';
+import { sellersApi, type PaymentAccount } from '../api/sellers.api.ts';
 import { openBill } from '../utils/bill.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
@@ -590,6 +590,7 @@ export default function InstallmentsPage() {
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
+  const { data: paymentAccountsData = [] } = useQuery<PaymentAccount[]>({ queryKey: ['payment-accounts'], queryFn: sellersApi.listPaymentAccounts });
 
   const LIMIT = 20;
 
@@ -823,6 +824,7 @@ export default function InstallmentsPage() {
                             profitMarkup: inst.profitMarkup,
                             murabahaMode: shopData.murabahaMode,
                             paymentFrequency: inst.paymentFrequency,
+                            paymentAccounts: paymentAccountsData,
                           })}
                           title="Bill"
                           className="p-2 text-gray-400 hover:text-indigo-600 transition rounded">

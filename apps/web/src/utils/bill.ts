@@ -1,5 +1,12 @@
 import QRCode from 'qrcode';
 
+export interface BillPaymentAccount {
+  type: string;
+  accountTitle: string;
+  accountNumber: string;
+  bankName?: string | null;
+}
+
 export interface BillData {
   shop: { shopName: string; phone: string; address?: string | null };
   customer: { name: string; phone: string; cnic?: string; area?: string | null };
@@ -18,6 +25,7 @@ export interface BillData {
   profitMarkup?: string | number | null;
   murabahaMode?: boolean;
   paymentFrequency?: string | null;
+  paymentAccounts?: BillPaymentAccount[];
 }
 
 function pkr(v: string | number) {
@@ -391,6 +399,23 @@ export async function openBill(data: BillData) {
         </ol>
       </div>
     </div>
+
+    <!-- PAYMENT ACCOUNTS -->
+    ${(data.paymentAccounts && data.paymentAccounts.length > 0) ? `
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:14px 18px;margin-bottom:20px">
+      <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#0369a1;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+        <span>Online Payment Methods</span>
+        <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:12px;direction:rtl;text-transform:none;letter-spacing:0;color:#0369a1">آن لائن ادائیگی کے طریقے</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+        ${data.paymentAccounts.map((acc) => `
+        <div style="background:#fff;border:1px solid #e0f2fe;border-radius:6px;padding:8px 12px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0284c7;margin-bottom:3px">${acc.type}${acc.bankName ? ` · ${acc.bankName}` : ''}</div>
+          <div style="font-size:12px;font-weight:600;color:#0f172a;font-family:monospace">${acc.accountNumber}</div>
+          <div style="font-size:11px;color:#64748b;margin-top:1px">${acc.accountTitle}</div>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
 
     <!-- SIGNATURE ROW -->
     <div class="sig-row">

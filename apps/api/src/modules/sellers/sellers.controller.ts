@@ -17,3 +17,15 @@ export async function getMyShop(req: AuthRequest, res: Response) {
 export async function updateMyShop(req: AuthRequest, res: Response) {
   success(res, await svc.update(req.user!.sellerId!, req.body));
 }
+
+export async function listPaymentAccounts(req: AuthRequest, res: Response) {
+  success(res, await svc.listPaymentAccounts(req.user!.sellerId!));
+}
+
+export async function addPaymentAccount(req: AuthRequest, res: Response) {
+  success(res, await svc.addPaymentAccount(req.user!.sellerId!, req.body), 201);
+}
+
+export async function removePaymentAccount(req: AuthRequest, res: Response) {
+  success(res, await svc.removePaymentAccount(req.params['id']!, req.user!.sellerId!));
+}
