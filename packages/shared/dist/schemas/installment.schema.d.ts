@@ -9,6 +9,7 @@ export declare const createInstallmentSchema: z.ZodObject<{
     imeiNumber: z.ZodOptional<z.ZodString>;
     cashPrice: z.ZodOptional<z.ZodNumber>;
     profitMarkup: z.ZodOptional<z.ZodNumber>;
+    paymentFrequency: z.ZodDefault<z.ZodEnum<["monthly", "daily"]>>;
 }, "strip", z.ZodTypeAny, {
     customerId: string;
     productId: string;
@@ -16,6 +17,7 @@ export declare const createInstallmentSchema: z.ZodObject<{
     downPayment: number;
     months: number;
     startDate: string;
+    paymentFrequency: "monthly" | "daily";
     imeiNumber?: string | undefined;
     cashPrice?: number | undefined;
     profitMarkup?: number | undefined;
@@ -29,5 +31,6 @@ export declare const createInstallmentSchema: z.ZodObject<{
     imeiNumber?: string | undefined;
     cashPrice?: number | undefined;
     profitMarkup?: number | undefined;
+    paymentFrequency?: "monthly" | "daily" | undefined;
 }>;
 export type CreateInstallmentInput = z.infer<typeof createInstallmentSchema>;

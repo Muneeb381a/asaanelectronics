@@ -8,15 +8,16 @@ import { customersApi } from '../../api/customers.api.ts';
 import { productsApi } from '../../api/products.api.ts';
 
 const formSchema = z.object({
-  customerId:   z.string().min(1, 'Select a customer'),
-  productId:    z.string().min(1, 'Select a product'),
-  totalAmount:  z.number({ invalid_type_error: 'Required' }).positive(),
-  downPayment:  z.number({ invalid_type_error: 'Required' }).min(0),
-  months:       z.number().int().min(1).max(60),
-  startDate:    z.string().min(1, 'Required'),
-  imeiNumber:   z.string().max(20).optional(),
-  cashPrice:    z.number({ invalid_type_error: 'Required' }).positive().optional(),
-  profitMarkup: z.number({ invalid_type_error: 'Required' }).min(0).optional(),
+  customerId:        z.string().min(1, 'Select a customer'),
+  productId:         z.string().min(1, 'Select a product'),
+  totalAmount:       z.number({ invalid_type_error: 'Required' }).positive(),
+  downPayment:       z.number({ invalid_type_error: 'Required' }).min(0),
+  months:            z.number().int().min(1).max(365),
+  startDate:         z.string().min(1, 'Required'),
+  imeiNumber:        z.string().max(20).optional(),
+  cashPrice:         z.number({ invalid_type_error: 'Required' }).positive().optional(),
+  profitMarkup:      z.number({ invalid_type_error: 'Required' }).min(0).optional(),
+  paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -29,13 +30,14 @@ interface Props {
 }
 
 const MONTH_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
+const DAY_OPTIONS   = [7, 10, 15, 20, 25, 30, 45, 60, 90];
 const DOWN_PRESETS  = [10, 20, 25, 30, 50];
 
 const VSTATUS = {
-  PENDING:      { label: 'Pending',     cls: 'text-amber-600 bg-amber-50',    icon: <Clock size={10} /> },
-  UNDER_REVIEW: { label: 'In Review',   cls: 'text-blue-600 bg-blue-50',      icon: <Clock size={10} /> },
-  APPROVED:     { label: 'Verified',    cls: 'text-emerald-600 bg-emerald-50', icon: <ShieldCheck size={10} /> },
-  REJECTED:     { label: 'Rejected',    cls: 'text-red-500 bg-red-50',         icon: <ShieldX size={10} /> },
+  PENDING:      { label: 'Pending',    cls: 'text-amber-600 bg-amber-50',     icon: <Clock size={10} /> },
+  UNDER_REVIEW: { label: 'In Review',  cls: 'text-blue-600 bg-blue-50',       icon: <Clock size={10} /> },
+  APPROVED:     { label: 'Verified',   cls: 'text-emerald-600 bg-emerald-50', icon: <ShieldCheck size={10} /> },
+  REJECTED:     { label: 'Rejected',   cls: 'text-red-500 bg-red-50',         icon: <ShieldX size={10} /> },
 };
 
 function pkr(n: number) {
@@ -45,6 +47,12 @@ function pkr(n: number) {
 function addMonths(date: Date, n: number) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + n);
+  return d;
+}
+
+function addDays(date: Date, n: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
   return d;
 }
 
@@ -65,22 +73,40 @@ function Divider() {
 export default function InstallmentForm({ onSubmit, isPending, onCancel, murabahaMode = false }: Props) {
   const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: { months: 12, startDate: new Date().toISOString().slice(0, 10), downPayment: 0 },
+    defaultValues: { months: 12, startDate: new Date().toISOString().slice(0, 10), downPayment: 0, paymentFrequency: 'monthly' },
   });
 
-  const [customerId, productId, totalAmount, downPayment, months, startDate, cashPrice, profitMarkup] = useWatch({
+  const [
+    customerId, productId, totalAmount, downPayment, months, startDate,
+    cashPrice, profitMarkup, paymentFrequency,
+  ] = useWatch({
     control,
-    name: ['customerId', 'productId', 'totalAmount', 'downPayment', 'months', 'startDate', 'cashPrice', 'profitMarkup'],
+    name: ['customerId', 'productId', 'totalAmount', 'downPayment', 'months', 'startDate', 'cashPrice', 'profitMarkup', 'paymentFrequency'],
   });
 
-  // Auto-compute totalAmount from cashPrice + profitMarkup in murabaha mode
+  const isDaily = paymentFrequency === 'daily';
+  // Show murabaha-style fields when shop has murabaha mode OR when daily frequency is selected
+  const showMurabaha = murabahaMode || isDaily;
+
+  // Auto-compute totalAmount from cashPrice + profitMarkup in murabaha/daily mode
   useEffect(() => {
-    if (murabahaMode) {
+    if (showMurabaha) {
       const cp = cashPrice ?? 0;
       const pm = profitMarkup ?? 0;
       if (cp > 0 || pm > 0) setValue('totalAmount', cp + pm);
     }
-  }, [murabahaMode, cashPrice, profitMarkup, setValue]);
+  }, [showMurabaha, cashPrice, profitMarkup, setValue]);
+
+  // When switching to daily mode, set default 25% markup if cashPrice is set
+  useEffect(() => {
+    if (isDaily && (cashPrice ?? 0) > 0 && (profitMarkup === undefined || profitMarkup === 0)) {
+      setValue('profitMarkup', Math.round((cashPrice ?? 0) * 0.25));
+    }
+    // Reset months to daily default when switching
+    if (isDaily && months > 90) setValue('months', 30);
+    if (!isDaily && months < 3)  setValue('months', 12);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDaily]);
 
   const { data: customers } = useQuery({
     queryKey: ['customers-all'],
@@ -105,9 +131,11 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     const p = products?.data.find((x) => x.id === id);
     if (p) {
       const price = p.installmentPrice ? Number(p.installmentPrice) : Number(p.price);
-      if (murabahaMode) {
+      if (showMurabaha) {
         setValue('cashPrice', Number(p.price));
-        if (p.installmentPrice && Number(p.installmentPrice) > Number(p.price)) {
+        if (isDaily) {
+          setValue('profitMarkup', Math.round(Number(p.price) * 0.25));
+        } else if (p.installmentPrice && Number(p.installmentPrice) > Number(p.price)) {
           setValue('profitMarkup', Number(p.installmentPrice) - Number(p.price));
         }
       } else {
@@ -116,14 +144,20 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     }
   }
 
-  const effectiveTotal = murabahaMode ? ((cashPrice ?? 0) + (profitMarkup ?? 0)) : (totalAmount || 0);
+  const effectiveTotal = showMurabaha ? ((cashPrice ?? 0) + (profitMarkup ?? 0)) : (totalAmount || 0);
   const remaining = effectiveTotal - (downPayment || 0);
-  const monthly   = months && remaining > 0 ? Math.round((remaining / months) / 25) * 25 : 0;
+  const periodic  = months && remaining > 0
+    ? isDaily
+      ? Math.round((remaining / months) / 5) * 5
+      : Math.round((remaining / months) / 25) * 25
+    : 0;
 
   const schedule: { date: Date; amount: number }[] = [];
-  if (monthly > 0 && startDate) {
+  if (periodic > 0 && startDate) {
     const base = new Date(startDate);
-    for (let i = 1; i <= months; i++) schedule.push({ date: addMonths(base, i), amount: monthly });
+    for (let i = 1; i <= months; i++) {
+      schedule.push({ date: isDaily ? addDays(base, i) : addMonths(base, i), amount: periodic });
+    }
   }
 
   const murabahaPct = (cashPrice ?? 0) > 0 && (profitMarkup ?? 0) > 0
@@ -135,8 +169,39 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       onSubmit={handleSubmit((d) => onSubmit({ ...d, startDate: new Date(d.startDate).toISOString() }))}
       className="space-y-5"
     >
-      {/* Murabaha mode banner */}
-      {murabahaMode && (
+      {/* Payment frequency toggle */}
+      <div className="flex gap-1.5">
+        {(['monthly', 'daily'] as const).map((freq) => (
+          <button
+            key={freq}
+            type="button"
+            onClick={() => setValue('paymentFrequency', freq, { shouldValidate: true })}
+            className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition ${
+              paymentFrequency === freq
+                ? freq === 'daily'
+                  ? 'bg-orange-500 border-orange-500 text-white'
+                  : 'bg-blue-600 border-blue-600 text-white'
+                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+            }`}
+          >
+            {freq === 'monthly' ? 'Monthly Plan' : 'Daily Dukaan-Dar'}
+          </button>
+        ))}
+      </div>
+
+      {/* Daily mode banner */}
+      {isDaily && (
+        <div className="flex items-start gap-2.5 px-3 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-800">
+          <span className="w-2 h-2 mt-0.5 rounded-full bg-orange-500 shrink-0" />
+          <div>
+            <p className="font-semibold">Dukaan-Dar Daily Plan</p>
+            <p className="text-orange-600 font-normal mt-0.5">25% markup auto-applied · Customer pays daily · Shop owner guarantors</p>
+          </div>
+        </div>
+      )}
+
+      {/* Murabaha mode banner (only for non-daily murabaha) */}
+      {murabahaMode && !isDaily && (
         <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-medium">
           <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
           Murabaha Mode — cost price + profit markup disclosed separately
@@ -203,7 +268,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       <Divider />
 
       {/* Amounts */}
-      {murabahaMode ? (
+      {showMurabaha ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -212,24 +277,37 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
               {errors.cashPrice && <p className="text-xs text-red-500 mt-1">Required</p>}
             </div>
             <div>
-              <Label>Profit Markup (PKR)</Label>
-              <input type="number" step="1" placeholder="0" {...register('profitMarkup', { valueAsNumber: true })} className={inp} />
+              <Label>
+                {isDaily ? 'Profit Markup — 25%' : 'Profit Markup (PKR)'}
+              </Label>
+              <div className="relative">
+                <input type="number" step="1" placeholder="0" {...register('profitMarkup', { valueAsNumber: true })} className={inp} />
+                {isDaily && (cashPrice ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setValue('profitMarkup', Math.round((cashPrice ?? 0) * 0.25))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-600 rounded font-semibold hover:bg-orange-200 transition"
+                  >
+                    25%
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Murabaha breakdown */}
+          {/* Breakdown */}
           {(cashPrice ?? 0) > 0 && (
-            <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-xs space-y-1.5">
+            <div className={`border rounded-xl px-4 py-3 text-xs space-y-1.5 ${isDaily ? 'bg-orange-50 border-orange-100' : 'bg-emerald-50 border-emerald-100'}`}>
               <div className="flex justify-between text-gray-600">
                 <span>Cash Price</span>
                 <span className="font-semibold text-gray-800">{pkr(cashPrice ?? 0)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Profit Markup{murabahaPct ? ` (${murabahaPct}%)` : ''}</span>
-                <span className="font-semibold text-emerald-700">+ {pkr(profitMarkup ?? 0)}</span>
+                <span className={`font-semibold ${isDaily ? 'text-orange-700' : 'text-emerald-700'}`}>+ {pkr(profitMarkup ?? 0)}</span>
               </div>
-              <div className="border-t border-emerald-200 pt-1.5 flex justify-between">
-                <span className="font-semibold text-gray-700">Murabaha Total</span>
+              <div className={`border-t pt-1.5 flex justify-between ${isDaily ? 'border-orange-200' : 'border-emerald-200'}`}>
+                <span className="font-semibold text-gray-700">Total</span>
                 <span className="font-bold text-gray-900">{pkr((cashPrice ?? 0) + (profitMarkup ?? 0))}</span>
               </div>
             </div>
@@ -271,20 +349,22 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
       {/* Duration */}
       <div>
-        <Label>Duration</Label>
+        <Label>{isDaily ? 'Duration (Days)' : 'Duration'}</Label>
         <Controller
           name="months"
           control={control}
           render={({ field }) => (
             <div className="flex flex-wrap gap-1.5">
-              {MONTH_OPTIONS.map((m) => (
-                <button key={m} type="button" onClick={() => field.onChange(m)}
+              {(isDaily ? DAY_OPTIONS : MONTH_OPTIONS).map((n) => (
+                <button key={n} type="button" onClick={() => field.onChange(n)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                    field.value === m
-                      ? 'bg-blue-600 border-blue-600 text-white'
+                    field.value === n
+                      ? isDaily
+                        ? 'bg-orange-500 border-orange-500 text-white'
+                        : 'bg-blue-600 border-blue-600 text-white'
                       : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
                   }`}>
-                  {m}m
+                  {isDaily ? `${n}d` : `${n}m`}
                 </button>
               ))}
             </div>
@@ -294,7 +374,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
       {/* Start date */}
       <div>
-        <Label>First Instalment Date</Label>
+        <Label>{isDaily ? 'First Payment Date' : 'First Instalment Date'}</Label>
         <input type="date" {...register('startDate')} className={inp} />
       </div>
 
@@ -316,15 +396,18 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       {/* Summary */}
       {remaining > 0 && (
         <div>
-          {/* Key numbers */}
           <div className="grid grid-cols-3 gap-2 mb-3">
             {[
-              { label: 'Remaining', value: pkr(remaining) },
-              { label: 'Monthly',   value: pkr(monthly),  highlight: true },
-              { label: 'Duration',  value: `${months}m` },
+              { label: 'Remaining',                value: pkr(remaining) },
+              { label: isDaily ? 'Daily' : 'Monthly', value: pkr(periodic), highlight: true },
+              { label: isDaily ? 'Days' : 'Duration',  value: isDaily ? `${months}d` : `${months}m` },
             ].map((s) => (
-              <div key={s.label} className={`rounded-xl px-3 py-2.5 text-center ${s.highlight ? 'bg-blue-600 text-white' : 'bg-gray-50 border border-gray-100'}`}>
-                <p className={`text-[10px] font-medium mb-0.5 ${s.highlight ? 'text-blue-200' : 'text-gray-400'}`}>{s.label}</p>
+              <div key={s.label} className={`rounded-xl px-3 py-2.5 text-center ${
+                s.highlight
+                  ? isDaily ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'
+                  : 'bg-gray-50 border border-gray-100'
+              }`}>
+                <p className={`text-[10px] font-medium mb-0.5 ${s.highlight ? 'text-white/70' : 'text-gray-400'}`}>{s.label}</p>
                 <p className={`text-sm font-bold ${s.highlight ? 'text-white' : 'text-gray-800'}`}>{s.value}</p>
               </div>
             ))}
@@ -334,7 +417,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           {schedule.length > 0 && (
             <div className="border border-gray-100 rounded-xl overflow-hidden">
               <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex justify-between text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                <span>Instalment</span><span>Due Date</span><span>Amount</span>
+                <span>{isDaily ? 'Day' : 'Instalment'}</span><span>Due Date</span><span>Amount</span>
               </div>
               <div className="divide-y divide-gray-50">
                 {schedule.slice(0, 3).map((row, i) => (
@@ -346,7 +429,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
                 ))}
                 {schedule.length > 4 && (
                   <div className="px-4 py-1.5 text-center text-[10px] text-gray-300">
-                    {schedule.length - 4} more instalment{schedule.length - 4 !== 1 ? 's' : ''}
+                    {schedule.length - 4} more {isDaily ? 'day' : 'instalment'}{schedule.length - 4 !== 1 ? 's' : ''}
                   </div>
                 )}
                 {schedule.length > 3 && (
@@ -369,7 +452,9 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           Cancel
         </button>
         <button type="submit" disabled={isPending}
-          className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition">
+          className={`flex-1 py-2.5 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition ${
+            isDaily ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'
+          }`}>
           {isPending ? 'Creating…' : 'Create Instalment'}
         </button>
       </div>

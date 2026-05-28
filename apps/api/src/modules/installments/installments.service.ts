@@ -6,15 +6,16 @@ import { AppError } from '../../middleware/error.js';
 import { fsm } from '../../utils/fsm.js';
 
 type CreateBody = {
-  customerId:   string;
-  productId:    string;
-  totalAmount:  number;
-  downPayment:  number;
-  months:       number;
-  startDate:    string;
-  imeiNumber?:  string;
-  cashPrice?:   number;
-  profitMarkup?: number;
+  customerId:        string;
+  productId:         string;
+  totalAmount:       number;
+  downPayment:       number;
+  months:            number;
+  startDate:         string;
+  imeiNumber?:       string;
+  cashPrice?:        number;
+  profitMarkup?:     number;
+  paymentFrequency?: 'monthly' | 'daily';
 };
 
 export class InstallmentsService {
@@ -43,11 +44,17 @@ export class InstallmentsService {
           customerName: customers.name,
           customerPhone: customers.phone,
           productName: products.name,
-          imeiNumber:   installments.imeiNumber,
-          cashPrice:    installments.cashPrice,
-          profitMarkup: installments.profitMarkup,
-          customerArea: customers.area,
-          isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (${installments.startDate} + (${installments.months} || ' months')::interval) < now())`,
+          imeiNumber:        installments.imeiNumber,
+          cashPrice:         installments.cashPrice,
+          profitMarkup:      installments.profitMarkup,
+          paymentFrequency:  installments.paymentFrequency,
+          customerArea:      customers.area,
+          isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
+            CASE WHEN ${installments.paymentFrequency} = 'daily'
+              THEN (${installments.startDate} + (${installments.months} || ' days')::interval) < now()
+              ELSE (${installments.startDate} + (${installments.months} || ' months')::interval) < now()
+            END
+          ))`,
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -119,7 +126,11 @@ export class InstallmentsService {
     if (blacklisted) throw new AppError('Customer is blacklisted due to a defaulted installment', 403);
 
     const remaining = body.totalAmount - body.downPayment;
-    const monthly = Math.round((remaining / body.months) / 25) * 25;
+    const freq = body.paymentFrequency ?? 'monthly';
+    // Daily plans round to nearest 5 PKR; monthly plans round to nearest 25 PKR
+    const monthly = freq === 'daily'
+      ? Math.round((remaining / body.months) / 5) * 5
+      : Math.round((remaining / body.months) / 25) * 25;
 
     return db.transaction(async (tx) => {
       // Advisory lock prevents concurrent invoice number generation for same seller
@@ -151,9 +162,10 @@ export class InstallmentsService {
           months:       body.months,
           startDate:    new Date(body.startDate),
           invoiceNumber,
-          imeiNumber:   body.imeiNumber ?? null,
-          cashPrice:    body.cashPrice   != null ? String(body.cashPrice)   : null,
-          profitMarkup: body.profitMarkup != null ? String(body.profitMarkup) : null,
+          imeiNumber:       body.imeiNumber ?? null,
+          cashPrice:        body.cashPrice    != null ? String(body.cashPrice)    : null,
+          profitMarkup:     body.profitMarkup  != null ? String(body.profitMarkup) : null,
+          paymentFrequency: freq,
         })
         .returning();
 

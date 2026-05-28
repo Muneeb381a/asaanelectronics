@@ -25,6 +25,14 @@ export declare const createCustomerSchema: z.ZodObject<{
     cnicFrontUrl: z.ZodString;
     cnicBackUrl: z.ZodString;
     blankChequeUrl: z.ZodOptional<z.ZodString>;
+    customerType: z.ZodOptional<z.ZodEnum<["regular", "dukaan-dar"]>>;
+    shopName: z.ZodOptional<z.ZodString>;
+    shopAddress: z.ZodOptional<z.ZodString>;
+    businessType: z.ZodOptional<z.ZodString>;
+    guarantorShopName: z.ZodOptional<z.ZodString>;
+    guarantorShopAddress: z.ZodOptional<z.ZodString>;
+    guarantor2ShopName: z.ZodOptional<z.ZodString>;
+    guarantor2ShopAddress: z.ZodOptional<z.ZodString>;
     guarantorCnicFrontUrl: z.ZodOptional<z.ZodString>;
     guarantorCnicBackUrl: z.ZodOptional<z.ZodString>;
     guarantor2CnicFrontUrl: z.ZodOptional<z.ZodString>;
@@ -44,6 +52,7 @@ export declare const createCustomerSchema: z.ZodObject<{
     photoUrl: string;
     cnicFrontUrl: string;
     cnicBackUrl: string;
+    shopName?: string | undefined;
     address?: string | undefined;
     fatherName?: string | undefined;
     cnicExpiry?: string | undefined;
@@ -61,6 +70,13 @@ export declare const createCustomerSchema: z.ZodObject<{
     guarantor2Address?: string | undefined;
     guarantor2Relation?: string | undefined;
     blankChequeUrl?: string | undefined;
+    customerType?: "regular" | "dukaan-dar" | undefined;
+    shopAddress?: string | undefined;
+    businessType?: string | undefined;
+    guarantorShopName?: string | undefined;
+    guarantorShopAddress?: string | undefined;
+    guarantor2ShopName?: string | undefined;
+    guarantor2ShopAddress?: string | undefined;
     guarantorCnicFrontUrl?: string | undefined;
     guarantorCnicBackUrl?: string | undefined;
     guarantor2CnicFrontUrl?: string | undefined;
@@ -79,6 +95,7 @@ export declare const createCustomerSchema: z.ZodObject<{
     photoUrl: string;
     cnicFrontUrl: string;
     cnicBackUrl: string;
+    shopName?: string | undefined;
     address?: string | undefined;
     fatherName?: string | undefined;
     cnicExpiry?: string | undefined;
@@ -97,6 +114,13 @@ export declare const createCustomerSchema: z.ZodObject<{
     guarantor2Address?: string | undefined;
     guarantor2Relation?: string | undefined;
     blankChequeUrl?: string | undefined;
+    customerType?: "regular" | "dukaan-dar" | undefined;
+    shopAddress?: string | undefined;
+    businessType?: string | undefined;
+    guarantorShopName?: string | undefined;
+    guarantorShopAddress?: string | undefined;
+    guarantor2ShopName?: string | undefined;
+    guarantor2ShopAddress?: string | undefined;
     guarantorCnicFrontUrl?: string | undefined;
     guarantorCnicBackUrl?: string | undefined;
     guarantor2CnicFrontUrl?: string | undefined;
@@ -133,6 +157,14 @@ export declare const updateCustomerSchema: z.ZodObject<{
     cnicFrontUrl: z.ZodOptional<z.ZodString>;
     cnicBackUrl: z.ZodOptional<z.ZodString>;
     blankChequeUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    customerType: z.ZodOptional<z.ZodOptional<z.ZodEnum<["regular", "dukaan-dar"]>>>;
+    shopName: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    shopAddress: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    businessType: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    guarantorShopName: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    guarantorShopAddress: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    guarantor2ShopName: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    guarantor2ShopAddress: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     guarantorCnicFrontUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     guarantorCnicBackUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     guarantor2CnicFrontUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;
@@ -147,6 +179,7 @@ export declare const updateCustomerSchema: z.ZodObject<{
     cnic: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
+    shopName?: string | undefined;
     phone?: string | undefined;
     address?: string | undefined;
     cnic?: string | undefined;
@@ -171,6 +204,13 @@ export declare const updateCustomerSchema: z.ZodObject<{
     cnicFrontUrl?: string | undefined;
     cnicBackUrl?: string | undefined;
     blankChequeUrl?: string | undefined;
+    customerType?: "regular" | "dukaan-dar" | undefined;
+    shopAddress?: string | undefined;
+    businessType?: string | undefined;
+    guarantorShopName?: string | undefined;
+    guarantorShopAddress?: string | undefined;
+    guarantor2ShopName?: string | undefined;
+    guarantor2ShopAddress?: string | undefined;
     guarantorCnicFrontUrl?: string | undefined;
     guarantorCnicBackUrl?: string | undefined;
     guarantor2CnicFrontUrl?: string | undefined;
@@ -183,6 +223,7 @@ export declare const updateCustomerSchema: z.ZodObject<{
     chequeNo?: string | undefined;
 }, {
     name?: string | undefined;
+    shopName?: string | undefined;
     phone?: string | undefined;
     address?: string | undefined;
     cnic?: string | undefined;
@@ -207,6 +248,13 @@ export declare const updateCustomerSchema: z.ZodObject<{
     cnicFrontUrl?: string | undefined;
     cnicBackUrl?: string | undefined;
     blankChequeUrl?: string | undefined;
+    customerType?: "regular" | "dukaan-dar" | undefined;
+    shopAddress?: string | undefined;
+    businessType?: string | undefined;
+    guarantorShopName?: string | undefined;
+    guarantorShopAddress?: string | undefined;
+    guarantor2ShopName?: string | undefined;
+    guarantor2ShopAddress?: string | undefined;
     guarantorCnicFrontUrl?: string | undefined;
     guarantorCnicBackUrl?: string | undefined;
     guarantor2CnicFrontUrl?: string | undefined;

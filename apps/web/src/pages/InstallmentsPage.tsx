@@ -22,9 +22,13 @@ function calcNextDueDate(inst: Installment): Date | null {
   const tot  = Number(inst.totalAmount);
   if (mon <= 0) return null;
   const paidAmount = (tot - down) - rem;
-  const monthsPaid = Math.max(0, Math.floor(paidAmount / mon + 0.001));
+  const periodsPaid = Math.max(0, Math.floor(paidAmount / mon + 0.001));
   const d = new Date(inst.startDate);
-  d.setMonth(d.getMonth() + monthsPaid + 1);
+  if (inst.paymentFrequency === 'daily') {
+    d.setDate(d.getDate() + periodsPaid + 1);
+  } else {
+    d.setMonth(d.getMonth() + periodsPaid + 1);
+  }
   return d;
 }
 
@@ -170,7 +174,7 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
                 step={1}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-400 mt-1">Monthly: {pkr(inst.monthly)} · Max: {pkr(inst.remaining)}</p>
+              <p className="text-xs text-gray-400 mt-1">{inst.paymentFrequency === 'daily' ? 'Daily' : 'Monthly'}: {pkr(inst.monthly)} · Max: {pkr(inst.remaining)}</p>
             </div>
 
             <div>
@@ -293,7 +297,7 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
         <div className="bg-blue-50 rounded-xl px-4 py-3 mb-5 text-sm">
           <p className="text-gray-500 text-xs mb-0.5">Remaining balance</p>
           <p className="font-bold text-blue-700 text-base">{pkr(remaining)}</p>
-          <p className="text-gray-400 text-xs mt-1">Current: {pkr(Number(inst.monthly))} / month · {inst.months} months</p>
+          <p className="text-gray-400 text-xs mt-1">Current: {pkr(Number(inst.monthly))} / {inst.paymentFrequency === 'daily' ? 'day' : 'month'} · {inst.months} {inst.paymentFrequency === 'daily' ? 'days' : 'months'}</p>
         </div>
 
         <div className="flex gap-1 mb-4 border-b border-gray-100">
@@ -485,7 +489,7 @@ export default function InstallmentsPage() {
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Customer</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Product</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Total</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Monthly</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Periodic</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Remaining</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Next Due</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
@@ -497,7 +501,12 @@ export default function InstallmentsPage() {
                   <tr key={inst.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{inst.customerName}</p>
-                      <p className="text-xs text-gray-400">{inst.customerPhone}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-xs text-gray-400">{inst.customerPhone}</p>
+                        {inst.paymentFrequency === 'daily' && (
+                          <span className="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700">Daily</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-gray-700">{inst.productName}</p>
@@ -506,7 +515,10 @@ export default function InstallmentsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-900">{pkr(inst.totalAmount)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">{pkr(inst.monthly)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-medium text-gray-900">{pkr(inst.monthly)}</span>
+                      <p className="text-[10px] text-gray-400">{inst.paymentFrequency === 'daily' ? '/day' : '/mo'}</p>
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <span className={Number(inst.remaining) > 0 ? 'text-orange-600 font-medium' : 'text-green-600 font-medium'}>
                         {pkr(inst.remaining)}

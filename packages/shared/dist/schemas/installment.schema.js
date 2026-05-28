@@ -4,9 +4,10 @@ export const createInstallmentSchema = z.object({
     productId: z.string(),
     totalAmount: z.number().positive(),
     downPayment: z.number().min(0),
-    months: z.number().int().min(1).max(60),
+    months: z.number().int().min(1).max(365),
     startDate: z.string().datetime(),
     imeiNumber: z.string().max(20).optional(),
     cashPrice: z.number().positive().optional(),
     profitMarkup: z.number().min(0).optional(),
+    paymentFrequency: z.enum(['monthly', 'daily']).default('monthly'),
 });

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -152,23 +152,32 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
   );
 }
 
-function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, cnicBack, setCnicBack }: {
+function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, cnicBack, setCnicBack, isShopOwner }: {
   n: 1 | 2;
   prefix: 'guarantor' | 'guarantor2';
   register: ReturnType<typeof useForm<FormData>>['register'];
   errors: ReturnType<typeof useForm<FormData>>['formState']['errors'];
   cnicFront: string | null; setCnicFront: (v: string | null) => void;
   cnicBack: string | null;  setCnicBack: (v: string | null) => void;
+  isShopOwner?: boolean;
 }) {
-  const nameKey  = prefix === 'guarantor' ? 'guarantorName'     : 'guarantor2Name';
-  const phoneKey = prefix === 'guarantor' ? 'guarantorPhone'    : 'guarantor2Phone';
-  const cnicKey  = prefix === 'guarantor' ? 'guarantorCnic'     : 'guarantor2Cnic';
-  const addrKey  = prefix === 'guarantor' ? 'guarantorAddress'  : 'guarantor2Address';
-  const relKey   = prefix === 'guarantor' ? 'guarantorRelation' : 'guarantor2Relation';
+  const nameKey     = prefix === 'guarantor' ? 'guarantorName'        : 'guarantor2Name';
+  const phoneKey    = prefix === 'guarantor' ? 'guarantorPhone'       : 'guarantor2Phone';
+  const cnicKey     = prefix === 'guarantor' ? 'guarantorCnic'        : 'guarantor2Cnic';
+  const addrKey     = prefix === 'guarantor' ? 'guarantorAddress'     : 'guarantor2Address';
+  const relKey      = prefix === 'guarantor' ? 'guarantorRelation'    : 'guarantor2Relation';
+  const shopNameKey = prefix === 'guarantor' ? 'guarantorShopName'    : 'guarantor2ShopName';
+  const shopAddrKey = prefix === 'guarantor' ? 'guarantorShopAddress' : 'guarantor2ShopAddress';
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-400">Fill what's available</p>
+      {isShopOwner && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-700">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+          This guarantor is a shop owner (Dukaan-Dar)
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label={`Guarantor ${n} Name`} optional>
           <input {...register(nameKey)} placeholder="Full name" className={inp} />
@@ -193,6 +202,16 @@ function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, c
       <Field label="Address" optional>
         <input {...register(addrKey)} placeholder="Full address" className={inp} />
       </Field>
+      {isShopOwner && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Shop Name" optional>
+            <input {...register(shopNameKey as keyof FormData)} placeholder="e.g. Ahmed General Store" className={inp} />
+          </Field>
+          <Field label="Shop Address" optional>
+            <input {...register(shopAddrKey as keyof FormData)} placeholder="Shop location" className={inp} />
+          </Field>
+        </div>
+      )}
       <div>
         <p className="text-xs font-medium text-gray-600 mb-1.5">Guarantor {n} ID Card <span className="text-gray-400 font-normal">(optional)</span></p>
         <div className="grid grid-cols-2 gap-3">
@@ -213,6 +232,9 @@ function formatCnic(raw: string): string {
 export default function CustomerForm({ customer, onSubmit, isPending, onCancel }: Props) {
   const isEdit = !!customer;
   const [step, setStep] = useState(0);
+  const [isDukaanDar, setIsDukaanDar] = useState(
+    (customer as { customerType?: string } | undefined)?.customerType === 'dukaan-dar'
+  );
 
   const [photoUrl,        setPhotoUrl]        = useState<string | null>(customer?.photoUrl ?? null);
   const [cnicFrontUrl,    setCnicFrontUrl]     = useState<string | null>(customer?.cnicFrontUrl ?? null);
@@ -248,8 +270,13 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
       cnicFrontUrl: customer.cnicFrontUrl ?? undefined,
       cnicBackUrl: customer.cnicBackUrl ?? undefined,
       blankChequeUrl: customer.blankChequeUrl ?? undefined,
-    } : undefined,
+      customerType: isDukaanDar ? 'dukaan-dar' : 'regular',
+    } : { customerType: 'regular' },
   });
+
+  useEffect(() => {
+    setValue('customerType', isDukaanDar ? 'dukaan-dar' : 'regular');
+  }, [isDukaanDar, setValue]);
 
   async function next() {
     if (step === 0) {
@@ -305,6 +332,34 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
         {/* ── Step 0: Customer Info ── */}
         {step === 0 && (
           <>
+            {/* Customer type toggle */}
+            <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl">
+              {(['regular', 'dukaan-dar'] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setIsDukaanDar(type === 'dukaan-dar')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    (type === 'dukaan-dar') === isDukaanDar
+                      ? type === 'dukaan-dar'
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : 'bg-white text-gray-800 shadow-sm'
+                      : 'text-gray-500'
+                  }`}
+                >
+                  {type === 'regular' ? 'Regular Customer' : 'Dukaan-Dar (Shop Owner)'}
+                </button>
+              ))}
+            </div>
+
+            {/* Dukaan-dar info banner */}
+            {isDukaanDar && (
+              <div className="flex items-start gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-800">
+                <span className="w-1.5 h-1.5 mt-0.5 rounded-full bg-orange-500 shrink-0" />
+                <span>Shop owner customer — daily installment plan with 25% markup. Guarantors must also be shop owners.</span>
+              </div>
+            )}
+
             {/* CNIC upload at top — auto-fills fields below */}
             {!isEdit && (
               <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 space-y-2">
@@ -388,6 +443,22 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
               <input {...register('salary', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })}
                 type="number" min="1" placeholder="e.g. 35000" className={inp} />
             </Field>
+
+            {/* Shop owner fields */}
+            {isDukaanDar && (
+              <div className="rounded-xl border border-orange-200 bg-orange-50/50 p-3 space-y-3">
+                <p className="text-xs font-semibold text-orange-700">Shop / Business Details</p>
+                <Field label="Shop Name" optional>
+                  <input {...register('shopName' as keyof FormData)} placeholder="e.g. Ahmad General Store" className={inp} />
+                </Field>
+                <Field label="Shop Address" optional>
+                  <input {...register('shopAddress' as keyof FormData)} placeholder="Shop location / market" className={inp} />
+                </Field>
+                <Field label="Business Type" optional>
+                  <input {...register('businessType' as keyof FormData)} placeholder="e.g. General Store, Kiryana, Mobile Shop" className={inp} />
+                </Field>
+              </div>
+            )}
           </>
         )}
 
@@ -395,14 +466,16 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
         {step === 1 && (
           <GuarantorStep n={1} prefix="guarantor" register={register} errors={errors}
             cnicFront={gCnicFront} setCnicFront={setGCnicFront}
-            cnicBack={gCnicBack}   setCnicBack={setGCnicBack} />
+            cnicBack={gCnicBack}   setCnicBack={setGCnicBack}
+            isShopOwner={isDukaanDar} />
         )}
 
         {/* ── Step 2: Guarantor 2 ── */}
         {step === 2 && (
           <GuarantorStep n={2} prefix="guarantor2" register={register} errors={errors}
             cnicFront={g2CnicFront} setCnicFront={setG2CnicFront}
-            cnicBack={g2CnicBack}   setCnicBack={setG2CnicBack} />
+            cnicBack={g2CnicBack}   setCnicBack={setG2CnicBack}
+            isShopOwner={isDukaanDar} />
         )}
 
         {/* ── Step 3: Documents ── */}

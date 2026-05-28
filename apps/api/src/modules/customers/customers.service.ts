@@ -83,6 +83,14 @@ type CreateBody = {
   cnicFrontHash?: string;
   cnicBackHash?: string;
   blankChequeHash?: string;
+  customerType?: string;
+  shopName?: string;
+  shopAddress?: string;
+  businessType?: string;
+  guarantorShopName?: string;
+  guarantorShopAddress?: string;
+  guarantor2ShopName?: string;
+  guarantor2ShopAddress?: string;
 };
 
 type UpdateBody = Partial<CreateBody>;
@@ -169,6 +177,8 @@ export class CustomersService {
         guarantorCnicBackUrl: customers.guarantorCnicBackUrl,
         guarantor2CnicFrontUrl: customers.guarantor2CnicFrontUrl,
         guarantor2CnicBackUrl: customers.guarantor2CnicBackUrl,
+        customerType: customers.customerType,
+        shopName: customers.shopName,
         verificationStatus: customers.verificationStatus,
         assignedAvoId: customers.assignedAvoId,
         createdByUserId: customers.createdByUserId,
@@ -410,6 +420,14 @@ export class CustomersService {
         cnicFrontHash: body.cnicFrontHash,
         cnicBackHash: body.cnicBackHash,
         blankChequeHash: body.blankChequeHash,
+        customerType: body.customerType ?? 'regular',
+        shopName: body.shopName,
+        shopAddress: body.shopAddress,
+        businessType: body.businessType,
+        guarantorShopName: body.guarantorShopName,
+        guarantorShopAddress: body.guarantorShopAddress,
+        guarantor2ShopName: body.guarantor2ShopName,
+        guarantor2ShopAddress: body.guarantor2ShopAddress,
         createdByUserId,
       })
       .returning();
@@ -459,6 +477,14 @@ export class CustomersService {
         ...(body.cnicFrontHash !== undefined && { cnicFrontHash: body.cnicFrontHash }),
         ...(body.cnicBackHash !== undefined && { cnicBackHash: body.cnicBackHash }),
         ...(body.blankChequeHash !== undefined && { blankChequeHash: body.blankChequeHash }),
+        ...(body.customerType !== undefined && { customerType: body.customerType }),
+        ...(body.shopName !== undefined && { shopName: body.shopName }),
+        ...(body.shopAddress !== undefined && { shopAddress: body.shopAddress }),
+        ...(body.businessType !== undefined && { businessType: body.businessType }),
+        ...(body.guarantorShopName !== undefined && { guarantorShopName: body.guarantorShopName }),
+        ...(body.guarantorShopAddress !== undefined && { guarantorShopAddress: body.guarantorShopAddress }),
+        ...(body.guarantor2ShopName !== undefined && { guarantor2ShopName: body.guarantor2ShopName }),
+        ...(body.guarantor2ShopAddress !== undefined && { guarantor2ShopAddress: body.guarantor2ShopAddress }),
       })
       .where(and(eq(customers.id, id), eq(customers.sellerId, sellerId)))
       .returning();

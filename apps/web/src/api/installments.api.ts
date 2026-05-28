@@ -20,10 +20,11 @@ export interface Installment {
   customerPhone: string;
   productName: string;
   isOverdue: boolean;
-  imeiNumber:   string | null;
-  cashPrice:    string | null;
-  profitMarkup: string | null;
-  customerArea: string | null;
+  imeiNumber:       string | null;
+  cashPrice:        string | null;
+  profitMarkup:     string | null;
+  paymentFrequency: string | null;
+  customerArea:     string | null;
 }
 
 interface ListResponse {
