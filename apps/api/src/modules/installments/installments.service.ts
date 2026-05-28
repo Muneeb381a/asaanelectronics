@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
@@ -253,12 +253,25 @@ export class InstallmentsService {
   async remove(id: string, sellerId: string, deletedBy: string) {
     const row = await this.getOne(id, sellerId);
     const now = new Date();
-    await Promise.all([
-      db.update(installments).set({ deletedAt: now, deletedBy }).where(eq(installments.id, id)),
-      db.update(payments).set({ deletedAt: now }).where(
-        and(eq(payments.installmentId, id), isNull(payments.deletedAt)),
-      ),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.update(installments).set({ deletedAt: now, deletedBy }).where(eq(installments.id, id));
+
+      // Soft-delete all payments for this installment
+      const affectedPayments = await tx
+        .update(payments).set({ deletedAt: now })
+        .where(and(eq(payments.installmentId, id), isNull(payments.deletedAt)))
+        .returning({ id: payments.id });
+
+      // Clean up ledger entries for all affected payments
+      if (affectedPayments.length > 0) {
+        await tx.delete(ledgerEntries).where(
+          and(
+            inArray(ledgerEntries.referenceId, affectedPayments.map((p) => p.id)),
+            eq(ledgerEntries.refType, 'PAYMENT'),
+          ),
+        );
+      }
+    });
     return row;
   }
 

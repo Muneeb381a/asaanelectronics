@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -132,6 +132,11 @@ export class PaymentsService {
       await tx.update(installments)
         .set({ remaining: String(restoredRemaining.toFixed(2)), ...statusRevert })
         .where(eq(installments.id, pmt.installmentId));
+
+      // Remove the ledger entry that was created when this payment was recorded
+      await tx.delete(ledgerEntries).where(
+        and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'PAYMENT')),
+      );
     });
 
     return pmt;
