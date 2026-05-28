@@ -9,7 +9,10 @@ const audit = new AuditService();
 
 export async function listInstallments(req: AuthRequest, res: Response) {
   const page = Math.max(1, Number(req.query['page']) || 1);
-  const limit = Math.min(Math.max(1, Number(req.query['limit']) || 20), 100);
+  const isExport = req.query['export'] === '1';
+  const limit = isExport
+    ? Math.min(Number(req.query['limit']) || 5000, 5000)
+    : Math.min(Math.max(1, Number(req.query['limit']) || 20), 100);
   const status     = req.query['status']     as string | undefined;
   const search     = req.query['search']     as string | undefined;
   const customerId = req.query['customerId'] as string | undefined;

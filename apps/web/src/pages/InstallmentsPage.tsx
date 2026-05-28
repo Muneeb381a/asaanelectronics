@@ -33,26 +33,24 @@ function calcNextDueDate(inst: Installment): Date | null {
   return d;
 }
 
-function exportCSV(rows: Installment[]) {
-  const header = ['Customer', 'Phone', 'Product', 'Total (PKR)', 'Down Payment', 'Per Period', 'Remaining', 'Frequency', 'Duration', 'Status', 'Start Date', 'Next Due'];
+function buildCSV(rows: Installment[]) {
+  const header = ['Invoice', 'Customer', 'Phone', 'Area', 'Product', 'IMEI', 'Total (PKR)', 'Down Payment', 'Per Period', 'Remaining', 'Frequency', 'Duration', 'Status', 'Start Date', 'Next Due'];
   const body = rows.map((i) => {
     const next = calcNextDueDate(i);
     const isDaily = i.paymentFrequency === 'daily';
     return [
-      i.customerName, i.customerPhone, i.productName,
+      i.invoiceNumber ?? '',
+      i.customerName, i.customerPhone, i.customerArea ?? '',
+      i.productName, i.imeiNumber ?? '',
       i.totalAmount, i.downPayment, i.monthly, i.remaining,
       isDaily ? 'Daily' : 'Monthly',
       isDaily ? `${i.months} days` : `${i.months} months`,
       i.status,
       new Date(i.startDate).toLocaleDateString('en-PK'),
       next ? next.toLocaleDateString('en-PK') : '',
-    ].map((v) => `"${v}"`).join(',');
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',');
   });
-  const csv = [header.join(','), ...body].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = `installments-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
+  return [header.join(','), ...body].join('\n');
 }
 
 const STATUS_STYLES: Record<InstallmentStatus, string> = {
@@ -252,6 +250,114 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
               </div>
             )}
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BulkReminderModal({ onClose }: { onClose: () => void }) {
+  const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
+  const { data, isLoading } = useQuery({
+    queryKey: ['installments-bulk-remind'],
+    queryFn: () => installmentsApi.exportAll({ status: 'ACTIVE' }),
+  });
+
+  const now = new Date();
+  const overdue = useMemo(() => {
+    return (data?.data ?? []).filter((i) => {
+      const d = calcNextDueDate(i);
+      return d && d < now;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  const [sent, setSent] = useState<Set<string>>(new Set());
+
+  function send(inst: Installment) {
+    if (!shopData) return;
+    openWhatsApp(inst.customerPhone, reminderMessage({
+      shopName: shopData.shopName,
+      customerName: inst.customerName,
+      productName: inst.productName,
+      monthly: inst.monthly,
+      remaining: inst.remaining,
+      paymentFrequency: inst.paymentFrequency,
+    }));
+    setSent((s) => new Set(s).add(inst.id));
+  }
+
+  function sendAll() {
+    overdue.filter((i) => !sent.has(i.id)).forEach((inst, idx) => {
+      setTimeout(() => send(inst), idx * 500);
+    });
+  }
+
+  const unsent = overdue.filter((i) => !sent.has(i.id)).length;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 max-h-[85vh] flex flex-col">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Overdue Reminders</h2>
+            <p className="text-xs text-gray-400">
+              {isLoading ? 'Loading…' : `${overdue.length} customers with overdue payments`}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+        </div>
+
+        {isLoading ? (
+          <RowSkeleton rows={4} />
+        ) : overdue.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-10">No overdue installments — all good!</p>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100 rounded-xl border border-gray-100 mb-4">
+              {overdue.map((inst) => {
+                const dueDate = calcNextDueDate(inst);
+                const daysLate = dueDate ? Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / 86_400_000)) : 0;
+                const isSent = sent.has(inst.id);
+                return (
+                  <div key={inst.id} className={`flex items-center justify-between px-4 py-3 ${isSent ? 'opacity-50' : ''}`}>
+                    <div className="min-w-0 mr-3">
+                      <p className="text-sm font-medium text-gray-900 truncate">{inst.customerName}</p>
+                      <p className="text-xs text-gray-400">{inst.customerPhone} · {pkr(inst.monthly)}</p>
+                      <p className="text-[11px] text-red-500 font-medium">{daysLate}d overdue</p>
+                    </div>
+                    <button
+                      onClick={() => send(inst)}
+                      disabled={isSent}
+                      className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium transition disabled:cursor-default ${
+                        isSent
+                          ? 'bg-green-50 text-green-700 border border-green-200'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}>
+                      <MessageCircle size={12} />
+                      {isSent ? 'Sent ✓' : 'Send'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={onClose}
+                className="flex-1 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                Close
+              </button>
+              <button
+                onClick={sendAll}
+                disabled={unsent === 0}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50">
+                <MessageCircle size={14} />
+                Send All ({unsent})
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -470,6 +576,8 @@ export default function InstallmentsPage() {
   const user = useAuthStore((s) => s.user);
   const isOwner = user?.role === 'SELLER_OWNER';
   const [showForm, setShowForm] = useState(false);
+  const [showReminders, setShowReminders] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -544,12 +652,33 @@ export default function InstallmentsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{data?.total ?? 0} total</p>
         </div>
         <div className="flex gap-2">
-          {data && data.data.length > 0 && (
-            <button onClick={() => exportCSV(data.data)}
-              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition">
-              <Download size={14} /> Export CSV
-            </button>
-          )}
+          <button
+            onClick={() => setShowReminders(true)}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition">
+            <MessageCircle size={14} /> Reminders
+          </button>
+          <button
+            disabled={isExporting}
+            onClick={async () => {
+              setIsExporting(true);
+              try {
+                const result = await installmentsApi.exportAll({
+                  status: statusFilter || undefined,
+                  search: debouncedSearch || undefined,
+                });
+                const csv = buildCSV(result.data);
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+                a.download = `installments-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+              } finally {
+                setIsExporting(false);
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition disabled:opacity-50">
+            {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            Export CSV
+          </button>
           <button onClick={() => setShowForm(true)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
             + New installment
@@ -857,6 +986,9 @@ export default function InstallmentsPage() {
 
       {/* Schedule modal */}
       {scheduleInst && <ScheduleModal inst={scheduleInst} onClose={() => setScheduleInst(null)} />}
+
+      {/* Bulk reminder modal */}
+      {showReminders && <BulkReminderModal onClose={() => setShowReminders(false)} />}
     </div>
   );
 }

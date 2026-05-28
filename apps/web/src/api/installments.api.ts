@@ -40,6 +40,9 @@ export const installmentsApi = {
   list: (params?: { page?: number; limit?: number; status?: string; search?: string; customerId?: string }) =>
     api.get<{ data: ListResponse }>('/installments', { params }).then(unwrap<ListResponse>),
 
+  exportAll: (params?: { status?: string; search?: string }) =>
+    api.get<{ data: ListResponse }>('/installments', { params: { ...params, export: '1', limit: 5000 } }).then(unwrap<ListResponse>),
+
   getOne: (id: string) =>
     api.get<{ data: Installment }>(`/installments/${id}`).then(unwrap<Installment>),
 
