@@ -17,9 +17,7 @@ export const createStaffSchema = z.object({
   permissions: permissionsSchema.optional(),
 });
 
-export const updateStaffPermissionsSchema = z.object({
-  permissions: permissionsSchema,
-});
+export const updateStaffPermissionsSchema = permissionsSchema.partial();
 
 export type CreateStaffInput             = z.infer<typeof createStaffSchema>;
 export type UpdateStaffPermissionsInput  = z.infer<typeof updateStaffPermissionsSchema>;

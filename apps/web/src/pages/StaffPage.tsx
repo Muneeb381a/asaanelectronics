@@ -6,95 +6,151 @@ import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { CardSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 
-const DEFAULT_PERMS: StaffPermissions = {
-  canAddCustomer: true,
-  canEditCustomer: true,
-  canAddInstallment: true,
-  canRecordPayment: true,
-  canViewReports: true,
-  canManageProducts: true,
-  canVerifyCustomers: false,
+type StaffType = 'ACCOUNT' | 'AVO' | 'MANAGER' | 'CASHIER' | 'CUSTOM';
+
+const PRESET_PERMS: Record<Exclude<StaffType, 'CUSTOM'>, StaffPermissions> = {
+  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: false },
+  AVO:     { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: false, canViewReports: false, canManageProducts: false, canVerifyCustomers: true  },
+  MANAGER: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: true  },
+  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: true,  canManageProducts: false, canVerifyCustomers: false },
 };
 
-const AVO_PERMS: StaffPermissions = {
-  canAddCustomer: false,
-  canEditCustomer: false,
-  canAddInstallment: false,
-  canRecordPayment: false,
-  canViewReports: false,
-  canManageProducts: false,
-  canVerifyCustomers: true,
+const DEFAULT_CUSTOM_PERMS: StaffPermissions = {
+  canAddCustomer: true, canEditCustomer: true, canAddInstallment: true,
+  canRecordPayment: true, canViewReports: true, canManageProducts: true, canVerifyCustomers: false,
 };
-
-type StaffType = 'ACCOUNT' | 'AVO';
 
 const STAFF_TYPES: { value: StaffType; label: string; desc: string }[] = [
-  { value: 'ACCOUNT', label: 'Account Staff', desc: 'Manages customers, installments & payments' },
-  { value: 'AVO',     label: 'AVO',           desc: 'Area Verification Officer — verifies customer details on-site' },
+  { value: 'ACCOUNT', label: 'Account Staff', desc: 'Customers, installments & payments' },
+  { value: 'AVO',     label: 'AVO',           desc: 'Area Verification Officer' },
+  { value: 'MANAGER', label: 'Manager',       desc: 'Full access to all features' },
+  { value: 'CASHIER', label: 'Cashier',       desc: 'Payments & reports only' },
+  { value: 'CUSTOM',  label: 'Custom',        desc: 'Set permissions manually' },
 ];
+
+const BADGE_STYLES: Record<string, string> = {
+  AVO:     'bg-purple-100 text-purple-700',
+  ACCOUNT: 'bg-blue-100 text-blue-700',
+  MANAGER: 'bg-green-100 text-green-700',
+  CASHIER: 'bg-orange-100 text-orange-700',
+  CUSTOM:  'bg-gray-100 text-gray-600',
+};
+
+const BADGE_LABELS: Record<string, string> = {
+  AVO: 'AVO', ACCOUNT: 'Account', MANAGER: 'Manager', CASHIER: 'Cashier', CUSTOM: 'Custom',
+};
+
+function detectStaffType(perms: StaffPermissions): string {
+  for (const [type, preset] of Object.entries(PRESET_PERMS)) {
+    if ((Object.keys(preset) as (keyof StaffPermissions)[]).every((k) => preset[k] === perms[k])) {
+      return type;
+    }
+  }
+  return 'CUSTOM';
+}
 
 function AddStaffModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [staffType, setStaffType] = useState<StaffType>('ACCOUNT');
+  const [customPerms, setCustomPerms] = useState<StaffPermissions>({ ...DEFAULT_CUSTOM_PERMS });
   const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState('');
 
+  const getPermissions = (): StaffPermissions =>
+    staffType === 'CUSTOM' ? customPerms : PRESET_PERMS[staffType];
+
+  const handleTypeChange = (type: StaffType) => {
+    setStaffType(type);
+    if (type === 'CUSTOM') setCustomPerms({ ...DEFAULT_CUSTOM_PERMS });
+  };
+
   const { mutate, isPending } = useMutation({
-    mutationFn: () => staffApi.create({ ...form, permissions: staffType === 'AVO' ? AVO_PERMS : DEFAULT_PERMS }),
+    mutationFn: () => staffApi.create({ ...form, permissions: getPermissions() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['staff'] }); onClose(); },
     onError: (e) => setErr(getErrorMessage(e, 'Failed to add staff')),
   });
 
-  const field = (key: keyof typeof form, label: string, type = 'text') => (
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-      {key === 'password' ? (
-        <div className="relative">
-          <input
-            type={showPw ? 'text' : 'password'}
-            value={form[key]}
-            onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button type="button" onClick={() => setShowPw((v) => !v)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
-            {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
-        </div>
-      ) : (
-        <input
-          type={type}
-          value={form[key]}
-          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      )}
-    </div>
-  );
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-auto p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-gray-900 mb-4">Add Staff Member</h2>
 
         {/* Staff type selector */}
         <div className="grid grid-cols-2 gap-2 mb-4">
           {STAFF_TYPES.map((t) => (
-            <button key={t.value} type="button" onClick={() => setStaffType(t.value)}
-              className={`text-left p-3 rounded-xl border-2 transition ${staffType === t.value ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}>
-              <p className={`text-xs font-semibold ${staffType === t.value ? 'text-blue-700' : 'text-gray-800'}`}>{t.label}</p>
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => handleTypeChange(t.value)}
+              className={`text-left p-3 rounded-xl border-2 transition ${
+                staffType === t.value ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
+              } ${t.value === 'CUSTOM' ? 'col-span-2' : ''}`}
+            >
+              <p className={`text-xs font-semibold ${staffType === t.value ? 'text-blue-700' : 'text-gray-800'}`}>
+                {t.label}
+              </p>
               <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{t.desc}</p>
             </button>
           ))}
         </div>
 
+        {/* Custom permissions */}
+        {staffType === 'CUSTOM' && (
+          <div className="mb-4 border border-gray-100 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Permissions</p>
+            {(Object.keys(PERM_LABELS) as (keyof StaffPermissions)[]).map((key) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-xs text-gray-600">{PERM_LABELS[key]}</span>
+                <button
+                  type="button"
+                  onClick={() => setCustomPerms((p) => ({ ...p, [key]: !p[key] }))}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    customPerms[key] ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                    customPerms[key] ? 'translate-x-4.5' : 'translate-x-0.5'
+                  }`} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="space-y-3">
-          {field('name', 'Full Name')}
-          {field('email', 'Email', 'email')}
-          {field('password', 'Password')}
+          {(['name', 'email', 'password'] as const).map((key) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {key === 'name' ? 'Full Name' : key === 'email' ? 'Email' : 'Password'}
+              </label>
+              {key === 'password' ? (
+                <div className="relative">
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    value={form[key]}
+                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button type="button" onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+                    {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type={key === 'email' ? 'email' : 'text'}
+                  value={form[key]}
+                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              )}
+            </div>
+          ))}
         </div>
+
         {err && <p className="text-xs text-red-500 mt-3">{err}</p>}
+
         <div className="flex gap-2 mt-5">
           <button onClick={onClose}
             className="flex-1 border border-gray-200 rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
@@ -112,15 +168,9 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function PermissionToggle({
-  member,
-  permKey,
-}: {
-  member: StaffMember;
-  permKey: keyof StaffPermissions;
-}) {
+function PermissionToggle({ member, permKey }: { member: StaffMember; permKey: keyof StaffPermissions }) {
   const qc = useQueryClient();
-  const perms = member.permissions ?? DEFAULT_PERMS;
+  const perms = member.permissions ?? DEFAULT_CUSTOM_PERMS;
   const value = perms[permKey];
 
   const { mutate, isPending } = useMutation({
@@ -147,8 +197,8 @@ function StaffCard({ member }: { member: StaffMember }) {
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === 'SELLER_OWNER';
-  const perms = member.permissions ?? DEFAULT_PERMS;
-  const isAvo = !!perms.canVerifyCustomers;
+  const perms = member.permissions ?? DEFAULT_CUSTOM_PERMS;
+  const staffType = detectStaffType(perms);
   const initials = member.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
   const { mutate: remove } = useMutation({
@@ -166,8 +216,8 @@ function StaffCard({ member }: { member: StaffMember }) {
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-gray-900">{member.name}</p>
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${isAvo ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                {isAvo ? 'AVO' : 'Account'}
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${BADGE_STYLES[staffType] ?? BADGE_STYLES.CUSTOM}`}>
+                {BADGE_LABELS[staffType] ?? 'Custom'}
               </span>
             </div>
             <p className="text-xs text-gray-400">{member.email}</p>
