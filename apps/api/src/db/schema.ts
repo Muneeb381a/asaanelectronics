@@ -470,3 +470,15 @@ export const paymentAccounts = pgTable('payment_accounts', {
 }, (t) => [
   index('idx_payment_accounts_seller').on(t.sellerId),
 ]);
+
+// OCR result cache — keyed by SHA-256 hash of the raw image bytes.
+// Prevents duplicate Groq API calls for the same image (re-uploads, same
+// guarantor used across multiple customers, testing, form re-submissions).
+export const ocrCache = pgTable('ocr_cache', {
+  hash:      text('hash').notNull(),
+  docType:   text('doc_type').notNull(),
+  result:    json('result').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('ocr_cache_hash_doctype').on(t.hash, t.docType),
+]);
