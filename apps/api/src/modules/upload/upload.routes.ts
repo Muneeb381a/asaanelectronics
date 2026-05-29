@@ -45,9 +45,11 @@ router.post('/', upload.single('file'), async (req: Request, res: Response, next
     const hash    = createHash('sha256').update(req.file.buffer).digest('hex');
     const docType = ALLOWED_FOLDERS[folder];
 
-    const { extracted, _ocrRaw } = await extractDocumentData(req.file.buffer, docType);
+    const [{ extracted, _ocrRaw }, url] = await Promise.all([
+      extractDocumentData(req.file.buffer, docType),
+      uploadToCloudinary(req.file.buffer, folder),
+    ]);
 
-    const url = await uploadToCloudinary(req.file.buffer, folder);
     res.json({ success: true, data: { url, hash, extracted, _ocrRaw } });
   } catch (e) {
     next(e);

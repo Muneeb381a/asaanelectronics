@@ -137,25 +137,24 @@ function parseCnic(lines: string[]) {
  * (without enlarging), convert to grayscale, auto-normalize contrast, sharpen.
  * Returns a clean PNG buffer ready for Tesseract.
  */
-async function preprocess(buffer: Buffer, extraRotation = 0): Promise<Buffer> {
-  let pipeline = sharp(buffer)
+async function preprocess(buffer: Buffer): Promise<Buffer> {
+  return sharp(buffer)
     .rotate()                                        // auto-fix EXIF/HEIC orientation
-    .resize({ width: 1600, withoutEnlargement: true })
+    .resize({ width: 900, withoutEnlargement: true }) // 900px — fast enough for CNIC text
     .grayscale()
     .normalize()
-    .sharpen({ sigma: 1.5 });
-
-  if (extraRotation !== 0) {
-    // Apply extra rotation on top of EXIF-corrected image
-    const base = await pipeline.png().toBuffer();
-    return sharp(base).rotate(extraRotation).png().toBuffer();
-  }
-
-  return pipeline.png().toBuffer();
+    .sharpen({ sigma: 1 })
+    .png()
+    .toBuffer();
 }
 
 async function runOcr(buffer: Buffer): Promise<{ text: string; confidence: number }> {
-  const { data } = await Tesseract.recognize(buffer, 'eng', { logger: () => {} });
+  const { data } = await Tesseract.recognize(buffer, 'eng', {
+    logger: () => {},
+    // LSTM engine only (faster). PSM 11 = sparse text (good for CNIC layout).
+    tessedit_ocr_engine_mode: '1',
+    tessedit_pageseg_mode: '11',
+  } as Parameters<typeof Tesseract.recognize>[2]);
   return { text: data.text, confidence: data.confidence };
 }
 
@@ -169,18 +168,19 @@ async function ocrWithAutoRotate(buffer: Buffer, docType: 'cnic' | 'cheque'): Pr
   const base = await preprocess(buffer);
   const r0 = await runOcr(base);
 
-  // For CNIC: a detected CNIC number is the strongest signal we have the right angle
+  // Best case: CNIC number found or confidence is acceptable — done in one pass
   if (docType === 'cnic' && CNIC_REGEX.test(r0.text)) return r0.text;
-  if (r0.confidence >= 60) return r0.text;
+  if (r0.confidence >= 50) return r0.text;
 
+  // Only attempt rotations when confidence is very low (image may be sideways/upside-down)
   let best = r0;
-  for (const deg of [90, 180, 270]) {
+  for (const deg of [180, 90, 270]) {          // 180° first — most common mis-orientation
     const rotated = await sharp(base).rotate(deg).png().toBuffer();
     const r = await runOcr(rotated);
 
     if (docType === 'cnic' && CNIC_REGEX.test(r.text)) return r.text;
     if (r.confidence > best.confidence) best = r;
-    if (r.confidence >= 60) break;
+    if (r.confidence >= 50) break;             // good enough — stop early
   }
 
   return best.text;
