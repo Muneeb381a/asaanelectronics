@@ -13,6 +13,7 @@ const schema = z.object({
   RESEND_API_KEY: z.string(),
   EMAIL_FROM: z.string().optional(),
   CORS_ORIGIN: z.string(),
+  GOOGLE_VISION_API_KEY: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
 });
