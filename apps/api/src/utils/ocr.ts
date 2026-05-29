@@ -30,12 +30,10 @@ function titleCase(s: string): string {
   return s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Strip non-ASCII (Urdu OCR artefacts) and collapse spaces
 function ascii(s: string): string {
   return s.replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-// Parse an 8-digit run as DDMMYYYY → "DD.MM.YYYY", null if not a valid date
 function tryDate8(s: string): string | null {
   const m = s.match(/\b(\d{2})(\d{2})(\d{4})\b/);
   if (!m) return null;
@@ -48,21 +46,17 @@ function tryDate8(s: string): string | null {
 
 function extractNameWords(line: string): string | null {
   const clean = line.replace(/[|:;\-–—]/g, ' ').replace(/\s+/g, ' ').trim();
-
   const caps = (clean.match(/\b[A-Z]{2,}\b/g) ?? []).filter((w) => !NON_NAME.test(w));
   if (caps.length >= 2 && caps.length <= 5) return titleCase(caps.join(' '));
-
   const title = (clean.match(/\b[A-Z][a-z]{1,}\b/g) ?? []).filter((w) => !NON_NAME.test(w));
   if (title.length >= 2 && title.length <= 5) return title.join(' ');
-
   return null;
 }
 
 function capWordsAfter(line: string, kw: RegExp): string | null {
   const m = kw.exec(line.toLowerCase());
   if (!m) return null;
-  const after = line.slice(m.index + m[0].length);
-  return extractNameWords(after);
+  return extractNameWords(line.slice(m.index + m[0].length));
 }
 
 function isNameLine(line: string): boolean {
@@ -75,11 +69,11 @@ function isNameLine(line: string): boolean {
 }
 
 function parseCnic(lines: string[]) {
-  let name: string | null        = null;
-  let fatherName: string | null  = null;
-  let dob: string | null         = null;
-  let expiryDate: string | null  = null;
-  let address: string | null     = null;
+  let name: string | null       = null;
+  let fatherName: string | null = null;
+  let dob: string | null        = null;
+  let expiryDate: string | null = null;
+  let address: string | null    = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -89,27 +83,17 @@ function parseCnic(lines: string[]) {
     if (!name && /\bname\b/.test(low) && !/father|husband/.test(low)) {
       name = capWordsAfter(line, /\bname\b/) ?? extractNameWords(next);
     }
-
     if (!fatherName && /\b(?:father|husband)\b/.test(low)) {
       fatherName = capWordsAfter(line, /\b(?:father|husband)\b/) ?? extractNameWords(next);
     }
-
     if (!dob && /birth|d\.?o\.?b/.test(low) && !/expir/.test(low)) {
-      dob = line.match(DATE_RE)?.[0]
-         ?? next.match(DATE_RE)?.[0]
-         ?? tryDate8(line)
-         ?? tryDate8(next)
-         ?? null;
+      dob = line.match(DATE_RE)?.[0] ?? next.match(DATE_RE)?.[0]
+         ?? tryDate8(line) ?? tryDate8(next) ?? null;
     }
-
     if (!expiryDate && /expir/.test(low)) {
-      expiryDate = line.match(DATE_RE)?.[0]
-               ?? next.match(DATE_RE)?.[0]
-               ?? tryDate8(line)
-               ?? tryDate8(next)
-               ?? null;
+      expiryDate = line.match(DATE_RE)?.[0] ?? next.match(DATE_RE)?.[0]
+               ?? tryDate8(line) ?? tryDate8(next) ?? null;
     }
-
     if (!address && /address/.test(low)) {
       const after = line.replace(/.*address[:\s]*/i, '').trim();
       address = after.length >= 5 ? after : (next.length >= 5 ? next : null);
@@ -121,7 +105,6 @@ function parseCnic(lines: string[]) {
     if (!name       && nameLines[0]) name       = titleCase(nameLines[0]);
     if (!fatherName && nameLines[1]) fatherName = titleCase(nameLines[1]);
   }
-
   if (!expiryDate) {
     for (const line of lines) {
       const d = tryDate8(line);
@@ -132,80 +115,122 @@ function parseCnic(lines: string[]) {
   return { name, fatherName, dob, expiryDate, address };
 }
 
-/**
- * Preprocess image with sharp: fix EXIF orientation, upscale to 1600px wide
- * (without enlarging), convert to grayscale, auto-normalize contrast, sharpen.
- * Returns a clean PNG buffer ready for Tesseract.
- */
-async function preprocess(buffer: Buffer): Promise<Buffer> {
-  return sharp(buffer)
-    .rotate()                                        // auto-fix EXIF/HEIC orientation
-    .resize({ width: 900, withoutEnlargement: true }) // 900px — fast enough for CNIC text
-    .grayscale()
-    .normalize()
-    .sharpen({ sigma: 1 })
-    .png()
-    .toBuffer();
+// ─── Preprocessing strategies ───────────────────────────────────────────────
+// Three strategies run in parallel so bad images (dark, blurry, faded) are
+// still readable without sequential retries.
+
+async function buildPreprocessed(raw: Buffer): Promise<{ std: Buffer; hc: Buffer; lg: Buffer }> {
+  // EXIF-correct once, then derive three variants in parallel
+  const base = await sharp(raw).rotate().png().toBuffer();
+
+  const [std, hc, lg] = await Promise.all([
+
+    // Strategy A — standard: good for clear, well-lit images
+    sharp(base)
+      .resize({ width: 960, withoutEnlargement: true })
+      .grayscale()
+      .normalize()
+      .sharpen({ sigma: 1 })
+      .png().toBuffer(),
+
+    // Strategy B — high-contrast: recovers dark/green-background CNICs
+    sharp(base)
+      .resize({ width: 960, withoutEnlargement: true })
+      .grayscale()
+      .linear(1.9, -55)   // aggressive contrast boost
+      .normalize()
+      .sharpen({ sigma: 1.5 })
+      .png().toBuffer(),
+
+    // Strategy C — large + denoised: recovers blurry/low-res images
+    sharp(base)
+      .resize({ width: 1300, withoutEnlargement: true })
+      .grayscale()
+      .median(1)           // light denoise before sharpening
+      .normalize()
+      .sharpen({ sigma: 2 })
+      .png().toBuffer(),
+  ]);
+
+  return { std, hc, lg };
 }
 
-async function runOcr(buffer: Buffer): Promise<{ text: string; confidence: number }> {
-  const { data } = await Tesseract.recognize(buffer, 'eng', {
-    logger: () => {},
-    // LSTM engine only (faster). PSM 11 = sparse text (good for CNIC layout).
-    tessedit_ocr_engine_mode: '1',
-    tessedit_pageseg_mode: '11',
-  } as Parameters<typeof Tesseract.recognize>[2]);
-  return { text: data.text, confidence: data.confidence };
+// ─── OCR runner ──────────────────────────────────────────────────────────────
+
+const TESS_OPTIONS = {
+  logger: () => {},
+  tessedit_ocr_engine_mode: '1',  // LSTM-only — faster and more accurate than legacy
+  tessedit_pageseg_mode: '11',    // sparse text — best for CNIC / cheque layouts
+} as Parameters<typeof Tesseract.recognize>[2];
+
+async function runOcr(buf: Buffer): Promise<{ text: string; conf: number }> {
+  const { data } = await Tesseract.recognize(buf, 'eng', TESS_OPTIONS);
+  return { text: data.text, conf: data.confidence };
 }
 
-/**
- * OCR with automatic orientation correction.
- * 1. Fix EXIF rotation and preprocess the image.
- * 2. If Tesseract confidence is ≥ 60 (or CNIC pattern found), return immediately.
- * 3. Otherwise try 90°, 180°, 270° rotations and return the best result.
- */
-async function ocrWithAutoRotate(buffer: Buffer, docType: 'cnic' | 'cheque'): Promise<string> {
-  const base = await preprocess(buffer);
-  const r0 = await runOcr(base);
-
-  // Best case: CNIC number found or confidence is acceptable — done in one pass
-  if (docType === 'cnic' && CNIC_REGEX.test(r0.text)) return r0.text;
-  if (r0.confidence >= 50) return r0.text;
-
-  // Only attempt rotations when confidence is very low (image may be sideways/upside-down)
-  let best = r0;
-  for (const deg of [180, 90, 270]) {          // 180° first — most common mis-orientation
-    const rotated = await sharp(base).rotate(deg).png().toBuffer();
-    const r = await runOcr(rotated);
-
-    if (docType === 'cnic' && CNIC_REGEX.test(r.text)) return r.text;
-    if (r.confidence > best.confidence) best = r;
-    if (r.confidence >= 50) break;             // good enough — stop early
-  }
-
-  return best.text;
+// Score a candidate: CNIC number found = highest priority, else use raw confidence
+function scoreResult(r: { text: string; conf: number }, docType: string): number {
+  if (docType === 'cnic' && CNIC_REGEX.test(r.text)) return 200 + r.conf;
+  return r.conf;
 }
 
-const OCR_TIMEOUT_MS = 28_000; // 28 s — leaves headroom for Cloudinary + response within 60 s limit
-
-function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+// Run OCR on a single preprocessed image at all 4 rotations simultaneously
+async function ocrAllAngles(buf: Buffer): Promise<{ text: string; conf: number }[]> {
+  return Promise.all([
+    runOcr(buf),
+    sharp(buf).rotate(90).png().toBuffer().then(runOcr),
+    sharp(buf).rotate(180).png().toBuffer().then(runOcr),
+    sharp(buf).rotate(270).png().toBuffer().then(runOcr),
   ]);
 }
+
+// Pick best result from a list of candidates
+function best(
+  results: { text: string; conf: number }[],
+  docType: string,
+): { text: string; conf: number } {
+  return results.reduce((b, r) => scoreResult(r, docType) > scoreResult(b, docType) ? r : b);
+}
+
+async function ocrDocument(buffer: Buffer, docType: 'cnic' | 'cheque'): Promise<string> {
+  const { std, hc, lg } = await buildPreprocessed(buffer);
+
+  // ── Round 1: standard preprocessing, all 4 angles in parallel ──
+  const round1 = await ocrAllAngles(std);
+  const winner1 = best(round1, docType);
+
+  if (docType === 'cnic' && CNIC_REGEX.test(winner1.text)) return winner1.text;
+  if (winner1.conf >= 55) return winner1.text;
+
+  // ── Round 2: high-contrast AND large preprocessing, both sets of 4 angles,
+  //            run simultaneously — gives 8 more candidates in one async batch ──
+  const [round2a, round2b] = await Promise.all([
+    ocrAllAngles(hc),
+    ocrAllAngles(lg),
+  ]);
+
+  const allCandidates = [...round1, ...round2a, ...round2b];
+  return best(allCandidates, docType).text;
+}
+
+// ─── Timeout guard ───────────────────────────────────────────────────────────
+
+const OCR_TIMEOUT_MS = 45_000; // 45 s hard cap — function max is 60 s
+
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([p, new Promise<T>((res) => setTimeout(() => res(fallback), ms))]);
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
 
 export async function extractDocumentData(
   buffer: Buffer,
   docType: 'cnic' | 'cheque' | 'other',
 ): Promise<{ extracted: DocumentExtracted; _ocrRaw: string }> {
   if (docType === 'other') return { extracted: EMPTY, _ocrRaw: '' };
+
   try {
-    const rawText = await withTimeout(
-      ocrWithAutoRotate(buffer, docType),
-      OCR_TIMEOUT_MS,
-      '',   // empty string on timeout — upload still succeeds, user fills fields manually
-    );
+    const rawText = await withTimeout(ocrDocument(buffer, docType), OCR_TIMEOUT_MS, '');
     const _ocrRaw = rawText.slice(0, 800);
 
     if (docType === 'cnic') {

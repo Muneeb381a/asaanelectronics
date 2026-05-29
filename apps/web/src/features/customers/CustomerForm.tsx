@@ -70,7 +70,47 @@ function Spinner() {
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
-const MAX_SIZE_MB = 5;
+const MAX_SIZE_MB = 15; // raw phone photos can be large — we compress client-side anyway
+
+// Compress & resize image in-browser before upload.
+// Turns a 4K/5MB phone photo into ~200-400 KB JPEG, same quality for OCR.
+async function compressForUpload(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = document.createElement('img') as HTMLImageElement;
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX_DIM = 1800; // enough for Tesseract — larger wastes upload time
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        if (w > h) { h = Math.round((h * MAX_DIM) / w); w = MAX_DIM; }
+        else        { w = Math.round((w * MAX_DIM) / h); h = MAX_DIM; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff'; // white background — avoids transparent PNG artefacts
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error('Compression failed')),
+        'image/jpeg',
+        0.90,
+      );
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not load image')); };
+    img.src = url;
+  });
+}
+
+type UploadStage = 'compressing' | 'uploading' | 'scanning' | null;
+
+const STAGE_LABEL: Record<Exclude<UploadStage, null>, string> = {
+  compressing: 'Optimising image…',
+  uploading:   'Uploading…',
+  scanning:    'Reading document…',
+};
 
 function PhotoUpload({ label, folder, value, onChange, required, hasError, compact }: {
   label: string; folder: string; value: string | null;
@@ -78,8 +118,10 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
   required?: boolean; hasError?: boolean; compact?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [stage, setStage] = useState<UploadStage>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+
+  const isCnic = folder.includes('cnic') || folder.includes('guarantor');
 
   async function handleFile(file: File) {
     setFileError(null);
@@ -91,23 +133,31 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
       setFileError(`File too large — max ${MAX_SIZE_MB} MB`);
       return;
     }
-    setUploading(true);
+
     try {
+      // Step 1: compress client-side (fast — <1 s)
+      setStage('compressing');
+      const compressed = await compressForUpload(file);
+
+      // Step 2: upload + OCR in parallel on server
+      setStage(isCnic ? 'scanning' : 'uploading');
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', compressed, 'document.jpg');
       fd.append('folder', folder);
-      const res = await api.post<{ data: { url: string; hash: string; extracted: DocumentExtracted } }>('/upload', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.post<{ data: { url: string; hash: string; extracted: DocumentExtracted } }>(
+        '/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } },
+      );
       const { url, hash, extracted } = res.data.data;
       onChange(url, hash, extracted);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setFileError(msg ?? 'Upload failed');
+      setFileError(msg ?? 'Upload failed — please try again');
+    } finally {
+      setStage(null);
     }
-    finally { setUploading(false); }
   }
 
+  const uploading = stage !== null;
   const h = compact ? 'h-24' : 'h-28';
   const showError = hasError && !value;
 
@@ -136,10 +186,10 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
           {uploading ? (
             <>
               <Spinner />
-              <span className="text-xs text-blue-500 font-medium">Reading document…</span>
+              <span className="text-xs text-blue-500 font-medium">{STAGE_LABEL[stage!]}</span>
             </>
           ) : (
-            <><ImageIcon size={18} /><span className="text-xs">{showError ? 'Required' : 'Upload'}</span></>
+            <><ImageIcon size={18} /><span className="text-xs">{showError ? 'Required' : 'Upload photo'}</span></>
           )}
         </button>
       )}
