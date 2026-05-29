@@ -186,13 +186,26 @@ async function ocrWithAutoRotate(buffer: Buffer, docType: 'cnic' | 'cheque'): Pr
   return best.text;
 }
 
+const OCR_TIMEOUT_MS = 28_000; // 28 s — leaves headroom for Cloudinary + response within 60 s limit
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 export async function extractDocumentData(
   buffer: Buffer,
   docType: 'cnic' | 'cheque' | 'other',
 ): Promise<{ extracted: DocumentExtracted; _ocrRaw: string }> {
   if (docType === 'other') return { extracted: EMPTY, _ocrRaw: '' };
   try {
-    const rawText = await ocrWithAutoRotate(buffer, docType);
+    const rawText = await withTimeout(
+      ocrWithAutoRotate(buffer, docType),
+      OCR_TIMEOUT_MS,
+      '',   // empty string on timeout — upload still succeeds, user fills fields manually
+    );
     const _ocrRaw = rawText.slice(0, 800);
 
     if (docType === 'cnic') {
