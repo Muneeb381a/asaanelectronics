@@ -246,7 +246,8 @@ function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, c
             className={inp} />
         </Field>
         <Field label="CNIC" optional error={(errors as Record<string, { message?: string }>)[cnicKey]?.message}>
-          <input {...register(cnicKey)} placeholder="XXXXX-XXXXXXX-X" className={inp} />
+          <input {...register(cnicKey)} placeholder="XXXXX-XXXXXXX-X" maxLength={15} className={inp}
+            onChange={(e) => { e.target.value = formatCnic(e.target.value); register(cnicKey).onChange(e); }} />
         </Field>
       </div>
       <Field label="Address" optional>
@@ -274,9 +275,10 @@ function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, c
 }
 
 function formatCnic(raw: string): string {
-  const d = raw.replace(/\D/g, '');
-  if (d.length === 13) return `${d.slice(0, 5)}-${d.slice(5, 12)}-${d.slice(12)}`;
-  return raw;
+  const d = raw.replace(/\D/g, '').slice(0, 13);
+  if (d.length <= 5)  return d;
+  if (d.length <= 12) return `${d.slice(0, 5)}-${d.slice(5)}`;
+  return `${d.slice(0, 5)}-${d.slice(5, 12)}-${d.slice(12)}`;
 }
 
 export default function CustomerForm({ customer, onSubmit, isPending, onCancel }: Props) {
@@ -454,7 +456,8 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
               <input {...register('name')} placeholder="Muhammad Ali" className={inp} />
             </Field>
             <Field label={isEdit ? 'CNIC (leave blank to keep)' : 'CNIC'} error={errors.cnic?.message} optional={isEdit}>
-              <input {...register('cnic')} placeholder="XXXXX-XXXXXXX-X" className={inp} />
+              <input {...register('cnic')} placeholder="XXXXX-XXXXXXX-X" maxLength={15} className={inp}
+                onChange={(e) => { e.target.value = formatCnic(e.target.value); register('cnic').onChange(e); }} />
               {isEdit && <p className="text-xs text-gray-400 mt-1">Current: {customer.cnicMasked}</p>}
             </Field>
             <div className="grid grid-cols-2 gap-3">
