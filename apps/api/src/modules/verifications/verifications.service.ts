@@ -19,22 +19,34 @@ type SubmitBody = {
 
 export class VerificationsService {
   /** AVO: list customers assigned to me */
-  async myQueue(avoId: string, sellerId: string) {
-    return db
-      .select({
-        id: customers.id,
-        name: customers.name,
-        cnicMasked: customers.cnicMasked,
-        phone: customers.phone,
-        address: customers.address,
-        occupation: customers.occupation,
-        employer: customers.employer,
-        verificationStatus: customers.verificationStatus,
-        photoUrl: customers.photoUrl,
-        createdAt: customers.createdAt,
-      })
-      .from(customers)
-      .where(and(eq(customers.sellerId, sellerId), eq(customers.assignedAvoId, avoId)));
+  async myQueue(avoId: string, sellerId: string, page = 1, limit = 50) {
+    const safeLimit = Math.min(limit, 100);
+    const offset    = (page - 1) * safeLimit;
+    const where     = and(eq(customers.sellerId, sellerId), eq(customers.assignedAvoId, avoId));
+
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select({
+          id:                 customers.id,
+          name:               customers.name,
+          cnicMasked:         customers.cnicMasked,
+          phone:              customers.phone,
+          address:            customers.address,
+          occupation:         customers.occupation,
+          employer:           customers.employer,
+          verificationStatus: customers.verificationStatus,
+          photoUrl:           customers.photoUrl,
+          createdAt:          customers.createdAt,
+        })
+        .from(customers)
+        .where(where)
+        .orderBy(desc(customers.createdAt))
+        .limit(safeLimit)
+        .offset(offset),
+      db.select({ total: sql<number>`count(*)::int` }).from(customers).where(where),
+    ]);
+
+    return { data: rows, total, page, limit: safeLimit };
   }
 
   /** AVO: submit verification report */
@@ -77,17 +89,34 @@ export class VerificationsService {
     });
     if (!customer) throw new AppError('Customer not found', 404);
 
-    const report = await db.query.verifications.findFirst({
-      where: eq(verifications.customerId, customerId),
-    });
-    if (!report) return null;
+    // Single JOIN query — eliminates the separate AVO user lookup (N+1)
+    const [row] = await db
+      .select({
+        id:                  verifications.id,
+        customerId:          verifications.customerId,
+        avoId:               verifications.avoId,
+        status:              verifications.status,
+        addressVerified:     verifications.addressVerified,
+        employerVerified:    verifications.employerVerified,
+        guarantor1Reachable: verifications.guarantor1Reachable,
+        guarantor2Reachable: verifications.guarantor2Reachable,
+        photoEvidenceUrl:    verifications.photoEvidenceUrl,
+        notes:               verifications.notes,
+        latitude:            verifications.latitude,
+        longitude:           verifications.longitude,
+        locationAccuracy:    verifications.locationAccuracy,
+        createdAt:           verifications.createdAt,
+        avo: {
+          id:    users.id,
+          name:  users.name,
+          email: users.email,
+        },
+      })
+      .from(verifications)
+      .innerJoin(users, eq(users.id, verifications.avoId))
+      .where(eq(verifications.customerId, customerId));
 
-    const avo = await db.query.users.findFirst({
-      where: eq(users.id, report.avoId),
-      columns: { id: true, name: true, email: true },
-    });
-
-    return { ...report, avo };
+    return row ?? null;
   }
 
   /** Owner: reset rejected customer back to PENDING for re-verification */

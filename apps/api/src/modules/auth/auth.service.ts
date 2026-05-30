@@ -1,4 +1,4 @@
-import { and, eq, gt, ne } from 'drizzle-orm';
+import { and, eq, gt, ne, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { users, refreshTokens, otps, sellers } from '../../db/schema.js';
 import { hashPassword, comparePassword } from '../../utils/hash.js';
@@ -7,8 +7,9 @@ import { generateOtp, hashOtp, verifyOtp } from '../../utils/otp.js';
 import { sendOtpEmail } from '../../utils/email.js';
 import { AppError } from '../../middleware/error.js';
 
-const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const OTP_TTL_MS     = 10 * 60 * 1000;
+const REFRESH_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
+const OTP_TTL_MS      = 10 * 60 * 1000;
+const MAX_OTP_ATTEMPTS = 3;
 
 type DeviceInfo = { ip?: string; userAgent?: string };
 
@@ -139,7 +140,21 @@ export class AuthService {
     });
 
     if (!otp || otp.expiresAt < new Date()) throw new AppError('OTP expired. Please login again.', 401);
-    if (!verifyOtp(body.code, otp.codeHash)) throw new AppError('Incorrect code', 400);
+
+    if (otp.attempts >= MAX_OTP_ATTEMPTS) {
+      await db.delete(otps).where(eq(otps.id, otp.id));
+      throw new AppError('Too many incorrect attempts. Please login again.', 429);
+    }
+
+    if (!verifyOtp(body.code, otp.codeHash)) {
+      await db.update(otps).set({ attempts: sql`${otps.attempts} + 1` }).where(eq(otps.id, otp.id));
+      const left = MAX_OTP_ATTEMPTS - otp.attempts - 1;
+      if (left <= 0) {
+        await db.delete(otps).where(eq(otps.id, otp.id));
+        throw new AppError('Too many incorrect attempts. Please login again.', 429);
+      }
+      throw new AppError(`Incorrect code. ${left} attempt${left === 1 ? '' : 's'} remaining.`, 400);
+    }
 
     await db.delete(otps).where(eq(otps.id, otp.id));
     const user = await db.query.users.findFirst({ where: eq(users.id, payload.userId) });
@@ -173,7 +188,21 @@ export class AuthService {
     });
 
     if (!otp || otp.expiresAt < new Date()) throw new AppError('Code expired. Please request a new one.', 400);
-    if (!verifyOtp(body.code, otp.codeHash)) throw new AppError('Incorrect code', 400);
+
+    if (otp.attempts >= MAX_OTP_ATTEMPTS) {
+      await db.delete(otps).where(eq(otps.id, otp.id));
+      throw new AppError('Too many incorrect attempts. Please request a new reset code.', 429);
+    }
+
+    if (!verifyOtp(body.code, otp.codeHash)) {
+      await db.update(otps).set({ attempts: sql`${otps.attempts} + 1` }).where(eq(otps.id, otp.id));
+      const left = MAX_OTP_ATTEMPTS - otp.attempts - 1;
+      if (left <= 0) {
+        await db.delete(otps).where(eq(otps.id, otp.id));
+        throw new AppError('Too many incorrect attempts. Please request a new reset code.', 429);
+      }
+      throw new AppError(`Incorrect code. ${left} attempt${left === 1 ? '' : 's'} remaining.`, 400);
+    }
 
     await db.delete(otps).where(eq(otps.id, otp.id));
     await db.update(users).set({ password: await hashPassword(body.newPassword) }).where(eq(users.id, user.id));
@@ -184,16 +213,21 @@ export class AuthService {
     let payload: { userId: string };
     try { payload = verifyRefresh(token); } catch { throw new AppError('Invalid refresh token', 401); }
 
-    const stored = await db.query.refreshTokens.findFirst({ where: eq(refreshTokens.token, token) });
-    if (!stored || stored.expiresAt < new Date()) throw new AppError('Refresh token expired', 401);
+    // Atomically delete — returns the row if it existed and wasn't expired.
+    // This eliminates the race condition where two concurrent requests both
+    // pass a findFirst check before either deletes the token.
+    const [deleted] = await db
+      .delete(refreshTokens)
+      .where(and(eq(refreshTokens.token, token), gt(refreshTokens.expiresAt, new Date())))
+      .returning({ ip: refreshTokens.ip, userAgent: refreshTokens.userAgent });
 
-    // Carry original device info across token rotation
+    if (!deleted) throw new AppError('Refresh token expired or already used', 401);
+
     const carried: DeviceInfo = {
-      ip:        stored.ip        ?? device?.ip,
-      userAgent: stored.userAgent ?? device?.userAgent,
+      ip:        deleted.ip        ?? device?.ip,
+      userAgent: deleted.userAgent ?? device?.userAgent,
     };
 
-    await db.delete(refreshTokens).where(eq(refreshTokens.token, token));
     const user = await db.query.users.findFirst({ where: eq(users.id, payload.userId) });
     if (!user) throw new AppError('User not found', 404);
     return issueTokens(user, carried);

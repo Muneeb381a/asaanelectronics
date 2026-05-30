@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, lte, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { auditLogs, users } from '../../db/schema.js';
 
@@ -98,5 +98,12 @@ export class AuditService {
     ]);
 
     return { data: rows, total: count, page, limit };
+  }
+
+  async deleteOlderThan(days: number): Promise<number> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const deleted = await db.delete(auditLogs).where(lt(auditLogs.createdAt, cutoff)).returning({ id: auditLogs.id });
+    return deleted.length;
   }
 }

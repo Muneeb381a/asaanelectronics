@@ -65,13 +65,15 @@ export class PaymentsService {
       if (!inst) throw new AppError('Installment not found', 404);
       if (inst.status !== 'ACTIVE') throw new AppError('Installment is not active', 400);
 
-      const currentRemaining = Number(inst.remaining);
-      if (body.amount > currentRemaining + 0.01) {
-        throw new AppError(`Amount exceeds remaining balance of PKR ${currentRemaining.toFixed(2)}`, 400);
+      // Use integer arithmetic (paisas) to avoid floating-point errors
+      const remainingPaisas = Math.round(Number(inst.remaining) * 100);
+      const amountPaisas    = Math.round(body.amount * 100);
+      if (amountPaisas > remainingPaisas) {
+        throw new AppError(`Amount exceeds remaining balance of PKR ${(remainingPaisas / 100).toFixed(2)}`, 400);
       }
 
-      const newRemaining = Math.max(0, currentRemaining - body.amount);
-      const isCleared = newRemaining === 0;
+      const newRemaining = (remainingPaisas - amountPaisas) / 100;
+      const isCleared    = newRemaining === 0;
 
       const [instDetail] = await tx
         .select({ productName: products.name, customerName: customers.name })

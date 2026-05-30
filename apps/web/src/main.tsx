@@ -6,7 +6,13 @@ import App from './App.tsx';
 import './index.css';
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 1000 * 60 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,   // 5 min — data considered fresh, no refetch
+      gcTime:    1000 * 60 * 10,  // 10 min — keep unused data in cache
+      refetchOnWindowFocus: false, // don't refetch on every tab switch
+    },
+  },
 });
 
 createRoot(document.getElementById('root')!).render(

@@ -201,7 +201,8 @@ export class InstallmentsService {
         });
       }
 
-      return installment;
+      // Return names already in memory — avoids a follow-up getOne() in the controller
+      return { ...installment, customerName: customer.name, productName: product.name };
     });
   }
 

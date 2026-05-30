@@ -104,11 +104,12 @@ export const refreshTokens = pgTable('refresh_tokens', {
 ]);
 
 export const otps = pgTable('otps', {
-  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  codeHash: text('code_hash').notNull(),
-  purpose: otpPurposeEnum('purpose').notNull(),
+  id:        text('id').primaryKey().$defaultFn(() => randomUUID()),
+  userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  codeHash:  text('code_hash').notNull(),
+  purpose:   otpPurposeEnum('purpose').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
+  attempts:  integer('attempts').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
   index('idx_otps_user_purpose').on(t.userId, t.purpose),
@@ -180,6 +181,8 @@ export const customers = pgTable(
     index('idx_cnic_front_hash').on(t.sellerId, t.cnicFrontHash),
     index('idx_cnic_back_hash').on(t.sellerId, t.cnicBackHash),
     index('idx_blank_cheque_hash').on(t.sellerId, t.blankChequeHash),
+    index('idx_customers_phone').on(t.phone),
+    index('idx_customers_name').on(t.sellerId, t.name),
   ],
 );
 
@@ -223,6 +226,7 @@ export const products = pgTable('products', {
   deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [
   index('idx_products_seller').on(t.sellerId),
+  index('idx_products_name').on(t.sellerId, t.name),
 ]);
 
 export const installments = pgTable('installments', {
@@ -252,6 +256,8 @@ export const installments = pgTable('installments', {
   index('idx_installments_customer').on(t.customerId),
   index('idx_installments_status').on(t.status),
   index('idx_installments_customer_deleted').on(t.customerId, t.deletedAt),
+  index('idx_installments_start_date').on(t.startDate),
+  index('idx_installments_seller_status').on(t.status, t.deletedAt),
 ]);
 
 export const expenses = pgTable('expenses', {

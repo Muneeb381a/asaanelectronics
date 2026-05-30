@@ -1,10 +1,22 @@
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
 
-export function hashCnic(cnic: string) {
+// Legacy: SHA-256(normalized + pepper) — kept only for zero-downtime migration reads
+function hashCnicLegacy(cnic: string): string {
   const normalized = cnic.replace(/-/g, '');
   return createHash('sha256').update(normalized + env.CNIC_HASH_PEPPER).digest('hex');
+}
+
+// Current: HMAC-SHA256 — proper keyed PRF, pepper is the key not a string prefix
+export function hashCnic(cnic: string): string {
+  const normalized = cnic.replace(/-/g, '');
+  return createHmac('sha256', env.CNIC_HASH_PEPPER).update(normalized).digest('hex');
+}
+
+// Returns [hmacHash, legacyHash] — use both for lookup, upgrade on match
+export function hashCnicBoth(cnic: string): [string, string] {
+  return [hashCnic(cnic), hashCnicLegacy(cnic)];
 }
 
 export function maskCnic(cnic: string) {

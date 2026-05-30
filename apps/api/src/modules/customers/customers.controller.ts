@@ -49,7 +49,7 @@ export async function createCustomer(req: AuthRequest, res: Response) {
   void audit.log({
     sellerId: req.user!.sellerId!, userId: req.user!.userId,
     action: 'CUSTOMER_CREATED', entityType: 'CUSTOMER', entityId: result.id,
-    description: `Added customer ${result.name} (CNIC: ${result.cnicMasked})`,
+    description: 'Customer added',
     ...auditCtx(req),
   }).catch(console.error);
 }
@@ -60,7 +60,7 @@ export async function updateCustomer(req: AuthRequest, res: Response) {
   void audit.log({
     sellerId: req.user!.sellerId!, userId: req.user!.userId,
     action: 'CUSTOMER_UPDATED', entityType: 'CUSTOMER', entityId: result.id,
-    description: `Updated customer ${result.name}: ${changedFields(req.body as Record<string, unknown>)}`,
+    description: `Customer updated: ${changedFields(req.body as Record<string, unknown>)}`,
     meta: { fields: Object.keys(req.body as object) },
     ...auditCtx(req),
   }).catch(console.error);
@@ -72,7 +72,7 @@ export async function deleteCustomer(req: AuthRequest, res: Response) {
   void audit.log({
     sellerId: req.user!.sellerId!, userId: req.user!.userId,
     action: 'CUSTOMER_DELETED', entityType: 'CUSTOMER', entityId: removed.id,
-    description: `Deleted customer ${removed.name} (CNIC: ${removed.cnicMasked})`,
+    description: 'Customer deleted',
     ...auditCtx(req),
   }).catch(console.error);
 }

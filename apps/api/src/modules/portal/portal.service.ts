@@ -1,23 +1,27 @@
-import { and, desc, eq, isNull, sql, sum } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, payments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
-import { hashCnic } from '../../utils/hash.js';
+import { hashCnic, hashCnicBoth } from '../../utils/hash.js';
 import { signCustomerToken } from '../../utils/jwt.js';
 
 export class PortalService {
   async login(cnic: string, phone: string) {
-    const hash = hashCnic(cnic);
+    const [hmacHash, legacyHash] = hashCnicBoth(cnic);
 
-    // Find customer by CNIC hash + phone (phone verifies ownership)
     const customer = await db.query.customers.findFirst({
       where: and(
-        eq(customers.cnicHash, hash),
+        or(eq(customers.cnicHash, hmacHash), eq(customers.cnicHash, legacyHash)),
         eq(customers.phone, phone),
         isNull(customers.deletedAt),
       ),
     });
     if (!customer) throw new AppError('No account found with these details', 404);
+
+    // Silently upgrade legacy SHA-256 hash to HMAC-SHA256
+    if (customer.cnicHash !== hmacHash) {
+      await db.update(customers).set({ cnicHash: hmacHash }).where(eq(customers.id, customer.id));
+    }
 
     const seller = await db.query.sellers.findFirst({
       where: eq(sellers.id, customer.sellerId),

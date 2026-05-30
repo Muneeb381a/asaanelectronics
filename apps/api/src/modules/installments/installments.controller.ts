@@ -26,15 +26,14 @@ export async function getInstallment(req: AuthRequest, res: Response) {
 export async function createInstallment(req: AuthRequest, res: Response) {
   const result = await svc.create(req.user!.sellerId!, req.body);
   success(res, result, 201);
-  void svc.getOne(result.id, req.user!.sellerId!).then((d) =>
-    audit.log({
-      sellerId: req.user!.sellerId!, userId: req.user!.userId,
-      action: 'INSTALLMENT_CREATED', entityType: 'INSTALLMENT', entityId: result.id,
-      description: `New installment — ${d.customerName} · ${d.productName} — PKR ${Number(d.totalAmount).toLocaleString()} / ${d.months} months`,
-      meta: { totalAmount: d.totalAmount, downPayment: d.downPayment, months: d.months, monthly: d.monthly },
-      ...auditCtx(req),
-    }),
-  ).catch(console.error);
+  // customerName and productName come directly from create() — no extra DB call needed
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'INSTALLMENT_CREATED', entityType: 'INSTALLMENT', entityId: result.id,
+    description: `New installment — ${result.customerName} · ${result.productName} — PKR ${Number(result.totalAmount).toLocaleString()} / ${result.months} months`,
+    meta: { totalAmount: result.totalAmount, downPayment: result.downPayment, months: result.months, monthly: result.monthly },
+    ...auditCtx(req),
+  }).catch(console.error);
 }
 
 export async function defaultInstallment(req: AuthRequest, res: Response) {

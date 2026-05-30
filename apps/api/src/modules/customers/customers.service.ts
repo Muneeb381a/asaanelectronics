@@ -2,7 +2,7 @@ import { and, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzl
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
-import { hashCnic, maskCnic } from '../../utils/hash.js';
+import { hashCnic, hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
 
 type BureauShopRow = { shopName: string; activeCount: number; defaultedCount: number; completedCount: number; cancelledCount: number; totalRemaining: string };
@@ -202,34 +202,41 @@ export class CustomersService {
   }
 
   async lifecycleCounts(sellerId: string) {
+    // Single-pass CTE: pre-aggregate installment stats per customer, then classify.
+    // Replaces N × 5 correlated EXISTS subqueries with one GROUP BY scan.
     const rows = await db.execute<{ stage: string; count: number }>(sql`
-      SELECT lifecycle AS stage, COUNT(*)::int AS count
-      FROM (
+      WITH inst_agg AS (
         SELECT
-          CASE
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL)
-              THEN 'DEFAULT'
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'ACTIVE' AND i.deleted_at IS NULL
-              AND (CASE WHEN i.payment_frequency = 'daily'
-                THEN i.start_date + (i.months || ' days')::interval
-                ELSE i.start_date + (i.months || ' months')::interval
-              END) < NOW())
-              THEN 'AT_RISK'
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'ACTIVE'    AND i.deleted_at IS NULL)
-             AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
-              THEN 'REPEAT'
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'ACTIVE' AND i.deleted_at IS NULL)
-              THEN 'ACTIVE'
-            WHEN NOT EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status IN ('ACTIVE','PENDING') AND i.deleted_at IS NULL)
-             AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = c.id AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
-              THEN 'CLOSED'
-            WHEN c.verification_status = 'APPROVED' THEN 'VERIFIED'
-            ELSE 'LEAD'
-          END AS lifecycle
-        FROM customers c
-        WHERE c.seller_id = ${sellerId} AND c.deleted_at IS NULL
-      ) sub
-      GROUP BY lifecycle
+          customer_id,
+          COUNT(*) FILTER (WHERE status = 'DEFAULTED' AND deleted_at IS NULL)  AS defaulted,
+          COUNT(*) FILTER (WHERE status = 'ACTIVE'    AND deleted_at IS NULL
+            AND (CASE WHEN payment_frequency = 'daily'
+              THEN start_date + (months || ' days')::interval
+              ELSE start_date + (months || ' months')::interval
+            END) < NOW())                                                        AS at_risk,
+          COUNT(*) FILTER (WHERE status = 'ACTIVE'    AND deleted_at IS NULL)  AS active,
+          COUNT(*) FILTER (WHERE status = 'COMPLETED' AND deleted_at IS NULL)  AS completed,
+          COUNT(*) FILTER (WHERE status IN ('ACTIVE','PENDING') AND deleted_at IS NULL) AS active_or_pending
+        FROM installments
+        GROUP BY customer_id
+      )
+      SELECT
+        CASE
+          WHEN COALESCE(ia.defaulted, 0)       > 0 THEN 'DEFAULT'
+          WHEN COALESCE(ia.at_risk,  0)        > 0 THEN 'AT_RISK'
+          WHEN COALESCE(ia.active,   0)        > 0
+           AND COALESCE(ia.completed, 0)       > 0 THEN 'REPEAT'
+          WHEN COALESCE(ia.active,   0)        > 0 THEN 'ACTIVE'
+          WHEN COALESCE(ia.active_or_pending, 0) = 0
+           AND COALESCE(ia.completed, 0)       > 0 THEN 'CLOSED'
+          WHEN c.verification_status = 'APPROVED'   THEN 'VERIFIED'
+          ELSE 'LEAD'
+        END AS stage,
+        COUNT(*)::int AS count
+      FROM customers c
+      LEFT JOIN inst_agg ia ON ia.customer_id = c.id
+      WHERE c.seller_id = ${sellerId} AND c.deleted_at IS NULL
+      GROUP BY 1
     `);
     const counts: Record<string, number> = {
       LEAD: 0, VERIFIED: 0, ACTIVE: 0, AT_RISK: 0, DEFAULT: 0, CLOSED: 0, REPEAT: 0,
@@ -239,7 +246,8 @@ export class CustomersService {
   }
 
   async lookupByCnic(sellerId: string, cnic: string) {
-    const hash = hashCnic(cnic);
+    const [hmacHash, legacyHash] = hashCnicBoth(cnic);
+    const hash = hmacHash;
 
     const riskScore = sql<number>`LEAST(100, (
       CASE
@@ -274,9 +282,20 @@ export class CustomersService {
       lifecycleStage: lifecycleSQL,
     }).from(customers).where(and(
       eq(customers.sellerId, sellerId),
-      eq(customers.cnicHash, hash),
+      or(eq(customers.cnicHash, hmacHash), eq(customers.cnicHash, legacyHash)),
       isNull(customers.deletedAt),
     ));
+
+    // Silently upgrade any legacy SHA-256 hashes found
+    for (const row of rows) {
+      const fullRow = await db.query.customers.findFirst({
+        where: eq(customers.id, row.id),
+        columns: { cnicHash: true },
+      });
+      if (fullRow && fullRow.cnicHash !== hmacHash) {
+        await db.update(customers).set({ cnicHash: hmacHash }).where(eq(customers.id, row.id));
+      }
+    }
 
     // Run own-record query + cross-shop bureau query in parallel
     type BureauRow = {
@@ -299,7 +318,7 @@ export class CustomersService {
       FROM customers c
       JOIN sellers s ON c.seller_id = s.id
       LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
-      WHERE c.cnic_hash = ${hash}
+      WHERE c.cnic_hash IN (${hmacHash}, ${legacyHash})
         AND c.seller_id != ${sellerId}
         AND c.deleted_at IS NULL
       GROUP BY s.shop_name, s.id, c.id

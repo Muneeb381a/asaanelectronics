@@ -479,7 +479,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               )}
               {verifReport.photoEvidenceUrl && (
                 <a href={verifReport.photoEvidenceUrl} target="_blank" rel="noreferrer">
-                  <img src={verifReport.photoEvidenceUrl} alt="evidence"
+                  <img src={verifReport.photoEvidenceUrl} alt="evidence" loading="lazy"
                     className="w-full h-24 object-cover rounded-lg mt-1" />
                 </a>
               )}

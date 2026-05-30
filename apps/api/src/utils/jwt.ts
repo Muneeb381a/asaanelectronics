@@ -34,7 +34,7 @@ export function verifyOtpToken(token: string) {
 const PORTAL_SECRET = env.JWT_PORTAL_SECRET;
 
 export function signCustomerToken(payload: CustomerPayload) {
-  return jwt.sign(payload, PORTAL_SECRET, { expiresIn: '24h' });
+  return jwt.sign(payload, PORTAL_SECRET, { expiresIn: '2h' });
 }
 
 export function verifyCustomerToken(token: string) {

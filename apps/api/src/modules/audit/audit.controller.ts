@@ -13,3 +13,8 @@ export async function listAuditLogs(req: AuthRequest, res: Response) {
     limit: limit ? Number(limit) : undefined,
   }));
 }
+
+export async function cleanupAuditLogs(_req: AuthRequest, res: Response) {
+  const deleted = await svc.deleteOlderThan(90);
+  success(res, { deleted });
+}

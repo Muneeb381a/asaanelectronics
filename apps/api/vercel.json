@@ -1,10 +1,13 @@
 {
-"rewrites": [
+  "rewrites": [
     { "source": "/(.*)", "destination": "/api/index" }
   ],
   "functions": {
     "api/index.ts": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/audit/cleanup", "schedule": "0 2 * * *" }
+  ]
 }

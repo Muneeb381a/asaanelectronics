@@ -6,7 +6,9 @@ const svc = new VerificationsService();
 
 export async function myQueue(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    res.json({ success: true, data: await svc.myQueue(req.user!.userId, req.user!.sellerId!) });
+    const page  = Math.max(1, Number(req.query['page'])  || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query['limit']) || 50));
+    res.json({ success: true, data: await svc.myQueue(req.user!.userId, req.user!.sellerId!, page, limit) });
   } catch (e) { next(e); }
 }
 

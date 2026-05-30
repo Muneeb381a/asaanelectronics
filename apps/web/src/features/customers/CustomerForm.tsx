@@ -303,8 +303,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
 
   const schema = isEdit ? editSchema : createCustomerSchema;
 
-  const { register, handleSubmit, trigger, setValue, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, trigger, setValue, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    mode: 'onBlur',
     defaultValues: customer ? {
       name: customer.name, phone: customer.phone,
       fatherName: customer.fatherName ?? '', cnicExpiry: customer.cnicExpiry ?? '',
@@ -329,6 +330,32 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
   useEffect(() => {
     setValue('customerType', isDukaanDar ? 'dukaan-dar' : 'regular');
   }, [isDukaanDar, setValue]);
+
+  // Reset the form when the customer prop changes (e.g. parent switches which customer is being edited)
+  useEffect(() => {
+    if (customer) {
+      reset({
+        name: customer.name, phone: customer.phone,
+        fatherName: customer.fatherName ?? '', cnicExpiry: customer.cnicExpiry ?? '',
+        address: customer.address ?? '', area: customer.area ?? '',
+        officeAddress: customer.officeAddress ?? '',
+        salary: customer.salary ? Number(customer.salary) : undefined,
+        occupation: customer.occupation ?? '', employer: customer.employer ?? '',
+        cnic: '',
+        guarantorName: customer.guarantorName ?? '', guarantorPhone: customer.guarantorPhone ?? '',
+        guarantorCnic: customer.guarantorCnic ?? '', guarantorAddress: customer.guarantorAddress ?? '',
+        guarantorRelation: customer.guarantorRelation ?? '',
+        guarantor2Name: customer.guarantor2Name ?? '', guarantor2Phone: customer.guarantor2Phone ?? '',
+        guarantor2Cnic: customer.guarantor2Cnic ?? '', guarantor2Address: customer.guarantor2Address ?? '',
+        guarantor2Relation: customer.guarantor2Relation ?? '',
+        photoUrl: customer.photoUrl ?? undefined,
+        cnicFrontUrl: customer.cnicFrontUrl ?? undefined,
+        cnicBackUrl: customer.cnicBackUrl ?? undefined,
+        customerType: isDukaanDar ? 'dukaan-dar' : 'regular',
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customer?.id]);
 
   async function next() {
     if (step === 0) {

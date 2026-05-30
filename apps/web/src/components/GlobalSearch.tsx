@@ -157,7 +157,7 @@ function OwnRecord({ customer, onNavigate }: { customer: CustomerLookupResult; o
       {/* Header */}
       <div className="flex items-start gap-4 px-5 pt-5 pb-4">
         {customer.photoUrl ? (
-          <img src={customer.photoUrl} alt="" className="w-14 h-14 rounded-2xl object-cover shrink-0 ring-2 ring-gray-100" />
+          <img src={customer.photoUrl} alt="" loading="lazy" className="w-14 h-14 rounded-2xl object-cover shrink-0 ring-2 ring-gray-100" />
         ) : (
           <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-xl shrink-0">
             {customer.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}

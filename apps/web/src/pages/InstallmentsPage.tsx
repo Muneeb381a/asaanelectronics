@@ -269,7 +269,7 @@ function PaymentModal({ inst, onClose }: { inst: Installment; onClose: () => voi
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProofFile(f); }} />
               {proofImageUrl ? (
                 <div className="relative inline-block">
-                  <img src={proofImageUrl} alt="proof" className="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
+                  <img src={proofImageUrl} alt="proof" loading="lazy" className="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
                   <button
                     type="button"
                     onClick={() => setProofImageUrl('')}
