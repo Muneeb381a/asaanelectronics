@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     q: 'Is my customer data safe?',
-    a: 'Absolutely. CNIC data is hashed using SHA-256 before storage and is never stored in plain text. Every shop\'s data is completely isolated — no other shop can see your records.',
+    a: "Absolutely. CNIC data is hashed using HMAC-SHA256 before storage and is never stored in plain text. Every shop's data is completely isolated — no other shop can see your records.",
   },
   {
     q: 'How do I upgrade my plan?',
@@ -55,19 +55,23 @@ const faqs = [
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className={`border rounded-2xl transition-all ${open ? 'border-blue-200 bg-blue-50/40' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+    <div className={`border rounded-2xl transition-all duration-200 ${
+      open
+        ? 'border-blue-500/30 bg-blue-500/5'
+        : 'border-white/8 bg-white/[0.03] hover:bg-white/[0.05]'
+    }`}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left"
       >
-        <span className={`text-sm font-semibold ${open ? 'text-blue-700' : 'text-gray-800'}`}>{q}</span>
+        <span className={`text-sm font-semibold ${open ? 'text-blue-400' : 'text-white'}`}>{q}</span>
         {open
-          ? <ChevronUp size={16} className="text-blue-500 shrink-0" />
-          : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+          ? <ChevronUp size={16} className="text-blue-400 shrink-0" />
+          : <ChevronDown size={16} className="text-gray-500 shrink-0" />}
       </button>
       {open && (
         <div className="px-6 pb-5">
-          <p className="text-sm text-gray-500 leading-relaxed">{a}</p>
+          <p className="text-sm text-gray-400 leading-relaxed">{a}</p>
         </div>
       )}
     </div>
@@ -105,16 +109,16 @@ function ContactForm() {
   if (sent) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-          <CheckCircle size={30} className="text-green-500" />
+        <div className="w-16 h-16 bg-emerald-500/15 border border-emerald-500/25 rounded-full flex items-center justify-center mb-4">
+          <CheckCircle size={28} className="text-emerald-400" />
         </div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2">Message sent!</h3>
-        <p className="text-sm text-gray-500 max-w-xs leading-relaxed">
+        <h3 className="text-lg font-bold text-white mb-2">Message sent!</h3>
+        <p className="text-sm text-gray-400 max-w-xs leading-relaxed">
           Your inquiry was forwarded to WhatsApp. We'll reply within minutes during business hours.
         </p>
         <button
           onClick={() => { setSent(false); setForm({ name: '', phone: '', subject: '', message: '' }); }}
-          className="mt-6 text-sm text-blue-600 hover:underline font-medium"
+          className="mt-6 text-sm text-blue-400 hover:text-blue-300 font-medium transition"
         >
           Send another message
         </button>
@@ -122,33 +126,37 @@ function ContactForm() {
     );
   }
 
+  const inputCls = 'w-full px-4 py-3 text-sm bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:outline-none focus:border-blue-500/60 focus:bg-white/8 transition';
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Your name <span className="text-red-400">*</span></label>
+          <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+            Your name <span className="text-red-400">*</span>
+          </label>
           <input
             type="text"
             placeholder="Ahmed Raza"
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
-            className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition placeholder:text-gray-300"
+            className={inputCls}
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone number</label>
+          <label className="block text-xs font-semibold text-gray-400 mb-1.5">Phone number</label>
           <input
             type="tel"
             placeholder="03XX-XXXXXXX"
             value={form.phone}
             onChange={(e) => set('phone', e.target.value)}
-            className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition placeholder:text-gray-300"
+            className={inputCls}
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Subject</label>
+        <label className="block text-xs font-semibold text-gray-400 mb-1.5">Subject</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {SUBJECTS.map((s) => (
             <button
@@ -156,8 +164,8 @@ function ContactForm() {
               onClick={() => set('subject', s)}
               className={`px-3 py-2 rounded-xl text-xs font-medium border transition text-left ${
                 form.subject === s
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-900/40'
+                  : 'border-white/10 text-gray-400 hover:border-blue-500/40 hover:text-blue-400 bg-white/[0.03]'
               }`}
             >
               {s}
@@ -167,28 +175,30 @@ function ContactForm() {
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Message <span className="text-red-400">*</span></label>
+        <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+          Message <span className="text-red-400">*</span>
+        </label>
         <textarea
           rows={5}
           placeholder="Tell us what you need — pricing, features, setup help, or anything else…"
           value={form.message}
           onChange={(e) => set('message', e.target.value)}
-          className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition placeholder:text-gray-300 resize-none"
+          className={`${inputCls} resize-none`}
         />
-        <p className="text-xs text-gray-400 mt-1">{form.message.length} / 500 characters</p>
+        <p className="text-xs text-gray-600 mt-1">{form.message.length} / 500 characters</p>
       </div>
 
       <button
         onClick={handleSend}
         disabled={!isValid}
-        className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] hover:bg-[#20bd5a] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition shadow-md shadow-green-200"
+        className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] hover:bg-[#20bd5a] disabled:opacity-35 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition shadow-lg shadow-green-900/25"
       >
-        <WhatsAppIcon size={18} />
+        <WhatsAppIcon size={17} />
         Send via WhatsApp
-        <Send size={14} />
+        <Send size={13} />
       </button>
 
-      <p className="text-center text-xs text-gray-400">
+      <p className="text-center text-xs text-gray-600">
         Your message will open WhatsApp with all details pre-filled.
       </p>
     </div>
@@ -197,69 +207,82 @@ function ContactForm() {
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-white text-gray-900 antialiased">
+    <div className="min-h-screen bg-gray-950 text-gray-100 antialiased">
 
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      {/* ── Navbar ── */}
+      <header className="sticky top-0 z-50 bg-gray-950/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm shadow-blue-900/50">
               <CreditCard size={15} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">Assaan Electronics</span>
+            <span className="font-bold text-white text-sm">Assaan Electronics</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link to="/#features" className="text-sm text-gray-500 hover:text-gray-900 transition">Features</Link>
-            <Link to="/#pricing"  className="text-sm text-gray-500 hover:text-gray-900 transition">Pricing</Link>
-            <Link to="/contact"   className="text-sm text-gray-900 font-semibold">Contact</Link>
+          <nav className="hidden md:flex items-center gap-7">
+            <Link to="/#features" className="text-sm text-gray-400 hover:text-white transition">Features</Link>
+            <Link to="/#pricing"  className="text-sm text-gray-400 hover:text-white transition">Pricing</Link>
+            <Link to="/contact"   className="text-sm text-white font-semibold">Contact</Link>
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/login"
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition">
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition">
               Sign in
             </Link>
             <Link to="/register"
-              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-sm">
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition shadow-sm shadow-blue-900/50">
               Get started free
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gray-950 text-white py-20 px-5">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-175 h-75 bg-blue-600/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-100 h-50 bg-green-500/10 rounded-full blur-3xl" />
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden py-24 px-5">
+        {/* Background orbs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full"
+            style={{ background: 'radial-gradient(ellipse, rgba(37,99,235,0.20) 0%, transparent 65%)' }} />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[300px] rounded-full"
+            style={{ background: 'radial-gradient(ellipse, rgba(37,211,102,0.10) 0%, transparent 70%)' }} />
+          <div className="absolute inset-0 opacity-[0.05]"
+            style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
         </div>
+
         <div className="relative max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/10 rounded-full text-xs font-semibold mb-6 text-gray-300">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          {/* Live badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/5 border border-white/10 rounded-full text-xs font-semibold mb-7 text-gray-300">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            </span>
             Typically reply within minutes on WhatsApp
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
-            We&apos;re here to help you <br className="hidden sm:block" />
-            <span className="text-blue-400">grow your business</span>
+
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-5 text-white leading-[1.08]">
+            We're here to help you{' '}
+            <span className="bg-linear-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
+              grow your business
+            </span>
           </h1>
-          <p className="text-gray-400 text-base sm:text-lg leading-relaxed max-w-xl mx-auto">
+          <p className="text-gray-400 text-base sm:text-lg leading-relaxed max-w-xl mx-auto mb-10">
             Questions about pricing, setup, or features? Drop us a message — our team is based in
             Kapurwali, Sialkot and ready to assist.
           </p>
 
-          {/* Quick contact strip */}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          {/* Quick action buttons */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <a
               href={`https://wa.me/${PLATFORM_WHATSAPP}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#25D366] hover:bg-[#20bd5a] rounded-xl text-sm font-bold transition shadow-lg shadow-green-900/30"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] hover:bg-[#20bd5a] rounded-xl text-sm font-bold transition shadow-lg shadow-green-900/30 text-white"
             >
               <WhatsAppIcon size={16} />
               Chat on WhatsApp
             </a>
             <a
               href={`mailto:${PLATFORM_EMAIL}`}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-sm font-semibold transition"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-sm font-semibold text-gray-300 hover:text-white transition"
             >
               <Mail size={15} />
               Send an email
@@ -268,17 +291,17 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* Main grid: Form + Sidebar */}
-      <section className="py-20 px-5">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-10">
+      {/* ── Main grid: Form + Sidebar ── */}
+      <section className="pb-20 px-5 border-t border-white/5">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8 pt-16">
 
-          {/* Contact form — takes 3 cols */}
+          {/* Contact form */}
           <div className="lg:col-span-3">
-            <div className="bg-white border border-gray-100 rounded-3xl shadow-sm p-8 sm:p-10">
+            <div className="bg-white/[0.04] border border-white/8 rounded-3xl p-8 sm:p-10">
               <div className="mb-8">
-                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-2">Send a message</p>
-                <h2 className="text-2xl font-extrabold text-gray-900">Tell us how we can help</h2>
-                <p className="text-sm text-gray-400 mt-1.5">
+                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Send a message</p>
+                <h2 className="text-2xl font-extrabold text-white">Tell us how we can help</h2>
+                <p className="text-sm text-gray-500 mt-1.5">
                   Fill out the form and your message will open pre-filled in WhatsApp.
                 </p>
               </div>
@@ -286,26 +309,26 @@ export default function ContactPage() {
             </div>
           </div>
 
-          {/* Sidebar info — takes 2 cols */}
-          <div className="lg:col-span-2 flex flex-col gap-5">
+          {/* Sidebar */}
+          <div className="lg:col-span-2 flex flex-col gap-4">
 
             {/* WhatsApp */}
             <a
               href={`https://wa.me/${PLATFORM_WHATSAPP}?text=${encodeURIComponent('Hello, I want to know more about Assaan Electronics.')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-start gap-4 bg-[#25D366] rounded-2xl p-6 text-white hover:bg-[#20bd5a] transition shadow-lg shadow-green-200"
+              className="group flex items-start gap-4 bg-[#25D366]/10 border border-[#25D366]/25 hover:bg-[#25D366]/15 rounded-2xl p-6 transition"
             >
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                <WhatsAppIcon size={22} />
+              <div className="w-11 h-11 bg-[#25D366]/20 border border-[#25D366]/30 rounded-xl flex items-center justify-center shrink-0">
+                <WhatsAppIcon size={20} className="text-[#25D366]" />
               </div>
               <div className="min-w-0">
-                <p className="font-bold text-sm">WhatsApp (Fastest)</p>
-                <p className="text-green-100 text-xs mt-0.5 leading-relaxed">
+                <p className="font-bold text-sm text-white">WhatsApp — Fastest</p>
+                <p className="text-gray-400 text-xs mt-0.5 leading-relaxed">
                   Get a reply in minutes during business hours. Preferred contact method.
                 </p>
-                <div className="flex items-center gap-1 mt-2 text-xs font-semibold">
-                  Chat now <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
+                <div className="flex items-center gap-1 mt-2 text-xs font-semibold text-[#25D366]">
+                  Chat now <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </div>
             </a>
@@ -313,68 +336,66 @@ export default function ContactPage() {
             {/* Email */}
             <a
               href={`mailto:${PLATFORM_EMAIL}`}
-              className="group flex items-start gap-4 bg-white border border-gray-100 rounded-2xl p-6 hover:border-gray-200 hover:shadow-md transition"
+              className="group flex items-start gap-4 bg-white/[0.04] border border-white/8 hover:bg-white/[0.07] rounded-2xl p-6 transition"
             >
-              <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-                <Mail size={20} className="text-blue-600" />
+              <div className="w-11 h-11 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center shrink-0">
+                <Mail size={20} className="text-blue-400" />
               </div>
               <div className="min-w-0">
-                <p className="font-bold text-sm text-gray-900">Email</p>
-                <p className="text-blue-600 text-xs font-medium mt-0.5">{PLATFORM_EMAIL}</p>
-                <p className="text-gray-400 text-xs mt-1">Response within 24 hours</p>
+                <p className="font-bold text-sm text-white">Email</p>
+                <p className="text-blue-400 text-xs font-medium mt-0.5 truncate">{PLATFORM_EMAIL}</p>
+                <p className="text-gray-500 text-xs mt-1">Response within 24 hours</p>
               </div>
             </a>
 
             {/* Hours */}
-            <div className="flex items-start gap-4 bg-amber-50 border border-amber-100 rounded-2xl p-6">
-              <div className="w-11 h-11 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
-                <Clock size={20} className="text-amber-600" />
+            <div className="flex items-start gap-4 bg-amber-500/8 border border-amber-500/18 rounded-2xl p-6">
+              <div className="w-11 h-11 bg-amber-500/15 border border-amber-500/20 rounded-xl flex items-center justify-center shrink-0">
+                <Clock size={20} className="text-amber-400" />
               </div>
               <div>
-                <p className="font-bold text-sm text-gray-900">Business Hours</p>
-                <p className="text-gray-600 text-xs mt-0.5">Monday – Saturday</p>
-                <p className="text-amber-700 text-xs font-semibold mt-0.5">9:00 AM – 9:00 PM (PKT)</p>
-                <p className="text-gray-400 text-xs mt-1">Sunday: Closed</p>
+                <p className="font-bold text-sm text-white">Business Hours</p>
+                <p className="text-gray-400 text-xs mt-0.5">Monday – Saturday</p>
+                <p className="text-amber-400 text-xs font-semibold mt-0.5">9:00 AM – 9:00 PM (PKT)</p>
+                <p className="text-gray-600 text-xs mt-1">Sunday: Closed</p>
               </div>
             </div>
 
             {/* Location */}
-            <div className="flex items-start gap-4 bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-md transition">
-              <div className="w-11 h-11 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
-                <MapPin size={20} className="text-red-500" />
+            <div className="flex items-start gap-4 bg-white/[0.04] border border-white/8 rounded-2xl p-6">
+              <div className="w-11 h-11 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center shrink-0">
+                <MapPin size={20} className="text-red-400" />
               </div>
               <div>
-                <p className="font-bold text-sm text-gray-900">Our Location</p>
-                <p className="text-gray-700 text-xs font-medium mt-0.5">Kapurwali</p>
-                <p className="text-gray-500 text-xs">Sialkot, Punjab</p>
-                <p className="text-gray-500 text-xs">Pakistan</p>
+                <p className="font-bold text-sm text-white">Our Location</p>
+                <p className="text-gray-300 text-xs font-medium mt-0.5">Kapurwali</p>
+                <p className="text-gray-500 text-xs">Sialkot, Punjab · Pakistan</p>
                 <a
                   href="https://maps.google.com/?q=Kapurwali,Sialkot,Punjab,Pakistan"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:underline font-medium"
+                  className="inline-flex items-center gap-1 mt-2 text-xs text-blue-400 hover:text-blue-300 font-medium transition"
                 >
-                  <Navigation size={11} />
-                  View on map
+                  <Navigation size={11} /> View on map
                 </a>
               </div>
             </div>
 
             {/* Phone */}
-            <div className="flex items-start gap-4 bg-white border border-gray-100 rounded-2xl p-6">
-              <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0">
-                <Phone size={20} className="text-indigo-600" />
+            <div className="flex items-start gap-4 bg-white/[0.04] border border-white/8 rounded-2xl p-6">
+              <div className="w-11 h-11 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-center shrink-0">
+                <Phone size={20} className="text-indigo-400" />
               </div>
               <div>
-                <p className="font-bold text-sm text-gray-900">Phone</p>
+                <p className="font-bold text-sm text-white">Phone</p>
                 <p className="text-gray-500 text-xs mt-0.5">WhatsApp preferred for fastest response.</p>
                 <a
                   href={`https://wa.me/${PLATFORM_WHATSAPP}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 mt-1.5 text-xs text-green-600 font-semibold hover:underline"
+                  className="inline-flex items-center gap-1 mt-1.5 text-xs text-[#25D366] font-semibold hover:underline"
                 >
-                  <WhatsAppIcon size={12} />
+                  <WhatsAppIcon size={11} />
                   +{PLATFORM_WHATSAPP}
                 </a>
               </div>
@@ -384,29 +405,34 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* Map / Location visual */}
-      <section className="px-5 pb-10">
+      {/* ── Map / Location visual ── */}
+      <section className="px-5 pb-16">
         <div className="max-w-6xl mx-auto">
-          <div className="relative overflow-hidden rounded-3xl bg-gray-950 h-64 flex items-center justify-center border border-gray-800">
-            {/* Decorative grid */}
-            <div className="absolute inset-0 opacity-10"
+          <div className="relative overflow-hidden rounded-3xl h-64 flex items-center justify-center border border-white/8 bg-white/[0.02]">
+            {/* Grid lines */}
+            <div className="absolute inset-0 opacity-[0.06]"
               style={{
-                backgroundImage: 'linear-gradient(#3b82f6 1px, transparent 1px), linear-gradient(90deg, #3b82f6 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(rgba(99,102,241,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.8) 1px, transparent 1px)',
                 backgroundSize: '40px 40px',
               }}
             />
+            {/* Side fades */}
             <div className="absolute inset-0 bg-linear-to-r from-gray-950 via-transparent to-gray-950" />
+            <div className="absolute inset-0 bg-linear-to-b from-gray-950/60 via-transparent to-gray-950/60" />
+            {/* Center glow */}
+            <div className="absolute inset-0"
+              style={{ background: 'radial-gradient(ellipse at center, rgba(239,68,68,0.08) 0%, transparent 60%)' }} />
             <div className="relative text-center px-6">
-              <div className="w-14 h-14 bg-red-500/20 border border-red-500/40 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-14 h-14 bg-red-500/15 border border-red-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <MapPin size={26} className="text-red-400" />
               </div>
-              <p className="text-white font-bold text-lg">Kapurwali, Sialkot</p>
+              <p className="text-white font-bold text-xl">Kapurwali, Sialkot</p>
               <p className="text-gray-400 text-sm mt-1">Punjab, Pakistan</p>
               <a
                 href="https://maps.google.com/?q=Kapurwali,Sialkot,Punjab,Pakistan"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-4 px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-white text-sm font-semibold transition"
+                className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-white/8 hover:bg-white/12 border border-white/10 hover:border-white/20 rounded-xl text-white text-sm font-semibold transition"
               >
                 <Navigation size={14} />
                 Open in Google Maps
@@ -416,12 +442,12 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="py-20 px-5 bg-gray-50">
+      {/* ── FAQ ── */}
+      <section className="py-20 px-5 border-t border-white/5" style={{ background: 'rgba(255,255,255,0.015)' }}>
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-3">FAQ</p>
-            <h2 className="text-3xl font-extrabold text-gray-900">Common questions</h2>
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">FAQ</p>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">Common questions</h2>
             <p className="text-gray-400 text-sm mt-2">Everything you need to know about Assaan Electronics.</p>
           </div>
           <div className="space-y-3">
@@ -434,7 +460,7 @@ export default function ContactPage() {
                 href={`https://wa.me/${PLATFORM_WHATSAPP}?text=${encodeURIComponent('Hello, I have a question about Assaan Electronics.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-green-600 font-semibold hover:underline"
+                className="text-[#25D366] font-semibold hover:underline"
               >
                 Ask us on WhatsApp
               </a>
@@ -443,39 +469,49 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 px-5 bg-gray-950 text-white text-center">
-        <div className="max-w-xl mx-auto">
-          <div className="w-14 h-14 bg-blue-600/20 border border-blue-500/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+      {/* ── CTA ── */}
+      <section className="relative overflow-hidden py-24 px-5 border-t border-white/5">
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse, rgba(37,99,235,0.20) 0%, rgba(124,58,237,0.08) 50%, transparent 70%)' }} />
+        <div className="relative max-w-xl mx-auto text-center">
+          <div className="w-14 h-14 bg-blue-600/15 border border-blue-500/25 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Building2 size={26} className="text-blue-400" />
           </div>
-          <h2 className="text-3xl font-extrabold mb-3 tracking-tight">Ready to modernize your shop?</h2>
-          <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 tracking-tight">
+            Ready to modernize your shop?
+          </h2>
+          <p className="text-gray-400 text-sm mb-10 leading-relaxed max-w-md mx-auto">
             Join hundreds of Pakistani electronics shops already managing their installments smarter.
             14-day free trial. No credit card. Set up in 2 minutes.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link to="/register"
-              className="inline-flex items-center gap-2 px-7 py-3.5 bg-white hover:bg-gray-100 text-gray-900 text-sm font-bold rounded-xl transition shadow-lg">
-              Create your free account <ArrowRight size={16} />
+              className="group relative inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold text-white rounded-xl overflow-hidden shadow-lg shadow-blue-950/50 transition-transform hover:scale-[1.02]">
+              <span className="absolute inset-0 bg-linear-to-r from-blue-600 to-blue-500" />
+              <span className="absolute inset-0 bg-linear-to-r from-blue-500 to-violet-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative flex items-center gap-2">
+                Create your free account <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              </span>
             </Link>
             <a
               href={`https://wa.me/${PLATFORM_WHATSAPP}?text=${encodeURIComponent('Hello, I want to buy Assaan Electronics for my shop.')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#25D366] hover:bg-[#20bd5a] text-white text-sm font-bold rounded-xl transition"
+              className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#25D366] hover:bg-[#20bd5a] text-white text-sm font-bold rounded-xl transition shadow-lg shadow-green-900/25"
             >
-              <WhatsAppIcon size={16} />
+              <WhatsAppIcon size={15} />
               Buy via WhatsApp
             </a>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-950 border-t border-gray-800 py-8 px-5">
+      {/* ── Footer ── */}
+      <footer className="bg-gray-950 border-t border-white/5 py-8 px-5">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
               <CreditCard size={13} className="text-white" />
             </div>

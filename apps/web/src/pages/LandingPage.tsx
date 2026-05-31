@@ -67,10 +67,10 @@ const steps = [
 ];
 
 const colorMap: Record<string, { bg: string; text: string; border: string; light: string; num: string }> = {
-  blue:    { bg: 'bg-blue-600',    text: 'text-blue-600',    border: 'border-blue-200',    light: 'bg-blue-50',    num: 'text-blue-300' },
-  violet:  { bg: 'bg-violet-600',  text: 'text-violet-600',  border: 'border-violet-200',  light: 'bg-violet-50',  num: 'text-violet-300' },
-  emerald: { bg: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-200', light: 'bg-emerald-50', num: 'text-emerald-300' },
-  orange:  { bg: 'bg-orange-500',  text: 'text-orange-600',  border: 'border-orange-200',  light: 'bg-orange-50',  num: 'text-orange-300' },
+  blue:    { bg: 'bg-blue-600',    text: 'text-blue-400',    border: 'border-blue-500/25',    light: 'bg-blue-500/15',    num: 'text-blue-900' },
+  violet:  { bg: 'bg-violet-600',  text: 'text-violet-400',  border: 'border-violet-500/25',  light: 'bg-violet-500/15',  num: 'text-violet-900' },
+  emerald: { bg: 'bg-emerald-600', text: 'text-emerald-400', border: 'border-emerald-500/25', light: 'bg-emerald-500/15', num: 'text-emerald-900' },
+  orange:  { bg: 'bg-orange-500',  text: 'text-orange-400',  border: 'border-orange-500/25',  light: 'bg-orange-500/15',  num: 'text-orange-900' },
 };
 
 const features = [
@@ -119,12 +119,12 @@ const features = [
 ];
 
 const fColorMap: Record<string, { bg: string; text: string; border: string }> = {
-  blue:    { bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'border-blue-100' },
-  violet:  { bg: 'bg-violet-50',  text: 'text-violet-600',  border: 'border-violet-100' },
-  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' },
-  orange:  { bg: 'bg-orange-50',  text: 'text-orange-600',  border: 'border-orange-100' },
-  red:     { bg: 'bg-red-50',     text: 'text-red-600',     border: 'border-red-100' },
-  indigo:  { bg: 'bg-indigo-50',  text: 'text-indigo-600',  border: 'border-indigo-100' },
+  blue:    { bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/20' },
+  violet:  { bg: 'bg-violet-500/10',  text: 'text-violet-400',  border: 'border-violet-500/20' },
+  emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
+  orange:  { bg: 'bg-orange-500/10',  text: 'text-orange-400',  border: 'border-orange-500/20' },
+  red:     { bg: 'bg-red-500/10',     text: 'text-red-400',     border: 'border-red-500/20' },
+  indigo:  { bg: 'bg-indigo-500/10',  text: 'text-indigo-400',  border: 'border-indigo-500/20' },
 };
 
 const problems = [
@@ -208,31 +208,31 @@ const testimonials = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-gray-900 antialiased">
+    <div className="min-h-screen bg-gray-950 text-gray-100 antialiased">
 
       {/* ── Navbar ── */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
+      <header className="sticky top-0 z-50 bg-gray-950/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm shadow-blue-900/50">
               <CreditCard size={15} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900">Assaan Electronics</span>
+            <span className="font-bold text-white">Assaan Electronics</span>
           </div>
           <nav className="hidden md:flex items-center gap-7">
-            <a href="#how-it-works" className="text-sm text-gray-500 hover:text-gray-900 transition">How it works</a>
-            <a href="#features"     className="text-sm text-gray-500 hover:text-gray-900 transition">Features</a>
-            <a href="#pricing"      className="text-sm text-gray-500 hover:text-gray-900 transition">Pricing</a>
-            <a href="#reviews"      className="text-sm text-gray-500 hover:text-gray-900 transition">Reviews</a>
-            <Link to="/contact"     className="text-sm text-gray-500 hover:text-gray-900 transition">Contact</Link>
+            <a href="#how-it-works" className="text-sm text-gray-400 hover:text-white transition">How it works</a>
+            <a href="#features"     className="text-sm text-gray-400 hover:text-white transition">Features</a>
+            <a href="#pricing"      className="text-sm text-gray-400 hover:text-white transition">Pricing</a>
+            <a href="#reviews"      className="text-sm text-gray-400 hover:text-white transition">Reviews</a>
+            <Link to="/contact"     className="text-sm text-gray-400 hover:text-white transition">Contact</Link>
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/login"
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition">
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition">
               Sign in
             </Link>
             <Link to="/register"
-              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-sm shadow-blue-200">
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition shadow-sm shadow-blue-900/50">
               Get started free
             </Link>
           </div>
@@ -240,147 +240,283 @@ export default function LandingPage() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 bg-linear-to-br from-blue-50 via-white to-violet-50" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-blue-100/40 rounded-full blur-3xl" />
+      <section className="relative overflow-hidden bg-gray-950">
+        {/* Animated background layer */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Primary orb — top-left */}
+          <div className="absolute -top-40 -left-32 w-[700px] h-[700px] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.22) 0%, transparent 70%)' }} />
+          {/* Secondary orb — bottom-right */}
+          <div className="absolute -bottom-48 -right-32 w-[600px] h-[600px] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%)' }} />
+          {/* Accent orb — center-right */}
+          <div className="absolute top-1/3 right-1/4 w-[350px] h-[350px] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.10) 0%, transparent 70%)' }} />
           {/* Dot grid */}
-          <div className="absolute inset-0 opacity-[0.035]"
-            style={{ backgroundImage: 'radial-gradient(circle, #1d4ed8 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+          <div className="absolute inset-0 opacity-[0.06]"
+            style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+          {/* Horizontal grid lines */}
+          <div className="absolute inset-0 opacity-[0.025]"
+            style={{ backgroundImage: 'linear-gradient(0deg, transparent calc(100% - 1px), rgba(255,255,255,0.8) 100%)', backgroundSize: '100% 72px' }} />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-5 pt-16 pb-20">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left */}
+        <div className="relative max-w-6xl mx-auto px-5 pt-16 pb-24 lg:pt-20 lg:pb-28">
+          <div className="grid lg:grid-cols-2 gap-14 items-center">
+
+            {/* ── Left copy ── */}
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-6 shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              {/* Live badge */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-8">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-60" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </span>
                 Built for Pakistani electronics shops
               </div>
 
-              <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5">
-                The smarter way to run<br />
-                <span className="text-blue-600">installment sales</span>
+              {/* Headline */}
+              <h1 className="text-5xl sm:text-[3.6rem] font-extrabold leading-[1.06] tracking-tight mb-6 text-white">
+                The smarter way<br />
+                to run{' '}
+                <span className="relative">
+                  <span className="bg-linear-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
+                    installment
+                  </span>
+                  {' '}
+                  <span className="bg-linear-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+                    sales
+                  </span>
+                  {/* Underline accent */}
+                  <span className="absolute -bottom-1 left-0 w-full h-px bg-linear-to-r from-blue-500/0 via-blue-500/60 to-violet-500/0" />
+                </span>
               </h1>
 
-              <p className="text-lg text-gray-500 leading-relaxed mb-4">
-                Replace paper registers and spreadsheets with one clean system.
-                Track customers, products, and payments — get overdue alerts, manage agents, and keep accounts straight.
+              {/* Subtext */}
+              <p className="text-lg text-gray-400 leading-relaxed mb-6 max-w-[480px]">
+                Replace paper registers with one clean system. Track customers,
+                collect payments, manage recovery agents — get overdue alerts automatically.
               </p>
 
+              {/* Trust chips */}
               <div className="flex flex-wrap gap-2 mb-8">
                 {['Free 14-day trial', 'No credit card', 'Setup in 2 min'].map((t) => (
-                  <span key={t} className="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1 shadow-sm">
-                    <Check size={11} className="text-green-500" /> {t}
+                  <span key={t} className="inline-flex items-center gap-1.5 text-xs text-gray-400 bg-white/5 border border-white/10 rounded-full px-3.5 py-1.5">
+                    <Check size={10} className="text-emerald-400" /> {t}
                   </span>
                 ))}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
+              {/* CTAs */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-10">
                 <Link to="/register"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-lg shadow-blue-200">
-                  Start free — no credit card <ArrowRight size={15} />
+                  className="group relative inline-flex items-center justify-center gap-2 px-7 py-4 text-sm font-bold text-white rounded-xl overflow-hidden shadow-lg shadow-blue-950/50 transition-transform hover:scale-[1.02] active:scale-[0.99]">
+                  <span className="absolute inset-0 bg-linear-to-r from-blue-600 to-blue-500 transition-opacity" />
+                  <span className="absolute inset-0 bg-linear-to-r from-blue-500 to-violet-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {/* Button glow ring */}
+                  <span className="absolute -inset-px rounded-xl bg-linear-to-r from-blue-400/40 to-violet-400/40 opacity-0 group-hover:opacity-100 blur-sm transition-opacity" />
+                  <span className="relative flex items-center gap-2">
+                    Start free — no credit card
+                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </Link>
                 <Link to="/login"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-xl transition shadow-sm">
+                  className="inline-flex items-center justify-center gap-2 px-6 py-4 text-sm font-semibold text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl transition-all">
                   Sign in <ChevronRight size={14} />
                 </Link>
               </div>
 
-              {/* Mini stats */}
-              <div className="flex gap-6 mt-8 pt-6 border-t border-gray-100">
-                {[['500+', 'Shops'], ['PKR 2Cr+', 'Tracked'], ['99.9%', 'Uptime']].map(([v, l]) => (
-                  <div key={l}>
-                    <p className="font-extrabold text-gray-900 text-lg leading-none">{v}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{l}</p>
+              {/* Social proof row */}
+              <div className="flex items-center gap-4 pt-6 border-t border-white/5">
+                {/* Avatar stack */}
+                <div className="flex -space-x-2">
+                  {(
+                    [
+                      ['AR', '#3b82f6'],
+                      ['UT', '#8b5cf6'],
+                      ['BK', '#10b981'],
+                      ['MK', '#f59e0b'],
+                      ['SH', '#ef4444'],
+                    ] as [string, string][]
+                  ).map(([init, bg]) => (
+                    <div key={init}
+                      className="w-8 h-8 rounded-full border-2 border-gray-950 flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                      style={{ background: bg }}>
+                      {init}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-0.5 mb-0.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star key={i} size={11} className="text-amber-400 fill-amber-400" />
+                    ))}
                   </div>
-                ))}
+                  <p className="text-xs text-gray-500">
+                    <span className="text-white font-semibold">500+</span> shops across Pakistan
+                  </p>
+                </div>
+                <div className="hidden sm:flex items-center gap-4 ml-4 pl-4 border-l border-white/5">
+                  {[['PKR 2Cr+', 'Tracked'], ['99.9%', 'Uptime']].map(([v, l]) => (
+                    <div key={l}>
+                      <p className="font-extrabold text-white text-base leading-none">{v}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5">{l}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Right — Dashboard mockup */}
-            <div className="relative lg:block">
-              <div className="absolute -inset-4 bg-linear-to-br from-blue-100/50 to-violet-100/50 rounded-3xl blur-2xl" />
-              <div className="relative bg-gray-950 rounded-2xl shadow-2xl overflow-hidden border border-gray-800">
-                {/* Window bar */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-gray-900 border-b border-gray-800">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+            {/* ── Right — enhanced dashboard mockup ── */}
+            <div className="relative">
+              {/* Glow behind card */}
+              <div className="absolute -inset-6 rounded-3xl"
+                style={{ background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.18) 0%, rgba(124,58,237,0.12) 50%, transparent 70%)' }} />
+
+              {/* Floating badge — top-left */}
+              <div className="absolute -left-5 top-10 z-20 bg-white rounded-2xl shadow-xl shadow-black/20 px-3.5 py-2.5 flex items-center gap-2.5 border border-gray-100/80">
+                <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+                  <TrendingUp size={14} className="text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 leading-none mb-0.5">This month</p>
+                  <p className="text-xs font-bold text-gray-900">PKR 3,20,000</p>
+                </div>
+              </div>
+
+              {/* Floating badge — bottom-right */}
+              <div className="absolute -right-5 bottom-14 z-20 bg-white rounded-2xl shadow-xl shadow-black/20 px-3.5 py-2.5 flex items-center gap-2.5 border border-gray-100/80">
+                <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                  <Check size={14} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 leading-none mb-0.5">Payment recorded</p>
+                  <p className="text-xs font-bold text-gray-900">PKR 8,500 · just now</p>
+                </div>
+              </div>
+
+              {/* Main window */}
+              <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/50"
+                style={{ background: 'linear-gradient(145deg, #1a1f2e 0%, #111827 100%)' }}>
+
+                {/* Browser chrome */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-black/20 border-b border-white/5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
                   <div className="flex-1 mx-3">
-                    <div className="bg-gray-800 rounded px-3 py-0.5 text-[10px] text-gray-400 max-w-[220px] mx-auto text-center">
+                    <div className="bg-white/5 border border-white/8 rounded-md px-3 py-1 text-[10px] text-gray-500 max-w-[210px] mx-auto text-center tracking-wide">
                       app.assaan-electronics.com
                     </div>
                   </div>
                 </div>
-                {/* Content */}
-                <div className="flex bg-gray-50">
+
+                {/* Layout */}
+                <div className="flex">
                   {/* Sidebar */}
-                  <div className="w-36 bg-white border-r border-gray-100 p-2.5 hidden sm:block shrink-0">
-                    <div className="mb-3 px-1.5">
-                      <p className="text-[9px] font-bold text-gray-800">Assaan Electronics</p>
-                      <p className="text-[8px] text-gray-400">Installment Manager</p>
+                  <div className="w-[130px] border-r border-white/5 p-2.5 hidden sm:block shrink-0"
+                    style={{ background: 'rgba(0,0,0,0.25)' }}>
+                    <div className="flex items-center gap-1.5 mb-4 px-1 pt-0.5">
+                      <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center shrink-0">
+                        <CreditCard size={7} className="text-white" />
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-bold text-white leading-none">Assaan</p>
+                        <p className="text-[6px] text-gray-600 leading-none mt-0.5">Mgr</p>
+                      </div>
                     </div>
                     {[
-                      { label: 'Dashboard', active: true },
-                      { label: 'Customers', active: false },
+                      { label: 'Dashboard',    active: true },
+                      { label: 'Customers',    active: false },
                       { label: 'Installments', active: false },
-                      { label: 'Recovery', active: false },
-                      { label: 'Accounting', active: false },
+                      { label: 'Recovery',     active: false },
+                      { label: 'Reports',      active: false },
                     ].map((item) => (
-                      <div key={item.label} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg mb-0.5 text-[9px] font-medium ${
-                        item.active ? 'bg-blue-600 text-white' : 'text-gray-400'
-                      }`}>
-                        <div className={`w-1 h-1 rounded-full ${item.active ? 'bg-blue-200' : 'bg-gray-200'}`} />
+                      <div key={item.label}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg mb-0.5 text-[8.5px] font-medium ${
+                          item.active
+                            ? 'bg-blue-600/20 text-blue-400 border border-blue-500/20'
+                            : 'text-gray-600'
+                        }`}>
+                        <div className={`w-1 h-1 rounded-full shrink-0 ${item.active ? 'bg-blue-400' : 'bg-gray-700'}`} />
                         {item.label}
                       </div>
                     ))}
                   </div>
-                  {/* Main */}
+
+                  {/* Main content */}
                   <div className="flex-1 p-3 min-w-0">
+                    {/* Top bar */}
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-[9px] font-bold text-white">Dashboard</p>
+                      <span className="text-[7px] text-gray-600 bg-white/5 border border-white/8 px-2 py-0.5 rounded-full">Today · May 30</span>
+                    </div>
+
                     {/* Stat cards */}
-                    <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="grid grid-cols-2 gap-1.5 mb-2.5">
                       {[
-                        { label: "Today's Collections", val: 'PKR 45,000', color: 'text-blue-600', bg: 'bg-blue-50' },
-                        { label: 'This Month',          val: 'PKR 3,20,000', color: 'text-violet-600', bg: 'bg-violet-50' },
-                        { label: 'Active Plans',        val: '84 plans', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                        { label: 'Overdue',             val: '3 alerts', color: 'text-red-500', bg: 'bg-red-50' },
+                        { label: "Today's Collections", val: 'PKR 45,000',  c: 'text-blue-400',    bg: 'bg-blue-500/10',    b: 'border-blue-500/15',  sub: '+12% vs yesterday' },
+                        { label: 'Monthly Revenue',     val: 'PKR 3.2L',    c: 'text-violet-400',  bg: 'bg-violet-500/10',  b: 'border-violet-500/15',sub: '+8% vs last month' },
+                        { label: 'Active Plans',        val: '84 plans',    c: 'text-emerald-400', bg: 'bg-emerald-500/10', b: 'border-emerald-500/15',sub: '6 new this week' },
+                        { label: 'Overdue Alerts',      val: '3 accounts',  c: 'text-red-400',     bg: 'bg-red-500/10',     b: 'border-red-500/15',   sub: 'Needs attention' },
                       ].map((s) => (
-                        <div key={s.label} className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm">
-                          <p className="text-[8px] text-gray-400 mb-0.5">{s.label}</p>
-                          <p className={`text-xs font-bold ${s.color}`}>{s.val}</p>
+                        <div key={s.label} className={`rounded-xl p-2.5 border ${s.b} ${s.bg}`}>
+                          <p className="text-[7px] text-gray-600 mb-0.5 truncate">{s.label}</p>
+                          <p className={`text-[11px] font-bold ${s.c} leading-tight`}>{s.val}</p>
+                          <p className="text-[6.5px] text-gray-700 mt-0.5">{s.sub}</p>
                         </div>
                       ))}
                     </div>
-                    {/* Table */}
-                    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-                      <div className="px-2.5 py-1.5 border-b border-gray-50">
-                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-wider">Recent Installments</p>
+
+                    {/* Bar chart */}
+                    <div className="rounded-xl p-2.5 mb-2 border border-white/5 bg-white/[0.03]">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[7.5px] font-semibold text-gray-500">Weekly Collections</p>
+                        <p className="text-[7.5px] font-bold text-blue-400">PKR 2.1L this week</p>
+                      </div>
+                      <div className="flex items-end gap-[3px] h-9">
+                        {[35, 60, 42, 78, 52, 92, 65].map((h, i) => (
+                          <div key={i} className="flex-1 rounded-sm transition-all"
+                            style={{
+                              height: `${h}%`,
+                              background: i === 5
+                                ? 'linear-gradient(to top, #2563eb, #818cf8)'
+                                : 'rgba(255,255,255,0.06)',
+                            }} />
+                        ))}
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                          <p key={i} className={`text-[6.5px] flex-1 text-center ${i === 5 ? 'text-blue-400 font-bold' : 'text-gray-700'}`}>{d}</p>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent installments */}
+                    <div className="rounded-xl border border-white/5 overflow-hidden bg-white/[0.02]">
+                      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-white/5">
+                        <p className="text-[7px] font-bold text-gray-600 uppercase tracking-wider">Recent</p>
+                        <span className="text-[6px] text-blue-500">View all →</span>
                       </div>
                       {[
-                        { name: 'Ali Hassan',  product: 'Samsung 55" TV',  rem: 'PKR 24,000', status: 'Active',    dot: 'bg-green-500' },
-                        { name: 'Sara Malik',  product: 'LG Refrigerator', rem: 'PKR 0',      status: 'Completed', dot: 'bg-blue-500' },
-                        { name: 'Usman Ahmed', product: 'iPhone 15',       rem: 'PKR 61,000', status: 'Overdue',   dot: 'bg-red-500' },
+                        { name: 'Ali Hassan',  product: 'Samsung 55"', rem: '24,000', status: 'Active',  dot: 'bg-emerald-500', sc: 'bg-emerald-500/15 text-emerald-400' },
+                        { name: 'Sara Malik',  product: 'LG Fridge',   rem: '0',      status: 'Done',    dot: 'bg-blue-500',    sc: 'bg-blue-500/15 text-blue-400' },
+                        { name: 'Usman Ahmed', product: 'iPhone 15',   rem: '61,000', status: 'Overdue', dot: 'bg-red-500',     sc: 'bg-red-500/15 text-red-400' },
                       ].map((r) => (
-                        <div key={r.name} className="flex items-center justify-between px-2.5 py-2 border-b border-gray-50 last:border-0">
+                        <div key={r.name} className="flex items-center justify-between px-2.5 py-1.5 border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[7px] font-bold text-blue-600 shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-blue-600/20 border border-blue-500/20 flex items-center justify-center text-[7px] font-bold text-blue-400 shrink-0">
                               {r.name.charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[9px] font-semibold text-gray-800 truncate">{r.name}</p>
-                              <p className="text-[8px] text-gray-400 truncate">{r.product}</p>
+                              <p className="text-[8.5px] font-semibold text-gray-300 truncate">{r.name}</p>
+                              <p className="text-[7px] text-gray-600 truncate">{r.product}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[9px] font-semibold text-gray-700">{r.rem}</span>
-                            <span className={`flex items-center gap-0.5 text-[8px] font-medium px-1 py-0.5 rounded-full ${
-                              r.status === 'Completed' ? 'bg-blue-50 text-blue-600' :
-                              r.status === 'Overdue'   ? 'bg-red-50 text-red-600' :
-                                                         'bg-green-50 text-green-600'
-                            }`}>
-                              <span className={`w-1 h-1 rounded-full ${r.dot}`} />{r.status}
+                            <span className="text-[8px] font-semibold text-gray-400">PKR {r.rem}</span>
+                            <span className={`flex items-center gap-0.5 text-[7px] font-medium px-1.5 py-0.5 rounded-full ${r.sc}`}>
+                              <span className={`w-1 h-1 rounded-full ${r.dot}`} />
+                              {r.status}
                             </span>
                           </div>
                         </div>
@@ -390,17 +526,21 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
+
           </div>
         </div>
+
+        {/* Bottom fade into pain-points section */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-linear-to-b from-transparent to-gray-950 pointer-events-none" />
       </section>
 
       {/* ── Pain points ── */}
       <section className="py-14 bg-gray-950">
         <div className="max-w-5xl mx-auto px-5">
-          <p className="text-center text-gray-400 text-sm font-medium mb-8">Sound familiar?</p>
+          <p className="text-center text-xs font-bold text-blue-400 uppercase tracking-widest mb-8">Sound familiar?</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {problems.map((p) => (
-              <div key={p.title} className="flex gap-4 items-start bg-gray-900 rounded-2xl p-5 border border-gray-800">
+              <div key={p.title} className="flex gap-4 items-start bg-white/[0.04] rounded-2xl p-5 border border-white/8">
                 <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
                   <p.icon size={18} className="text-red-400" />
                 </div>
@@ -419,12 +559,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── How it works ── */}
-      <section id="how-it-works" className="py-24 bg-white">
+      <section id="how-it-works" className="py-24 border-t border-white/5">
         <div className="max-w-6xl mx-auto px-5">
           <div className="text-center mb-16">
-            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">How it works</p>
-            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">4 simple steps</h2>
-            <p className="text-gray-500 mt-3 max-w-lg mx-auto">
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">How it works</p>
+            <h2 className="text-4xl font-extrabold text-white tracking-tight">4 simple steps</h2>
+            <p className="text-gray-400 mt-3 max-w-lg mx-auto">
               From setup to accounting — a clear workflow for every task.
             </p>
           </div>
@@ -434,26 +574,24 @@ export default function LandingPage() {
               const c = colorMap[step.color];
               return (
                 <div key={step.number} className="relative">
-                  {/* Connector line on desktop */}
                   {idx < steps.length - 1 && (
                     <div className="hidden lg:block absolute top-10 left-[calc(100%-0px)] w-5 z-10">
-                      <div className="w-full h-px bg-gray-200 mt-0.5" />
-                      <ChevronRight size={12} className="text-gray-300 absolute -right-1.5 -top-2" />
+                      <div className="w-full h-px bg-white/10 mt-0.5" />
+                      <ChevronRight size={12} className="text-white/20 absolute -right-1.5 -top-2" />
                     </div>
                   )}
-                  <div className={`rounded-2xl border ${c.border} bg-white p-6 h-full hover:shadow-lg transition-all duration-200 group`}>
-                    {/* Step number */}
+                  <div className={`rounded-2xl border ${c.border} bg-white/[0.04] p-6 h-full hover:bg-white/[0.07] transition-all duration-200 group`}>
                     <div className="flex items-center justify-between mb-4">
                       <div className={`w-11 h-11 ${c.bg} rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform`}>
                         <step.icon size={20} className="text-white" />
                       </div>
-                      <span className={`text-3xl font-black ${c.num} opacity-60`}>{step.number}</span>
+                      <span className={`text-3xl font-black ${c.num} select-none`}>{step.number}</span>
                     </div>
-                    <h3 className="font-bold text-gray-900 text-base mb-2">{step.title}</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed mb-4">{step.desc}</p>
+                    <h3 className="font-bold text-white text-base mb-2">{step.title}</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed mb-4">{step.desc}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {step.tags.map((tag) => (
-                        <span key={tag} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${c.light} ${c.text}`}>
+                        <span key={tag} className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${c.light} ${c.text}`}>
                           {tag}
                         </span>
                       ))}
@@ -467,12 +605,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── Features ── */}
-      <section id="features" className="py-24 bg-gray-50">
+      <section id="features" className="py-24 border-t border-white/5" style={{ background: 'rgba(255,255,255,0.015)' }}>
         <div className="max-w-6xl mx-auto px-5">
           <div className="text-center mb-14">
-            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">Features</p>
-            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Everything in one place</h2>
-            <p className="text-lg text-gray-500 mt-3 max-w-xl mx-auto">
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Features</p>
+            <h2 className="text-4xl font-extrabold text-white tracking-tight">Everything in one place</h2>
+            <p className="text-lg text-gray-400 mt-3 max-w-xl mx-auto">
               Notebooks, spreadsheets, and scattered apps — all replaced by one clean system.
             </p>
           </div>
@@ -481,15 +619,15 @@ export default function LandingPage() {
               const fc = fColorMap[f.color];
               return (
                 <div key={f.title}
-                  className={`rounded-2xl border ${fc.border} bg-white p-6 hover:shadow-lg transition-all duration-200 group`}>
-                  <div className={`w-11 h-11 ${fc.bg} rounded-xl flex items-center justify-center mb-5 group-hover:scale-105 transition-transform`}>
+                  className={`rounded-2xl border ${fc.border} bg-white/[0.04] p-6 hover:bg-white/[0.07] transition-all duration-200 group`}>
+                  <div className={`w-11 h-11 ${fc.bg} rounded-xl flex items-center justify-center mb-5 group-hover:scale-105 transition-transform border border-white/5`}>
                     <f.icon size={20} className={fc.text} />
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-2">{f.title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed mb-4">{f.desc}</p>
+                  <h3 className="font-bold text-white mb-2">{f.title}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed mb-4">{f.desc}</p>
                   <ul className="space-y-1.5">
                     {f.points.map((pt) => (
-                      <li key={pt} className="flex items-center gap-2 text-xs text-gray-600">
+                      <li key={pt} className="flex items-center gap-2 text-xs text-gray-400">
                         <div className={`w-4 h-4 rounded-full ${fc.bg} flex items-center justify-center shrink-0`}>
                           <Check size={9} className={fc.text} />
                         </div>
@@ -501,47 +639,38 @@ export default function LandingPage() {
               );
             })}
           </div>
-        </div>
-      </section>
 
-      {/* ── Bento highlight ── */}
-      <section className="py-8 pb-20 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-5">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Security */}
-            <div className="bg-gray-950 rounded-2xl p-7 text-white flex flex-col justify-between min-h-56">
-              <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center mb-5 border border-white/10">
-                <Shield size={20} className="text-white" />
+          {/* Bento highlight — 3 standout cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
+            <div className="rounded-2xl p-7 flex flex-col justify-between min-h-52 border border-white/8 bg-white/[0.04] hover:bg-white/[0.07] transition-all">
+              <div className="w-11 h-11 bg-white/8 rounded-xl flex items-center justify-center mb-5 border border-white/10">
+                <Shield size={20} className="text-gray-300" />
               </div>
               <div>
-                <h3 className="text-xl font-bold mb-2">Security first</h3>
+                <h3 className="text-lg font-bold text-white mb-2">Security first</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  OTP login for every owner. CNIC data is hashed — raw numbers never stored.
-                  Your data stays yours, always.
+                  OTP login for every owner. CNIC data is hashed — raw numbers never stored. Your data stays yours, always.
                 </p>
               </div>
             </div>
-            {/* Speed */}
-            <div className="bg-blue-600 rounded-2xl p-7 text-white flex flex-col justify-between min-h-56">
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center mb-5 border border-white/20">
-                <Zap size={20} className="text-white" />
+            <div className="rounded-2xl p-7 flex flex-col justify-between min-h-52 border border-blue-500/30 bg-blue-600/10 hover:bg-blue-600/15 transition-all">
+              <div className="w-11 h-11 bg-blue-500/20 rounded-xl flex items-center justify-center mb-5 border border-blue-500/30">
+                <Zap size={20} className="text-blue-400" />
               </div>
               <div>
-                <h3 className="text-xl font-bold mb-2">2 minute setup</h3>
-                <p className="text-blue-100 text-sm leading-relaxed">
-                  Create an account, set up your shop, add your first customer —
-                  all done before your next customer walks in.
+                <h3 className="text-lg font-bold text-white mb-2">2 minute setup</h3>
+                <p className="text-blue-300/70 text-sm leading-relaxed">
+                  Create an account, set up your shop, add your first customer — all done before your next customer walks in.
                 </p>
               </div>
             </div>
-            {/* Stats */}
-            <div className="bg-violet-600 rounded-2xl p-7 text-white flex flex-col justify-between min-h-56">
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center mb-5 border border-white/20">
-                <TrendingUp size={20} className="text-white" />
+            <div className="rounded-2xl p-7 flex flex-col justify-between min-h-52 border border-violet-500/30 bg-violet-600/10 hover:bg-violet-600/15 transition-all">
+              <div className="w-11 h-11 bg-violet-500/20 rounded-xl flex items-center justify-center mb-5 border border-violet-500/30">
+                <TrendingUp size={20} className="text-violet-400" />
               </div>
               <div>
-                <h3 className="text-xl font-bold mb-2">Real-time reports</h3>
-                <p className="text-violet-100 text-sm leading-relaxed">
+                <h3 className="text-lg font-bold text-white mb-2">Real-time reports</h3>
+                <p className="text-violet-300/70 text-sm leading-relaxed">
                   Daily collections, monthly revenue, agent performance — log in to the dashboard and everything is right there.
                 </p>
               </div>
@@ -551,14 +680,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── Stats ── */}
-      <section className="py-16 bg-white border-y border-gray-100">
+      <section className="py-16 border-y border-white/5" style={{ background: 'rgba(255,255,255,0.02)' }}>
         <div className="max-w-5xl mx-auto px-5 grid grid-cols-2 lg:grid-cols-4 gap-8">
           {stats.map((s) => (
             <div key={s.label} className="text-center group">
-              <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-100 transition">
-                <s.icon size={19} className="text-blue-600" />
+              <div className="w-11 h-11 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-500/20 transition">
+                <s.icon size={19} className="text-blue-400" />
               </div>
-              <p className="text-3xl font-extrabold text-gray-900">{s.value}</p>
+              <p className="text-3xl font-extrabold text-white">{s.value}</p>
               <p className="text-sm text-gray-500 mt-1">{s.label}</p>
             </div>
           ))}
@@ -566,12 +695,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" className="py-24 bg-gray-50">
+      <section id="pricing" className="py-24 border-t border-white/5">
         <div className="max-w-5xl mx-auto px-5">
           <div className="text-center mb-14">
-            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">Pricing</p>
-            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Simple, honest pricing</h2>
-            <p className="text-lg text-gray-500 mt-3">14-day free trial. No credit card required.</p>
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Pricing</p>
+            <h2 className="text-4xl font-extrabold text-white tracking-tight">Simple, honest pricing</h2>
+            <p className="text-lg text-gray-400 mt-3">14-day free trial. No credit card required.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-start">
@@ -579,36 +708,34 @@ export default function LandingPage() {
               <div key={plan.name}
                 className={`rounded-2xl p-7 flex flex-col relative ${
                   plan.highlight
-                    ? 'bg-gray-950 text-white shadow-2xl ring-1 ring-gray-800 scale-[1.02]'
-                    : 'bg-white border border-gray-200 shadow-sm'
+                    ? 'bg-white/[0.07] border border-blue-500/30 shadow-xl shadow-blue-950/50 scale-[1.02]'
+                    : 'bg-white/[0.04] border border-white/8'
                 }`}>
                 {plan.badge && (
-                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full shadow-sm">
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full shadow-sm shadow-blue-900/50">
                     {plan.badge}
                   </span>
                 )}
                 <div className="mb-6">
-                  <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${plan.highlight ? 'text-gray-400' : 'text-gray-400'}`}>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-3 text-gray-500">
                     {plan.name}
                   </p>
                   <div className="flex items-baseline gap-1 mb-2">
-                    <span className={`text-3xl font-extrabold ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
-                      {plan.price}
-                    </span>
-                    <span className={`text-sm ${plan.highlight ? 'text-gray-400' : 'text-gray-400'}`}>{plan.period}</span>
+                    <span className="text-3xl font-extrabold text-white">{plan.price}</span>
+                    <span className="text-sm text-gray-500">{plan.period}</span>
                   </div>
-                  <p className={`text-sm ${plan.highlight ? 'text-gray-400' : 'text-gray-500'}`}>{plan.desc}</p>
+                  <p className="text-sm text-gray-400">{plan.desc}</p>
                 </div>
 
                 <ul className="space-y-3 flex-1 mb-8">
                   {plan.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2.5 text-sm">
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        plan.highlight ? 'bg-blue-600' : 'bg-blue-50'
+                        plan.highlight ? 'bg-blue-600' : 'bg-blue-500/15'
                       }`}>
-                        <Check size={10} className={plan.highlight ? 'text-white' : 'text-blue-600'} />
+                        <Check size={10} className={plan.highlight ? 'text-white' : 'text-blue-400'} />
                       </div>
-                      <span className={plan.highlight ? 'text-gray-300' : 'text-gray-600'}>{feat}</span>
+                      <span className="text-gray-300">{feat}</span>
                     </li>
                   ))}
                 </ul>
@@ -616,8 +743,8 @@ export default function LandingPage() {
                 <Link to={plan.href}
                   className={`w-full py-3 rounded-xl text-sm font-bold text-center transition ${
                     plan.highlight
-                      ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/30'
-                      : 'bg-gray-900 text-white hover:bg-gray-800'
+                      ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/40'
+                      : 'bg-white/8 text-white hover:bg-white/12 border border-white/10'
                   }`}>
                   {plan.cta}
                 </Link>
@@ -628,31 +755,30 @@ export default function LandingPage() {
       </section>
 
       {/* ── Testimonials ── */}
-      <section id="reviews" className="py-24 bg-white">
+      <section id="reviews" className="py-24 border-t border-white/5" style={{ background: 'rgba(255,255,255,0.015)' }}>
         <div className="max-w-5xl mx-auto px-5">
           <div className="text-center mb-14">
-            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-3">Reviews</p>
-            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">What shop owners say</h2>
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Reviews</p>
+            <h2 className="text-4xl font-extrabold text-white tracking-tight">What shop owners say</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {testimonials.map((t) => (
               <div key={t.name}
-                className="bg-gray-50 border border-gray-100 rounded-2xl p-6 hover:shadow-md hover:border-gray-200 transition-all duration-200 flex flex-col">
-                {/* Quote mark */}
-                <div className="text-4xl font-black text-blue-100 leading-none mb-3 select-none">"</div>
+                className="bg-white/[0.04] border border-white/8 rounded-2xl p-6 hover:bg-white/[0.07] transition-all duration-200 flex flex-col">
+                <div className="text-4xl font-black text-blue-500/20 leading-none mb-3 select-none">"</div>
                 <div className="flex gap-0.5 mb-4">
                   {Array.from({ length: t.stars }).map((_, i) => (
                     <Star key={i} size={13} className="text-amber-400 fill-amber-400" />
                   ))}
                 </div>
-                <p className="text-sm text-gray-700 leading-relaxed flex-1 mb-5">{t.text}</p>
-                <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                <p className="text-sm text-gray-300 leading-relaxed flex-1 mb-5">{t.text}</p>
+                <div className="flex items-center gap-3 pt-4 border-t border-white/8">
                   <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                     {t.initials}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                    <p className="text-xs text-gray-400">{t.role} · {t.city}</p>
+                    <p className="text-sm font-semibold text-white">{t.name}</p>
+                    <p className="text-xs text-gray-500">{t.role} · {t.city}</p>
                   </div>
                 </div>
               </div>
@@ -662,11 +788,11 @@ export default function LandingPage() {
       </section>
 
       {/* ── Final CTA ── */}
-      <section className="relative overflow-hidden py-24 px-5">
-        <div className="absolute inset-0 bg-gray-950" />
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+      <section className="relative overflow-hidden py-28 px-5 border-t border-white/5">
+        <div className="absolute inset-0 opacity-[0.035]"
+          style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[400px] rounded-full blur-3xl pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse, rgba(37,99,235,0.25) 0%, rgba(124,58,237,0.10) 50%, transparent 70%)' }} />
         <div className="relative max-w-2xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-white/70 text-xs font-medium mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
