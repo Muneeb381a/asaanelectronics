@@ -182,20 +182,19 @@ function OwnRecord({ customer, onNavigate }: { customer: CustomerLookupResult; o
       <div className="px-5 pb-4">
         <div className="bg-gray-50 rounded-xl p-3.5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Risk Score — Is Shop</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Credit Score — Is Shop</span>
             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${risk.badge}`}>
               {risk.icon}{risk.label}
             </span>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div className={`h-full rounded-full ${risk.bar}`} style={{ width: `${customer.riskScore}%` }} />
+              <div className={`h-full rounded-full ${risk.bar}`} style={{ width: `${100 - customer.riskScore}%` }} />
             </div>
             <span className="text-sm font-bold text-gray-700 tabular-nums w-12 text-right">
-              {customer.riskScore}<span className="text-xs font-normal text-gray-400">/100</span>
+              {100 - customer.riskScore}<span className="text-xs font-normal text-gray-400">/100</span>
             </span>
           </div>
-          <p className="text-[10px] text-gray-400 mt-1.5">Score jitna kum — utna acha</p>
         </div>
       </div>
 

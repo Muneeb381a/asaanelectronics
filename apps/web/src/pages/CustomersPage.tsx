@@ -94,7 +94,7 @@ function RiskBadge({ score, label }: { score: number; label: RiskLabel }) {
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${s.badgeCls}`}>
       {s.label}
-      <span className={`font-mono font-bold ${s.scoreCls}`}>{score}</span>
+      <span className={`font-mono font-bold ${s.scoreCls}`}>{100 - score}</span>
     </span>
   );
 }
@@ -289,7 +289,7 @@ function RiskBreakdownPanel({ customerId, riskScore, riskLabel }: {
     <div className="px-6 py-3 border-b border-gray-50 shrink-0">
       <button onClick={() => setOpen((v) => !v)}
         className="flex items-center justify-between w-full text-xs font-semibold text-gray-500 uppercase tracking-wide hover:text-gray-700 transition">
-        <span>Risk Score — <span className={color}>{riskScore}/100 ({riskLabel})</span></span>
+        <span>Credit Score — <span className={color}>{100 - riskScore}/100 ({riskLabel})</span></span>
         <span className="text-gray-300">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
