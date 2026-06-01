@@ -54,6 +54,13 @@ function OwnerRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// Guards routes that only SELLER_OWNER should access
+function SellerOwnerGuard({ children }: { children: ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  if (user?.role !== 'SELLER_OWNER') return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 function OnboardingRoute({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (!user) return <Navigate to="/login" replace />;
@@ -103,15 +110,15 @@ export const router = createBrowserRouter([
       { path: '/products',       element: <PermGuard perm="canManageProducts"><ProductsPage /></PermGuard> },
       { path: '/customers',      element: <PermGuard perm="canAddCustomer"><CustomersPage /></PermGuard> },
       { path: '/installments',   element: <PermGuard perm="canAddInstallment"><InstallmentsPage /></PermGuard> },
-      { path: '/returns',        element: <ReturnsPage /> },
-      { path: '/expenses',       element: <ExpensesPage /> },
-      { path: '/ledger',         element: <LedgerPage /> },
-      { path: '/audit',          element: <AuditLogPage /> },
-      { path: '/staff',          element: <StaffPage /> },
-      { path: '/billing',        element: <BillingPage /> },
-      { path: '/recovery',        element: <RecoveryPage /> },
-      { path: '/recovery-agents', element: <RecoveryAgentsPage /> },
-      { path: '/settings',       element: <SettingsPage /> },
+      { path: '/returns',        element: <SellerOwnerGuard><ReturnsPage /></SellerOwnerGuard> },
+      { path: '/expenses',       element: <SellerOwnerGuard><ExpensesPage /></SellerOwnerGuard> },
+      { path: '/ledger',         element: <SellerOwnerGuard><LedgerPage /></SellerOwnerGuard> },
+      { path: '/audit',          element: <SellerOwnerGuard><AuditLogPage /></SellerOwnerGuard> },
+      { path: '/staff',          element: <SellerOwnerGuard><StaffPage /></SellerOwnerGuard> },
+      { path: '/billing',        element: <SellerOwnerGuard><BillingPage /></SellerOwnerGuard> },
+      { path: '/recovery',       element: <SellerOwnerGuard><RecoveryPage /></SellerOwnerGuard> },
+      { path: '/recovery-agents',element: <SellerOwnerGuard><RecoveryAgentsPage /></SellerOwnerGuard> },
+      { path: '/settings',       element: <SellerOwnerGuard><SettingsPage /></SellerOwnerGuard> },
       { path: '/verifications',  element: <VerificationQueuePage /> },
     ],
   },

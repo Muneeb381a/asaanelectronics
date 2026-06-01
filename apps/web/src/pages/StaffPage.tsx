@@ -245,9 +245,9 @@ function StaffCard({ member }: { member: StaffMember }) {
             {isOwner ? (
               <PermissionToggle member={member} permKey={key} />
             ) : (
-              <span className={`text-xs font-medium ${perms[key] ? 'text-green-600' : 'text-gray-400'}`}>
-                {perms[key] ? 'Yes' : 'No'}
-              </span>
+              <div className={`relative inline-flex h-5 w-9 items-center rounded-full cursor-default ${perms[key] ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${perms[key] ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+              </div>
             )}
           </div>
         ))}
