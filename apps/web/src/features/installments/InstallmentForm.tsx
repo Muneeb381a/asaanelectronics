@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -76,6 +76,8 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     defaultValues: { months: 12, startDate: new Date().toISOString().slice(0, 10), downPayment: 0, paymentFrequency: 'monthly' },
   });
 
+  const [dpIsFirst, setDpIsFirst] = useState(false);
+
   const [
     customerId, productId, totalAmount, downPayment, months, startDate,
     cashPrice, profitMarkup, paymentFrequency,
@@ -145,17 +147,43 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
   }
 
   const effectiveTotal = showMurabaha ? ((cashPrice ?? 0) + (profitMarkup ?? 0)) : (totalAmount || 0);
-  const remaining = effectiveTotal - (downPayment || 0);
-  const periodic  = months && remaining > 0
+
+  // When "down payment = first installment", monthly = total ÷ months; dp is locked to that amount
+  const dpFirstMonthly = (dpIsFirst && effectiveTotal > 0 && (months ?? 0) > 1)
     ? isDaily
-      ? Math.round((remaining / months) / 5) * 5
-      : Math.round((remaining / months) / 25) * 25
-    : 0;
+      ? Math.round((effectiveTotal / (months ?? 1)) / 5) * 5
+      : Math.round((effectiveTotal / (months ?? 1)) / 25) * 25
+    : null;
+
+  // Auto-fill down payment when toggle is on
+  useEffect(() => {
+    if (dpIsFirst && dpFirstMonthly !== null) setValue('downPayment', dpFirstMonthly);
+  }, [dpIsFirst, dpFirstMonthly, setValue]);
+
+  // Turn off toggle if months drops to 1 (months-1=0 would be invalid)
+  useEffect(() => {
+    if ((months ?? 0) <= 1 && dpIsFirst) setDpIsFirst(false);
+  }, [months, dpIsFirst]);
+
+  const remaining = dpIsFirst && dpFirstMonthly !== null
+    ? effectiveTotal - dpFirstMonthly
+    : effectiveTotal - (downPayment || 0);
+
+  const periodic = dpIsFirst && dpFirstMonthly !== null
+    ? dpFirstMonthly
+    : (months && remaining > 0
+      ? isDaily
+        ? Math.round((remaining / months) / 5) * 5
+        : Math.round((remaining / months) / 25) * 25
+      : 0);
+
+  // Future installment count (excludes the down payment month when dpIsFirst)
+  const futureMonths = dpIsFirst ? (months ?? 1) - 1 : (months ?? 0);
 
   const schedule: { date: Date; amount: number }[] = [];
   if (periodic > 0 && startDate) {
     const base = new Date(startDate);
-    for (let i = 1; i <= months; i++) {
+    for (let i = 1; i <= futureMonths; i++) {
       schedule.push({ date: isDaily ? addDays(base, i) : addMonths(base, i), amount: periodic });
     }
   }
@@ -166,7 +194,11 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
   return (
     <form
-      onSubmit={handleSubmit((d) => onSubmit({ ...d, startDate: new Date(d.startDate).toISOString() }))}
+      onSubmit={handleSubmit((d) => onSubmit({
+        ...d,
+        startDate: new Date(d.startDate).toISOString(),
+        months: dpIsFirst ? d.months - 1 : d.months,
+      }))}
       className="space-y-5"
     >
       {/* Payment frequency toggle */}
@@ -315,7 +347,9 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
           <div>
             <Label>Down Payment (PKR)</Label>
-            <input type="number" step="1" placeholder="0" {...register('downPayment', { valueAsNumber: true })} className={inp} />
+            <input type="number" step="1" placeholder="0" readOnly={dpIsFirst}
+              {...register('downPayment', { valueAsNumber: true })}
+              className={`${inp} ${dpIsFirst ? 'bg-blue-50 text-blue-700 font-semibold cursor-not-allowed' : ''}`} />
           </div>
         </div>
       ) : (
@@ -327,21 +361,55 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           </div>
           <div>
             <Label>Down Payment (PKR)</Label>
-            <input type="number" step="1" placeholder="0" {...register('downPayment', { valueAsNumber: true })} className={inp} />
+            <input type="number" step="1" placeholder="0" readOnly={dpIsFirst}
+              {...register('downPayment', { valueAsNumber: true })}
+              className={`${inp} ${dpIsFirst ? 'bg-blue-50 text-blue-700 font-semibold cursor-not-allowed' : ''}`} />
           </div>
         </div>
       )}
 
-      {/* Down payment presets */}
+      {/* Down payment presets + first-installment toggle */}
       {effectiveTotal > 0 && (
-        <div className="flex items-center gap-1.5 flex-wrap -mt-1">
-          {DOWN_PRESETS.map((pct) => (
-            <button key={pct} type="button"
-              onClick={() => setValue('downPayment', Math.round(effectiveTotal * pct / 100))}
-              className="px-2.5 py-1 rounded-lg text-xs text-gray-500 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 transition font-medium">
-              {pct}%
+        <div className="space-y-2 -mt-1">
+          {/* Presets — hidden when dpIsFirst since dp is auto-locked */}
+          {!dpIsFirst && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {DOWN_PRESETS.map((pct) => (
+                <button key={pct} type="button"
+                  onClick={() => setValue('downPayment', Math.round(effectiveTotal * pct / 100))}
+                  className="px-2.5 py-1 rounded-lg text-xs text-gray-500 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 transition font-medium">
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Toggle: down payment = first installment */}
+          {(months ?? 0) > 1 && (
+            <button
+              type="button"
+              onClick={() => setDpIsFirst((v) => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition text-left ${
+                dpIsFirst
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-gray-50 border-gray-100 hover:border-gray-200'
+              }`}
+            >
+              <div>
+                <p className={`text-xs font-semibold ${dpIsFirst ? 'text-blue-800' : 'text-gray-600'}`}>
+                  Pehli qist = Down Payment
+                </p>
+                <p className={`text-[10px] mt-0.5 ${dpIsFirst ? 'text-blue-500' : 'text-gray-400'}`}>
+                  {dpIsFirst && dpFirstMonthly
+                    ? `${pkr(dpFirstMonthly)} auto-set · ${months}m total, ${futureMonths}m baqi`
+                    : 'Down payment ko pehli installment count karo'}
+                </p>
+              </div>
+              <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${dpIsFirst ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${dpIsFirst ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+              </div>
             </button>
-          ))}
+          )}
         </div>
       )}
 
@@ -400,7 +468,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
             {[
               { label: 'Remaining',                value: pkr(remaining) },
               { label: isDaily ? 'Daily' : 'Monthly', value: pkr(periodic), highlight: true },
-              { label: isDaily ? 'Days' : 'Duration',  value: isDaily ? `${months}d` : `${months}m` },
+              { label: isDaily ? 'Days' : 'Duration',  value: isDaily ? `${futureMonths}d` : `${futureMonths}m` },
             ].map((s) => (
               <div key={s.label} className={`rounded-xl px-3 py-2.5 text-center ${
                 s.highlight
@@ -434,7 +502,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
                 )}
                 {schedule.length > 3 && (
                   <div className="flex items-center justify-between px-4 py-2 text-xs bg-emerald-50">
-                    <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-600 shrink-0">{months}</span>
+                    <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-600 shrink-0">{futureMonths}</span>
                     <span className="text-gray-500">{fmtDate(schedule[schedule.length - 1].date)} <span className="text-emerald-500 font-medium">(Final)</span></span>
                     <span className="font-semibold text-gray-800">{pkr(schedule[schedule.length - 1].amount)}</span>
                   </div>
