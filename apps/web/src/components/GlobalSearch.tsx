@@ -65,16 +65,44 @@ const INST_STATUS_CFG: Record<string, { label: string; cls: string }> = {
 };
 
 // ── bureau section ────────────────────────────────────────────────────────────
+function bureauCreditScore(b: BureauData): number {
+  let score = 100;
+  score -= b.totalDefaulted * 25;
+  if (b.totalActive > 3)      score -= 15;
+  else if (b.totalActive > 1) score -= 8;
+  if (b.totalCompleted > 0)   score += 5;
+  return Math.max(0, Math.min(100, score));
+}
+
+function bureauScoreMeta(score: number): { label: string; bar: string; text: string; bg: string } {
+  if (score >= 80) return { label: 'Good',      bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' };
+  if (score >= 60) return { label: 'Average',   bar: 'bg-amber-400',   text: 'text-amber-700',   bg: 'bg-amber-50'   };
+  if (score >= 40) return { label: 'Risky',     bar: 'bg-orange-500',  text: 'text-orange-700',  bg: 'bg-orange-50'  };
+  return                  { label: 'High Risk', bar: 'bg-red-500',     text: 'text-red-700',     bg: 'bg-red-50'     };
+}
+
 function BureauSection({ bureau }: { bureau: BureauData | null }) {
   const isClean   = !bureau || (bureau.totalActive === 0 && bureau.totalDefaulted === 0);
   const hasRisk   = bureau && bureau.totalDefaulted > 0;
   const hasActive = bureau && bureau.totalActive > 0;
+  const score     = bureau ? bureauCreditScore(bureau) : 100;
+  const scoreMeta = bureauScoreMeta(score);
 
   return (
     <div className="px-5 pb-4">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-        <Store size={11} /> Bureau Check — Doosri Shops
-      </p>
+      {/* Bureau header with credit score */}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+          <Store size={11} /> Bureau Check
+        </p>
+        <div className={`flex items-center gap-2 px-2.5 py-1 rounded-lg ${scoreMeta.bg} border border-current/10`}>
+          <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full ${scoreMeta.bar}`} style={{ width: `${score}%` }} />
+          </div>
+          <span className={`text-[11px] font-bold tabular-nums ${scoreMeta.text}`}>{score}</span>
+          <span className={`text-[10px] font-semibold ${scoreMeta.text}`}>{scoreMeta.label}</span>
+        </div>
+      </div>
 
       {isClean && (
         <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-100 rounded-xl px-3.5 py-3">
@@ -103,25 +131,26 @@ function BureauSection({ bureau }: { bureau: BureauData | null }) {
                 }
               </p>
               <p className={`text-xs mt-0.5 ${hasRisk ? 'text-red-500' : 'text-amber-600'}`}>
-                {hasActive && `${pkr(bureau.totalRemaining)} remaining across other shops`}
+                {hasActive && `${pkr(bureau.totalRemaining)} remaining`}
                 {!hasActive && hasRisk && 'Previous defaults recorded'}
               </p>
             </div>
           </div>
 
-          {/* Per-shop breakdown */}
+          {/* Per-record breakdown — shop name hidden for privacy */}
           <div className="divide-y divide-white/60">
             {bureau.shops.map((shop, i) => (
               <div key={i} className="flex items-center gap-3 px-3.5 py-2">
-                <div className="w-6 h-6 rounded-lg bg-white/70 border border-white flex items-center justify-center shrink-0">
-                  <Store size={11} className="text-gray-500" />
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-[9px] font-bold ${
+                  shop.defaultedCount > 0 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {i + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-700 truncate">{shop.shopName}</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">
-                    {shop.activeCount > 0 && <span className="text-emerald-600">{shop.activeCount} active</span>}
+                  <p className="text-[10px] text-gray-500">
+                    {shop.activeCount > 0 && <span className="text-emerald-600 font-medium">{shop.activeCount} active</span>}
                     {shop.activeCount > 0 && shop.defaultedCount > 0 && <span className="mx-1">·</span>}
-                    {shop.defaultedCount > 0 && <span className="text-red-600">{shop.defaultedCount} defaulted</span>}
+                    {shop.defaultedCount > 0 && <span className="text-red-600 font-medium">{shop.defaultedCount} defaulted</span>}
                     {shop.completedCount > 0 && (
                       <span className="text-gray-400">
                         {(shop.activeCount > 0 || shop.defaultedCount > 0) && ' · '}
