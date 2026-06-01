@@ -344,7 +344,7 @@ export default function VerificationQueuePage() {
     }
   }, [isOnline]);
 
-  const queue   = isOnline ? (onlineQueue ?? []) : offlineQueue;
+  const queue   = isOnline ? (onlineQueue?.data ?? []) : offlineQueue;
   const pending = queue.filter((c) => c.verificationStatus === 'UNDER_REVIEW');
   const done    = queue.filter((c) => c.verificationStatus !== 'UNDER_REVIEW');
 
