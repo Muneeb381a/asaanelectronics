@@ -332,8 +332,8 @@ export default function VerificationQueuePage() {
 
   // Cache to IndexedDB whenever we get fresh data
   useEffect(() => {
-    if (onlineQueue) {
-      avoDb.saveQueue(onlineQueue).catch(() => {});
+    if (onlineQueue?.data) {
+      avoDb.saveQueue(onlineQueue.data).catch(() => {});
     }
   }, [onlineQueue]);
 
