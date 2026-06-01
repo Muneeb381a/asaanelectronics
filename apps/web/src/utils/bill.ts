@@ -79,7 +79,7 @@ export async function openBill(data: BillData) {
   const endDate    = fmtDate(isDaily
     ? addDays(new Date(data.startDate), data.months)
     : addMonths(new Date(data.startDate), data.months));
-  const paid       = Number(data.totalAmount) - Number(data.remaining);
+
   const schedule   = buildSchedule(data);
   const isMurabaha = (data.murabahaMode || isDaily) && data.cashPrice != null && Number(data.cashPrice) > 0;
   const markup     = isMurabaha ? Number(data.profitMarkup ?? 0) : 0;

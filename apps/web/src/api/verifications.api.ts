@@ -44,7 +44,8 @@ export type QueueCustomer = {
 
 export const verificationsApi = {
   myQueue: () =>
-    api.get<{ data: QueueCustomer[] }>('/verifications/my-queue').then((r) => r.data.data),
+    api.get<{ data: { data: QueueCustomer[]; total: number; page: number; limit: number } }>('/verifications/my-queue')
+      .then((r) => r.data.data),
 
   submit: (customerId: string, body: {
     status: 'APPROVED' | 'REJECTED';
