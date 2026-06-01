@@ -14,7 +14,7 @@ const router = Router();
 router.use(authenticate, requireSeller);
 
 router.get('/lifecycle-counts', getLifecycleCounts);
-router.get('/lookup',           lookupByCnic);
+router.get('/lookup',           requirePermission('canSearchCnic'), lookupByCnic);
 router.get('/',                 listCustomers);
 router.get('/:id',              getCustomer);
 router.get('/:id/risk-breakdown', getRiskBreakdown);

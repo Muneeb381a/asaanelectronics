@@ -201,7 +201,7 @@ export default function DashboardLayout() {
         </nav>
 
         {/* Global CNIC search */}
-        {isOwner && (
+        {(isOwner || perms?.canSearchCnic) && (
           <div className="px-3 pb-1">
             <button
               onClick={() => { setSearchOpen(true); setMobileOpen(false); }}

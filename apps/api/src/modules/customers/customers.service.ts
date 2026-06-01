@@ -99,8 +99,10 @@ type CreateBody = {
 type UpdateBody = Partial<CreateBody>;
 
 export class CustomersService {
-  async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string, verificationStatus?: string) {
-    const base = and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt));
+  async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string, verificationStatus?: string, staffUserId?: string) {
+    const base = staffUserId
+      ? and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), eq(customers.createdByUserId, staffUserId))
+      : and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt));
     const searchCond = search
       ? and(base, or(ilike(customers.name, `%${search}%`), ilike(customers.phone, `%${search}%`)))
       : base;
@@ -201,7 +203,7 @@ export class CustomersService {
     return { data, total: count, page, limit };
   }
 
-  async lifecycleCounts(sellerId: string) {
+  async lifecycleCounts(sellerId: string, staffUserId?: string) {
     // Single-pass CTE: pre-aggregate installment stats per customer, then classify.
     // Replaces N × 5 correlated EXISTS subqueries with one GROUP BY scan.
     const rows = await db.execute<{ stage: string; count: number }>(sql`
@@ -236,6 +238,7 @@ export class CustomersService {
       FROM customers c
       LEFT JOIN inst_agg ia ON ia.customer_id = c.id
       WHERE c.seller_id = ${sellerId} AND c.deleted_at IS NULL
+        ${staffUserId ? sql`AND c.created_by_user_id = ${staffUserId}` : sql``}
       GROUP BY 1
     `);
     const counts: Record<string, number> = {

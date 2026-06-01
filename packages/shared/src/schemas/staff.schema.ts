@@ -10,6 +10,7 @@ const permissionsSchema = z.object({
   canVerifyCustomers:z.boolean(),
   canRecordExpense:  z.boolean(),
   canManageReturns:  z.boolean(),
+  canSearchCnic:     z.boolean().optional().default(false),
 });
 
 export const createStaffSchema = z.object({

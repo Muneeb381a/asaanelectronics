@@ -32,11 +32,13 @@ export async function listCustomers(req: AuthRequest, res: Response) {
   const search             = req.query['search']             as string | undefined;
   const lifecycle          = req.query['lifecycle']          as string | undefined;
   const verificationStatus = req.query['verificationStatus'] as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, search, lifecycle, verificationStatus));
+  const staffUserId = req.user!.role === 'SELLER_OWNER' ? undefined : req.user!.userId;
+  success(res, await svc.list(req.user!.sellerId!, page, limit, search, lifecycle, verificationStatus, staffUserId));
 }
 
 export async function getLifecycleCounts(req: AuthRequest, res: Response) {
-  success(res, await svc.lifecycleCounts(req.user!.sellerId!));
+  const staffUserId = req.user!.role === 'SELLER_OWNER' ? undefined : req.user!.userId;
+  success(res, await svc.lifecycleCounts(req.user!.sellerId!, staffUserId));
 }
 
 export async function getCustomer(req: AuthRequest, res: Response) {

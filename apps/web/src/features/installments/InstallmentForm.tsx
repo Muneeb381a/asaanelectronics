@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
-import { ShieldCheck, ShieldX, Clock } from 'lucide-react';
+import { ChevronDown, ShieldCheck, ShieldX, Clock, X } from 'lucide-react';
 import { customersApi } from '../../api/customers.api.ts';
 import { productsApi } from '../../api/products.api.ts';
 
@@ -68,6 +68,124 @@ function Label({ children }: { children: React.ReactNode }) {
 
 function Divider() {
   return <div className="border-t border-gray-100" />;
+}
+
+interface SelectOption {
+  id: string;
+  label: string;
+  sublabel?: string;
+}
+
+function SearchableSelect({
+  options, value, onChange, placeholder = 'Search…', error,
+}: {
+  options: SelectOption[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder?: string;
+  error?: string;
+}) {
+  const [query, setQuery]   = useState('');
+  const [open, setOpen]     = useState(false);
+  const containerRef        = useRef<HTMLDivElement>(null);
+  const inputRef            = useRef<HTMLInputElement>(null);
+
+  const selected = options.find((o) => o.id === value);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery('');
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = query.trim()
+    ? options.filter((o) =>
+        o.label.toLowerCase().includes(query.toLowerCase()) ||
+        o.sublabel?.toLowerCase().includes(query.toLowerCase()),
+      )
+    : options;
+
+  const displayValue = open ? query : (selected?.label ?? '');
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Input row */}
+      <div
+        className={`${inp} flex items-center gap-2 pr-2 cursor-text`}
+        onClick={() => { setOpen(true); inputRef.current?.focus(); }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={displayValue}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder={placeholder}
+          autoComplete="off"
+          className="flex-1 outline-none bg-transparent text-sm min-w-0 placeholder:text-gray-400"
+        />
+        {value ? (
+          <button
+            type="button"
+            onMouseDown={(e) => { e.stopPropagation(); onChange(''); setQuery(''); setOpen(false); }}
+            className="shrink-0 text-gray-400 hover:text-red-400 transition"
+          >
+            <X size={13} />
+          </button>
+        ) : (
+          <ChevronDown size={13} className="shrink-0 text-gray-400" />
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          {/* Search hint when nothing typed */}
+          {!query && (
+            <div className="px-3 py-2 border-b border-gray-100 flex items-center gap-2">
+              <ChevronDown size={12} className="text-gray-300 rotate-180" />
+              <span className="text-[11px] text-gray-400">
+                {filtered.length} item{filtered.length !== 1 ? 's' : ''} — type to filter
+              </span>
+            </div>
+          )}
+          <div className="max-h-60 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="py-6 text-center text-xs text-gray-400">No results for "{query}"</p>
+            ) : (
+              <>
+                {filtered.slice(0, 60).map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onMouseDown={() => { onChange(o.id); setQuery(''); setOpen(false); }}
+                    className={`w-full text-left px-3 py-2.5 transition border-b border-gray-50 last:border-0 ${
+                      o.id === value ? 'bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <p className="text-sm text-gray-900 leading-tight">{o.label}</p>
+                    {o.sublabel && <p className="text-[11px] text-gray-400 mt-0.5">{o.sublabel}</p>}
+                  </button>
+                ))}
+                {filtered.length > 60 && (
+                  <p className="px-3 py-2 text-center text-[11px] text-gray-400 border-t border-gray-50">
+                    {filtered.length - 60} more — type to narrow down
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
 }
 
 export default function InstallmentForm({ onSubmit, isPending, onCancel, murabahaMode = false }: Props) {
@@ -243,13 +361,17 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       {/* Customer */}
       <div>
         <Label>Customer</Label>
-        <select {...register('customerId')} className={inp}>
-          <option value="">Select customer…</option>
-          {customers?.data.map((c) => (
-            <option key={c.id} value={c.id}>{c.name} · {c.phone}</option>
-          ))}
-        </select>
-        {errors.customerId && <p className="text-xs text-red-500 mt-1">{errors.customerId.message}</p>}
+        <SearchableSelect
+          options={customers?.data.map((c) => ({
+            id: c.id,
+            label: c.name,
+            sublabel: `${c.phone} · ${c.cnicMasked}`,
+          })) ?? []}
+          value={customerId ?? ''}
+          onChange={(id) => setValue('customerId', id, { shouldValidate: true })}
+          placeholder="Customer search karo — naam ya phone…"
+          error={errors.customerId?.message}
+        />
 
         {selectedCustomer && (() => {
           const vs = VSTATUS[selectedCustomer.verificationStatus ?? 'PENDING'];
@@ -275,15 +397,19 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       {/* Product */}
       <div>
         <Label>Product</Label>
-        <select value={productId ?? ''} onChange={(e) => handleProductChange(e.target.value)} className={inp}>
-          <option value="">Select product…</option>
-          {products?.data.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}{p.brand ? ` · ${p.brand}` : ''}{p.model ? ` ${p.model}` : ''}
-            </option>
-          ))}
-        </select>
-        {errors.productId && <p className="text-xs text-red-500 mt-1">{errors.productId.message}</p>}
+        <SearchableSelect
+          options={products?.data.map((p) => ({
+            id: p.id,
+            label: `${p.name}${p.brand ? ` · ${p.brand}` : ''}${p.model ? ` ${p.model}` : ''}`,
+            sublabel: p.installmentPrice
+              ? `Inst: PKR ${Number(p.installmentPrice).toLocaleString()} · Stock: ${p.stock}`
+              : `Cash: PKR ${Number(p.price).toLocaleString()} · Stock: ${p.stock}`,
+          })) ?? []}
+          value={productId ?? ''}
+          onChange={(id) => { handleProductChange(id); setValue('productId', id, { shouldValidate: true }); }}
+          placeholder="Product search karo — naam ya brand…"
+          error={errors.productId?.message}
+        />
 
         {selectedProduct && (
           <div className="mt-2 flex items-center gap-4 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 text-xs">

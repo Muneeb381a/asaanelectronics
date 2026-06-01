@@ -10,6 +10,7 @@ export type StaffPermissions = {
   canVerifyCustomers: boolean;
   canRecordExpense: boolean;
   canManageReturns: boolean;
+  canSearchCnic: boolean;
 };
 
 export type StaffMember = {
@@ -31,6 +32,7 @@ const PERM_LABELS: Record<keyof StaffPermissions, string> = {
   canVerifyCustomers:'AVO — Verify customers',
   canRecordExpense:  'Record expenses',
   canManageReturns:  'Manage returns',
+  canSearchCnic:     'CNIC Search (bureau lookup)',
 };
 
 export { PERM_LABELS };
