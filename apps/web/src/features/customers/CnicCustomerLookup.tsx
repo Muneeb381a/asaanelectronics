@@ -10,6 +10,7 @@ function formatCnic(raw: string): string {
   return `${d.slice(0, 5)}-${d.slice(5, 12)}-${d.slice(12)}`;
 }
 
+
 const VSTATUS: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
   PENDING:      { label: 'Pending',   cls: 'bg-amber-100 text-amber-700',   icon: <Clock size={11} /> },
   UNDER_REVIEW: { label: 'In Review', cls: 'bg-blue-100 text-blue-700',     icon: <Clock size={11} /> },
@@ -36,17 +37,17 @@ export default function CnicCustomerLookup({ onFound, onAddNew, title, subtitle 
   const [searchCnic, setSearchCnic] = useState('');
 
   const digits = rawCnic.replace(/\D/g, '');
-  const isReady = digits.length === 13;
+  const isReady = digits.length >= 12;
 
   const { data, isFetching, isError } = useQuery({
     queryKey: ['cnic-lookup-staff', searchCnic],
     queryFn:  () => customersApi.lookup(searchCnic),
-    enabled:  searchCnic.length === 13,
+    enabled:  searchCnic.length >= 12,
     retry:    false,
   });
 
   const customer = data?.ownRecord ?? null;
-  const searched = searchCnic.length === 13;
+  const searched = searchCnic.length >= 12;
 
   function handleSearch() {
     if (!isReady) return;
@@ -96,9 +97,9 @@ export default function CnicCustomerLookup({ onFound, onAddNew, title, subtitle 
       </div>
 
       {/* CNIC format hint */}
-      {digits.length > 0 && digits.length < 13 && (
+      {digits.length > 0 && digits.length < 12 && (
         <p className="text-xs text-amber-600 mb-4 flex items-center gap-1.5">
-          <AlertTriangle size={11} /> {13 - digits.length} more digits needed
+          <AlertTriangle size={11} /> {12 - digits.length} more digits needed
         </p>
       )}
 

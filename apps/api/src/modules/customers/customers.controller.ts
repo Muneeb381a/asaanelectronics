@@ -22,7 +22,7 @@ function changedFields(body: Record<string, unknown>): string {
 
 export async function lookupByCnic(req: AuthRequest, res: Response) {
   const cnic = (req.query['cnic'] as string ?? '').replace(/-/g, '');
-  if (cnic.length < 13) return success(res, { ownRecord: null, bureau: null });
+  if (cnic.length < 12) return success(res, { ownRecord: null, bureau: null });
   success(res, await svc.lookupByCnic(req.user!.sellerId!, cnic));
 }
 

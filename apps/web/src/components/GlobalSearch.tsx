@@ -351,7 +351,7 @@ export default function GlobalSearch({ open, onClose }: Props) {
   const navigate        = useNavigate();
 
   const cnicDigits = raw.replace(/\D/g, '');
-  const ready      = cnicDigits.length === 13;
+  const ready      = cnicDigits.length >= 12;
 
   const { data: result, isFetching, isLoading } = useQuery({
     queryKey: ['cnic-lookup', cnicDigits],
@@ -435,7 +435,7 @@ export default function GlobalSearch({ open, onClose }: Props) {
           {!ready && raw && (
             <div className="py-8 text-center">
               <p className="text-sm text-gray-400">
-                {13 - cnicDigits.length} aur digit{13 - cnicDigits.length !== 1 ? 's' : ''} chahiye
+                {12 - cnicDigits.length} aur digit{12 - cnicDigits.length !== 1 ? 's' : ''} chahiye
               </p>
             </div>
           )}
