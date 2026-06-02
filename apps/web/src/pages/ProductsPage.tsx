@@ -11,7 +11,7 @@ import { useDebounce } from '../hooks/useDebounce.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import {
   Package, Pencil, Trash2, TrendingUp, TrendingDown, Minus,
-  AlertTriangle, Zap, BarChart3, ShoppingCart, Brain,
+  AlertTriangle, Zap, BarChart3, ShoppingCart, Brain, X,
 } from 'lucide-react';
 import { TableSkeleton, EmptyState, BlockSkeleton } from '../components/ui/Skeleton.tsx';
 
@@ -406,34 +406,49 @@ export default function ProductsPage() {
       )}
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}>
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-5">
-              {modal.mode === 'add' ? 'Add product' : 'Edit product'}
-            </h2>
-            <ProductForm
-              defaultValues={modal.mode === 'edit' ? {
-                name:             modal.product.name,
-                category:         modal.product.category         ?? undefined,
-                brand:            modal.product.brand            ?? undefined,
-                model:            modal.product.model            ?? undefined,
-                color:            modal.product.color            ?? undefined,
-                price:            Number(modal.product.price),
-                installmentPrice: modal.product.installmentPrice ? Number(modal.product.installmentPrice) : undefined,
-                purchasePrice:    modal.product.purchasePrice    ? Number(modal.product.purchasePrice)    : undefined,
-                stock:            modal.product.stock,
-                serial:           modal.product.serial           ?? undefined,
-                warrantyMonths:   modal.product.warrantyMonths   ?? undefined,
-                description:      modal.product.description      ?? undefined,
-              } : undefined}
-              isPending={isPending}
-              onCancel={() => setModal(null)}
-              onSubmit={(data) => {
-                if (modal.mode === 'add') createMutation.mutate(data);
-                else updateMutation.mutate({ id: modal.product.id, data });
-              }}
-            />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[calc(100vh-2rem)]">
+            {/* Fixed header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+              <h2 className="text-base font-semibold text-gray-900">
+                {modal.mode === 'add' ? 'Add product' : 'Edit product'}
+              </h2>
+              <button
+                onClick={() => setModal(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Scrollable form area */}
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              <ProductForm
+                defaultValues={modal.mode === 'edit' ? {
+                  name:             modal.product.name,
+                  category:         modal.product.category         ?? undefined,
+                  brand:            modal.product.brand            ?? undefined,
+                  model:            modal.product.model            ?? undefined,
+                  color:            modal.product.color            ?? undefined,
+                  price:            Number(modal.product.price),
+                  installmentPrice: modal.product.installmentPrice ? Number(modal.product.installmentPrice) : undefined,
+                  purchasePrice:    modal.product.purchasePrice    ? Number(modal.product.purchasePrice)    : undefined,
+                  stock:            modal.product.stock,
+                  serial:           modal.product.serial           ?? undefined,
+                  warrantyMonths:   modal.product.warrantyMonths   ?? undefined,
+                  description:      modal.product.description      ?? undefined,
+                } : undefined}
+                isPending={isPending}
+                onCancel={() => setModal(null)}
+                onSubmit={(data) => {
+                  if (modal.mode === 'add') createMutation.mutate(data);
+                  else updateMutation.mutate({ id: modal.product.id, data });
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
