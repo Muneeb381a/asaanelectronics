@@ -98,30 +98,30 @@ export async function openBill(data: BillData) {
   ].join('\n');
 
   const qrDataUrl = await QRCode.toDataURL(qrPayload, {
-    errorCorrectionLevel: 'M', margin: 1, width: 120,
+    errorCorrectionLevel: 'M', margin: 1, width: 100,
     color: { dark: '#0f172a', light: '#ffffff' },
   });
 
-  // Show max 14 rows: first 12 + ellipsis + last; if ≤ 14 show all
-  const MAX_ROWS = 14;
+  // Receipt: show max 6 rows — first 4 + ellipsis + last (keeps height within half-A4)
+  const MAX_ROWS = 6;
   const visibleSchedule = schedule.length <= MAX_ROWS
     ? schedule
-    : [...schedule.slice(0, 12), null, schedule[schedule.length - 1]];
+    : [...schedule.slice(0, 4), null, schedule[schedule.length - 1]];
 
   const scheduleRows = visibleSchedule.map((r) => r === null ? `
     <tr>
-      <td colspan="4" style="padding:3px 8px;text-align:center;color:#94a3b8;font-size:9px;border-bottom:1px solid #f3f4f6">
-        · · · ${schedule.length - 13} more installments · · ·
+      <td colspan="4" style="padding:2px 8px;text-align:center;color:#94a3b8;font-size:8.5px;border-bottom:1px solid #f3f4f6">
+        · · · ${schedule.length - 5} more installments · · ·
       </td>
     </tr>` : `
     <tr>
-      <td style="padding:3px 8px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:center">${r.month}</td>
-      <td style="padding:3px 8px;color:#374151;border-bottom:1px solid #f3f4f6">${r.due}</td>
-      <td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:600;color:#374151">${r.amount}</td>
-      <td style="padding:3px 8px;text-align:center;border-bottom:1px solid #f3f4f6">
+      <td style="padding:2px 8px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:center">${r.month}</td>
+      <td style="padding:2px 8px;color:#374151;border-bottom:1px solid #f3f4f6">${r.due}</td>
+      <td style="padding:2px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:600;color:#374151">${r.amount}</td>
+      <td style="padding:2px 8px;text-align:center;border-bottom:1px solid #f3f4f6">
         ${r.paid
-          ? '<span style="background:#d1fae5;color:#065f46;padding:1px 7px;border-radius:20px;font-size:9px;font-weight:700">PAID</span>'
-          : '<span style="background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:20px;font-size:9px;font-weight:700">DUE</span>'
+          ? '<span style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:20px;font-size:8.5px;font-weight:700">PAID</span>'
+          : '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:20px;font-size:8.5px;font-weight:700">DUE</span>'
         }
       </td>
     </tr>`).join('');
@@ -142,8 +142,8 @@ export async function openBill(data: BillData) {
     <!-- HEADER -->
     <div class="hdr">
       <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:900;color:#fff;line-height:1">${data.shop.shopName}</div>
-        <div style="font-size:10px;color:#93c5fd;margin-top:3px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
+        <div style="font-size:14px;font-weight:900;color:#fff;line-height:1">${data.shop.shopName}</div>
+        <div style="font-size:9.5px;color:#93c5fd;margin-top:2px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
         ${isDaily ? '<span style="font-size:9px;font-weight:700;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:20px;margin-top:4px;display:inline-block">Dukaan-Dar Daily</span>'
           : isMurabaha ? '<span style="font-size:9px;font-weight:700;background:#d1fae5;color:#065f46;padding:1px 7px;border-radius:20px;margin-top:4px;display:inline-block">Murabaha</span>' : ''}
       </div>
@@ -154,7 +154,7 @@ export async function openBill(data: BillData) {
         <div style="font-size:9px;color:#64748b;margin-top:1px">${copyLabel}</div>
       </div>
       <div style="flex-shrink:0">
-        <img src="${qrDataUrl}" width="68" height="68" style="border:1px solid rgba(255,255,255,.2);border-radius:4px;display:block" alt="QR"/>
+        <img src="${qrDataUrl}" width="58" height="58" style="border:1px solid rgba(255,255,255,.2);border-radius:4px;display:block" alt="QR"/>
       </div>
     </div>
 
@@ -249,58 +249,44 @@ export async function openBill(data: BillData) {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;display:flex;flex-direction:column;align-items:center;gap:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;display:flex;justify-content:center}
 
-  /* ── Each invoice copy ── */
-  .inv{background:#fff;width:700px;padding:14px 18px;font-size:11px;color:#374151;border:1px solid #e2e8f0}
+  .inv{background:#fff;width:680px;padding:13px 16px;font-size:10.5px;color:#374151;border:1px solid #e2e8f0}
 
-  /* Header */
-  .hdr{display:flex;align-items:center;gap:10px;padding:10px 12px 8px;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:5px 5px 0 0;margin:-14px -18px 10px}
+  .hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:4px 4px 0 0;margin:-13px -16px 9px}
   .ur{font-family:'Noto Nastaliq Urdu',serif;direction:rtl}
 
-  /* Info cells */
-  .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:5px 7px;overflow:hidden}
-  .il{display:block;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:2px}
-  .iv{display:block;font-size:11px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .is{display:block;font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;overflow:hidden}
+  .il{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:1px}
+  .iv{display:block;font-size:10.5px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .is{display:block;font-size:9px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  /* Amount cells */
-  .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:6px 8px;text-align:center}
+  .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;text-align:center}
   .ac.hl{background:#1d4ed8;border-color:#1d4ed8}
   .ac.rm{background:#fffbeb;border-color:#fcd34d}
-  .al{display:block;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8;margin-bottom:2px}
+  .al{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8;margin-bottom:1px}
   .ac.hl .al{color:rgba(255,255,255,.65)}
   .ac.rm .al{color:#b45309}
-  .av{display:block;font-size:12px;font-weight:800;color:#0f172a}
+  .av{display:block;font-size:11.5px;font-weight:800;color:#0f172a}
   .ac.hl .av{color:#fff}
   .ac.rm .av{color:#92400e}
 
-  /* Status badges */
-  .status-badge{display:inline-block;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:700}
+  .status-badge{display:inline-block;padding:1px 5px;border-radius:20px;font-size:8.5px;font-weight:700}
   .status-ACTIVE{background:#d1fae5;color:#065f46}
   .status-COMPLETED{background:#dbeafe;color:#1e40af}
   .status-DEFAULTED{background:#fee2e2;color:#991b1b}
   .status-CANCELLED,.status-CLOSED{background:#f1f5f9;color:#64748b}
   .status-PENDING{background:#fef3c7;color:#92400e}
 
-  /* Cut line */
-  .cut{width:700px;display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:9px;margin:8px 0}
-  .cut::before,.cut::after{content:'';flex:1;border-top:1px dashed #cbd5e1}
-
   @media print{
-    @page{size:A4 portrait;margin:6mm 8mm}
-    body{background:#fff;padding:0;gap:0}
-    .inv{border:1px solid #e2e8f0;width:100%;page-break-inside:avoid}
-    .cut{width:100%;margin:3mm 0}
+    @page{size:A4 portrait;margin:5mm 7mm}
+    body{background:#fff;padding:0}
+    .inv{border:none;width:100%;max-height:135mm;overflow:hidden}
   }
 </style>
 </head>
 <body>
-
-  ${invoiceCopy('Customer Copy · گاہک کاپی')}
-  <div class="cut">✂&nbsp;Cut Here · یہاں سے کاٹیں&nbsp;✂</div>
-  ${invoiceCopy('Shop Copy · دکان کاپی')}
-
+  ${invoiceCopy('')}
 <script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
