@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
@@ -171,30 +171,49 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
 }
 
 function PermissionToggle({ member, permKey }: { member: StaffMember; permKey: keyof StaffPermissions }) {
-  const qc     = useQueryClient();
-  const perms  = member.permissions ?? DEFAULT_CUSTOM_PERMS;
-  const serverValue = perms[permKey];
-
-  // Local state flips instantly; syncs back when server data arrives
-  const [local, setLocal] = useState(serverValue);
-  useEffect(() => { setLocal(serverValue); }, [serverValue]);
+  const qc    = useQueryClient();
+  const perms = member.permissions ?? DEFAULT_CUSTOM_PERMS;
+  const value = perms[permKey];
 
   const { mutate } = useMutation({
-    mutationFn: (newVal: boolean) => staffApi.updatePermissions(member.id, { [permKey]: newVal }),
-    onMutate:  (newVal) => setLocal(newVal),        // flip immediately
-    onError:   ()       => setLocal(serverValue),   // revert on failure
-    onSuccess: ()       => qc.invalidateQueries({ queryKey: ['staff'] }),
+    mutationFn: (newVal: boolean) =>
+      staffApi.updatePermissions(member.id, { [permKey]: newVal }),
+
+    onMutate: async (newVal) => {
+      // Stop any in-flight refetch — it would overwrite our optimistic write
+      await qc.cancelQueries({ queryKey: ['staff'] });
+      const prev = qc.getQueryData<StaffMember[]>(['staff']);
+      // Write directly into the cache — component re-renders instantly from cache
+      qc.setQueryData<StaffMember[]>(['staff'], (old) =>
+        old?.map((m) =>
+          m.id === member.id
+            ? { ...m, permissions: { ...(m.permissions ?? DEFAULT_CUSTOM_PERMS), [permKey]: newVal } }
+            : m
+        ) ?? []
+      );
+      return { prev };
+    },
+
+    onError: (_, __, ctx) => {
+      // Roll back cache to snapshot taken before mutation
+      if (ctx?.prev) qc.setQueryData(['staff'], ctx.prev);
+    },
+
+    onSettled: () => {
+      // Re-sync with server once mutation is done (success or error)
+      qc.invalidateQueries({ queryKey: ['staff'] });
+    },
   });
 
   return (
     <button
-      onClick={() => mutate(!local)}
+      onClick={() => mutate(!value)}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-        local ? 'bg-blue-600' : 'bg-gray-200'
+        value ? 'bg-blue-600' : 'bg-gray-200'
       }`}
     >
       <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-        local ? 'translate-x-4.5' : 'translate-x-0.5'
+        value ? 'translate-x-4.5' : 'translate-x-0.5'
       }`} />
     </button>
   );
