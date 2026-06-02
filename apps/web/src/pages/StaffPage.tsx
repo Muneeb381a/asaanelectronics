@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
@@ -171,25 +171,30 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
 }
 
 function PermissionToggle({ member, permKey }: { member: StaffMember; permKey: keyof StaffPermissions }) {
-  const qc = useQueryClient();
-  const perms = member.permissions ?? DEFAULT_CUSTOM_PERMS;
-  const value = perms[permKey];
+  const qc     = useQueryClient();
+  const perms  = member.permissions ?? DEFAULT_CUSTOM_PERMS;
+  const serverValue = perms[permKey];
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: () => staffApi.updatePermissions(member.id, { [permKey]: !value }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
+  // Local state flips instantly; syncs back when server data arrives
+  const [local, setLocal] = useState(serverValue);
+  useEffect(() => { setLocal(serverValue); }, [serverValue]);
+
+  const { mutate } = useMutation({
+    mutationFn: (newVal: boolean) => staffApi.updatePermissions(member.id, { [permKey]: newVal }),
+    onMutate:  (newVal) => setLocal(newVal),        // flip immediately
+    onError:   ()       => setLocal(serverValue),   // revert on failure
+    onSuccess: ()       => qc.invalidateQueries({ queryKey: ['staff'] }),
   });
 
   return (
     <button
-      onClick={() => mutate()}
-      disabled={isPending}
+      onClick={() => mutate(!local)}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-        value ? 'bg-blue-600' : 'bg-gray-200'
-      } disabled:opacity-60`}
+        local ? 'bg-blue-600' : 'bg-gray-200'
+      }`}
     >
       <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-        value ? 'translate-x-4.5' : 'translate-x-0.5'
+        local ? 'translate-x-4.5' : 'translate-x-0.5'
       }`} />
     </button>
   );
