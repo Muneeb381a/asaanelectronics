@@ -27,6 +27,8 @@ interface Props {
   isPending: boolean;
   onCancel: () => void;
   murabahaMode?: boolean;
+  lockedCustomerId?: string;   // staff CNIC flow: customer pre-selected, field hidden
+  lockedCustomerName?: string;
 }
 
 const MONTH_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
@@ -188,10 +190,17 @@ function SearchableSelect({
   );
 }
 
-export default function InstallmentForm({ onSubmit, isPending, onCancel, murabahaMode = false }: Props) {
+export default function InstallmentForm({ onSubmit, isPending, onCancel, murabahaMode = false, lockedCustomerId, lockedCustomerName }: Props) {
   const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: { months: 12, startDate: new Date().toISOString().slice(0, 10), downPayment: 0, paymentFrequency: 'monthly' },
+    defaultValues: {
+      months: 12,
+      startDate: new Date().toISOString().slice(0, 10),
+      downPayment: 0,
+      paymentFrequency: 'monthly',
+      // Pre-fill when customer is locked (staff CNIC flow)
+      ...(lockedCustomerId ? { customerId: lockedCustomerId } : {}),
+    },
   });
 
   const [dpIsFirst, setDpIsFirst] = useState(false);
@@ -358,39 +367,41 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
         </div>
       )}
 
-      {/* Customer */}
-      <div>
-        <Label>Customer</Label>
-        <SearchableSelect
-          options={customers?.data.map((c) => ({
-            id: c.id,
-            label: c.name,
-            sublabel: `${c.phone} · ${c.cnicMasked}`,
-          })) ?? []}
-          value={customerId ?? ''}
-          onChange={(id) => setValue('customerId', id, { shouldValidate: true })}
-          placeholder="Customer search karo — naam ya phone…"
-          error={errors.customerId?.message}
-        />
+      {/* Customer — hidden in locked (CNIC staff) mode; shown as dropdown for owners */}
+      {!lockedCustomerId && (
+        <div>
+          <Label>Customer</Label>
+          <SearchableSelect
+            options={customers?.data.map((c) => ({
+              id: c.id,
+              label: c.name,
+              sublabel: `${c.phone} · ${c.cnicMasked}`,
+            })) ?? []}
+            value={customerId ?? ''}
+            onChange={(id) => setValue('customerId', id, { shouldValidate: true })}
+            placeholder="Customer search karo — naam ya phone…"
+            error={errors.customerId?.message}
+          />
 
-        {selectedCustomer && (() => {
-          const vs = VSTATUS[selectedCustomer.verificationStatus ?? 'PENDING'];
-          return (
-            <div className="mt-2 flex items-center gap-2.5 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                {selectedCustomer.name[0].toUpperCase()}
+          {selectedCustomer && (() => {
+            const vs = VSTATUS[selectedCustomer.verificationStatus ?? 'PENDING'];
+            return (
+              <div className="mt-2 flex items-center gap-2.5 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+                <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {selectedCustomer.name[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{selectedCustomer.name}</p>
+                  <p className="text-xs text-gray-400">{selectedCustomer.phone} · {selectedCustomer.cnicMasked}</p>
+                </div>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${vs.cls}`}>
+                  {vs.icon}{vs.label}
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{selectedCustomer.name}</p>
-                <p className="text-xs text-gray-400">{selectedCustomer.phone} · {selectedCustomer.cnicMasked}</p>
-              </div>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${vs.cls}`}>
-                {vs.icon}{vs.label}
-              </span>
-            </div>
-          );
-        })()}
-      </div>
+            );
+          })()}
+        </div>
+      )}
 
       <Divider />
 

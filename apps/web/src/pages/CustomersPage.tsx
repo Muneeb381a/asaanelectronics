@@ -9,6 +9,7 @@ import { staffApi, type StaffMember } from '../api/staff.api.ts';
 import { verificationsApi } from '../api/verifications.api.ts';
 import { customerNotesApi, type CustomerNote } from '../api/customerNotes.api.ts';
 import CustomerForm from '../features/customers/CustomerForm.tsx';
+import CnicCustomerLookup from '../features/customers/CnicCustomerLookup.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
@@ -156,7 +157,7 @@ function LifecycleFunnel({ counts, active, onSelect }: {
   );
 }
 
-type Modal = { mode: 'add' } | { mode: 'edit'; customer: Customer } | null;
+type Modal = { mode: 'add'; prefillCnic?: string } | { mode: 'edit'; customer: Customer } | null;
 
 const STATUS_STYLES: Record<InstallmentStatus, string> = {
   PENDING:   'bg-amber-100 text-amber-700',
@@ -625,6 +626,91 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   );
 }
 
+// ── Staff CNIC-only view (separate component to keep hooks clean) ──────────────
+function StaffCnicView({
+  qc,
+  createMutation,
+  updateMutation,
+}: {
+  qc: ReturnType<typeof useQueryClient>;
+  createMutation: ReturnType<typeof useMutation<Customer, Error, Parameters<typeof customersApi.create>[0]>>;
+  updateMutation: ReturnType<typeof useMutation<Customer, Error, { id: string; data: Parameters<typeof customersApi.update>[1] }>>;
+}) {
+  const [foundId, setFoundId]   = useState<string | null>(null);
+  const [modal, setModal]       = useState<Modal>(null);
+
+  const { data: fullCustomer, isLoading: loadingCustomer } = useQuery({
+    queryKey: ['customer-detail', foundId],
+    queryFn:  () => customersApi.getOne(foundId!),
+    enabled:  !!foundId,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['customers'] });
+
+  return (
+    <div className="px-4 py-5 sm:p-6 max-w-lg mx-auto">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Customer Dhundain</h1>
+        <p className="text-sm text-gray-500 mt-1">CNIC enter kar ke customer ko search karen</p>
+      </div>
+
+      <CnicCustomerLookup
+        onFound={(c) => setFoundId(c.id)}
+        onAddNew={(prefillCnic) => setModal({ mode: 'add', prefillCnic })}
+      />
+
+      {/* Loading full customer after CNIC match */}
+      {foundId && loadingCustomer && (
+        <div className="mt-4 text-center text-sm text-gray-400">Loading customer details…</div>
+      )}
+
+      {/* History drawer */}
+      {fullCustomer && (
+        <CustomerHistoryDrawer
+          customer={fullCustomer}
+          onClose={() => setFoundId(null)}
+        />
+      )}
+
+      {/* Add customer modal */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[calc(100vh-2rem)]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+              <h2 className="text-base font-semibold text-gray-900">
+                {modal.mode === 'add' ? 'Register New Customer' : 'Edit Customer'}
+              </h2>
+              <button onClick={() => setModal(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              <CustomerForm
+                customer={modal.mode === 'edit' ? modal.customer : undefined}
+                onSubmit={(data) => {
+                  if (modal.mode === 'add') {
+                    createMutation.mutate(data, {
+                      onSuccess: (created) => { invalidate(); setFoundId(created.id); setModal(null); },
+                    });
+                  } else {
+                    updateMutation.mutate({ id: modal.customer.id, data }, {
+                      onSuccess: () => { invalidate(); setModal(null); },
+                    });
+                  }
+                }}
+                isPending={createMutation.isPending || updateMutation.isPending}
+                onCancel={() => setModal(null)}
+                prefillCnic={'prefillCnic' in modal ? modal.prefillCnic : undefined}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CustomersPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -695,6 +781,12 @@ export default function CustomersPage() {
     if (confirm('Delete this customer? This cannot be undone.')) deleteMutation.mutate(id);
   };
 
+  // ── Staff CNIC-only view ──────────────────────────────────────────────────────
+  if (!isOwner) {
+    return <StaffCnicView qc={qc} createMutation={createMutation} updateMutation={updateMutation} />;
+  }
+
+  // ── Owner full view ───────────────────────────────────────────────────────────
   return (
     <div className="px-4 py-5 sm:p-6">
       <div className="flex items-center justify-between mb-6">

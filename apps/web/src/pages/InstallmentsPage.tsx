@@ -10,6 +10,7 @@ import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
 import { staffApi } from '../api/staff.api.ts';
 import { api } from '../api/client.ts';
 import InstallmentForm from '../features/installments/InstallmentForm.tsx';
+import CnicInstallmentFlow from '../features/installments/CnicInstallmentFlow.tsx';
 import RecoveryDrawer from '../features/installments/RecoveryDrawer.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi, type PaymentAccount } from '../api/sellers.api.ts';
@@ -1047,25 +1048,45 @@ export default function InstallmentsPage() {
         );
       })()}
 
-      {/* Create modal */}
+      {/* Create modal — CNIC flow for staff, full form for owners */}
       {showForm && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}
         >
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-5">New installment</h2>
-            {createMutation.error instanceof Error && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                <p className="text-sm text-red-600">{createMutation.error.message}</p>
-              </div>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[calc(100vh-2rem)]">
+            {isOwner ? (
+              <>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                  <h2 className="text-base font-semibold text-gray-900">New installment</h2>
+                  <button onClick={() => setShowForm(false)}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="overflow-y-auto flex-1 px-6 py-5">
+                  {createMutation.error instanceof Error && (
+                    <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      <p className="text-sm text-red-600">{createMutation.error.message}</p>
+                    </div>
+                  )}
+                  <InstallmentForm
+                    isPending={createMutation.isPending}
+                    onCancel={() => setShowForm(false)}
+                    onSubmit={(data) => createMutation.mutate(data)}
+                    murabahaMode={shopData?.murabahaMode ?? false}
+                  />
+                </div>
+              </>
+            ) : (
+              <CnicInstallmentFlow
+                isPending={createMutation.isPending}
+                onClose={() => setShowForm(false)}
+                onSubmit={(data) => createMutation.mutate(data)}
+                murabahaMode={shopData?.murabahaMode ?? false}
+                error={createMutation.error instanceof Error ? createMutation.error.message : null}
+              />
             )}
-            <InstallmentForm
-              isPending={createMutation.isPending}
-              onCancel={() => setShowForm(false)}
-              onSubmit={(data) => createMutation.mutate(data)}
-              murabahaMode={shopData?.murabahaMode ?? false}
-            />
           </div>
         </div>
       )}

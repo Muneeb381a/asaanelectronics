@@ -33,6 +33,7 @@ interface Props {
   onSubmit: (data: FormData) => void;
   isPending: boolean;
   onCancel: () => void;
+  prefillCnic?: string;
 }
 
 const STEPS = [
@@ -281,7 +282,7 @@ function formatCnic(raw: string): string {
   return `${d.slice(0, 5)}-${d.slice(5, 12)}-${d.slice(12)}`;
 }
 
-export default function CustomerForm({ customer, onSubmit, isPending, onCancel }: Props) {
+export default function CustomerForm({ customer, onSubmit, isPending, onCancel, prefillCnic }: Props) {
   const isEdit = !!customer;
   const [step, setStep] = useState(0);
   const [isDukaanDar, setIsDukaanDar] = useState(
@@ -324,7 +325,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel }
       cnicBackUrl: customer.cnicBackUrl ?? undefined,
       blankChequeUrl: customer.blankChequeUrl ?? undefined,
       customerType: isDukaanDar ? 'dukaan-dar' : 'regular',
-    } : { customerType: 'regular' },
+    } : { customerType: 'regular', ...(prefillCnic ? { cnic: prefillCnic } : {}) },
   });
 
   useEffect(() => {
