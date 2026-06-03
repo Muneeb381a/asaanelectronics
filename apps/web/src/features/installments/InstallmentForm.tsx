@@ -439,7 +439,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       {/* Amounts */}
       {showMurabaha ? (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Cash Price (PKR)</Label>
               <input type="number" step="1" placeholder="0" {...register('cashPrice', { valueAsNumber: true })} className={inp} />
@@ -490,7 +490,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label>Total Amount (PKR)</Label>
             <input type="number" step="1" placeholder="0" {...register('totalAmount', { valueAsNumber: true })} className={inp} />
@@ -601,19 +601,19 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       {/* Summary */}
       {remaining > 0 && (
         <div>
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3">
             {[
               { label: 'Remaining',                value: pkr(remaining) },
               { label: isDaily ? 'Daily' : 'Monthly', value: pkr(periodic), highlight: true },
               { label: isDaily ? 'Days' : 'Duration',  value: isDaily ? `${futureMonths}d` : `${futureMonths}m` },
             ].map((s) => (
-              <div key={s.label} className={`rounded-xl px-3 py-2.5 text-center ${
+              <div key={s.label} className={`rounded-xl px-2 py-2 sm:px-3 sm:py-2.5 text-center ${
                 s.highlight
                   ? isDaily ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'
                   : 'bg-gray-50 border border-gray-100'
               }`}>
-                <p className={`text-[10px] font-medium mb-0.5 ${s.highlight ? 'text-white/70' : 'text-gray-400'}`}>{s.label}</p>
-                <p className={`text-sm font-bold ${s.highlight ? 'text-white' : 'text-gray-800'}`}>{s.value}</p>
+                <p className={`text-[9px] sm:text-[10px] font-medium mb-0.5 ${s.highlight ? 'text-white/70' : 'text-gray-400'}`}>{s.label}</p>
+                <p className={`text-xs sm:text-sm font-bold ${s.highlight ? 'text-white' : 'text-gray-800'}`}>{s.value}</p>
               </div>
             ))}
           </div>

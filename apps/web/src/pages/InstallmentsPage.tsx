@@ -1048,23 +1048,20 @@ export default function InstallmentsPage() {
         );
       })()}
 
-      {/* Create modal — full-screen on mobile, centered on desktop */}
+      {/* Create modal */}
       {showForm && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-center bg-black/40 backdrop-blur-sm sm:px-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}
-        >
-          <div className="bg-white flex flex-col w-full h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl sm:max-w-lg sm:shadow-2xl">
+        <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center bg-black/50 backdrop-blur-sm sm:p-4">
+          <div className="flex-1 sm:flex-none flex flex-col w-full sm:max-w-lg sm:max-h-[calc(100vh-2rem)] bg-white sm:rounded-2xl sm:shadow-2xl overflow-hidden">
             {isOwner ? (
               <>
-                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 shrink-0">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
                   <h2 className="text-base font-semibold text-gray-900">New installment</h2>
                   <button onClick={() => setShowForm(false)}
                     className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
                     <X size={16} />
                   </button>
                 </div>
-                <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-5">
+                <div className="flex-1 overflow-y-auto px-4 py-4">
                   {createMutation.error instanceof Error && (
                     <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                       <p className="text-sm text-red-600">{createMutation.error.message}</p>

@@ -63,7 +63,7 @@ export default function CnicInstallmentFlow({ onSubmit, isPending, onClose, mura
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">
         {!customer ? (
           /* Step 1: CNIC lookup */
           <CnicCustomerLookup

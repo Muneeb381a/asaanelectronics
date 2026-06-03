@@ -651,14 +651,14 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
       />
     )}
 
-    {/* New Installment modal — full-screen on mobile, centered on desktop */}
+    {/* New Installment modal */}
     {showNewInstallment && (
-      <div className="fixed inset-0 z-[60] flex flex-col sm:flex-row sm:items-center sm:justify-center bg-black/40 backdrop-blur-sm sm:px-4">
-        <div className="bg-white flex flex-col w-full h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl sm:max-w-lg sm:shadow-2xl">
+      <div className="fixed inset-0 z-[60] flex flex-col sm:items-center sm:justify-center bg-black/50 backdrop-blur-sm sm:p-4">
+        <div className="flex-1 sm:flex-none flex flex-col w-full sm:max-w-lg sm:max-h-[calc(100vh-2rem)] bg-white sm:rounded-2xl sm:shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                 {customer.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
@@ -666,23 +666,17 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                 <p className="text-xs text-gray-400 truncate">{customer.name}</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowNewInstallment(false)}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition shrink-0"
-            >
+            <button onClick={() => setShowNewInstallment(false)}
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition shrink-0">
               <X size={16} />
             </button>
           </div>
-
-          {/* Error */}
           {createInstallmentMutation.error instanceof Error && (
-            <div className="mx-4 sm:mx-6 mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2 shrink-0">
+            <div className="mx-4 mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2 shrink-0">
               <p className="text-sm text-red-600">{createInstallmentMutation.error.message}</p>
             </div>
           )}
-
-          {/* Scrollable form body */}
-          <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4">
+          <div className="flex-1 overflow-y-auto px-4 py-4">
             <InstallmentForm
               lockedCustomerId={customer.id}
               lockedCustomerName={customer.name}
