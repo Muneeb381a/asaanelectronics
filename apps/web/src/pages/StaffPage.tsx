@@ -179,11 +179,10 @@ function PermissionToggle({ member, permKey }: { member: StaffMember; permKey: k
     mutationFn: (newVal: boolean) =>
       staffApi.updatePermissions(member.id, { [permKey]: newVal }),
 
-    onMutate: async (newVal) => {
-      // Stop any in-flight refetch — it would overwrite our optimistic write
-      await qc.cancelQueries({ queryKey: ['staff'] });
+    onMutate: (newVal) => {
+      // Fire abort signal without awaiting — cache updates instantly on next line
+      qc.cancelQueries({ queryKey: ['staff'] });
       const prev = qc.getQueryData<StaffMember[]>(['staff']);
-      // Write directly into the cache — component re-renders instantly from cache
       qc.setQueryData<StaffMember[]>(['staff'], (old) =>
         old?.map((m) =>
           m.id === member.id
@@ -194,14 +193,15 @@ function PermissionToggle({ member, permKey }: { member: StaffMember; permKey: k
       return { prev };
     },
 
-    onError: (_, __, ctx) => {
-      // Roll back cache to snapshot taken before mutation
-      if (ctx?.prev) qc.setQueryData(['staff'], ctx.prev);
+    onSuccess: (updated) => {
+      // Sync cache with server response — no refetch needed
+      qc.setQueryData<StaffMember[]>(['staff'], (old) =>
+        old?.map((m) => (m.id === updated.id ? updated : m)) ?? []
+      );
     },
 
-    onSettled: () => {
-      // Re-sync with server once mutation is done (success or error)
-      qc.invalidateQueries({ queryKey: ['staff'] });
+    onError: (_, __, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['staff'], ctx.prev);
     },
   });
 

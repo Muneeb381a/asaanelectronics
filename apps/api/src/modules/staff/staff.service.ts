@@ -58,17 +58,12 @@ export class StaffService {
   }
 
   async updatePermissions(id: string, sellerId: string, permissions: Partial<StaffPermissions>) {
-    const member = await db.query.users.findFirst({
-      where: and(eq(users.id, id), eq(users.sellerId, sellerId), eq(users.role, 'SELLER_STAFF')),
-    });
-    if (!member) throw new AppError('Staff member not found', 404);
-
-    const merged: StaffPermissions = { ...(member.permissions ?? DEFAULT_STAFF_PERMISSIONS), ...permissions };
-
     const [updated] = await db
       .update(users)
-      .set({ permissions: merged })
-      .where(eq(users.id, id))
+      .set({
+        permissions: sql`(COALESCE(${users.permissions}::jsonb, '{}'::jsonb) || ${JSON.stringify(permissions)}::jsonb)::json`,
+      })
+      .where(and(eq(users.id, id), eq(users.sellerId, sellerId), eq(users.role, 'SELLER_STAFF')))
       .returning({
         id: users.id,
         name: users.name,
@@ -78,6 +73,7 @@ export class StaffService {
         createdAt: users.createdAt,
       });
 
+    if (!updated) throw new AppError('Staff member not found', 404);
     return updated;
   }
 
