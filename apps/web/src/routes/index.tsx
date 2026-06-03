@@ -38,12 +38,15 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function PermGuard({ perm, children }: { perm: string; children: ReactNode }) {
+function PermGuard({ perm, children }: { perm: string | string[]; children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (user?.role === 'SELLER_OWNER') return <>{children}</>;
   const perms = user?.permissions as Record<string, boolean> | null | undefined;
-  if (perms === undefined) return null; // still loading
-  if (!perms || !perms[perm]) return <Navigate to="/verifications" replace />;
+  if (perms === undefined) return null;
+  const allowed = Array.isArray(perm)
+    ? perm.some((p) => !!perms?.[p])
+    : !!perms?.[perm];
+  if (!perms || !allowed) return <Navigate to="/verifications" replace />;
   return <>{children}</>;
 }
 
@@ -108,8 +111,8 @@ export const router = createBrowserRouter([
       { path: '/dashboard',      element: <PermGuard perm="canAddCustomer"><DashboardPage /></PermGuard> },
       { path: '/reports',        element: <PermGuard perm="canViewReports"><ReportsPage /></PermGuard> },
       { path: '/products',       element: <PermGuard perm="canManageProducts"><ProductsPage /></PermGuard> },
-      { path: '/customers',      element: <PermGuard perm="canAddCustomer"><CustomersPage /></PermGuard> },
-      { path: '/installments',   element: <PermGuard perm="canAddInstallment"><InstallmentsPage /></PermGuard> },
+      { path: '/customers',      element: <PermGuard perm={['canAddCustomer', 'canAddInstallment', 'canRecordPayment']}><CustomersPage /></PermGuard> },
+      { path: '/installments',   element: <PermGuard perm={['canAddInstallment', 'canRecordPayment']}><InstallmentsPage /></PermGuard> },
       { path: '/returns',        element: <SellerOwnerGuard><ReturnsPage /></SellerOwnerGuard> },
       { path: '/expenses',       element: <SellerOwnerGuard><ExpensesPage /></SellerOwnerGuard> },
       { path: '/ledger',         element: <SellerOwnerGuard><LedgerPage /></SellerOwnerGuard> },

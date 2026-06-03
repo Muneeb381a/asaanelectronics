@@ -13,11 +13,11 @@ import ProfileModal from '../components/ProfileModal.tsx';
 import GlobalSearch from '../components/GlobalSearch.tsx';
 
 const allNavItems = [
-  { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard, end: true      as boolean | undefined, perm: 'canAddCustomer' },
-  { to: '/reports',      label: 'Analytics',    icon: BarChart3,       end: undefined as boolean | undefined, perm: 'canViewReports' },
-  { to: '/products',     label: 'Products',     icon: Package,         end: undefined as boolean | undefined, perm: 'canManageProducts' },
-  { to: '/customers',    label: 'Customers',    icon: Users,           end: undefined as boolean | undefined, perm: 'canAddCustomer' },
-  { to: '/installments', label: 'Installments', icon: CreditCard,      end: undefined as boolean | undefined, perm: 'canAddInstallment' },
+  { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard, end: true      as boolean | undefined, perm: 'canAddCustomer' as string | string[] },
+  { to: '/reports',      label: 'Analytics',    icon: BarChart3,       end: undefined as boolean | undefined, perm: 'canViewReports' as string | string[] },
+  { to: '/products',     label: 'Products',     icon: Package,         end: undefined as boolean | undefined, perm: 'canManageProducts' as string | string[] },
+  { to: '/customers',    label: 'Customers',    icon: Users,           end: undefined as boolean | undefined, perm: ['canAddCustomer', 'canAddInstallment', 'canRecordPayment'] as string | string[] },
+  { to: '/installments', label: 'Installments', icon: CreditCard,      end: undefined as boolean | undefined, perm: ['canAddInstallment', 'canRecordPayment'] as string | string[] },
 ];
 
 export default function DashboardLayout() {
@@ -95,7 +95,11 @@ export default function DashboardLayout() {
   const navItems = [
     ...(isOwner
       ? allNavItems
-      : allNavItems.filter(({ perm }) => !!perms?.[perm as keyof typeof perms])
+      : allNavItems.filter(({ perm }) =>
+          Array.isArray(perm)
+            ? perm.some((p) => !!perms?.[p as keyof typeof perms])
+            : !!perms?.[perm as keyof typeof perms]
+        )
     ),
     ...(isOwner
       ? [
