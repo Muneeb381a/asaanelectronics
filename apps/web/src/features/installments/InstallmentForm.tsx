@@ -407,7 +407,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
       {/* Product */}
       <div>
-        <Label>Product</Label>
+        <Label>Product <span className="text-gray-400 font-normal">(available stock mein se select karo)</span></Label>
         <SearchableSelect
           options={products?.data.map((p) => ({
             id: p.id,
@@ -417,7 +417,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
               : `Cash: PKR ${Number(p.price).toLocaleString()} · Stock: ${p.stock}`,
           })) ?? []}
           value={productId ?? ''}
-          onChange={(id) => { handleProductChange(id); setValue('productId', id, { shouldValidate: true }); }}
+          onChange={(id) => handleProductChange(id)}
           placeholder="Product search karo — naam ya brand…"
           error={errors.productId?.message}
         />

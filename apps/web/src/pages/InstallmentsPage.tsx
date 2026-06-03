@@ -1048,23 +1048,23 @@ export default function InstallmentsPage() {
         );
       })()}
 
-      {/* Create modal — CNIC flow for staff, full form for owners */}
+      {/* Create modal — full-screen on mobile, centered on desktop */}
       {showForm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+          className="fixed inset-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-center bg-black/40 backdrop-blur-sm sm:px-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[calc(100vh-2rem)]">
+          <div className="bg-white flex flex-col w-full h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl sm:max-w-lg sm:shadow-2xl">
             {isOwner ? (
               <>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 shrink-0">
                   <h2 className="text-base font-semibold text-gray-900">New installment</h2>
                   <button onClick={() => setShowForm(false)}
                     className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
                     <X size={16} />
                   </button>
                 </div>
-                <div className="overflow-y-auto flex-1 px-6 py-5">
+                <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-5">
                   {createMutation.error instanceof Error && (
                     <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                       <p className="text-sm text-red-600">{createMutation.error.message}</p>
