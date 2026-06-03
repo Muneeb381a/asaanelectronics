@@ -12,6 +12,7 @@ import { customerNotesApi, type CustomerNote } from '../api/customerNotes.api.ts
 import CustomerForm from '../features/customers/CustomerForm.tsx';
 import CnicCustomerLookup from '../features/customers/CnicCustomerLookup.tsx';
 import InstallmentForm from '../features/installments/InstallmentForm.tsx';
+import PaymentModal from '../features/installments/PaymentModal.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
@@ -347,13 +348,14 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   const [showPrint, setShowPrint] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
   const [showNewInstallment, setShowNewInstallment] = useState(false);
+  const [payInst, setPayInst] = useState<Installment | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'notes'>('history');
   const [visible, setVisible] = useState(false);
   const drawerUser = useAuthStore((s) => s.user);
   const isOwnerInDrawer = drawerUser?.role === 'SELLER_OWNER';
-  const canAddInstallmentInDrawer =
-    isOwnerInDrawer ||
-    !!(drawerUser?.permissions as Record<string, boolean> | null | undefined)?.canAddInstallment;
+  const drawerPerms = drawerUser?.permissions as Record<string, boolean> | null | undefined;
+  const canAddInstallmentInDrawer  = isOwnerInDrawer || !!drawerPerms?.canAddInstallment;
+  const canRecordPaymentInDrawer   = isOwnerInDrawer || !!drawerPerms?.canRecordPayment;
 
   useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
 
@@ -593,23 +595,34 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                       <span className="text-xs text-gray-400 shrink-0 w-8 text-right">{pct}%</span>
                     </div>
 
-                    {inst.status === 'ACTIVE' && shopData && (
-                      <button
-                        onClick={() => openWhatsApp(
-                          customer.phone,
-                          reminderMessage({
-                            shopName: shopData.shopName,
-                            customerName: customer.name,
-                            productName: inst.productName,
-                            monthly: inst.monthly,
-                            remaining: inst.remaining,
-                            paymentFrequency: inst.paymentFrequency,
-                          })
+                    {inst.status === 'ACTIVE' && (
+                      <div className="mt-3 flex gap-2">
+                        {canRecordPaymentInDrawer && (
+                          <button
+                            onClick={() => setPayInst(inst)}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition">
+                            <CreditCard size={12} />
+                            Record Payment
+                          </button>
                         )}
-                        className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 text-xs font-medium transition">
-                        <MessageCircle size={12} />
-                        Send reminder on WhatsApp
-                      </button>
+                        {shopData && (
+                          <button
+                            onClick={() => openWhatsApp(
+                              customer.phone,
+                              reminderMessage({
+                                shopName: shopData.shopName,
+                                customerName: customer.name,
+                                productName: inst.productName,
+                                monthly: inst.monthly,
+                                remaining: inst.remaining,
+                                paymentFrequency: inst.paymentFrequency,
+                              })
+                            )}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-green-200 text-green-600 hover:bg-green-50 text-xs font-medium transition">
+                            <MessageCircle size={12} />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
@@ -651,9 +664,18 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
       />
     )}
 
+    {/* Payment modal */}
+    {payInst && (
+      <PaymentModal
+        inst={payInst}
+        onClose={() => setPayInst(null)}
+        extraInvalidate={[['customer-installments', customer.id]]}
+      />
+    )}
+
     {/* New Installment modal */}
     {showNewInstallment && (
-      <div className="fixed inset-0 z-[60] flex flex-col sm:items-center sm:justify-center bg-black/50 backdrop-blur-sm sm:p-4">
+      <div className="fixed inset-0 z-60 flex flex-col sm:items-center sm:justify-center bg-black/50 backdrop-blur-sm sm:p-4">
         <div className="flex-1 sm:flex-none flex flex-col w-full sm:max-w-lg sm:max-h-[calc(100vh-2rem)] bg-white sm:rounded-2xl sm:shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
