@@ -11,6 +11,7 @@ import { verificationsApi } from '../api/verifications.api.ts';
 import { customerNotesApi, type CustomerNote } from '../api/customerNotes.api.ts';
 import CustomerForm from '../features/customers/CustomerForm.tsx';
 import CnicCustomerLookup from '../features/customers/CnicCustomerLookup.tsx';
+import InstallmentForm from '../features/installments/InstallmentForm.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
@@ -345,9 +346,14 @@ function ReVerifyButton({ customerId }: { customerId: string }) {
 function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onClose: () => void }) {
   const [showPrint, setShowPrint] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
+  const [showNewInstallment, setShowNewInstallment] = useState(false);
   const [activeTab, setActiveTab] = useState<'history' | 'notes'>('history');
   const [visible, setVisible] = useState(false);
-  const isOwnerInDrawer = useAuthStore((s) => s.user)?.role === 'SELLER_OWNER';
+  const drawerUser = useAuthStore((s) => s.user);
+  const isOwnerInDrawer = drawerUser?.role === 'SELLER_OWNER';
+  const canAddInstallmentInDrawer =
+    isOwnerInDrawer ||
+    !!(drawerUser?.permissions as Record<string, boolean> | null | undefined)?.canAddInstallment;
 
   useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
 
@@ -361,11 +367,23 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
     setVisible(false);
     setTimeout(onClose, 280);
   }
+  const qcDrawer = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['customer-installments', customer.id],
     queryFn: () => installmentsApi.list({ customerId: customer.id, limit: 100 }),
   });
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
+
+  const createInstallmentMutation = useMutation({
+    mutationFn: installmentsApi.create,
+    onSuccess: () => {
+      qcDrawer.invalidateQueries({ queryKey: ['customer-installments', customer.id] });
+      qcDrawer.invalidateQueries({ queryKey: ['installments'] });
+      setShowNewInstallment(false);
+      toast.success('Installment created');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to create installment')),
+  });
   const { data: verifReport } = useQuery({
     queryKey: ['verif-report', customer.id],
     queryFn: () => verificationsApi.getReport(customer.id),
@@ -505,6 +523,15 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                 {installments.length} total · {activeCount} active
               </span>
             </p>
+            {canAddInstallmentInDrawer && (
+              <button
+                onClick={() => setShowNewInstallment(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition"
+              >
+                <CreditCard size={12} />
+                New Installment
+              </button>
+            )}
           </div>
 
           {isLoading ? (
@@ -622,6 +649,41 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
         shopPhone={shopData.phone}
         onClose={() => setShowPrint(false)}
       />
+    )}
+
+    {/* New Installment modal — customer pre-locked, no CNIC step needed */}
+    {showNewInstallment && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[calc(100vh-2rem)]">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">New Installment</h2>
+              <p className="text-xs text-gray-400 mt-0.5">{customer.name}</p>
+            </div>
+            <button
+              onClick={() => setShowNewInstallment(false)}
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          {createInstallmentMutation.error instanceof Error && (
+            <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-sm text-red-600">{createInstallmentMutation.error.message}</p>
+            </div>
+          )}
+          <div className="overflow-y-auto flex-1 px-6 py-5">
+            <InstallmentForm
+              lockedCustomerId={customer.id}
+              lockedCustomerName={customer.name}
+              isPending={createInstallmentMutation.isPending}
+              onCancel={() => setShowNewInstallment(false)}
+              onSubmit={(data) => createInstallmentMutation.mutate(data)}
+              murabahaMode={shopData?.murabahaMode ?? false}
+            />
+          </div>
+        </div>
+      </div>
     )}
     </>
   );
