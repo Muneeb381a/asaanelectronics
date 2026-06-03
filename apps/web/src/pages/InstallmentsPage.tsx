@@ -426,9 +426,13 @@ export default function InstallmentsPage() {
 
   const LIMIT = 20;
 
+  // Staff must search first — don't load all installments by default
+  const staffMustSearch = !isOwner && debouncedSearch.trim().length < 2;
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['installments', statusFilter, debouncedSearch, page],
     queryFn: () => installmentsApi.list({ status: statusFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT }),
+    enabled: !staffMustSearch,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['installments'] });
@@ -525,10 +529,15 @@ export default function InstallmentsPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <input
           type="text"
-          placeholder="Search by customer nameâ€¦"
+          placeholder={isOwner ? 'Search by customer name…' : 'Customer ka naam likhو (min 2 letters)…'}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className={`w-full sm:max-w-xs px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 transition ${
+            !isOwner && staffMustSearch
+              ? 'border-blue-300 ring-1 ring-blue-200 bg-blue-50/40'
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          }`}
+          autoFocus={!isOwner}
         />
         <div className="flex gap-1">
           {STATUS_FILTERS.map((f) => (
@@ -547,7 +556,15 @@ export default function InstallmentsPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {isLoading ? (
+        {staffMustSearch ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+              <CreditCard size={26} className="text-blue-400" />
+            </div>
+            <p className="text-sm font-semibold text-gray-700 mb-1">Customer ka naam search karo</p>
+            <p className="text-xs text-gray-400">Upar search box mein customer ka naam likhو — installments dikhein gi</p>
+          </div>
+        ) : isLoading ? (
           <TableSkeleton rows={5} cols={7} />
         ) : isError ? (
           <div className="p-8 text-center text-sm text-red-500">Failed to load installments.</div>
