@@ -404,6 +404,9 @@ export default function InstallmentsPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isOwner = user?.role === 'SELLER_OWNER';
+  const staffPerms = user?.permissions as Record<string, boolean> | null | undefined;
+  const canPay = isOwner || !!staffPerms?.canRecordPayment;
+  const canCreate = isOwner || !!staffPerms?.canAddInstallment;
   const [showForm, setShowForm] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -509,10 +512,12 @@ export default function InstallmentsPage() {
             {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             Export CSV
           </button>
-          <button onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-            + New installment
-          </button>
+          {canCreate && (
+            <button onClick={() => setShowForm(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
+              + New installment
+            </button>
+          )}
         </div>
       </div>
 
@@ -626,7 +631,7 @@ export default function InstallmentsPage() {
                             Approve
                           </button>
                         )}
-                        {inst.status === 'ACTIVE' && (
+                        {inst.status === 'ACTIVE' && canPay && (
                           <button
                             onClick={() => setPayInst(inst)}
                             className="px-2.5 py-1 bg-blue-600 text-white text-xs rounded-lg font-medium hover:bg-blue-700 transition">
