@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users } from 'lucide-react';
 import { customersApi, type Customer, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
+import type { CreateCustomerInput } from '@assaan/shared';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
 import { staffApi, type StaffMember } from '../api/staff.api.ts';
 import { verificationsApi } from '../api/verifications.api.ts';
@@ -690,7 +691,7 @@ function StaffCnicView({
                 customer={modal.mode === 'edit' ? modal.customer : undefined}
                 onSubmit={(data) => {
                   if (modal.mode === 'add') {
-                    createMutation.mutate(data, {
+                    createMutation.mutate(data as CreateCustomerInput, {
                       onSuccess: (created) => { invalidate(); setFoundId(created.id); setModal(null); },
                     });
                   } else {

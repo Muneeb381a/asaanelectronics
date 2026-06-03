@@ -190,7 +190,7 @@ function SearchableSelect({
   );
 }
 
-export default function InstallmentForm({ onSubmit, isPending, onCancel, murabahaMode = false, lockedCustomerId, lockedCustomerName }: Props) {
+export default function InstallmentForm({ onSubmit, isPending, onCancel, murabahaMode = false, lockedCustomerId, lockedCustomerName: _lockedCustomerName }: Props) {
   const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
