@@ -16,8 +16,7 @@ export async function listInstallments(req: AuthRequest, res: Response) {
   const status     = req.query['status']     as string | undefined;
   const search     = req.query['search']     as string | undefined;
   const customerId = req.query['customerId'] as string | undefined;
-  const staffUserId = req.user!.role === 'SELLER_OWNER' ? undefined : req.user!.userId;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId, staffUserId));
+  success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId));
 }
 
 export async function getInstallment(req: AuthRequest, res: Response) {

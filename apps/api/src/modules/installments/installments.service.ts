@@ -19,12 +19,11 @@ type CreateBody = {
 };
 
 export class InstallmentsService {
-  async list(sellerId: string, page: number, limit: number, status?: string, search?: string, customerId?: string, staffUserId?: string) {
+  async list(sellerId: string, page: number, limit: number, status?: string, search?: string, customerId?: string) {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
-    if (status)      conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED'));
-    if (search)      conditions.push(ilike(customers.name, `%${search}%`));
-    if (customerId)  conditions.push(eq(installments.customerId, customerId));
-    if (staffUserId) conditions.push(eq(customers.createdByUserId, staffUserId));
+    if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED'));
+    if (search)     conditions.push(ilike(customers.name, `%${search}%`));
+    if (customerId) conditions.push(eq(installments.customerId, customerId));
     const statusFilter = and(...conditions);
 
     const [rows, [{ count }]] = await Promise.all([

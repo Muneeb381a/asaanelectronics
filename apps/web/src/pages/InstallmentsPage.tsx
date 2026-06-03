@@ -555,12 +555,12 @@ export default function InstallmentsPage() {
           <EmptyState
             icon={<CreditCard size={32} />}
             title="No installments found"
-            action={
+            action={canCreate ? (
               <button onClick={() => setShowForm(true)}
                 className="px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-xl hover:bg-blue-700 transition">
                 Create one
               </button>
-            }
+            ) : undefined}
           />
         ) : (
           <div className="overflow-x-auto">
