@@ -57,3 +57,32 @@ export async function removeStaff(req: AuthRequest, res: Response, next: NextFun
     }).catch(console.error);
   } catch (e) { next(e); }
 }
+
+export async function freezeStaff(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { durationMonths } = req.body as { durationMonths: number | 'permanent' };
+    const data = await svc.freeze(req.params['id']!, req.user!.sellerId!, durationMonths);
+    res.json({ success: true, data });
+    const label = durationMonths === 'permanent' ? 'permanently' : `for ${durationMonths} month(s)`;
+    void audit.log({
+      sellerId: req.user!.sellerId!, userId: req.user!.userId,
+      action: 'STAFF_FROZEN', entityType: 'STAFF', entityId: data.id,
+      description: `Froze staff member ${data.name} ${label} (until ${data.frozenUntil?.toISOString()})`,
+      meta: { durationMonths, frozenUntil: data.frozenUntil },
+      ...auditCtx(req),
+    }).catch(console.error);
+  } catch (e) { next(e); }
+}
+
+export async function unfreezeStaff(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const data = await svc.unfreeze(req.params['id']!, req.user!.sellerId!);
+    res.json({ success: true, data });
+    void audit.log({
+      sellerId: req.user!.sellerId!, userId: req.user!.userId,
+      action: 'STAFF_UNFROZEN', entityType: 'STAFF', entityId: data.id,
+      description: `Unfroze staff member ${data.name}`,
+      ...auditCtx(req),
+    }).catch(console.error);
+  } catch (e) { next(e); }
+}

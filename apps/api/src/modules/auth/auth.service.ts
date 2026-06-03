@@ -124,6 +124,17 @@ export class AuthService {
       }
     }
 
+    if (user.role === 'SELLER_STAFF' && user.frozenUntil) {
+      const now = new Date();
+      if (user.frozenUntil > now) {
+        const isPermanent = user.frozenUntil.getFullYear() >= 2099;
+        const msg = isPermanent
+          ? 'Your account has been frozen permanently. Contact your shop owner.'
+          : `Your account is frozen until ${user.frozenUntil.toLocaleDateString('en-PK')}. Contact your shop owner.`;
+        throw new AppError(msg, 403);
+      }
+    }
+
     const otpToken = await createAndSendOtp(user, 'LOGIN');
     return { requiresOtp: true as const, otpToken };
   }
@@ -230,6 +241,11 @@ export class AuthService {
 
     const user = await db.query.users.findFirst({ where: eq(users.id, payload.userId) });
     if (!user) throw new AppError('User not found', 404);
+
+    if (user.role === 'SELLER_STAFF' && user.frozenUntil && user.frozenUntil > new Date()) {
+      throw new AppError('Account is frozen. Contact your shop owner.', 403);
+    }
+
     return issueTokens(user, carried);
   }
 

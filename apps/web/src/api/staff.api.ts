@@ -19,6 +19,7 @@ export type StaffMember = {
   email: string;
   role: string;
   permissions: StaffPermissions | null;
+  frozenUntil: string | null;
   createdAt: string;
 };
 
@@ -43,5 +44,9 @@ export const staffApi = {
     api.post<{ data: StaffMember }>('/staff', body).then((r) => r.data.data),
   updatePermissions: (id: string, permissions: Partial<StaffPermissions>) =>
     api.patch<{ data: StaffMember }>(`/staff/${id}/permissions`, permissions).then((r) => r.data.data),
+  freeze: (id: string, durationMonths: number | 'permanent') =>
+    api.patch<{ data: StaffMember }>(`/staff/${id}/freeze`, { durationMonths }).then((r) => r.data.data),
+  unfreeze: (id: string) =>
+    api.patch<{ data: StaffMember }>(`/staff/${id}/unfreeze`, {}).then((r) => r.data.data),
   remove: (id: string) => api.delete(`/staff/${id}`),
 };

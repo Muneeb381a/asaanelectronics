@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen } from 'lucide-react';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -219,6 +219,93 @@ function PermissionToggle({ member, permKey }: { member: StaffMember; permKey: k
   );
 }
 
+const FREEZE_OPTIONS: { label: string; value: number | 'permanent'; desc: string }[] = [
+  { label: '1 Month',   value: 1,           desc: 'Unfreeze after 30 days' },
+  { label: '2 Months',  value: 2,           desc: 'Unfreeze after 60 days' },
+  { label: '3 Months',  value: 3,           desc: 'Unfreeze after 90 days' },
+  { label: 'Permanent', value: 'permanent', desc: 'Manual unfreeze required' },
+];
+
+function isMemberFrozen(member: StaffMember): boolean {
+  if (!member.frozenUntil) return false;
+  return new Date(member.frozenUntil) > new Date();
+}
+
+function frozenLabel(member: StaffMember): string {
+  if (!member.frozenUntil) return '';
+  const until = new Date(member.frozenUntil);
+  if (until.getFullYear() >= 2099) return 'Permanently frozen';
+  const days = Math.ceil((until.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  return days <= 0 ? '' : `Frozen · ${days}d remaining`;
+}
+
+function FreezeModal({ member, onClose }: { member: StaffMember; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<number | 'permanent'>(1);
+  const [err, setErr] = useState('');
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => staffApi.freeze(member.id, selected),
+    onSuccess: (updated) => {
+      qc.setQueryData<StaffMember[]>(['staff'], (old) =>
+        old?.map((m) => (m.id === updated.id ? updated : m)) ?? []
+      );
+      onClose();
+    },
+    onError: (e) => setErr(getErrorMessage(e, 'Failed to freeze account')),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-auto p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Snowflake size={16} className="text-blue-500" />
+          <h2 className="text-sm font-semibold text-gray-900">Freeze Account</h2>
+        </div>
+        <p className="text-xs text-gray-400 mb-4">{member.name} — select freeze duration</p>
+
+        <div className="space-y-2 mb-5">
+          {FREEZE_OPTIONS.map((opt) => (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => setSelected(opt.value)}
+              className={`w-full text-left px-3 py-2.5 rounded-xl border-2 transition ${
+                selected === opt.value
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-100 hover:border-gray-200'
+              }`}
+            >
+              <p className={`text-xs font-semibold ${selected === opt.value ? 'text-blue-700' : 'text-gray-800'}`}>
+                {opt.label}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+
+        {err && <p className="text-xs text-red-500 mb-3">{err}</p>}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 border border-gray-200 rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => mutate()}
+            disabled={isPending}
+            className="flex-1 bg-blue-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {isPending ? 'Freezing…' : 'Freeze'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StaffCard({ member }: { member: StaffMember }) {
   const qc = useQueryClient();
   const { user } = useAuthStore();
@@ -226,58 +313,102 @@ function StaffCard({ member }: { member: StaffMember }) {
   const perms = member.permissions ?? DEFAULT_CUSTOM_PERMS;
   const staffType = detectStaffType(perms);
   const initials = member.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  const frozen = isMemberFrozen(member);
+  const [showFreeze, setShowFreeze] = useState(false);
 
   const { mutate: remove } = useMutation({
     mutationFn: () => staffApi.remove(member.id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
   });
 
+  const { mutate: unfreeze, isPending: isUnfreezing } = useMutation({
+    mutationFn: () => staffApi.unfreeze(member.id),
+    onSuccess: (updated) => {
+      qc.setQueryData<StaffMember[]>(['staff'], (old) =>
+        old?.map((m) => (m.id === updated.id ? updated : m)) ?? []
+      );
+    },
+  });
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-            {initials}
+    <>
+      <div className={`bg-white rounded-2xl border shadow-sm p-5 transition ${frozen ? 'border-blue-200 bg-blue-50/30' : 'border-gray-100'}`}>
+        {/* Frozen banner */}
+        {frozen && (
+          <div className="flex items-center gap-1.5 bg-blue-100 text-blue-700 rounded-xl px-3 py-1.5 mb-3 text-xs font-medium">
+            <Snowflake size={12} />
+            <span>{frozenLabel(member)}</span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-900">{member.name}</p>
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${BADGE_STYLES[staffType] ?? BADGE_STYLES.CUSTOM}`}>
-                {BADGE_LABELS[staffType] ?? 'Custom'}
-              </span>
-            </div>
-            <p className="text-xs text-gray-400">{member.email}</p>
-          </div>
-        </div>
-        {isOwner && (
-          <button
-            onClick={() => { if (confirm(`Remove ${member.name}?`)) remove(); }}
-            className="text-gray-300 hover:text-red-500 transition p-1 rounded-lg hover:bg-red-50"
-          >
-            <Trash2 size={14} />
-          </button>
         )}
+
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${frozen ? 'bg-blue-400' : 'bg-linear-to-br from-indigo-500 to-purple-600'}`}>
+              {initials}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-gray-900">{member.name}</p>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${BADGE_STYLES[staffType] ?? BADGE_STYLES.CUSTOM}`}>
+                  {BADGE_LABELS[staffType] ?? 'Custom'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-400">{member.email}</p>
+            </div>
+          </div>
+
+          {isOwner && (
+            <div className="flex items-center gap-1">
+              {frozen ? (
+                <button
+                  onClick={() => unfreeze()}
+                  disabled={isUnfreezing}
+                  title="Unfreeze account"
+                  className="text-blue-400 hover:text-blue-600 transition p-1 rounded-lg hover:bg-blue-50 disabled:opacity-50"
+                >
+                  <LockOpen size={14} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowFreeze(true)}
+                  title="Freeze account"
+                  className="text-gray-300 hover:text-blue-500 transition p-1 rounded-lg hover:bg-blue-50"
+                >
+                  <Snowflake size={14} />
+                </button>
+              )}
+              <button
+                onClick={() => { if (confirm(`Remove ${member.name}?`)) remove(); }}
+                className="text-gray-300 hover:text-red-500 transition p-1 rounded-lg hover:bg-red-50"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-gray-50 pt-3 space-y-2.5">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Shield size={12} className="text-gray-400" />
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Permissions</p>
+          </div>
+          {(Object.keys(PERM_LABELS) as (keyof StaffPermissions)[]).map((key) => (
+            <div key={key} className="flex items-center justify-between">
+              <span className="text-xs text-gray-600">{PERM_LABELS[key]}</span>
+              {isOwner ? (
+                <PermissionToggle member={member} permKey={key} />
+              ) : (
+                <div className={`relative inline-flex h-5 w-9 items-center rounded-full cursor-default ${perms[key] ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${perms[key] ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="border-t border-gray-50 pt-3 space-y-2.5">
-        <div className="flex items-center gap-1.5 mb-2">
-          <Shield size={12} className="text-gray-400" />
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Permissions</p>
-        </div>
-        {(Object.keys(PERM_LABELS) as (keyof StaffPermissions)[]).map((key) => (
-          <div key={key} className="flex items-center justify-between">
-            <span className="text-xs text-gray-600">{PERM_LABELS[key]}</span>
-            {isOwner ? (
-              <PermissionToggle member={member} permKey={key} />
-            ) : (
-              <div className={`relative inline-flex h-5 w-9 items-center rounded-full cursor-default ${perms[key] ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${perms[key] ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+      {showFreeze && <FreezeModal member={member} onClose={() => setShowFreeze(false)} />}
+    </>
   );
 }
 

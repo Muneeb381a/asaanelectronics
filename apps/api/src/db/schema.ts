@@ -86,6 +86,7 @@ export const users = pgTable('users', {
   role: roleEnum('role').default('SELLER_STAFF').notNull(),
   sellerId: text('seller_id').references(() => sellers.id),
   permissions: json('permissions').$type<StaffPermissions>(),
+  frozenUntil: timestamp('frozen_until'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
