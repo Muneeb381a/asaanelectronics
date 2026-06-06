@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
-  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, TrendingUp,
+  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, TrendingUp, ShoppingCart,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -18,6 +18,7 @@ const allNavItems = [
   { to: '/products',     label: 'Products',     icon: Package,         end: undefined as boolean | undefined, perm: 'canManageProducts' as string | string[] },
   { to: '/customers',    label: 'Customers',    icon: Users,           end: undefined as boolean | undefined, perm: ['canAddCustomer', 'canAddInstallment', 'canRecordPayment'] as string | string[] },
   { to: '/installments', label: 'Installments', icon: CreditCard,      end: undefined as boolean | undefined, perm: ['canAddInstallment', 'canRecordPayment'] as string | string[] },
+  { to: '/cash-sales',  label: 'Cash Sales',  icon: ShoppingCart,    end: undefined as boolean | undefined, perm: 'canManageProducts' as string | string[] },
 ];
 
 export default function DashboardLayout() {

@@ -27,6 +27,7 @@ import ExpensesPage from '../pages/ExpensesPage.tsx';
 import BillingPage from '../pages/BillingPage.tsx';
 import RecoveryPage from '../pages/RecoveryPage.tsx';
 import RecoveryAgentsPage from '../pages/RecoveryAgentsPage.tsx';
+import CashSalesPage from '../pages/CashSalesPage.tsx';
 import PortalLoginPage from '../pages/portal/PortalLoginPage.tsx';
 import PortalDashboardPage from '../pages/portal/PortalDashboardPage.tsx';
 
@@ -113,6 +114,7 @@ export const router = createBrowserRouter([
       { path: '/products',       element: <PermGuard perm="canManageProducts"><ProductsPage /></PermGuard> },
       { path: '/customers',      element: <PermGuard perm={['canAddCustomer', 'canAddInstallment', 'canRecordPayment']}><CustomersPage /></PermGuard> },
       { path: '/installments',   element: <PermGuard perm={['canAddInstallment', 'canRecordPayment']}><InstallmentsPage /></PermGuard> },
+      { path: '/cash-sales',     element: <PermGuard perm="canManageProducts"><CashSalesPage /></PermGuard> },
       { path: '/returns',        element: <SellerOwnerGuard><ReturnsPage /></SellerOwnerGuard> },
       { path: '/expenses',       element: <SellerOwnerGuard><ExpensesPage /></SellerOwnerGuard> },
       { path: '/ledger',         element: <SellerOwnerGuard><LedgerPage /></SellerOwnerGuard> },

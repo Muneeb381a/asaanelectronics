@@ -29,6 +29,7 @@ import returnsRoutes          from './modules/returns/returns.routes.js';
 import accountingRoutes        from './modules/accounting/accounting.routes.js';
 import reconciliationRoutes    from './modules/reconciliation/reconciliation.routes.js';
 import portalRoutes            from './modules/portal/portal.routes.js';
+import cashSalesRoutes         from './modules/cashSales/cashSales.routes.js';
 
 const app = express();
 
@@ -87,6 +88,7 @@ app.use('/api/returns',     returnsRoutes);
 app.use('/api/accounting',      accountingRoutes);
 app.use('/api/reconciliation', reconciliationRoutes);
 app.use('/api/portal',         portalRoutes);
+app.use('/api/cash-sales',     cashSalesRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
 app.use(errorMiddleware);

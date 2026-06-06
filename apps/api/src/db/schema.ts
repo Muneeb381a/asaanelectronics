@@ -353,6 +353,25 @@ export const payments = pgTable('payments', {
   index('idx_payments_installment_deleted').on(t.installmentId, t.deletedAt),
 ]);
 
+export const cashSales = pgTable('cash_sales', {
+  id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:      text('seller_id').notNull().references(() => sellers.id),
+  productId:     text('product_id').notNull().references(() => products.id),
+  quantity:      integer('quantity').default(1).notNull(),
+  amount:        decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  method:        paymentMethodEnum('method').notNull(),
+  customerName:  text('customer_name'),
+  customerPhone: text('customer_phone'),
+  imeiNumber:    text('imei_number'),
+  note:          text('note'),
+  soldByUserId:  text('sold_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_cash_sales_seller').on(t.sellerId),
+  index('idx_cash_sales_created_at').on(t.createdAt),
+  index('idx_cash_sales_product').on(t.productId),
+]);
+
 // ── Double-entry accounting ───────────────────────────────────────────────────
 
 export const accountTypeEnum = pgEnum('account_type', ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']);
