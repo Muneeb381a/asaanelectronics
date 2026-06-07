@@ -8,14 +8,16 @@ const svc   = new PaymentsService();
 const audit = new AuditService();
 
 export async function listPayments(req: AuthRequest, res: Response) {
-  const installmentId = req.query['installmentId'] as string;
-  if (!installmentId) {
-    res.status(400).json({ success: false, data: null, error: 'installmentId required' });
-    return;
+  const installmentId = req.query['installmentId'] as string | undefined;
+  if (installmentId) {
+    const page  = Math.max(1, parseInt(req.query['page']  as string) || 1);
+    const limit = Math.max(1, parseInt(req.query['limit'] as string) || 50);
+    success(res, await svc.listByInstallment(installmentId, req.user!.sellerId!, page, limit));
+  } else {
+    const from = req.query['from'] as string | undefined;
+    const to   = req.query['to']   as string | undefined;
+    success(res, await svc.listBySeller(req.user!.sellerId!, from, to));
   }
-  const page  = Math.max(1, parseInt(req.query['page']  as string) || 1);
-  const limit = Math.max(1, parseInt(req.query['limit'] as string) || 50);
-  success(res, await svc.listByInstallment(installmentId, req.user!.sellerId!, page, limit));
 }
 
 export async function deletePayment(req: AuthRequest, res: Response) {

@@ -1,4 +1,5 @@
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -52,6 +53,36 @@ export class PaymentsService {
     ]);
 
     return { data: rows, total: count, page, limit: safeLimit };
+  }
+
+  async listBySeller(sellerId: string, from?: string, to?: string) {
+    const conds: SQL[] = [eq(customers.sellerId, sellerId), isNull(payments.deletedAt)];
+    if (from) conds.push(gte(payments.paidOn, new Date(from)));
+    if (to) {
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      conds.push(lte(payments.paidOn, toDate));
+    }
+    return db
+      .select({
+        id:            payments.id,
+        amount:        payments.amount,
+        method:        payments.method,
+        paidOn:        payments.paidOn,
+        note:          payments.note,
+        customerName:  customers.name,
+        customerPhone: customers.phone,
+        productName:   products.name,
+        collectorName: users.name,
+        invoiceNumber: installments.invoiceNumber,
+      })
+      .from(payments)
+      .innerJoin(installments, eq(payments.installmentId, installments.id))
+      .innerJoin(customers,    eq(installments.customerId, customers.id))
+      .innerJoin(products,     eq(installments.productId,  products.id))
+      .leftJoin(users,         eq(payments.collectedBy,    users.id))
+      .where(and(...conds))
+      .orderBy(desc(payments.paidOn));
   }
 
   async record(sellerId: string, body: CreateBody) {

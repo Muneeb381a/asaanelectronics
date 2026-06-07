@@ -30,6 +30,19 @@ interface RecordResult {
   completed: boolean;
 }
 
+export interface SellerPayment {
+  id: string;
+  amount: string;
+  method: PaymentMethod;
+  paidOn: string;
+  note: string | null;
+  customerName: string;
+  customerPhone: string;
+  productName: string;
+  collectorName: string | null;
+  invoiceNumber: string | null;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const paymentsApi = {
@@ -43,4 +56,7 @@ export const paymentsApi = {
 
   remove: (id: string) =>
     api.delete(`/payments/${id}`),
+
+  listBySeller: (params?: { from?: string; to?: string }) =>
+    api.get<{ data: SellerPayment[] }>('/payments', { params }).then(unwrap<SellerPayment[]>),
 };

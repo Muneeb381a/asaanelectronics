@@ -28,6 +28,7 @@ import BillingPage from '../pages/BillingPage.tsx';
 import RecoveryPage from '../pages/RecoveryPage.tsx';
 import RecoveryAgentsPage from '../pages/RecoveryAgentsPage.tsx';
 import CashSalesPage from '../pages/CashSalesPage.tsx';
+import ExportsPage from '../pages/ExportsPage.tsx';
 import PortalLoginPage from '../pages/portal/PortalLoginPage.tsx';
 import PortalDashboardPage from '../pages/portal/PortalDashboardPage.tsx';
 
@@ -123,6 +124,7 @@ export const router = createBrowserRouter([
       { path: '/billing',        element: <SellerOwnerGuard><BillingPage /></SellerOwnerGuard> },
       { path: '/recovery',       element: <SellerOwnerGuard><RecoveryPage /></SellerOwnerGuard> },
       { path: '/recovery-agents',element: <SellerOwnerGuard><RecoveryAgentsPage /></SellerOwnerGuard> },
+      { path: '/exports',         element: <SellerOwnerGuard><ExportsPage /></SellerOwnerGuard> },
       { path: '/settings',       element: <SellerOwnerGuard><SettingsPage /></SellerOwnerGuard> },
       { path: '/verifications',  element: <VerificationQueuePage /> },
     ],
