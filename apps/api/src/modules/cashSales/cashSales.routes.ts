@@ -8,8 +8,8 @@ import { listCashSales, createCashSale, deleteCashSale } from './cashSales.contr
 const router = Router();
 router.use(authenticate, requireSeller);
 
-router.get('/',       requirePermission('canManageProducts'), listCashSales);
-router.post('/',      requirePermission('canManageProducts'), validate(createCashSaleSchema), createCashSale);
+router.get('/',       requirePermission('canMakeCashSales'), listCashSales);
+router.post('/',      requirePermission('canMakeCashSales'), validate(createCashSaleSchema), createCashSale);
 router.delete('/:id', requireOwner, deleteCashSale);
 
 export default router;

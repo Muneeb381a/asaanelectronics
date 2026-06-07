@@ -63,6 +63,7 @@ export type StaffPermissions = {
   canRecordExpense: boolean;
   canManageReturns: boolean;
   canSearchCnic: boolean;
+  canMakeCashSales?: boolean;
 };
 
 export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
@@ -76,6 +77,7 @@ export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
   canRecordExpense: false,
   canManageReturns: false,
   canSearchCnic: false,
+  canMakeCashSales: false,
 };
 
 export const users = pgTable('users', {

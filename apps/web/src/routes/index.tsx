@@ -115,7 +115,7 @@ export const router = createBrowserRouter([
       { path: '/products',       element: <PermGuard perm="canManageProducts"><ProductsPage /></PermGuard> },
       { path: '/customers',      element: <PermGuard perm={['canAddCustomer', 'canAddInstallment', 'canRecordPayment']}><CustomersPage /></PermGuard> },
       { path: '/installments',   element: <PermGuard perm={['canAddInstallment', 'canRecordPayment']}><InstallmentsPage /></PermGuard> },
-      { path: '/cash-sales',     element: <PermGuard perm="canManageProducts"><CashSalesPage /></PermGuard> },
+      { path: '/cash-sales',     element: <PermGuard perm="canMakeCashSales"><CashSalesPage /></PermGuard> },
       { path: '/returns',        element: <SellerOwnerGuard><ReturnsPage /></SellerOwnerGuard> },
       { path: '/expenses',       element: <SellerOwnerGuard><ExpensesPage /></SellerOwnerGuard> },
       { path: '/ledger',         element: <SellerOwnerGuard><LedgerPage /></SellerOwnerGuard> },

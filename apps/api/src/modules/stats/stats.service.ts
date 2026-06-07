@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, isNull, lt, lte, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { auditLogs, customers, installments, payments, products, recoveryActions, users } from '../../db/schema.js';
+import { auditLogs, cashSales, customers, installments, payments, products, recoveryActions, users } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
 
 export class StatsService {
@@ -121,7 +121,7 @@ export class StatsService {
 
     const LOW_STOCK = 3;
 
-    const [todayCollections, monthCollections, activeCount, overdueCount, recent, lowStockItems, promisesData] = await Promise.all([
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -147,6 +147,23 @@ export class StatsService {
           isNull(payments.deletedAt),
           isNull(installments.deletedAt),
           isNull(customers.deletedAt),
+        )),
+
+      db
+        .select({ total: sum(cashSales.amount) })
+        .from(cashSales)
+        .where(and(
+          eq(cashSales.sellerId, sellerId),
+          gte(cashSales.createdAt, todayStart),
+          lt(cashSales.createdAt, todayEnd),
+        )),
+
+      db
+        .select({ total: sum(cashSales.amount) })
+        .from(cashSales)
+        .where(and(
+          eq(cashSales.sellerId, sellerId),
+          gte(cashSales.createdAt, monthStart),
         )),
 
       db
@@ -208,6 +225,8 @@ export class StatsService {
     return {
       todayCollections: Number(todayCollections[0]?.total ?? 0),
       monthCollections: Number(monthCollections[0]?.total ?? 0),
+      todayCashSales:   Number(todayCashSales[0]?.total   ?? 0),
+      monthCashSales:   Number(monthCashSales[0]?.total   ?? 0),
       activeCount: Number(activeCount[0]?.total ?? 0),
       overdueCount: Number(overdueCount[0]?.total ?? 0),
       recentInstallments: recent,

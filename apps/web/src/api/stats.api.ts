@@ -13,6 +13,8 @@ export interface RecentInstallment {
 export interface Stats {
   todayCollections: number;
   monthCollections: number;
+  todayCashSales: number;
+  monthCashSales: number;
   activeCount: number;
   overdueCount: number;
   recentInstallments: RecentInstallment[];

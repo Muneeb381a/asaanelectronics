@@ -123,17 +123,26 @@ export default function DashboardPage() {
 
   const lowStock  = data?.lowStockItems ?? [];
 
+  const todayTotal  = (data?.todayCollections ?? 0) + (data?.todayCashSales ?? 0);
+  const monthTotal  = (data?.monthCollections ?? 0) + (data?.monthCashSales ?? 0);
+
   const statCards = [
     {
-      label: "Today's Collections",
-      value: pkr(data?.todayCollections ?? 0),
+      label: "Today's Revenue",
+      value: pkr(todayTotal),
+      sub: data && (data.todayCashSales > 0 || data.todayCollections > 0)
+        ? `Inst: ${pkr(data.todayCollections)} · Cash: ${pkr(data.todayCashSales)}`
+        : undefined,
       icon: TrendingUp,
       light: 'bg-blue-50',
       text: 'text-blue-600',
     },
     {
       label: 'This Month',
-      value: pkr(data?.monthCollections ?? 0),
+      value: pkr(monthTotal),
+      sub: data && (data.monthCashSales > 0 || data.monthCollections > 0)
+        ? `Inst: ${pkr(data.monthCollections)} · Cash: ${pkr(data.monthCashSales)}`
+        : undefined,
       icon: Calendar,
       light: 'bg-purple-50',
       text: 'text-purple-600',
@@ -184,6 +193,9 @@ export default function DashboardPage() {
               </div>
               <p className="text-xs text-gray-400 font-medium">{card.label}</p>
               <p className="text-2xl font-bold text-gray-900 mt-0.5">{card.value}</p>
+              {'sub' in card && card.sub && (
+                <p className="text-[10px] text-gray-400 mt-1 leading-tight">{card.sub}</p>
+              )}
             </div>
           ))}
       </div>
