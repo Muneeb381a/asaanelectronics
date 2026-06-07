@@ -110,6 +110,21 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         paymentFrequency:  freshInst.paymentFrequency,
         completed:         data.completed,
       });
+      printInstallmentReceipt({
+        shopName:         seller?.shopName ?? 'Receipt',
+        shopPhone:        seller?.phone,
+        customerName:     freshInst.customerName,
+        productName:      freshInst.productName,
+        invoiceNumber:    freshInst.invoiceNumber,
+        amountPaid:       Number(data.payment.amount),
+        remaining:        data.remaining,
+        monthly:          Number(freshInst.monthly),
+        method:           data.payment.method,
+        paidOn:           data.payment.paidOn,
+        note:             data.payment.note,
+        paymentFrequency: freshInst.paymentFrequency,
+        completed:        data.completed,
+      });
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Payment failed')),
   });
