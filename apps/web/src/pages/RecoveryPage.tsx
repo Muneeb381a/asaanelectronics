@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -290,33 +290,30 @@ function groupByArea(list: Installment[]): { area: string; items: Installment[] 
 }
 
 export default function RecoveryPage() {
-  const [search,   setSearch]   = useState('');
-  const [sortBy,   setSortBy]   = useState<SortKey>('default');
-  const [groupMode, setGroupMode] = useState<'status' | 'area'>('status');
-  const [selected, setSelected] = useState<Installment | null>(null);
+  const [search,        setSearch]     = useState('');
+  const [debouncedSearch, setDebounced] = useState('');
+  const [sortBy,        setSortBy]     = useState<SortKey>('default');
+  const [groupMode,     setGroupMode]  = useState<'status' | 'area'>('status');
+  const [selected,      setSelected]   = useState<Installment | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['installments-recovery'],
-    queryFn: () => installmentsApi.list({ status: 'ACTIVE', limit: 200 }),
+    queryKey: ['installments-recovery', debouncedSearch],
+    queryFn: () => installmentsApi.list({ status: 'ACTIVE', limit: 200, search: debouncedSearch || undefined }),
     staleTime: 60_000,
   });
 
-  const installments = data?.data ?? [];
+  const installments = data?.data  ?? [];
+  const totalOnServer = data?.total ?? 0;
+  const isTruncated  = totalOnServer > installments.length;
 
-  const filtered = installments.filter((i) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      i.customerName.toLowerCase().includes(q) ||
-      i.customerPhone.includes(search) ||
-      i.productName.toLowerCase().includes(q) ||
-      (i.customerArea ?? '').toLowerCase().includes(q)
-    );
-  });
-
-  const overdueList  = sortList(filtered.filter((i) => i.isOverdue),  sortBy);
-  const currentList  = sortList(filtered.filter((i) => !i.isOverdue), sortBy);
-  const areaGroups   = groupByArea(sortList(filtered, sortBy));
+  const overdueList  = sortList(installments.filter((i) => i.isOverdue),  sortBy);
+  const currentList  = sortList(installments.filter((i) => !i.isOverdue), sortBy);
+  const areaGroups   = groupByArea(sortList(installments, sortBy));
 
   const totalOverdueRemaining = overdueList.reduce((s, i) => s + Number(i.remaining), 0);
   const totalActiveRemaining  = currentList.reduce((s, i) => s + Number(i.remaining), 0);
@@ -391,9 +388,9 @@ export default function RecoveryPage() {
               <div className="flex items-center justify-center h-32 text-gray-400">
                 <Loader2 size={18} className="animate-spin" />
               </div>
-            ) : filtered.length === 0 ? (
+            ) : installments.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-12">
-                {search ? `No results for "${search}"` : 'No active installments'}
+                {debouncedSearch ? `No results for "${debouncedSearch}"` : 'No active installments'}
               </p>
             ) : groupMode === 'area' ? (
               /* ── Area grouping ── */
@@ -441,6 +438,14 @@ export default function RecoveryPage() {
               </>
             )}
           </div>
+
+          {isTruncated && !isLoading && (
+            <div className="px-3 py-2 bg-amber-50 border-t border-amber-100 text-center">
+              <p className="text-[10px] text-amber-600 font-medium">
+                Showing {installments.length} of {totalOnServer} — use search to narrow down
+              </p>
+            </div>
+          )}
 
           {/* Summary bar */}
           <div className="p-4 border-t border-gray-100 flex gap-4 text-center">

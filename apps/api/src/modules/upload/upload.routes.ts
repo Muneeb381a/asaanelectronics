@@ -34,20 +34,40 @@ const ALLOWED_FOLDERS: Record<string, 'cnic' | 'cheque' | 'other'> = {
   'assaan/payments':      'other',
 };
 
-// ── L1: in-memory cache ──────────────────────────────────────────────────────
-// Holds up to MAX_MEM entries. Survives within a Lambda container lifetime
-// (typically several minutes — covers repeated uploads in the same session).
+// ── Magic-byte signatures ────────────────────────────────────────────────────
+const MAGIC: Array<{ bytes: number[]; offset?: number }> = [
+  { bytes: [0xFF, 0xD8, 0xFF] },                          // JPEG
+  { bytes: [0x89, 0x50, 0x4E, 0x47] },                   // PNG
+  { bytes: [0x52, 0x49, 0x46, 0x46], offset: 0 },        // WebP (RIFF header)
+  { bytes: [0x66, 0x74, 0x79, 0x70], offset: 4 },        // HEIC/HEIF (ftyp box)
+];
+
+function hasMagicBytes(buf: Buffer): boolean {
+  return MAGIC.some(({ bytes, offset = 0 }) =>
+    bytes.every((b, i) => buf[offset + i] === b)
+  );
+}
+
+// ── L1: in-memory LRU cache ──────────────────────────────────────────────────
+// Map preserves insertion order — delete+re-insert on GET moves key to end
+// (most-recently-used). Evict from front = least-recently-used.
 const MAX_MEM = 300;
 const memCache = new Map<string, DocumentExtracted>();
 
 function memGet(key: string): DocumentExtracted | undefined {
-  return memCache.get(key);
+  const val = memCache.get(key);
+  if (val !== undefined) {
+    // Promote to MRU position
+    memCache.delete(key);
+    memCache.set(key, val);
+  }
+  return val;
 }
 function memSet(key: string, val: DocumentExtracted) {
   if (memCache.size >= MAX_MEM) {
-    // Evict oldest entry (Map preserves insertion order)
-    const oldest = memCache.keys().next().value;
-    if (oldest) memCache.delete(oldest);
+    // Evict LRU entry (front of Map)
+    const lru = memCache.keys().next().value;
+    if (lru) memCache.delete(lru);
   }
   memCache.set(key, val);
 }
@@ -78,6 +98,7 @@ router.post('/', upload.single('file'), async (req: Request, res: Response, next
   try {
     if (!req.file) throw new AppError('No file provided', 400);
     if (req.file.size < MIN_FILE_SIZE) throw new AppError('Image is too small or blank. Please upload a clear photo.', 400);
+    if (!hasMagicBytes(req.file.buffer)) throw new AppError('File content does not match a supported image format.', 400);
 
     const folder = (req.body['folder'] as string | undefined) ?? '';
     if (!ALLOWED_FOLDERS[folder]) throw new AppError('Invalid upload folder', 400);

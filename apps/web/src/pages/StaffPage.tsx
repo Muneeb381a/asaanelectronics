@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -98,28 +98,43 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        {/* Custom permissions */}
-        {staffType === 'CUSTOM' && (
-          <div className="mb-4 border border-gray-100 rounded-xl p-3 space-y-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Permissions</p>
-            {(Object.keys(PERM_LABELS) as (keyof StaffPermissions)[]).map((key) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-xs text-gray-600">{PERM_LABELS[key]}</span>
-                <button
-                  type="button"
-                  onClick={() => setCustomPerms((p) => ({ ...p, [key]: !p[key] }))}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    customPerms[key] ? 'bg-blue-600' : 'bg-gray-200'
-                  }`}
-                >
-                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                    customPerms[key] ? 'translate-x-4.5' : 'translate-x-0.5'
-                  }`} />
-                </button>
-              </div>
-            ))}
+        {/* Permissions preview / editor */}
+        <div className="mb-4 border border-gray-100 rounded-xl p-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            {staffType === 'CUSTOM' ? 'Set Permissions' : 'Included Permissions'}
+          </p>
+          <div className="space-y-2">
+            {(Object.keys(PERM_LABELS) as (keyof StaffPermissions)[]).map((key) => {
+              const active = staffType === 'CUSTOM' ? customPerms[key] : PRESET_PERMS[staffType][key];
+              return (
+                <div key={key} className="flex items-center justify-between">
+                  <span className={`text-xs ${active ? 'text-gray-700' : 'text-gray-400'}`}>
+                    {PERM_LABELS[key]}
+                  </span>
+                  {staffType === 'CUSTOM' ? (
+                    <button
+                      type="button"
+                      onClick={() => setCustomPerms((p) => ({ ...p, [key]: !p[key] }))}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                        customPerms[key] ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                        customPerms[key] ? 'translate-x-4.5' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  ) : (
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${
+                      active ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-300'
+                    }`}>
+                      {active ? <Check size={11} strokeWidth={2.5} /> : <XIcon size={11} strokeWidth={2.5} />}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         <div className="space-y-3">
           {(['name', 'email', 'password'] as const).map((key) => (
