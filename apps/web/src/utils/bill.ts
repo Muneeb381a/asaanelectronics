@@ -26,6 +26,7 @@ export interface BillData {
   murabahaMode?: boolean;
   paymentFrequency?: string | null;
   paymentAccounts?: BillPaymentAccount[];
+  paymentSummary?: { currentMonth: number; paidMonths: number; totalMonths: number };
 }
 
 export interface CashSaleBillData {
@@ -223,6 +224,26 @@ export async function openBill(data: BillData) {
         <span class="av" style="color:#92400e">${pkr(data.remaining)}</span>
       </div>
     </div>
+
+    ${data.paymentSummary ? `
+    <!-- PAYMENT PROGRESS -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px">
+      <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:4px;padding:5px 7px;text-align:center">
+        <span style="display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#1e40af;margin-bottom:1px">This Payment · یہ قسط</span>
+        <span style="display:block;font-size:14px;font-weight:800;color:#1e40af">Month #${data.paymentSummary.currentMonth}</span>
+        <span style="display:block;font-size:8px;color:#3b82f6">of ${data.paymentSummary.totalMonths} ${data.paymentFrequency === 'daily' ? 'days' : 'months'}</span>
+      </div>
+      <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:4px;padding:5px 7px;text-align:center">
+        <span style="display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#065f46;margin-bottom:1px">Paid · ادا شدہ</span>
+        <span style="display:block;font-size:14px;font-weight:800;color:#065f46">${data.paymentSummary.paidMonths}</span>
+        <span style="display:block;font-size:8px;color:#059669">${data.paymentFrequency === 'daily' ? 'days' : 'months'} paid</span>
+      </div>
+      <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;padding:5px 7px;text-align:center">
+        <span style="display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#92400e;margin-bottom:1px">Pending · باقی</span>
+        <span style="display:block;font-size:14px;font-weight:800;color:#92400e">${data.paymentSummary.totalMonths - data.paymentSummary.paidMonths}</span>
+        <span style="display:block;font-size:8px;color:#b45309">${data.paymentFrequency === 'daily' ? 'days' : 'months'} left</span>
+      </div>
+    </div>` : ''}
 
     <!-- SCHEDULE -->
     <div style="border:1px solid #e2e8f0;border-radius:5px;overflow:hidden;margin-bottom:6px">

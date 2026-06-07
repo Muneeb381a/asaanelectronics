@@ -149,6 +149,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         profitMarkup:     freshInst.profitMarkup,
         murabahaMode:     seller?.murabahaMode,
         paymentFrequency: freshInst.paymentFrequency,
+        paymentSummary:   { currentMonth, paidMonths: paidInstallments, totalMonths: totalInstallments },
       };
 
       setReceiptData(receiptPayload);
