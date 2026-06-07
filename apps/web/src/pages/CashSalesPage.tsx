@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Loader2, Search, CheckCircle2, X, Trash2,
 } from 'lucide-react';
-import { cashSalesApi, type CashSale, type PaymentMethod } from '../api/cashSales.api.ts';
+import { cashSalesApi, type PaymentMethod } from '../api/cashSales.api.ts';
 import { productsApi, type Product } from '../api/products.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 
