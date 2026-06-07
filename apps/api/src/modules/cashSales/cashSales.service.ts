@@ -14,6 +14,15 @@ type CreateBody = {
   note?:         string;
 };
 
+type UpdateBody = {
+  amount?:        number;
+  method?:        'CASH' | 'BANK' | 'JAZZCASH' | 'EASYPAISA' | 'OTHER';
+  customerName?:  string | null;
+  customerPhone?: string | null;
+  imeiNumber?:    string | null;
+  note?:          string | null;
+};
+
 export class CashSalesService {
   async list(sellerId: string, page: number, limit: number, from?: string, to?: string, search?: string) {
     const conds = [eq(cashSales.sellerId, sellerId)];
@@ -105,6 +114,38 @@ export class CashSalesService {
       });
 
       return { ...sale, productName: product.name };
+    });
+  }
+
+  async update(id: string, sellerId: string, body: UpdateBody) {
+    const [existing] = await db
+      .select({ id: cashSales.id, productId: cashSales.productId, amount: cashSales.amount, customerName: cashSales.customerName })
+      .from(cashSales)
+      .where(and(eq(cashSales.id, id), eq(cashSales.sellerId, sellerId)));
+
+    if (!existing) throw new AppError('Cash sale not found', 404);
+
+    const newAmount = body.amount != null ? String(body.amount) : undefined;
+
+    return db.transaction(async (tx) => {
+      const [updated] = await tx.update(cashSales).set({
+        ...(newAmount                  && { amount: newAmount }),
+        ...(body.method                && { method: body.method }),
+        ...('customerName'  in body    && { customerName:  body.customerName  ?? null }),
+        ...('customerPhone' in body    && { customerPhone: body.customerPhone ?? null }),
+        ...('imeiNumber'    in body    && { imeiNumber:    body.imeiNumber    ?? null }),
+        ...('note'          in body    && { note:          body.note          ?? null }),
+      }).where(and(eq(cashSales.id, id), eq(cashSales.sellerId, sellerId))).returning();
+
+      if (newAmount) {
+        const [prod] = await tx.select({ name: products.name }).from(products).where(eq(products.id, existing.productId));
+        await tx.update(ledgerEntries).set({
+          amount:      newAmount,
+          description: `Cash Sale — ${prod?.name ?? ''}${body.customerName ? ` · ${body.customerName}` : (existing.customerName ? ` · ${existing.customerName}` : '')}`,
+        }).where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'MANUAL')));
+      }
+
+      return updated;
     });
   }
 

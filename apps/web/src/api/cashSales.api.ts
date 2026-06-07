@@ -43,5 +43,14 @@ export const cashSalesApi = {
     note?:         string;
   }) => api.post<{ data: CashSale }>('/cash-sales', body).then(unwrap<CashSale>),
 
+  update: (id: string, body: {
+    amount?:        number;
+    method?:        PaymentMethod;
+    customerName?:  string | null;
+    customerPhone?: string | null;
+    imeiNumber?:    string | null;
+    note?:          string | null;
+  }) => api.patch<{ data: CashSale }>(`/cash-sales/${id}`, body).then(unwrap<CashSale>),
+
   remove: (id: string) => api.delete(`/cash-sales/${id}`),
 };

@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ShoppingCart, Plus, Loader2, Search, CheckCircle2, X, Trash2, Printer, MessageCircle,
+  ShoppingCart, Plus, Loader2, Search, CheckCircle2, X, Trash2, Pencil, Printer, MessageCircle,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { getErrorMessage } from '../utils/error.ts';
 import { cashSalesApi, type CashSale, type PaymentMethod } from '../api/cashSales.api.ts';
 import { productsApi, type Product } from '../api/products.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
@@ -38,6 +40,7 @@ export default function CashSalesPage() {
   const [listSearch,     setListSearch]     = useState('');
   const [listPage,       setListPage]       = useState(1);
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null);
+  const [editingSale,    setEditingSale]    = useState<CashSale | null>(null);
   const [lastSale,       setLastSale]       = useState<CashSale | null>(null);
 
   const { data: seller } = useQuery({
@@ -95,6 +98,17 @@ export default function CashSalesPage() {
       void qc.invalidateQueries({ queryKey: ['products-picker'] });
       setConfirmDelete(null);
     },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Parameters<typeof cashSalesApi.update>[1] }) =>
+      cashSalesApi.update(id, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cash-sales'] });
+      toast.success('Sale updated');
+      setEditingSale(null);
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to update sale')),
   });
 
   function closeModal() {
@@ -250,12 +264,20 @@ export default function CashSalesPage() {
                             </button>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => setConfirmDelete(s.id)}
-                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <div className="flex items-center gap-0.5 justify-end">
+                            <button
+                              onClick={() => setEditingSale(s)}
+                              className="p-1.5 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(s.id)}
+                              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         )}
                       </td>
                     )}
@@ -562,6 +584,148 @@ export default function CashSalesPage() {
           </div>
         </div>
       )}
+
+      {/* Edit Cash Sale Modal */}
+      {editingSale && (
+        <EditModal
+          sale={editingSale}
+          onClose={() => setEditingSale(null)}
+          onSave={(body) => updateMutation.mutate({ id: editingSale.id, body })}
+          isPending={updateMutation.isPending}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Edit Modal ─────────────────────────────────────────────────────────────────
+function EditModal({
+  sale, onClose, onSave, isPending,
+}: {
+  sale: CashSale;
+  onClose: () => void;
+  onSave: (body: { amount?: number; method?: PaymentMethod; customerName?: string | null; customerPhone?: string | null; imeiNumber?: string | null; note?: string | null }) => void;
+  isPending: boolean;
+}) {
+  const [amount,        setAmount]        = useState(String(Number(sale.amount)));
+  const [method,        setMethod]        = useState<PaymentMethod>(sale.method);
+  const [customerName,  setCustomerName]  = useState(sale.customerName ?? '');
+  const [customerPhone, setCustomerPhone] = useState(sale.customerPhone ?? '');
+  const [imeiNumber,    setImeiNumber]    = useState(sale.imeiNumber ?? '');
+  const [note,          setNote]          = useState(sale.note ?? '');
+
+  function handleSave() {
+    const amt = Number(amount);
+    if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
+    onSave({
+      amount:        amt,
+      method,
+      customerName:  customerName  || null,
+      customerPhone: customerPhone || null,
+      imeiNumber:    imeiNumber    || null,
+      note:          note          || null,
+    });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="font-bold text-gray-900 text-base">Edit Cash Sale</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{sale.productName} · Qty {sale.quantity}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition">
+            <X size={18} className="text-gray-500" />
+          </button>
+        </div>
+
+        {/* Fields */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+          {/* Amount */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Amount (PKR)</label>
+            <input
+              type="number" min="1" autoFocus
+              value={amount} onChange={(e) => setAmount(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+          </div>
+
+          {/* Method */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Payment Method</label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {METHODS.map((m) => (
+                <button key={m} type="button" onClick={() => setMethod(m)}
+                  className={`py-2 rounded-xl text-xs font-semibold border-2 transition ${
+                    method === m
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-100 text-gray-400 hover:border-gray-200'
+                  }`}
+                >
+                  {METHOD_LABELS[m]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Customer */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Customer Name</label>
+            <input
+              type="text" placeholder="Walk-in"
+              value={customerName} onChange={(e) => setCustomerName(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Customer Phone</label>
+            <input
+              type="tel" placeholder="03xx-xxxxxxx"
+              value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+          </div>
+
+          {/* IMEI */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">IMEI / Serial</label>
+            <input
+              type="text" placeholder="Optional"
+              value={imeiNumber} onChange={(e) => setImeiNumber(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-mono"
+            />
+          </div>
+
+          {/* Note */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Note</label>
+            <input
+              type="text" placeholder="Optional"
+              value={note} onChange={(e) => setNote(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={isPending || !amount}
+            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2">
+            {isPending ? <Loader2 size={15} className="animate-spin" /> : <Pencil size={15} />}
+            Save Changes
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

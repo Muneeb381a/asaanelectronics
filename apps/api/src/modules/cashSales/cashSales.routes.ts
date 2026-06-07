@@ -3,13 +3,14 @@ import { authenticate, requireSeller, requireOwner } from '../../middleware/auth
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
 import { createCashSaleSchema } from '@assaan/shared';
-import { listCashSales, createCashSale, deleteCashSale } from './cashSales.controller.js';
+import { listCashSales, createCashSale, updateCashSale, deleteCashSale } from './cashSales.controller.js';
 
 const router = Router();
 router.use(authenticate, requireSeller);
 
 router.get('/',       requirePermission('canMakeCashSales'), listCashSales);
 router.post('/',      requirePermission('canMakeCashSales'), validate(createCashSaleSchema), createCashSale);
+router.patch('/:id',  requireOwner, updateCashSale);
 router.delete('/:id', requireOwner, deleteCashSale);
 
 export default router;

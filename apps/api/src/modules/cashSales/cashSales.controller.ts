@@ -29,6 +29,18 @@ export async function createCashSale(req: AuthRequest, res: Response) {
   }).catch(console.error);
 }
 
+export async function updateCashSale(req: AuthRequest, res: Response) {
+  const result = await svc.update(req.params['id']!, req.user!.sellerId!, req.body);
+  success(res, result);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'CASH_SALE_UPDATED', entityType: 'CASH_SALE', entityId: result.id,
+    description: `Updated cash sale — PKR ${Number(result.amount).toLocaleString()}${result.customerName ? ` · ${result.customerName}` : ''}`,
+    meta: { amount: result.amount, method: result.method },
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
 export async function deleteCashSale(req: AuthRequest, res: Response) {
   const removed = await svc.remove(req.params['id']!, req.user!.sellerId!);
   success(res, { deleted: true });
