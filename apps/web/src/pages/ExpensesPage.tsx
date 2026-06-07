@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-  Receipt, Plus, Trash2, X, Loader2, ChevronLeft, ChevronRight,
+  Receipt, Plus, Trash2, Pencil, X, Loader2, ChevronLeft, ChevronRight,
   Home, Users, Zap, ShoppingCart, Wrench, Truck, MoreHorizontal,
 } from 'lucide-react';
 import { expensesApi, type ExpenseCategory, type Expense } from '../api/expenses.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import { useAuthStore } from '../store/auth.store.ts';
 
 // ── Category meta ──────────────────────────────────────────────────────────────
 
@@ -35,27 +36,30 @@ function monthBounds() {
   return { from, to };
 }
 
-// ── Add Expense Modal ──────────────────────────────────────────────────────────
+// ── Add / Edit Expense Modal ───────────────────────────────────────────────────
 
-function AddModal({ onClose }: { onClose: () => void }) {
+function AddModal({ onClose, expense }: { onClose: () => void; expense?: Expense }) {
   const qc = useQueryClient();
-  const [category, setCategory] = useState<ExpenseCategory>('RENT');
-  const [amount,   setAmount]   = useState('');
-  const [desc,     setDesc]     = useState('');
-  const [date,     setDate]     = useState(new Date().toISOString().slice(0, 10));
+  const isEdit = !!expense;
+  const [category, setCategory] = useState<ExpenseCategory>(expense?.category ?? 'RENT');
+  const [amount,   setAmount]   = useState(expense ? String(Number(expense.amount)) : '');
+  const [desc,     setDesc]     = useState(expense?.description ?? '');
+  const [date,     setDate]     = useState(expense ? expense.date.slice(0, 10) : new Date().toISOString().slice(0, 10));
 
   const { mutate, isPending } = useMutation({
     mutationFn: () => {
       const amt = Number(amount);
       if (!amt || amt <= 0) throw new Error('Enter a valid amount');
-      return expensesApi.create({ category, amount: amt, description: desc || undefined, date });
+      return isEdit
+        ? expensesApi.update(expense.id, { category, amount: amt, description: desc || undefined, date })
+        : expensesApi.create({ category, amount: amt, description: desc || undefined, date });
     },
     onSuccess: () => {
-      toast.success('Expense recorded');
+      toast.success(isEdit ? 'Expense updated' : 'Expense recorded');
       qc.invalidateQueries({ queryKey: ['expenses'] });
       onClose();
     },
-    onError: (e) => toast.error(getErrorMessage(e, 'Failed to record expense')),
+    onError: (e) => toast.error(getErrorMessage(e, isEdit ? 'Failed to update expense' : 'Failed to record expense')),
   });
 
   return (
@@ -63,7 +67,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-gray-900">Record Expense</h2>
+          <h2 className="text-base font-bold text-gray-900">{isEdit ? 'Edit Expense' : 'Record Expense'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
 
@@ -112,7 +116,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
 
         <button onClick={() => mutate()} disabled={!amount || isPending}
           className="w-full mt-5 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2">
-          {isPending ? <><Loader2 size={15} className="animate-spin" /> Saving…</> : 'Record Expense'}
+          {isPending ? <><Loader2 size={15} className="animate-spin" /> Saving…</> : isEdit ? 'Save Changes' : 'Record Expense'}
         </button>
       </div>
     </div>
@@ -163,7 +167,10 @@ function CategoryBreakdown({ expenses }: { expenses: Expense[] }) {
 
 export default function ExpensesPage() {
   const qc = useQueryClient();
-  const [showAdd, setShowAdd]   = useState(false);
+  const { user } = useAuthStore();
+  const isOwner  = user?.role === 'SELLER_OWNER';
+  const [showAdd,        setShowAdd]        = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [filterCat, setFilter]  = useState<ExpenseCategory | 'ALL'>('ALL');
   const bounds = monthBounds();
   const [from, setFrom] = useState(bounds.from);
@@ -312,12 +319,21 @@ export default function ExpensesPage() {
                         <p className="text-xs text-gray-400">{fmtDate(e.date)} · {m.label}</p>
                       </div>
                       <p className="text-sm font-bold text-red-600 shrink-0">{pkr(Number(e.amount))}</p>
-                      <button
-                        onClick={() => { if (confirm('Remove this expense?')) deleteMutation.mutate(e.id); }}
-                        disabled={deleteMutation.isPending}
-                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40 shrink-0">
-                        <Trash2 size={13} />
-                      </button>
+                      {isOwner && (
+                        <>
+                          <button
+                            onClick={() => setEditingExpense(e)}
+                            className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition shrink-0">
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => { if (confirm('Remove this expense?')) deleteMutation.mutate(e.id); }}
+                            disabled={deleteMutation.isPending}
+                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40 shrink-0">
+                            <Trash2 size={13} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -327,7 +343,8 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {showAdd && <AddModal onClose={() => setShowAdd(false)} />}
+      {showAdd          && <AddModal onClose={() => setShowAdd(false)} />}
+      {editingExpense   && <AddModal expense={editingExpense} onClose={() => setEditingExpense(null)} />}
     </div>
   );
 }

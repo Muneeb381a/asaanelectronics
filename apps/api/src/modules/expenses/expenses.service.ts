@@ -5,7 +5,8 @@ import { AppError } from '../../middleware/error.js';
 
 type Category = 'RENT' | 'SALARY' | 'UTILITY' | 'PURCHASE' | 'MAINTENANCE' | 'TRANSPORT' | 'OTHER';
 
-type CreateBody = { category: Category; amount: number; description?: string; date?: string };
+type CreateBody  = { category: Category; amount: number; description?: string; date?: string };
+type UpdateBody  = { category?: Category; amount?: number; description?: string; date?: string };
 
 export class ExpensesService {
   async list(sellerId: string, from?: string, to?: string) {
@@ -39,6 +40,36 @@ export class ExpensesService {
       });
 
       return expense;
+    });
+  }
+
+  async update(id: string, sellerId: string, body: UpdateBody) {
+    const existing = await db.query.expenses.findFirst({
+      where: and(eq(expenses.id, id), eq(expenses.sellerId, sellerId)),
+    });
+    if (!existing) throw new AppError('Expense not found', 404);
+
+    const date        = body.date ? new Date(body.date) : undefined;
+    const amount      = body.amount != null ? String(body.amount) : undefined;
+    const category    = body.category ?? existing.category;
+    const description = body.description ?? existing.description ?? undefined;
+
+    return db.transaction(async (tx) => {
+      const [updated] = await tx.update(expenses).set({
+        ...(body.category    && { category: body.category }),
+        ...(amount           && { amount }),
+        ...(body.description !== undefined && { description: body.description }),
+        ...(date             && { date }),
+      }).where(and(eq(expenses.id, id), eq(expenses.sellerId, sellerId))).returning();
+
+      await tx.update(ledgerEntries).set({
+        category:    category,
+        amount:      amount ?? existing.amount,
+        description: description ?? category,
+        ...(date && { date }),
+      }).where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'EXPENSE')));
+
+      return updated;
     });
   }
 

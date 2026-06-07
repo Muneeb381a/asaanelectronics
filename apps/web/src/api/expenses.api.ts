@@ -21,6 +21,9 @@ export const expensesApi = {
   create: (body: { category: ExpenseCategory; amount: number; description?: string; date?: string }) =>
     api.post<{ data: Expense }>('/expenses', body).then(unwrap<Expense>),
 
+  update: (id: string, body: { category?: ExpenseCategory; amount?: number; description?: string; date?: string }) =>
+    api.patch<{ data: Expense }>(`/expenses/${id}`, body).then(unwrap<Expense>),
+
   remove: (id: string) =>
     api.delete(`/expenses/${id}`),
 };

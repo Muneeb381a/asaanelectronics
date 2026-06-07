@@ -23,6 +23,18 @@ export async function createExpense(req: AuthRequest, res: Response) {
   }).catch(console.error);
 }
 
+export async function updateExpense(req: AuthRequest, res: Response) {
+  const result = await svc.update(req.params['id']!, req.user!.sellerId!, req.body);
+  success(res, result);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'EXPENSE_UPDATED', entityType: 'EXPENSE', entityId: result.id,
+    description: `Updated expense ${result.category} PKR ${Number(result.amount).toLocaleString()}`,
+    meta: { category: result.category, amount: result.amount },
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
 export async function deleteExpense(req: AuthRequest, res: Response) {
   const removed = await svc.remove(req.params['id']!, req.user!.sellerId!);
   success(res, { deleted: true });
