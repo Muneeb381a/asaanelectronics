@@ -68,6 +68,19 @@ export default function CashSalesPage() {
       void qc.invalidateQueries({ queryKey: ['products'] });
       void qc.invalidateQueries({ queryKey: ['products-picker'] });
       setLastSale(result);
+      printCashSaleReceipt({
+        shopName:      seller?.shopName ?? 'Receipt',
+        shopPhone:     seller?.phone,
+        customerName:  result.customerName,
+        customerPhone: result.customerPhone,
+        productName:   result.productName,
+        quantity:      result.quantity,
+        amount:        Number(result.amount),
+        method:        result.method,
+        imeiNumber:    result.imeiNumber,
+        note:          result.note,
+        soldAt:        result.createdAt,
+      });
     },
   });
 
