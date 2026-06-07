@@ -44,14 +44,22 @@ function BarChart({ data }: { data: Reports['monthlyCollections'] }) {
         return (
           <div key={d.month} className="flex-1 flex flex-col items-center gap-1 group relative">
             {d.total > 0 && (
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
-                {pkr(d.total)}
+              <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-medium px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 space-y-0.5">
+                <div>{pkr(d.total)}</div>
+                {d.cashSales > 0 && <div className="text-emerald-300">Cash: {pkr(d.cashSales)}</div>}
+                {d.installments > 0 && <div className="text-blue-300">Inst: {pkr(d.installments)}</div>}
               </div>
             )}
-            <div className="w-full flex-1 flex items-end">
+            <div className="w-full flex-1 flex flex-col items-stretch justify-end">
+              {d.cashSales > 0 && (
+                <div
+                  className="w-full bg-emerald-400 group-hover:bg-emerald-500 transition-all duration-500"
+                  style={{ height: `${Math.max((d.cashSales / max) * 100, 2)}%` }}
+                />
+              )}
               <div
                 className={`w-full rounded-t-md transition-all duration-500 ${isLast ? 'bg-blue-600' : 'bg-blue-100 group-hover:bg-blue-400'}`}
-                style={{ height: `${pct}%`, minHeight: d.total > 0 ? '4px' : '0' }}
+                style={{ height: `${Math.max((d.installments / max) * 100, d.installments > 0 ? 2 : 0)}%`, minHeight: d.total > 0 && d.cashSales === 0 ? '4px' : '0' }}
               />
             </div>
             <span className="text-[9px] text-gray-400 leading-none">{d.label}</span>
@@ -249,12 +257,12 @@ export default function ReportsPage() {
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-sm font-semibold text-gray-900">Monthly Collections</p>
-            <p className="text-xs text-gray-400 mt-0.5">Payments received per month (last 12 months)</p>
+            <p className="text-sm font-semibold text-gray-900">Monthly Revenue</p>
+            <p className="text-xs text-gray-400 mt-0.5">Installment payments + cash sales (last 12 months)</p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-3 h-3 bg-blue-100 rounded-sm inline-block" /> Previous
-            <span className="w-3 h-3 bg-blue-600 rounded-sm inline-block ml-2" /> Current
+          <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-600 rounded-sm inline-block" /> Installments</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-400 rounded-sm inline-block" /> Cash Sales</span>
           </div>
         </div>
         {monthlyCollections.every((m) => m.total === 0) ? (

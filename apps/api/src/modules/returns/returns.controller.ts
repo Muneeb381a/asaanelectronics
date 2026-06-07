@@ -13,7 +13,8 @@ export async function listReturns(req: AuthRequest, res: Response) {
   const limit      = Math.min(Math.max(1, Number(req.query['limit']) || 20), 100);
   const status     = req.query['status']     as string | undefined;
   const customerId = req.query['customerId'] as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, status, customerId));
+  const search     = req.query['search']     as string | undefined;
+  success(res, await svc.list(req.user!.sellerId!, page, limit, status, customerId, search));
 }
 
 export async function getReturn(req: AuthRequest, res: Response) {

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, products, returns } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -22,10 +22,11 @@ type ResolveBody = {
 };
 
 export class ReturnsService {
-  async list(sellerId: string, page: number, limit: number, status?: string, customerId?: string) {
+  async list(sellerId: string, page: number, limit: number, status?: string, customerId?: string, search?: string) {
     const conditions = [eq(returns.sellerId, sellerId)];
     if (status)     conditions.push(eq(returns.status, status as 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED'));
     if (customerId) conditions.push(eq(returns.customerId, customerId));
+    if (search)     conditions.push(or(ilike(customers.name, `%${search}%`), ilike(customers.phone, `%${search}%`), ilike(products.name, `%${search}%`))!);
     const where = and(...conditions);
 
     const [rows, [{ count }]] = await Promise.all([

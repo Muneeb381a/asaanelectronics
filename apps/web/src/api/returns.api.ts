@@ -45,7 +45,7 @@ export interface ResolveBody {
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const returnsApi = {
-  list: (params?: { page?: number; limit?: number; status?: string; customerId?: string }) =>
+  list: (params?: { page?: number; limit?: number; status?: string; customerId?: string; search?: string }) =>
     api.get<{ data: { data: Return[]; total: number; page: number; limit: number } }>('/returns', { params })
       .then(unwrap<{ data: Return[]; total: number; page: number; limit: number }>),
 

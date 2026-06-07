@@ -23,7 +23,7 @@ export interface Stats {
 }
 
 export interface Reports {
-  monthlyCollections: Array<{ month: string; label: string; total: number }>;
+  monthlyCollections: Array<{ month: string; label: string; total: number; installments: number; cashSales: number }>;
   collectionRate: { totalBilled: number; totalCollected: number; rate: number };
   agingBuckets: { current: number; days1_30: number; days31_60: number; days60plus: number };
   topDebtors: Array<{ name: string; phone: string; remaining: number; count: number }>;

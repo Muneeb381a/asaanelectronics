@@ -13,7 +13,7 @@ export class StatsService {
       ELSE ${installments.startDate} + (${installments.months} || ' months')::interval
     END)`;
 
-    const [monthlyRaw, collectionData, agingData, topDebtors, topProducts] = await Promise.all([
+    const [monthlyRaw, monthlyCashRaw, collectionData, agingData, topDebtors, topProducts] = await Promise.all([
       db
         .select({
           month: sql<string>`TO_CHAR(DATE_TRUNC('month', ${payments.paidOn}), 'YYYY-MM')`,
@@ -31,6 +31,19 @@ export class StatsService {
         ))
         .groupBy(sql`DATE_TRUNC('month', ${payments.paidOn})`)
         .orderBy(sql`DATE_TRUNC('month', ${payments.paidOn})`),
+
+      db
+        .select({
+          month: sql<string>`TO_CHAR(DATE_TRUNC('month', ${cashSales.createdAt}), 'YYYY-MM')`,
+          total: sum(cashSales.amount),
+        })
+        .from(cashSales)
+        .where(and(
+          eq(cashSales.sellerId, sellerId),
+          gte(cashSales.createdAt, twelveMonthsAgo),
+        ))
+        .groupBy(sql`DATE_TRUNC('month', ${cashSales.createdAt})`)
+        .orderBy(sql`DATE_TRUNC('month', ${cashSales.createdAt})`),
 
       db
         .select({ totalBilled: sum(installments.totalAmount), totalRemaining: sum(installments.remaining) })
@@ -74,13 +87,20 @@ export class StatsService {
         .limit(6),
     ]);
 
-    // Fill all 12 months (missing months = 0)
-    const monthlyMap = new Map(monthlyRaw.map((r) => [r.month, Number(r.total ?? 0)]));
+    // Fill all 12 months (missing months = 0); combine installment payments + cash sales
+    const instMap = new Map(monthlyRaw.map((r) => [r.month, Number(r.total ?? 0)]));
+    const cashMap = new Map(monthlyCashRaw.map((r) => [r.month, Number(r.total ?? 0)]));
     const monthlyCollections = Array.from({ length: 12 }, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const label = d.toLocaleDateString('en-PK', { month: 'short', year: '2-digit' });
-      return { month: key, label, total: monthlyMap.get(key) ?? 0 };
+      return {
+        month: key,
+        label,
+        total:       (instMap.get(key) ?? 0) + (cashMap.get(key) ?? 0),
+        installments: instMap.get(key) ?? 0,
+        cashSales:    cashMap.get(key) ?? 0,
+      };
     });
 
     const totalBilled = Number(collectionData[0]?.totalBilled ?? 0);

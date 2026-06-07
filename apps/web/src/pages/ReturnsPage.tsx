@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   RotateCcw, Plus, X, CheckCircle, XCircle, Clock, PackageCheck,
-  AlertTriangle, RefreshCw, ShieldCheck, Loader2,
+  AlertTriangle, RefreshCw, ShieldCheck, Loader2, Search,
 } from 'lucide-react';
 import { returnsApi, type Return, type ReturnType, type ReturnReason, type ReturnCondition, type ResolutionType } from '../api/returns.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -415,10 +415,11 @@ export default function ReturnsPage() {
   const [showCreate,  setShowCreate] = useState(false);
   const [resolving,   setResolving]  = useState<Return | null>(null);
   const [page,        setPage]       = useState(1);
+  const [search,      setSearch]     = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['returns', tab, page],
-    queryFn: () => returnsApi.list({ page, limit: 20, status: tab === 'ALL' ? undefined : tab }),
+    queryKey: ['returns', tab, page, search],
+    queryFn: () => returnsApi.list({ page, limit: 20, status: tab === 'ALL' ? undefined : tab, search: search || undefined }),
     staleTime: 30_000,
   });
 
@@ -450,19 +451,31 @@ export default function ReturnsPage() {
         </button>
       </div>
 
-      {/* Status tabs */}
-      <div className="flex items-center gap-1 mb-5 overflow-x-auto">
-        {STATUS_TABS.map((t) => (
-          <button key={t} onClick={() => { setTab(t); setPage(1); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-              tab === t ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'
-            }`}>
-            {t === 'ALL' ? 'All' : STATUS_CONFIG[t].label}
-            {t === 'PENDING' && pendingCount > 0 && tab !== 'PENDING' && (
-              <span className="ml-1.5 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full">{pendingCount}</span>
-            )}
-          </button>
-        ))}
+      {/* Status tabs + search */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {STATUS_TABS.map((t) => (
+            <button key={t} onClick={() => { setTab(t); setPage(1); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                tab === t ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'
+              }`}>
+              {t === 'ALL' ? 'All' : STATUS_CONFIG[t].label}
+              {t === 'PENDING' && pendingCount > 0 && tab !== 'PENDING' && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full">{pendingCount}</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="relative sm:ml-auto sm:w-56">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search customer / product…"
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition bg-white"
+          />
+        </div>
       </div>
 
       {/* List */}

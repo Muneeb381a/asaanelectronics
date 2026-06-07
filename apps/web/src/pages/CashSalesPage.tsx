@@ -36,6 +36,7 @@ export default function CashSalesPage() {
   const [selectedProd,   setSelectedProd]   = useState<Product | null>(null);
   const [form,           setForm]           = useState(initForm);
   const [listSearch,     setListSearch]     = useState('');
+  const [listPage,       setListPage]       = useState(1);
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null);
   const [lastSale,       setLastSale]       = useState<CashSale | null>(null);
 
@@ -47,8 +48,8 @@ export default function CashSalesPage() {
   });
 
   const { data: salesData, isLoading } = useQuery({
-    queryKey: ['cash-sales', listSearch],
-    queryFn: () => cashSalesApi.list({ search: listSearch || undefined, limit: 50 }),
+    queryKey: ['cash-sales', listSearch, listPage],
+    queryFn: () => cashSalesApi.list({ search: listSearch || undefined, limit: 20, page: listPage }),
     staleTime: 30_000,
   });
 
@@ -59,8 +60,10 @@ export default function CashSalesPage() {
     enabled: showModal,
   });
 
-  const sales    = salesData?.data    ?? [];
-  const products = productsData?.data ?? [];
+  const sales      = salesData?.data  ?? [];
+  const salesTotal = salesData?.total ?? 0;
+  const salesPages = Math.max(1, Math.ceil(salesTotal / 20));
+  const products   = productsData?.data ?? [];
 
   const createMutation = useMutation({
     mutationFn: cashSalesApi.create,
@@ -167,7 +170,7 @@ export default function CashSalesPage() {
         <input
           type="text"
           value={listSearch}
-          onChange={(e) => setListSearch(e.target.value)}
+          onChange={(e) => { setListSearch(e.target.value); setListPage(1); }}
           placeholder="Search by product or customer..."
           className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition"
         />
@@ -261,6 +264,25 @@ export default function CashSalesPage() {
               </tbody>
             </table>
           </div>
+          {salesPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+              <button
+                onClick={() => setListPage((p) => Math.max(1, p - 1))}
+                disabled={listPage === 1}
+                className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                Prev
+              </button>
+              <span className="text-xs text-gray-500">{listPage} / {salesPages} · {salesTotal} total</span>
+              <button
+                onClick={() => setListPage((p) => Math.min(salesPages, p + 1))}
+                disabled={listPage === salesPages}
+                className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -6,8 +6,8 @@ import { listReturns, getReturn, createReturn, resolveReturn } from './returns.c
 const router = Router();
 router.use(authenticate, requireSeller);
 
-router.get('/',               listReturns);
-router.get('/:id',            getReturn);
+router.get('/',               requirePermission('canManageReturns'), listReturns);
+router.get('/:id',            requirePermission('canManageReturns'), getReturn);
 router.post('/',              requirePermission('canManageReturns'), createReturn);
 router.patch('/:id/resolve',  requireOwner, resolveReturn);
 

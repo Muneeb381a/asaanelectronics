@@ -19,6 +19,8 @@ const allNavItems = [
   { to: '/customers',    label: 'Customers',    icon: Users,           end: undefined as boolean | undefined, perm: ['canAddCustomer', 'canAddInstallment', 'canRecordPayment'] as string | string[] },
   { to: '/installments', label: 'Installments', icon: CreditCard,      end: undefined as boolean | undefined, perm: ['canAddInstallment', 'canRecordPayment'] as string | string[] },
   { to: '/cash-sales',  label: 'Cash Sales',  icon: ShoppingCart,    end: undefined as boolean | undefined, perm: 'canMakeCashSales' as string | string[] },
+  { to: '/expenses',    label: 'Expenses',    icon: Receipt,         end: undefined as boolean | undefined, perm: 'canRecordExpense' as string | string[] },
+  { to: '/returns',     label: 'Returns',     icon: RotateCcw,       end: undefined as boolean | undefined, perm: 'canManageReturns' as string | string[] },
 ];
 
 export default function DashboardLayout() {
@@ -104,8 +106,6 @@ export default function DashboardLayout() {
     ),
     ...(isOwner
       ? [
-          { to: '/expenses',  label: 'Expenses',   icon: Receipt,     end: undefined },
-          { to: '/returns',   label: 'Returns',    icon: RotateCcw,   end: undefined },
           { to: '/recovery',        label: 'Recovery',   icon: PhoneCall,   end: undefined },
           { to: '/recovery-agents', label: 'Agents',     icon: TrendingUp,  end: undefined },
           { to: '/ledger',    label: 'Accounting', icon: BookOpen,    end: undefined },

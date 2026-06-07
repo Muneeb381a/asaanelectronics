@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -194,14 +195,15 @@ function PermissionToggle({ member, permKey }: { member: StaffMember; permKey: k
     },
 
     onSuccess: (updated) => {
-      // Sync cache with server response — no refetch needed
       qc.setQueryData<StaffMember[]>(['staff'], (old) =>
         old?.map((m) => (m.id === updated.id ? updated : m)) ?? []
       );
+      toast.success('Permission updated');
     },
 
     onError: (_, __, ctx) => {
       if (ctx?.prev) qc.setQueryData(['staff'], ctx.prev);
+      toast.error('Failed to update permission');
     },
   });
 
