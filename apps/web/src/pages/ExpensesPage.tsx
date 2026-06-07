@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-  Receipt, Plus, Trash2, Pencil, X, Loader2, ChevronLeft, ChevronRight,
+  Receipt, Plus, Trash2, Pencil, X, Loader2, ChevronLeft, ChevronRight, Search,
   Home, Users, Zap, ShoppingCart, Wrench, Truck, MoreHorizontal,
 } from 'lucide-react';
 import { expensesApi, type ExpenseCategory, type Expense } from '../api/expenses.api.ts';
@@ -172,6 +172,7 @@ export default function ExpensesPage() {
   const [showAdd,        setShowAdd]        = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [filterCat, setFilter]  = useState<ExpenseCategory | 'ALL'>('ALL');
+  const [search,    setSearch]  = useState('');
   const bounds = monthBounds();
   const [from, setFrom] = useState(bounds.from);
   const [to,   setTo]   = useState(bounds.to);
@@ -187,7 +188,13 @@ export default function ExpensesPage() {
     onError:    () => toast.error('Failed to remove expense'),
   });
 
-  const filtered = filterCat === 'ALL' ? expenses : expenses.filter((e) => e.category === filterCat);
+  const byCat    = filterCat === 'ALL' ? expenses : expenses.filter((e) => e.category === filterCat);
+  const filtered = search.trim()
+    ? byCat.filter((e) =>
+        (e.description ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        CAT[e.category].label.toLowerCase().includes(search.toLowerCase())
+      )
+    : byCat;
   const total    = filtered.reduce((s, e) => s + Number(e.amount), 0);
 
   return (
@@ -266,6 +273,18 @@ export default function ExpensesPage() {
 
         {/* Right: list */}
         <div className="md:col-span-2">
+          {/* Search */}
+          <div className="relative mb-3">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by description or category…"
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white transition"
+            />
+          </div>
+
           {/* Category filter pills */}
           <div className="flex flex-wrap gap-1.5 mb-3">
             <button onClick={() => setFilter('ALL')}

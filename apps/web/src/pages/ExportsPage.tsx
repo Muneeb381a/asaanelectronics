@@ -1,16 +1,31 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart } from 'lucide-react';
+import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt } from 'lucide-react';
 import { installmentsApi } from '../api/installments.api.ts';
 import { paymentsApi } from '../api/payments.api.ts';
 import { cashSalesApi } from '../api/cashSales.api.ts';
+import { returnsApi } from '../api/returns.api.ts';
+import { expensesApi } from '../api/expenses.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { printReport } from '../utils/exportPdf.ts';
 
-type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales';
+type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses';
 
 const METHOD_LABELS: Record<string, string> = {
   CASH: 'Cash', BANK: 'Bank', JAZZCASH: 'JazzCash', EASYPAISA: 'EasyPaisa', OTHER: 'Other',
+};
+
+const CAT_LABELS: Record<string, string> = {
+  RENT: 'Rent', SALARY: 'Salary', UTILITY: 'Utility', PURCHASE: 'Purchase',
+  MAINTENANCE: 'Maintenance', TRANSPORT: 'Transport', OTHER: 'Other',
+};
+
+const RETURN_TYPE_LABELS: Record<string, string> = {
+  RETURN: 'Return', EXCHANGE: 'Exchange', WARRANTY_REPLACEMENT: 'Warranty',
+};
+
+const RETURN_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected', COMPLETED: 'Completed',
 };
 
 function pkr(n: number | string) {
@@ -40,6 +55,8 @@ function startOfMonth() {
 export default function ExportsPage() {
   const [tab, setTab] = useState<Tab>('overdue');
   const [cashRange, setCashRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
+  const [expenseRange, setExpenseRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
+  const [returnsStatus, setReturnsStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED'>('ALL');
 
   const { data: seller } = useQuery({
     queryKey: ['seller-me'],
@@ -54,6 +71,11 @@ export default function ExportsPage() {
   const cashFrom = cashRange === 'today' ? today
     : cashRange === 'week' ? startOfWeek()
     : cashRange === 'month' ? startOfMonth()
+    : undefined;
+
+  const expenseFrom = expenseRange === 'today' ? today
+    : expenseRange === 'week' ? startOfWeek()
+    : expenseRange === 'month' ? startOfMonth()
     : undefined;
 
   const overdueQ = useQuery({
@@ -84,10 +106,26 @@ export default function ExportsPage() {
     enabled: tab === 'cashsales',
   });
 
+  const returnsQ = useQuery({
+    queryKey: ['export-returns', returnsStatus],
+    queryFn: () => returnsApi.list({ limit: 5000, status: returnsStatus === 'ALL' ? undefined : returnsStatus }),
+    staleTime: 60_000,
+    enabled: tab === 'returns',
+  });
+
+  const expensesQ = useQuery({
+    queryKey: ['export-expenses', expenseRange],
+    queryFn: () => expensesApi.list(expenseFrom, expenseRange === 'all' ? undefined : today),
+    staleTime: 60_000,
+    enabled: tab === 'expenses',
+  });
+
   const overdue   = (overdueQ.data?.data   ?? []).filter((i) => i.isOverdue);
   const defaulters = defaultersQ.data?.data ?? [];
   const todayPay  = Array.isArray(todayPayQ.data) ? todayPayQ.data : [];
   const cashSales = cashQ.data?.data ?? [];
+  const returnsList = returnsQ.data?.data ?? [];
+  const expensesList = expensesQ.data ?? [];
 
   function downloadOverdue() {
     const totalRem = overdue.reduce((s, i) => s + Number(i.remaining), 0);
@@ -164,6 +202,57 @@ export default function ExportsPage() {
     });
   }
 
+  function downloadReturns() {
+    printReport({
+      title: `Returns & Exchanges${returnsStatus !== 'ALL' ? ` — ${RETURN_STATUS_LABELS[returnsStatus]}` : ''}`,
+      subtitle: `Generated ${fmtDate(today)}`,
+      shopName,
+      shopPhone: seller?.phone,
+      columns: ['#', 'Customer', 'Phone', 'Product', 'Type', 'Reason', 'Status', 'Refund (PKR)', 'Date'],
+      rows: returnsList.map((r, idx) => [
+        idx + 1,
+        r.customerName,
+        r.customerPhone,
+        r.productName,
+        RETURN_TYPE_LABELS[r.type] ?? r.type,
+        r.reason.replace(/_/g, ' '),
+        RETURN_STATUS_LABELS[r.status] ?? r.status,
+        r.refundAmount ? Number(r.refundAmount).toLocaleString('en-PK', { maximumFractionDigits: 0 }) : '-',
+        fmtDate(r.createdAt),
+      ]),
+      summary: [
+        `<strong>Total records:</strong> ${returnsList.length}`,
+        `<strong>Total refunds issued:</strong> ${pkr(returnsList.reduce((s, r) => s + Number(r.refundAmount ?? 0), 0))}`,
+      ],
+    });
+  }
+
+  function downloadExpenses() {
+    const total = expensesList.reduce((s, e) => s + Number(e.amount), 0);
+    const rangeLabel = expenseRange === 'today' ? 'Today'
+      : expenseRange === 'week' ? 'This Week'
+      : expenseRange === 'month' ? 'This Month'
+      : 'All Time';
+    printReport({
+      title: `Expenses — ${rangeLabel}`,
+      subtitle: `Generated ${fmtDate(today)}`,
+      shopName,
+      shopPhone: seller?.phone,
+      columns: ['#', 'Date', 'Category', 'Description', 'Amount (PKR)'],
+      rows: expensesList.map((e, idx) => [
+        idx + 1,
+        fmtDate(e.date),
+        CAT_LABELS[e.category] ?? e.category,
+        e.description ?? '-',
+        Number(e.amount).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+      ]),
+      summary: [
+        `<strong>Total expenses:</strong> ${expensesList.length}`,
+        `<strong>Total amount:</strong> ${pkr(total)}`,
+      ],
+    });
+  }
+
   function downloadCashSales() {
     const total = cashSales.reduce((s, c) => s + Number(c.amount), 0);
     const rangeLabel = cashRange === 'today' ? 'Today'
@@ -199,19 +288,25 @@ export default function ExportsPage() {
     { id: 'defaulters', label: 'Defaulters',        icon: ShieldX },
     { id: 'today',      label: "Today's Payments",  icon: CalendarCheck },
     { id: 'cashsales',  label: 'Cash Sales',         icon: ShoppingCart },
+    { id: 'returns',    label: 'Returns',            icon: Undo2 },
+    { id: 'expenses',   label: 'Expenses',           icon: Receipt },
   ];
 
   const isLoading =
     (tab === 'overdue'    && overdueQ.isFetching) ||
     (tab === 'defaulters' && defaultersQ.isFetching) ||
     (tab === 'today'      && todayPayQ.isFetching) ||
-    (tab === 'cashsales'  && cashQ.isFetching);
+    (tab === 'cashsales'  && cashQ.isFetching) ||
+    (tab === 'returns'    && returnsQ.isFetching) ||
+    (tab === 'expenses'   && expensesQ.isFetching);
 
   function refetchCurrent() {
     if (tab === 'overdue')    void overdueQ.refetch();
     if (tab === 'defaulters') void defaultersQ.refetch();
     if (tab === 'today')      void todayPayQ.refetch();
     if (tab === 'cashsales')  void cashQ.refetch();
+    if (tab === 'returns')    void returnsQ.refetch();
+    if (tab === 'expenses')   void expensesQ.refetch();
   }
 
   return (
@@ -354,6 +449,118 @@ export default function ExportsPage() {
                   <Td right green>{pkr(Number(p.amount))}</Td>
                   <Td>{METHOD_LABELS[p.method] ?? p.method}</Td>
                   <Td>{p.collectorName ?? '-'}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ReportSection>
+      )}
+
+      {/* Returns tab */}
+      {tab === 'returns' && (
+        <ReportSection
+          title="Returns & Exchanges"
+          description="Customer returns, exchanges, and warranty replacements"
+          count={returnsList.length}
+          totalLabel="Total refunds"
+          total={returnsList.reduce((s, r) => s + Number(r.refundAmount ?? 0), 0)}
+          isLoading={returnsQ.isLoading}
+          isEmpty={returnsList.length === 0}
+          onDownload={downloadReturns}
+          headerExtra={
+            <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white text-xs overflow-hidden">
+              {(['ALL', 'PENDING', 'APPROVED', 'COMPLETED', 'REJECTED'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setReturnsStatus(s)}
+                  className={`px-2.5 py-1.5 transition-colors ${
+                    returnsStatus === s ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {s === 'ALL' ? 'All' : RETURN_STATUS_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <Th>#</Th><Th>Customer</Th><Th>Phone</Th><Th>Product</Th>
+                <Th>Type</Th><Th>Reason</Th><Th>Status</Th><Th right>Refund</Th><Th>Date</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {returnsList.slice(0, 50).map((r, idx) => (
+                <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <Td>{idx + 1}</Td>
+                  <Td bold>{r.customerName}</Td>
+                  <Td>{r.customerPhone}</Td>
+                  <Td>{r.productName}</Td>
+                  <Td>{RETURN_TYPE_LABELS[r.type] ?? r.type}</Td>
+                  <Td>{r.reason.replace(/_/g, ' ')}</Td>
+                  <Td>
+                    <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${
+                      r.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                      r.status === 'APPROVED'  ? 'bg-blue-100 text-blue-700' :
+                      r.status === 'REJECTED'  ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {RETURN_STATUS_LABELS[r.status] ?? r.status}
+                    </span>
+                  </Td>
+                  <Td right green={!!r.refundAmount}>
+                    {r.refundAmount ? pkr(Number(r.refundAmount)) : '-'}
+                  </Td>
+                  <Td>{fmtDate(r.createdAt)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ReportSection>
+      )}
+
+      {/* Expenses tab */}
+      {tab === 'expenses' && (
+        <ReportSection
+          title="Expenses"
+          description="Shop expenses by category"
+          count={expensesList.length}
+          totalLabel="Total spent"
+          total={expensesList.reduce((s, e) => s + Number(e.amount), 0)}
+          isLoading={expensesQ.isLoading}
+          isEmpty={expensesList.length === 0}
+          onDownload={downloadExpenses}
+          headerExtra={
+            <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white text-xs overflow-hidden">
+              {(['today', 'week', 'month', 'all'] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setExpenseRange(r)}
+                  className={`px-3 py-1.5 transition-colors ${
+                    expenseRange === r ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {r === 'today' ? 'Today' : r === 'week' ? 'Week' : r === 'month' ? 'Month' : 'All'}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <Th>#</Th><Th>Date</Th><Th>Category</Th><Th>Description</Th><Th right>Amount</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {expensesList.slice(0, 50).map((e, idx) => (
+                <tr key={e.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <Td>{idx + 1}</Td>
+                  <Td>{fmtDate(e.date)}</Td>
+                  <Td bold>{CAT_LABELS[e.category] ?? e.category}</Td>
+                  <Td>{e.description ?? '-'}</Td>
+                  <Td right red>{pkr(Number(e.amount))}</Td>
                 </tr>
               ))}
             </tbody>

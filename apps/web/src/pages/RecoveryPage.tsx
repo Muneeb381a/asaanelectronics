@@ -318,12 +318,36 @@ export default function RecoveryPage() {
   const currentList  = sortList(filtered.filter((i) => !i.isOverdue), sortBy);
   const areaGroups   = groupByArea(sortList(filtered, sortBy));
 
+  const totalOverdueRemaining = overdueList.reduce((s, i) => s + Number(i.remaining), 0);
+  const totalActiveRemaining  = currentList.reduce((s, i) => s + Number(i.remaining), 0);
+
   return (
     <div className="h-full flex flex-col">
       {/* Page header */}
       <div className="px-4 py-4 sm:px-8 sm:py-6 border-b border-gray-100 bg-white">
         <h1 className="text-xl font-bold text-gray-900">Recovery Management</h1>
         <p className="text-sm text-gray-500 mt-0.5">Track follow-up actions on active installments</p>
+
+        {/* Stats strip */}
+        {!isLoading && installments.length > 0 && (
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+              <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">Overdue</p>
+              <p className="text-lg font-extrabold text-red-700 leading-tight">{overdueList.length}</p>
+              <p className="text-[11px] text-red-400 mt-0.5 truncate">{pkr(totalOverdueRemaining)} remaining</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
+              <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">On Track</p>
+              <p className="text-lg font-extrabold text-blue-700 leading-tight">{currentList.length}</p>
+              <p className="text-[11px] text-blue-400 mt-0.5 truncate">{pkr(totalActiveRemaining)} remaining</p>
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Active</p>
+              <p className="text-lg font-extrabold text-gray-800 leading-tight">{installments.length}</p>
+              <p className="text-[11px] text-gray-400 mt-0.5 truncate">{pkr(totalOverdueRemaining + totalActiveRemaining)} remaining</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 overflow-hidden">
