@@ -28,6 +28,23 @@ export interface BillData {
   paymentAccounts?: BillPaymentAccount[];
 }
 
+export interface CashSaleBillData {
+  shop: { shopName: string; phone: string; address?: string | null };
+  customer: { name?: string | null; phone?: string | null };
+  product: string;
+  quantity: number;
+  amount: string | number;
+  method: string;
+  imeiNumber?: string | null;
+  note?: string | null;
+  soldAt: string;
+  saleId: string;
+}
+
+const METHOD_LABELS: Record<string, string> = {
+  CASH: 'Cash', BANK: 'Bank Transfer', JAZZCASH: 'JazzCash', EASYPAISA: 'EasyPaisa', OTHER: 'Other',
+};
+
 function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
@@ -294,5 +311,131 @@ export async function openBill(data: BillData) {
   const w = window.open('', '_blank', 'width=840,height=980');
   if (!w) return;
   w.document.write(html);
+  w.document.close();
+}
+
+export async function openCashSaleBill(data: CashSaleBillData) {
+  const invoiceNo = `CS-${data.saleId.slice(0, 6).toUpperCase()}`;
+  const saleDate  = new Date(data.soldAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+  const method    = METHOD_LABELS[data.method] ?? data.method;
+
+  const qrPayload = [
+    `SALE:${invoiceNo}`,
+    `SHOP:${data.shop.shopName}`,
+    `CUST:${data.customer.name ?? 'Walk-in'}`,
+    `PROD:${data.product}`,
+    `AMT:${Number(data.amount).toFixed(0)}`,
+    `MTH:${data.method}`,
+    ...(data.imeiNumber ? [`IMEI:${data.imeiNumber}`] : []),
+  ].join('\n');
+
+  const qrDataUrl = await QRCode.toDataURL(qrPayload, {
+    errorCorrectionLevel: 'M', margin: 1, width: 100,
+    color: { dark: '#0f172a', light: '#ffffff' },
+  });
+
+  const css = `
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;display:flex;justify-content:center}
+    .inv{background:#fff;width:680px;padding:13px 16px;font-size:10.5px;color:#374151;border:1px solid #e2e8f0}
+    .hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:4px 4px 0 0;margin:-13px -16px 9px}
+    .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;overflow:hidden}
+    .il{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:1px}
+    .iv{display:block;font-size:10.5px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .is{display:block;font-size:9px;color:#64748b}
+    .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;text-align:center}
+    .ac.hl{background:#1d4ed8;border-color:#1d4ed8}
+    .ac.gn{background:#d1fae5;border-color:#6ee7b7}
+    .al{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8;margin-bottom:1px}
+    .ac.hl .al{color:rgba(255,255,255,.65)}
+    .ac.gn .al{color:#065f46}
+    .av{display:block;font-size:11.5px;font-weight:800;color:#0f172a}
+    .ac.hl .av{color:#fff}
+    .ac.gn .av{color:#065f46;font-size:13px}
+    @media print{
+      @page{size:A5 landscape;margin:5mm 7mm}
+      body{background:#fff;padding:0}
+      .inv{border:none;width:100%}
+    }
+  `;
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<title>${invoiceNo}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+<style>${css}</style>
+</head>
+<body>
+<div class="inv">
+  <div class="hdr">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:14px;font-weight:900;color:#fff;line-height:1">${data.shop.shopName}</div>
+      <div style="font-size:9.5px;color:#93c5fd;margin-top:2px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
+      <span style="font-size:9px;font-weight:700;background:#d1fae5;color:#065f46;padding:1px 7px;border-radius:20px;margin-top:4px;display:inline-block">Cash Sale · نقد فروخت</span>
+    </div>
+    <div style="text-align:right;flex-shrink:0;margin:0 10px">
+      <div style="font-size:13px;font-weight:900;color:#60a5fa">RECEIPT <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px">رسید</span></div>
+      <div style="font-size:11px;font-weight:700;color:#fff;margin-top:1px">${invoiceNo}</div>
+      <div style="font-size:9px;color:#94a3b8;margin-top:1px">${saleDate}</div>
+    </div>
+    <div style="flex-shrink:0">
+      <img src="${qrDataUrl}" width="58" height="58" style="border:1px solid rgba(255,255,255,.2);border-radius:4px;display:block" alt="QR"/>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+    <div class="ic">
+      <span class="il">Customer · گاہک</span>
+      <span class="iv">${data.customer.name ?? 'Walk-in Customer'}</span>
+      ${data.customer.phone ? `<span class="is">${data.customer.phone}</span>` : ''}
+    </div>
+    <div class="ic">
+      <span class="il">Product · مصنوعہ</span>
+      <span class="iv">${data.product}</span>
+      ${data.imeiNumber ? `<span class="is" style="font-family:monospace;font-size:9px">IMEI: ${data.imeiNumber}</span>` : ''}
+      ${data.quantity > 1 ? `<span class="is">Qty · تعداد: ${data.quantity}</span>` : ''}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px;margin-bottom:6px">
+    <div class="ac hl">
+      <span class="al">Amount Paid · ادا کی رقم</span>
+      <span class="av">${pkr(data.amount)}</span>
+    </div>
+    <div class="ac">
+      <span class="al">Method · طریقہ</span>
+      <span class="av" style="font-size:10px">${method}</span>
+    </div>
+    <div class="ac gn">
+      <span class="al">Status · حیثیت</span>
+      <span class="av">✓ PAID</span>
+    </div>
+  </div>
+
+  ${data.note ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 8px;margin-bottom:6px;font-size:9.5px;color:#374151"><strong>Note:</strong> ${data.note}</div>` : ''}
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px">
+    <div style="border-top:1px solid #94a3b8;padding-top:4px;font-size:9px;color:#94a3b8;text-align:center">
+      Seller Signature &amp; Stamp · <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px">دستخط و مہر بائع</span>
+    </div>
+    <div style="border-top:1px solid #94a3b8;padding-top:4px;font-size:9px;color:#94a3b8;text-align:center">
+      Customer Signature · <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px">دستخط گاہک</span>
+    </div>
+  </div>
+
+  <div style="margin-top:6px;padding-top:5px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:9px;color:#94a3b8">${data.shop.shopName} · ${data.shop.phone}</div>
+    <div style="font-size:9px;color:#94a3b8">Ref: ${data.saleId.slice(0, 8).toUpperCase()} · ${saleDate}</div>
+  </div>
+</div>
+<script>window.onload=()=>window.print();</script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank', 'width=840,height=700');
+  if (!w) return;
+  w.document.write(htmlContent);
   w.document.close();
 }

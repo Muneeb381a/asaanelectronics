@@ -10,8 +10,8 @@ import { sellersApi } from '../../api/sellers.api.ts';
 import { api } from '../../api/client.ts';
 import { RowSkeleton } from '../../components/ui/Skeleton.tsx';
 import { getErrorMessage } from '../../utils/error.ts';
+import { openBill, type BillData } from '../../utils/bill.ts';
 import {
-  printInstallmentReceipt,
   installmentWhatsappUrl,
   type InstallmentReceiptData,
 } from '../../utils/receipt.ts';
@@ -41,6 +41,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [uploading, setUploading] = useState(false);
   const [tab, setTab] = useState<'pay' | 'history'>('pay');
   const [receiptData, setReceiptData] = useState<InstallmentReceiptData | null>(null);
+  const [billPayload, setBillPayload] = useState<BillData | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: seller } = useQuery({
@@ -110,7 +111,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         ? totalInstallments
         : Math.floor(paidAmountAfter / monthly + 0.001);
 
-      const receiptPayload = {
+      const receiptPayload: InstallmentReceiptData = {
         shopName:          seller?.shopName ?? 'Receipt',
         shopPhone:         seller?.phone,
         customerName:      freshInst.customerName,
@@ -130,8 +131,29 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         currentMonth,
       };
 
+      const bd: BillData = {
+        shop:             { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
+        customer:         { name: freshInst.customerName, phone: freshInst.customerPhone, area: freshInst.customerArea },
+        product:          freshInst.productName,
+        totalAmount:      freshInst.totalAmount,
+        downPayment:      freshInst.downPayment,
+        monthly:          freshInst.monthly,
+        months:           freshInst.months,
+        remaining:        data.remaining,
+        status:           data.completed ? 'COMPLETED' : freshInst.status,
+        startDate:        freshInst.startDate,
+        installmentId:    freshInst.id,
+        invoiceNumber:    freshInst.invoiceNumber,
+        imeiNumber:       freshInst.imeiNumber,
+        cashPrice:        freshInst.cashPrice,
+        profitMarkup:     freshInst.profitMarkup,
+        murabahaMode:     seller?.murabahaMode,
+        paymentFrequency: freshInst.paymentFrequency,
+      };
+
       setReceiptData(receiptPayload);
-      printInstallmentReceipt(receiptPayload);
+      setBillPayload(bd);
+      void openBill(bd);
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Payment failed')),
   });
@@ -250,7 +272,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
             <div className="flex gap-3 w-full">
               <button
-                onClick={() => printInstallmentReceipt(receiptData)}
+                onClick={() => { if (billPayload) void openBill(billPayload); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
               >
                 <Printer size={15} /> Print

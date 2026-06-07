@@ -7,7 +7,8 @@ import { cashSalesApi, type CashSale, type PaymentMethod } from '../api/cashSale
 import { productsApi, type Product } from '../api/products.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
-import { printCashSaleReceipt, cashSaleWhatsappUrl } from '../utils/receipt.ts';
+import { openCashSaleBill } from '../utils/bill.ts';
+import { cashSaleWhatsappUrl } from '../utils/receipt.ts';
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 const METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -68,18 +69,17 @@ export default function CashSalesPage() {
       void qc.invalidateQueries({ queryKey: ['products'] });
       void qc.invalidateQueries({ queryKey: ['products-picker'] });
       setLastSale(result);
-      printCashSaleReceipt({
-        shopName:      seller?.shopName ?? 'Receipt',
-        shopPhone:     seller?.phone,
-        customerName:  result.customerName,
-        customerPhone: result.customerPhone,
-        productName:   result.productName,
-        quantity:      result.quantity,
-        amount:        Number(result.amount),
-        method:        result.method,
-        imeiNumber:    result.imeiNumber,
-        note:          result.note,
-        soldAt:        result.createdAt,
+      void openCashSaleBill({
+        shop:     { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
+        customer: { name: result.customerName, phone: result.customerPhone },
+        product:  result.productName,
+        quantity: result.quantity,
+        amount:   result.amount,
+        method:   result.method,
+        imeiNumber: result.imeiNumber,
+        note:     result.note,
+        soldAt:   result.createdAt,
+        saleId:   result.id,
       });
     },
   });
@@ -294,18 +294,17 @@ export default function CashSalesPage() {
                 <div className="flex gap-3 w-full">
                   <button
                     type="button"
-                    onClick={() => printCashSaleReceipt({
-                      shopName:      seller?.shopName ?? 'Receipt',
-                      shopPhone:     seller?.phone,
-                      customerName:  lastSale.customerName,
-                      customerPhone: lastSale.customerPhone,
-                      productName:   lastSale.productName,
-                      quantity:      lastSale.quantity,
-                      amount:        Number(lastSale.amount),
-                      method:        lastSale.method,
-                      imeiNumber:    lastSale.imeiNumber,
-                      note:          lastSale.note,
-                      soldAt:        lastSale.createdAt,
+                    onClick={() => void openCashSaleBill({
+                      shop:     { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
+                      customer: { name: lastSale.customerName, phone: lastSale.customerPhone },
+                      product:  lastSale.productName,
+                      quantity: lastSale.quantity,
+                      amount:   lastSale.amount,
+                      method:   lastSale.method,
+                      imeiNumber: lastSale.imeiNumber,
+                      note:     lastSale.note,
+                      soldAt:   lastSale.createdAt,
+                      saleId:   lastSale.id,
                     })}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
                   >
