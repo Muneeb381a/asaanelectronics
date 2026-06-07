@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ShoppingCart, Plus, Loader2, Search, CheckCircle2, X, Trash2,
+  ShoppingCart, Plus, Loader2, Search, CheckCircle2, X, Trash2, Printer, MessageCircle,
 } from 'lucide-react';
-import { cashSalesApi, type PaymentMethod } from '../api/cashSales.api.ts';
+import { cashSalesApi, type CashSale, type PaymentMethod } from '../api/cashSales.api.ts';
 import { productsApi, type Product } from '../api/products.api.ts';
+import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
+import { printCashSaleReceipt, cashSaleWhatsappUrl } from '../utils/receipt.ts';
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 const METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -34,6 +36,14 @@ export default function CashSalesPage() {
   const [form,           setForm]           = useState(initForm);
   const [listSearch,     setListSearch]     = useState('');
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null);
+  const [lastSale,       setLastSale]       = useState<CashSale | null>(null);
+
+  const { data: seller } = useQuery({
+    queryKey: ['seller-me'],
+    queryFn: sellersApi.getMe,
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
 
   const { data: salesData, isLoading } = useQuery({
     queryKey: ['cash-sales', listSearch],
@@ -53,11 +63,11 @@ export default function CashSalesPage() {
 
   const createMutation = useMutation({
     mutationFn: cashSalesApi.create,
-    onSuccess: () => {
+    onSuccess: (result) => {
       void qc.invalidateQueries({ queryKey: ['cash-sales'] });
       void qc.invalidateQueries({ queryKey: ['products'] });
       void qc.invalidateQueries({ queryKey: ['products-picker'] });
-      closeModal();
+      setLastSale(result);
     },
   });
 
@@ -76,6 +86,7 @@ export default function CashSalesPage() {
     setSelectedProd(null);
     setProductSearch('');
     setForm(initForm());
+    setLastSale(null);
   }
 
   function selectProduct(p: Product) {
@@ -252,8 +263,74 @@ export default function CashSalesPage() {
               </button>
             </div>
 
+            {/* Receipt screen — shown after successful sale */}
+            {lastSale && (
+              <div className="flex-1 overflow-y-auto px-5 py-6 flex flex-col items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle2 size={24} className="text-emerald-600" />
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-gray-900 text-base">Sale Recorded!</p>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {lastSale.productName} · PKR {Number(lastSale.amount).toLocaleString()}
+                  </p>
+                  {lastSale.customerName && (
+                    <p className="text-xs text-gray-400 mt-0.5">{lastSale.customerName}</p>
+                  )}
+                </div>
+                <div className="flex gap-3 w-full">
+                  <button
+                    type="button"
+                    onClick={() => printCashSaleReceipt({
+                      shopName:      seller?.shopName ?? 'Receipt',
+                      shopPhone:     seller?.phone,
+                      customerName:  lastSale.customerName,
+                      customerPhone: lastSale.customerPhone,
+                      productName:   lastSale.productName,
+                      quantity:      lastSale.quantity,
+                      amount:        Number(lastSale.amount),
+                      method:        lastSale.method,
+                      imeiNumber:    lastSale.imeiNumber,
+                      note:          lastSale.note,
+                      soldAt:        lastSale.createdAt,
+                    })}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <Printer size={15} /> Print
+                  </button>
+                  <a
+                    href={cashSaleWhatsappUrl({
+                      shopName:      seller?.shopName ?? 'Receipt',
+                      shopPhone:     seller?.phone,
+                      customerName:  lastSale.customerName,
+                      customerPhone: lastSale.customerPhone,
+                      productName:   lastSale.productName,
+                      quantity:      lastSale.quantity,
+                      amount:        Number(lastSale.amount),
+                      method:        lastSale.method,
+                      imeiNumber:    lastSale.imeiNumber,
+                      note:          lastSale.note,
+                      soldAt:        lastSale.createdAt,
+                    })}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-sm font-semibold transition"
+                  >
+                    <MessageCircle size={15} /> WhatsApp
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="w-full py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
             {/* Scrollable form */}
-            <form id="cash-sale-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {!lastSale && <form id="cash-sale-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {/* Product selector */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -424,10 +501,10 @@ export default function CashSalesPage() {
                   </div>
                 </>
               )}
-            </form>
+            </form>}
 
-            {/* Footer */}
-            <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
+            {/* Footer — hidden when receipt is showing */}
+            {!lastSale && <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
               <button
                 type="button"
                 onClick={closeModal}
@@ -447,7 +524,7 @@ export default function CashSalesPage() {
                 }
                 Record Sale
               </button>
-            </div>
+            </div>}
           </div>
         </div>
       )}

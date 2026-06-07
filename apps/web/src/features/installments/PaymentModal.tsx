@@ -1,14 +1,20 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { installmentsApi, type Installment } from '../../api/installments.api.ts';
 import { paymentsApi, type PaymentMethod } from '../../api/payments.api.ts';
 import { staffApi } from '../../api/staff.api.ts';
+import { sellersApi } from '../../api/sellers.api.ts';
 import { api } from '../../api/client.ts';
 import { RowSkeleton } from '../../components/ui/Skeleton.tsx';
 import { getErrorMessage } from '../../utils/error.ts';
+import {
+  printInstallmentReceipt,
+  installmentWhatsappUrl,
+  type InstallmentReceiptData,
+} from '../../utils/receipt.ts';
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 
@@ -34,7 +40,15 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [proofImageUrl, setProofImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [tab, setTab] = useState<'pay' | 'history'>('pay');
+  const [receiptData, setReceiptData] = useState<InstallmentReceiptData | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const { data: seller } = useQuery({
+    queryKey: ['seller-me'],
+    queryFn: sellersApi.getMe,
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
 
   const { data: staff = [] } = useQuery({
     queryKey: ['staff'],
@@ -81,7 +95,21 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
       for (const key of extraInvalidate) qc.invalidateQueries({ queryKey: key });
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
-      onClose();
+      setReceiptData({
+        shopName:          seller?.shopName ?? 'Receipt',
+        shopPhone:         seller?.phone,
+        customerName:      freshInst.customerName,
+        productName:       freshInst.productName,
+        invoiceNumber:     freshInst.invoiceNumber,
+        amountPaid:        Number(data.payment.amount),
+        remaining:         data.remaining,
+        monthly:           Number(freshInst.monthly),
+        method:            data.payment.method,
+        paidOn:            data.payment.paidOn,
+        note:              data.payment.note,
+        paymentFrequency:  freshInst.paymentFrequency,
+        completed:         data.completed,
+      });
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Payment failed')),
   });
@@ -139,8 +167,52 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
           ))}
         </div>
 
+        {/* Receipt screen — shown after successful payment */}
+        {receiptData && (
+          <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+              <CheckCircle2 size={24} className="text-emerald-600" />
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-gray-900 text-base">
+                {receiptData.completed ? 'Fully Paid!' : 'Payment Recorded'}
+              </p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                PKR {receiptData.amountPaid.toLocaleString()} · {receiptData.method}
+              </p>
+              {!receiptData.completed && (
+                <p className="text-xs text-orange-500 mt-1">
+                  Remaining: PKR {receiptData.remaining.toLocaleString()}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => printInstallmentReceipt(receiptData)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+              >
+                <Printer size={15} /> Print
+              </button>
+              <a
+                href={installmentWhatsappUrl(receiptData)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-sm font-semibold transition"
+              >
+                <MessageCircle size={15} /> WhatsApp
+              </a>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition"
+            >
+              Done
+            </button>
+          </div>
+        )}
+
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        {!receiptData && <div className="flex-1 overflow-y-auto px-4 py-4">
           {tab === 'pay' ? (
             <div className="space-y-4">
               {mutation.error instanceof Error && (
@@ -288,7 +360,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
               )}
             </div>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );
