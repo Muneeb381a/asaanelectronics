@@ -18,7 +18,11 @@ export class CashSalesService {
   async list(sellerId: string, page: number, limit: number, from?: string, to?: string, search?: string) {
     const conds = [eq(cashSales.sellerId, sellerId)];
     if (from) conds.push(gte(cashSales.createdAt, new Date(from)));
-    if (to)   conds.push(lte(cashSales.createdAt, new Date(to)));
+    if (to) {
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      conds.push(lte(cashSales.createdAt, toDate));
+    }
     if (search) conds.push(
       or(
         ilike(products.name, `%${search}%`),
