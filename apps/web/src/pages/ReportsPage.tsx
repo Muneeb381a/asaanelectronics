@@ -39,7 +39,6 @@ function BarChart({ data }: { data: Reports['monthlyCollections'] }) {
   return (
     <div className="flex items-end gap-1.5 h-40">
       {data.map((d) => {
-        const pct = Math.max((d.total / max) * 100, d.total > 0 ? 2 : 0);
         const isLast = d.month === last.month;
         return (
           <div key={d.month} className="flex-1 flex flex-col items-center gap-1 group relative">
