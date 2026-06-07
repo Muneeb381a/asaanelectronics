@@ -95,36 +95,43 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
       for (const key of extraInvalidate) qc.invalidateQueries({ queryKey: key });
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
-      setReceiptData({
+
+      // Calculate installment progress
+      const totalInstallments = freshInst.months;
+      const monthly = Number(freshInst.monthly);
+      const totalMinusDP = Number(freshInst.totalAmount) - Number(freshInst.downPayment);
+      // Before this payment, how many were fully paid?
+      const paidAmountBefore = totalMinusDP - Number(freshInst.remaining);
+      const paidFullBefore = Math.max(0, Math.floor(paidAmountBefore / monthly + 0.001));
+      const currentMonth = paidFullBefore + 1; // this payment is installment #currentMonth
+      // After this payment, how many are fully paid?
+      const paidAmountAfter = totalMinusDP - data.remaining;
+      const paidInstallments = data.completed
+        ? totalInstallments
+        : Math.floor(paidAmountAfter / monthly + 0.001);
+
+      const receiptPayload = {
         shopName:          seller?.shopName ?? 'Receipt',
         shopPhone:         seller?.phone,
         customerName:      freshInst.customerName,
+        customerPhone:     freshInst.customerPhone,
         productName:       freshInst.productName,
         invoiceNumber:     freshInst.invoiceNumber,
         amountPaid:        Number(data.payment.amount),
         remaining:         data.remaining,
-        monthly:           Number(freshInst.monthly),
+        monthly,
         method:            data.payment.method,
         paidOn:            data.payment.paidOn,
         note:              data.payment.note,
         paymentFrequency:  freshInst.paymentFrequency,
         completed:         data.completed,
-      });
-      printInstallmentReceipt({
-        shopName:         seller?.shopName ?? 'Receipt',
-        shopPhone:        seller?.phone,
-        customerName:     freshInst.customerName,
-        productName:      freshInst.productName,
-        invoiceNumber:    freshInst.invoiceNumber,
-        amountPaid:       Number(data.payment.amount),
-        remaining:        data.remaining,
-        monthly:          Number(freshInst.monthly),
-        method:           data.payment.method,
-        paidOn:           data.payment.paidOn,
-        note:             data.payment.note,
-        paymentFrequency: freshInst.paymentFrequency,
-        completed:        data.completed,
-      });
+        paidInstallments,
+        totalInstallments,
+        currentMonth,
+      };
+
+      setReceiptData(receiptPayload);
+      printInstallmentReceipt(receiptPayload);
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Payment failed')),
   });
@@ -153,7 +160,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex flex-col sm:items-center sm:justify-center bg-black/50 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-70 flex flex-col sm:items-center sm:justify-center bg-black/50 backdrop-blur-sm sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="flex-1 sm:flex-none flex flex-col w-full sm:max-w-md sm:max-h-[90vh] bg-white sm:rounded-2xl sm:shadow-2xl overflow-hidden">
@@ -184,7 +191,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
         {/* Receipt screen — shown after successful payment */}
         {receiptData && (
-          <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col items-center gap-4">
+          <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
               <CheckCircle2 size={24} className="text-emerald-600" />
             </div>
@@ -201,6 +208,46 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                 </p>
               )}
             </div>
+
+            {/* Installment progress cards */}
+            {receiptData.totalInstallments !== undefined && (
+              <div className="w-full grid grid-cols-3 gap-2">
+                <div className="flex flex-col items-center bg-emerald-50 rounded-xl py-2.5 px-1">
+                  <p className="text-[10px] text-gray-400 mb-0.5">Paid</p>
+                  <p className="text-lg font-bold text-emerald-700">{receiptData.paidInstallments}</p>
+                  <p className="text-[10px] text-emerald-600">of {receiptData.totalInstallments}</p>
+                </div>
+                <div className="flex flex-col items-center bg-blue-50 rounded-xl py-2.5 px-1">
+                  <p className="text-[10px] text-gray-400 mb-0.5">This Month</p>
+                  <p className="text-lg font-bold text-blue-700">#{receiptData.currentMonth}</p>
+                  <p className="text-[10px] text-blue-500">installment</p>
+                </div>
+                <div className="flex flex-col items-center bg-orange-50 rounded-xl py-2.5 px-1">
+                  <p className="text-[10px] text-gray-400 mb-0.5">Pending</p>
+                  <p className="text-lg font-bold text-orange-600">
+                    {(receiptData.totalInstallments ?? 0) - (receiptData.paidInstallments ?? 0)}
+                  </p>
+                  <p className="text-[10px] text-orange-500">remaining</p>
+                </div>
+              </div>
+            )}
+
+            {/* Progress bar */}
+            {receiptData.totalInstallments !== undefined && receiptData.totalInstallments > 0 && (
+              <div className="w-full">
+                <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+                  <span>{receiptData.paidInstallments} paid</span>
+                  <span>{Math.round(((receiptData.paidInstallments ?? 0) / receiptData.totalInstallments) * 100)}%</span>
+                </div>
+                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all"
+                    style={{ width: `${Math.round(((receiptData.paidInstallments ?? 0) / receiptData.totalInstallments) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3 w-full">
               <button
                 onClick={() => printInstallmentReceipt(receiptData)}
