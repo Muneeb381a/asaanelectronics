@@ -1042,12 +1042,14 @@ export default function CustomersPage() {
     if (confirm('Delete this customer? This cannot be undone.')) deleteMutation.mutate(id);
   };
 
-  // ── Staff CNIC-only view ──────────────────────────────────────────────────────
-  if (!isOwner) {
+  // ── Staff CNIC-only view (staff without canAddCustomer/canEditCustomer) ────────
+  const perms = user?.permissions as Record<string, boolean> | null | undefined;
+  const canManageCustomers = isOwner || !!perms?.canAddCustomer || !!perms?.canEditCustomer;
+  if (!canManageCustomers) {
     return <StaffCnicView qc={qc} createMutation={createMutation} updateMutation={updateMutation} />;
   }
 
-  // ── Owner full view ───────────────────────────────────────────────────────────
+  // ── Full view (owner + permitted staff) ───────────────────────────────────────
   return (
     <div className="px-4 py-5 sm:p-6">
       <div className="flex items-center justify-between mb-6">
