@@ -127,7 +127,32 @@ export default function ExportsPage() {
   const returnsList = returnsQ.data?.data ?? [];
   const expensesList = expensesQ.data ?? [];
 
-  function downloadOverdue() {
+  function downloadOverdueOnly() {
+    const totalRem = overdue.reduce((s, i) => s + Number(i.remaining), 0);
+    printReport({
+      title: 'Overdue Installments',
+      subtitle: `Active customers behind on payment — generated ${fmtDate(today)}`,
+      shopName,
+      shopPhone: seller?.phone,
+      columns: ['#', 'Customer', 'Phone', 'Area', 'Product', 'Invoice', 'Remaining (PKR)', 'Monthly (PKR)'],
+      rows: overdue.map((i, idx) => [
+        idx + 1,
+        i.customerName,
+        i.customerPhone,
+        i.customerArea ?? '-',
+        i.productName,
+        i.invoiceNumber ?? '-',
+        Number(i.remaining).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+        Number(i.monthly).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+      ]),
+      summary: [
+        `<strong>Total overdue:</strong> ${overdue.length}`,
+        `<strong>Total remaining:</strong> ${pkr(totalRem)}`,
+      ],
+    });
+  }
+
+  function downloadOverdueCombined() {
     const combined = [
       ...overdue.map((i) => ({ ...i, _tag: 'Overdue' as const })),
       ...defaulters.map((i) => ({ ...i, _tag: 'Defaulted' as const })),
@@ -135,7 +160,7 @@ export default function ExportsPage() {
     const totalRem = combined.reduce((s, i) => s + Number(i.remaining), 0);
     printReport({
       title: 'Overdue & Defaulted Installments',
-      subtitle: `Customers requiring follow-up — generated ${fmtDate(today)}`,
+      subtitle: `Full recovery list — generated ${fmtDate(today)}`,
       shopName,
       shopPhone: seller?.phone,
       columns: ['#', 'Customer', 'Phone', 'Area', 'Product', 'Invoice', 'Remaining (PKR)', 'Monthly (PKR)', 'Status'],
@@ -361,7 +386,17 @@ export default function ExportsPage() {
           total={[...overdue, ...defaulters].reduce((s, i) => s + Number(i.remaining), 0)}
           isLoading={overdueQ.isLoading || defaultersQ.isLoading}
           isEmpty={overdue.length === 0 && defaulters.length === 0}
-          onDownload={downloadOverdue}
+          onDownload={downloadOverdueOnly}
+          headerExtra={
+            <button
+              onClick={downloadOverdueCombined}
+              disabled={overdueQ.isLoading || defaultersQ.isLoading || (overdue.length === 0 && defaulters.length === 0)}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <FileDown size={14} />
+              Combined PDF
+            </button>
+          }
         >
           <table className="w-full text-sm">
             <thead>
