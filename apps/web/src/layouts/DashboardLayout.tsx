@@ -13,7 +13,7 @@ import ProfileModal from '../components/ProfileModal.tsx';
 import GlobalSearch from '../components/GlobalSearch.tsx';
 
 const allNavItems = [
-  { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard, end: true      as boolean | undefined, perm: 'canAddCustomer' as string | string[] },
+  { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard, end: true      as boolean | undefined, perm: '' as string | string[] },
   { to: '/reports',      label: 'Analytics',    icon: BarChart3,       end: undefined as boolean | undefined, perm: 'canViewReports' as string | string[] },
   { to: '/products',     label: 'Products',     icon: Package,         end: undefined as boolean | undefined, perm: 'canManageProducts' as string | string[] },
   { to: '/customers',    label: 'Customers',    icon: Users,           end: undefined as boolean | undefined, perm: ['canAddCustomer', 'canAddInstallment', 'canRecordPayment'] as string | string[] },
@@ -42,7 +42,7 @@ export default function DashboardLayout() {
       setPermissions(profile.permissions);
       return profile;
     },
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
     enabled: !isOwner,
   });
 
@@ -98,11 +98,12 @@ export default function DashboardLayout() {
   const navItems = [
     ...(isOwner
       ? allNavItems
-      : allNavItems.filter(({ perm }) =>
-          Array.isArray(perm)
+      : allNavItems.filter(({ perm }) => {
+          if (!perm || perm === '') return true; // always show (e.g. Dashboard)
+          return Array.isArray(perm)
             ? perm.some((p) => !!perms?.[p as keyof typeof perms])
-            : !!perms?.[perm as keyof typeof perms]
-        )
+            : !!perms?.[perm as keyof typeof perms];
+        })
     ),
     ...(isOwner
       ? [

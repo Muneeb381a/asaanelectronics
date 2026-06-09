@@ -110,7 +110,7 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute><DashboardLayout /></ProtectedRoute>,
     children: [
-      { path: '/dashboard',      element: <PermGuard perm="canAddCustomer"><DashboardPage /></PermGuard> },
+      { path: '/dashboard',      element: <DashboardPage /> },
       { path: '/reports',        element: <PermGuard perm="canViewReports"><ReportsPage /></PermGuard> },
       { path: '/products',       element: <PermGuard perm="canManageProducts"><ProductsPage /></PermGuard> },
       { path: '/customers',      element: <PermGuard perm={['canAddCustomer', 'canAddInstallment', 'canRecordPayment']}><CustomersPage /></PermGuard> },

@@ -38,7 +38,7 @@ function parseDevice(ua: string): { deviceName: string; deviceType: string } {
 }
 
 function safeUser(u: typeof users.$inferSelect) {
-  return { id: u.id, name: u.name, email: u.email, role: u.role, sellerId: u.sellerId };
+  return { id: u.id, name: u.name, email: u.email, role: u.role, sellerId: u.sellerId, permissions: u.permissions };
 }
 
 async function issueTokens(user: typeof users.$inferSelect, device: DeviceInfo = {}) {
