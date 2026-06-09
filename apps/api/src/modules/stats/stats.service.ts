@@ -133,7 +133,7 @@ export class StatsService {
     };
   }
 
-  async getStats(sellerId: string) {
+  async getStats(sellerId: string, userId?: string) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart.getTime() + 86_400_000);
@@ -154,6 +154,7 @@ export class StatsService {
           isNull(payments.deletedAt),
           isNull(installments.deletedAt),
           isNull(customers.deletedAt),
+          ...(userId ? [eq(payments.collectedBy, userId)] : []),
         )),
 
       db
@@ -167,6 +168,7 @@ export class StatsService {
           isNull(payments.deletedAt),
           isNull(installments.deletedAt),
           isNull(customers.deletedAt),
+          ...(userId ? [eq(payments.collectedBy, userId)] : []),
         )),
 
       db
@@ -176,6 +178,7 @@ export class StatsService {
           eq(cashSales.sellerId, sellerId),
           gte(cashSales.createdAt, todayStart),
           lt(cashSales.createdAt, todayEnd),
+          ...(userId ? [eq(cashSales.soldByUserId, userId)] : []),
         )),
 
       db
@@ -184,6 +187,7 @@ export class StatsService {
         .where(and(
           eq(cashSales.sellerId, sellerId),
           gte(cashSales.createdAt, monthStart),
+          ...(userId ? [eq(cashSales.soldByUserId, userId)] : []),
         )),
 
       db

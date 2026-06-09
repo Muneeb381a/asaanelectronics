@@ -6,7 +6,9 @@ import { success } from '../../utils/response.js';
 const svc = new StatsService();
 
 export async function getStats(req: AuthRequest, res: Response) {
-  success(res, await svc.getStats(req.user!.sellerId!));
+  const user = req.user!;
+  const staffUserId = user.role === 'SELLER_STAFF' ? user.userId : undefined;
+  success(res, await svc.getStats(user.sellerId!, staffUserId));
 }
 
 export async function getReports(req: AuthRequest, res: Response) {
