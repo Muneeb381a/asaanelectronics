@@ -425,8 +425,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Recent installments */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+      {/* Recent installments — owner only */}
+      {isOwner && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
           <h2 className="font-semibold text-gray-900 text-sm">Recent Installments</h2>
           <button onClick={() => navigate('/installments')}
@@ -467,7 +467,7 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
     </div>
   );
