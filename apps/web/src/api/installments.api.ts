@@ -63,4 +63,7 @@ export const installmentsApi = {
 
   close: (id: string) =>
     api.patch<{ data: Installment }>(`/installments/${id}/close`).then(unwrap<Installment>),
+
+  remove: (id: string) =>
+    api.delete(`/installments/${id}`),
 };
