@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, isNull, lt, lte, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { auditLogs, cashSales, customers, installments, payments, products, recoveryActions, users } from '../../db/schema.js';
+import { cashSales, customers, installments, payments, products, recoveryActions } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
 
 export class StatsService {
@@ -140,6 +140,36 @@ export class StatsService {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const LOW_STOCK = 3;
+
+    // Staff: only run their own collections/sales — shop-wide metrics (active count,
+    // overdue, low stock, promises) are not meaningful per-employee and are hidden.
+    if (userId) {
+      const [todayCollections, monthCollections, todayCashSales, monthCashSales] = await Promise.all([
+        db.select({ total: sum(payments.amount) }).from(payments)
+          .innerJoin(installments, eq(payments.installmentId, installments.id))
+          .innerJoin(customers, eq(installments.customerId, customers.id))
+          .where(and(eq(customers.sellerId, sellerId), gte(payments.paidOn, todayStart), lt(payments.paidOn, todayEnd), isNull(payments.deletedAt), isNull(installments.deletedAt), isNull(customers.deletedAt), eq(payments.collectedBy, userId))),
+        db.select({ total: sum(payments.amount) }).from(payments)
+          .innerJoin(installments, eq(payments.installmentId, installments.id))
+          .innerJoin(customers, eq(installments.customerId, customers.id))
+          .where(and(eq(customers.sellerId, sellerId), gte(payments.paidOn, monthStart), isNull(payments.deletedAt), isNull(installments.deletedAt), isNull(customers.deletedAt), eq(payments.collectedBy, userId))),
+        db.select({ total: sum(cashSales.amount) }).from(cashSales)
+          .where(and(eq(cashSales.sellerId, sellerId), gte(cashSales.createdAt, todayStart), lt(cashSales.createdAt, todayEnd), eq(cashSales.soldByUserId, userId))),
+        db.select({ total: sum(cashSales.amount) }).from(cashSales)
+          .where(and(eq(cashSales.sellerId, sellerId), gte(cashSales.createdAt, monthStart), eq(cashSales.soldByUserId, userId))),
+      ]);
+      return {
+        todayCollections: Number(todayCollections[0]?.total ?? 0),
+        monthCollections: Number(monthCollections[0]?.total ?? 0),
+        todayCashSales:   Number(todayCashSales[0]?.total   ?? 0),
+        monthCashSales:   Number(monthCashSales[0]?.total   ?? 0),
+        activeCount:       0,
+        overdueCount:      0,
+        recentInstallments: [],
+        lowStockItems:     [],
+        promisesDueCount:  0,
+      };
+    }
 
     const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData] = await Promise.all([
       db
