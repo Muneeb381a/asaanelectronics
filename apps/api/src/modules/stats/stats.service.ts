@@ -235,10 +235,22 @@ export class StatsService {
           eq(installments.status, 'ACTIVE'),
           isNull(installments.deletedAt),
           isNull(customers.deletedAt),
-          sql`(CASE WHEN ${installments.paymentFrequency} = 'daily'
-            THEN ${installments.startDate} + (${installments.months} || ' days')::interval
-            ELSE ${installments.startDate} + (${installments.months} || ' months')::interval
-          END) < now()`,
+          sql`(
+            CASE WHEN ${installments.paymentFrequency} = 'daily'
+              THEN ${installments.startDate} + (
+                (GREATEST(0, FLOOR(
+                  (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+                  / NULLIF(${installments.monthly}::numeric, 0)
+                )) + 1) || ' days'
+              )::interval
+              ELSE ${installments.startDate} + (
+                (GREATEST(0, FLOOR(
+                  (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+                  / NULLIF(${installments.monthly}::numeric, 0)
+                )) + 1) || ' months'
+              )::interval
+            END
+          ) < now()`,
         )),
 
       db

@@ -89,7 +89,7 @@ export default function ExportsPage() {
     queryKey: ['export-defaulters'],
     queryFn: () => installmentsApi.exportAll({ status: 'DEFAULTED' }),
     staleTime: 60_000,
-    enabled: tab === 'defaulters',
+    enabled: tab === 'defaulters' || tab === 'overdue',
   });
 
   const todayPayQ = useQuery({
@@ -128,14 +128,18 @@ export default function ExportsPage() {
   const expensesList = expensesQ.data ?? [];
 
   function downloadOverdue() {
-    const totalRem = overdue.reduce((s, i) => s + Number(i.remaining), 0);
+    const combined = [
+      ...overdue.map((i) => ({ ...i, _tag: 'Overdue' as const })),
+      ...defaulters.map((i) => ({ ...i, _tag: 'Defaulted' as const })),
+    ];
+    const totalRem = combined.reduce((s, i) => s + Number(i.remaining), 0);
     printReport({
-      title: 'Overdue Installments',
-      subtitle: `Customers who missed their payment — generated ${fmtDate(today)}`,
+      title: 'Overdue & Defaulted Installments',
+      subtitle: `Customers requiring follow-up — generated ${fmtDate(today)}`,
       shopName,
       shopPhone: seller?.phone,
-      columns: ['#', 'Customer', 'Phone', 'Area', 'Product', 'Invoice', 'Remaining (PKR)', 'Monthly (PKR)'],
-      rows: overdue.map((i, idx) => [
+      columns: ['#', 'Customer', 'Phone', 'Area', 'Product', 'Invoice', 'Remaining (PKR)', 'Monthly (PKR)', 'Status'],
+      rows: combined.map((i, idx) => [
         idx + 1,
         i.customerName,
         i.customerPhone,
@@ -144,10 +148,12 @@ export default function ExportsPage() {
         i.invoiceNumber ?? '-',
         Number(i.remaining).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
         Number(i.monthly).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+        i._tag,
       ]),
       summary: [
-        `<strong>Total overdue customers:</strong> ${overdue.length}`,
-        `<strong>Total remaining amount:</strong> ${pkr(totalRem)}`,
+        `<strong>Overdue (active):</strong> ${overdue.length}`,
+        `<strong>Defaulted:</strong> ${defaulters.length}`,
+        `<strong>Total remaining:</strong> ${pkr(totalRem)}`,
       ],
     });
   }
@@ -293,7 +299,7 @@ export default function ExportsPage() {
   ];
 
   const isLoading =
-    (tab === 'overdue'    && overdueQ.isFetching) ||
+    (tab === 'overdue'    && (overdueQ.isFetching || defaultersQ.isFetching)) ||
     (tab === 'defaulters' && defaultersQ.isFetching) ||
     (tab === 'today'      && todayPayQ.isFetching) ||
     (tab === 'cashsales'  && cashQ.isFetching) ||
@@ -301,7 +307,7 @@ export default function ExportsPage() {
     (tab === 'expenses'   && expensesQ.isFetching);
 
   function refetchCurrent() {
-    if (tab === 'overdue')    void overdueQ.refetch();
+    if (tab === 'overdue')    { void overdueQ.refetch(); void defaultersQ.refetch(); }
     if (tab === 'defaulters') void defaultersQ.refetch();
     if (tab === 'today')      void todayPayQ.refetch();
     if (tab === 'cashsales')  void cashQ.refetch();
@@ -348,20 +354,20 @@ export default function ExportsPage() {
       {/* Overdue tab */}
       {tab === 'overdue' && (
         <ReportSection
-          title="Overdue Installments"
-          description="Active installments where the customer has missed their payment date"
-          count={overdue.length}
+          title="Overdue & Defaulted Installments"
+          description="Active customers behind on payment + all defaulted installments"
+          count={overdue.length + defaulters.length}
           totalLabel="Total remaining"
-          total={overdue.reduce((s, i) => s + Number(i.remaining), 0)}
-          isLoading={overdueQ.isLoading}
-          isEmpty={overdue.length === 0}
+          total={[...overdue, ...defaulters].reduce((s, i) => s + Number(i.remaining), 0)}
+          isLoading={overdueQ.isLoading || defaultersQ.isLoading}
+          isEmpty={overdue.length === 0 && defaulters.length === 0}
           onDownload={downloadOverdue}
         >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
                 <Th>#</Th><Th>Customer</Th><Th>Phone</Th><Th>Area</Th>
-                <Th>Product</Th><Th>Invoice</Th><Th right>Remaining</Th><Th right>Monthly</Th>
+                <Th>Product</Th><Th>Invoice</Th><Th right>Remaining</Th><Th right>Monthly</Th><Th>Status</Th>
               </tr>
             </thead>
             <tbody>
@@ -375,6 +381,20 @@ export default function ExportsPage() {
                   <Td>{i.invoiceNumber ?? '-'}</Td>
                   <Td right red>{pkr(Number(i.remaining))}</Td>
                   <Td right>{pkr(Number(i.monthly))}</Td>
+                  <Td><span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700">Overdue</span></Td>
+                </tr>
+              ))}
+              {defaulters.slice(0, 50).map((i, idx) => (
+                <tr key={i.id} className="border-b border-gray-100 hover:bg-red-50">
+                  <Td>{overdue.length + idx + 1}</Td>
+                  <Td bold>{i.customerName}</Td>
+                  <Td>{i.customerPhone}</Td>
+                  <Td>{i.customerArea ?? '-'}</Td>
+                  <Td>{i.productName}</Td>
+                  <Td>{i.invoiceNumber ?? '-'}</Td>
+                  <Td right red>{pkr(Number(i.remaining))}</Td>
+                  <Td right>{pkr(Number(i.monthly))}</Td>
+                  <Td><span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">Defaulted</span></Td>
                 </tr>
               ))}
             </tbody>

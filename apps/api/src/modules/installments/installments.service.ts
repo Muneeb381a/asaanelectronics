@@ -52,12 +52,24 @@ export class InstallmentsService {
           profitMarkup:      installments.profitMarkup,
           paymentFrequency:  installments.paymentFrequency,
           customerArea:      customers.area,
-          isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
-            CASE WHEN ${installments.paymentFrequency} = 'daily'
-              THEN (${installments.startDate} + (${installments.months} || ' days')::interval) < now()
-              ELSE (${installments.startDate} + (${installments.months} || ' months')::interval) < now()
-            END
-          ))`,
+          isOverdue: sql<boolean>`(
+            ${installments.status} = 'ACTIVE' AND (
+              CASE WHEN ${installments.paymentFrequency} = 'daily'
+                THEN ${installments.startDate} + (
+                  (GREATEST(0, FLOOR(
+                    (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+                    / NULLIF(${installments.monthly}::numeric, 0)
+                  )) + 1) || ' days'
+                )::interval
+                ELSE ${installments.startDate} + (
+                  (GREATEST(0, FLOOR(
+                    (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+                    / NULLIF(${installments.monthly}::numeric, 0)
+                  )) + 1) || ' months'
+                )::interval
+              END
+            ) < now()
+          )`,
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
