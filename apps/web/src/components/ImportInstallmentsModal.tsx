@@ -250,7 +250,7 @@ export default function ImportInstallmentsModal({ onClose, onImported }: Props) 
                           </td>
                           <td className="px-3 py-2 text-center">
                             {r.error
-                              ? <AlertCircle size={13} className="text-red-400 mx-auto" title={r.error} />
+                              ? <span title={r.error}><AlertCircle size={13} className="text-red-400 mx-auto" /></span>
                               : <CheckCircle2 size={13} className="text-emerald-400 mx-auto" />
                             }
                           </td>
