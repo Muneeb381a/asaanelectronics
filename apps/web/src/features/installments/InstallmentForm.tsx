@@ -559,19 +559,41 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           name="months"
           control={control}
           render={({ field }) => (
-            <div className="flex flex-wrap gap-1.5">
-              {(isDaily ? DAY_OPTIONS : MONTH_OPTIONS).map((n) => (
-                <button key={n} type="button" onClick={() => field.onChange(n)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                    field.value === n
-                      ? isDaily
-                        ? 'bg-orange-500 border-orange-500 text-white'
-                        : 'bg-blue-600 border-blue-600 text-white'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}>
-                  {isDaily ? `${n}d` : `${n}m`}
-                </button>
-              ))}
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {(isDaily ? DAY_OPTIONS : MONTH_OPTIONS).map((n) => (
+                  <button key={n} type="button" onClick={() => field.onChange(n)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                      field.value === n
+                        ? isDaily
+                          ? 'bg-orange-500 border-orange-500 text-white'
+                          : 'bg-blue-600 border-blue-600 text-white'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}>
+                    {isDaily ? `${n}d` : `${n}m`}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={field.value ?? ''}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (!isNaN(v) && v >= 1 && v <= 365) field.onChange(v);
+                    else if (e.target.value === '') field.onChange(undefined);
+                  }}
+                  placeholder={isDaily ? 'Custom days…' : 'Custom months…'}
+                  className="w-36 px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+                />
+                {field.value && !(isDaily ? DAY_OPTIONS : MONTH_OPTIONS).includes(field.value) && (
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${isDaily ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                    {field.value}{isDaily ? 'd' : 'm'} ✓
+                  </span>
+                )}
+              </div>
             </div>
           )}
         />
