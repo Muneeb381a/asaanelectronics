@@ -34,3 +34,125 @@ export declare const createInstallmentSchema: z.ZodObject<{
     paymentFrequency?: "monthly" | "daily" | undefined;
 }>;
 export type CreateInstallmentInput = z.infer<typeof createInstallmentSchema>;
+export declare const importInstallmentRowSchema: z.ZodObject<{
+    customerName: z.ZodString;
+    phone: z.ZodString;
+    cnic: z.ZodOptional<z.ZodString>;
+    area: z.ZodOptional<z.ZodString>;
+    productName: z.ZodString;
+    totalAmount: z.ZodNumber;
+    downPayment: z.ZodNumber;
+    monthly: z.ZodNumber;
+    months: z.ZodNumber;
+    startDate: z.ZodString;
+    remaining: z.ZodOptional<z.ZodNumber>;
+    status: z.ZodOptional<z.ZodEnum<["ACTIVE", "PENDING", "COMPLETED", "DEFAULTED", "CANCELLED"]>>;
+    imeiNumber: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    phone: string;
+    totalAmount: number;
+    downPayment: number;
+    months: number;
+    startDate: string;
+    monthly: number;
+    customerName: string;
+    productName: string;
+    status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+    cnic?: string | undefined;
+    area?: string | undefined;
+    imeiNumber?: string | undefined;
+    remaining?: number | undefined;
+}, {
+    phone: string;
+    totalAmount: number;
+    downPayment: number;
+    months: number;
+    startDate: string;
+    monthly: number;
+    customerName: string;
+    productName: string;
+    status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+    cnic?: string | undefined;
+    area?: string | undefined;
+    imeiNumber?: string | undefined;
+    remaining?: number | undefined;
+}>;
+export declare const importInstallmentsSchema: z.ZodObject<{
+    rows: z.ZodArray<z.ZodObject<{
+        customerName: z.ZodString;
+        phone: z.ZodString;
+        cnic: z.ZodOptional<z.ZodString>;
+        area: z.ZodOptional<z.ZodString>;
+        productName: z.ZodString;
+        totalAmount: z.ZodNumber;
+        downPayment: z.ZodNumber;
+        monthly: z.ZodNumber;
+        months: z.ZodNumber;
+        startDate: z.ZodString;
+        remaining: z.ZodOptional<z.ZodNumber>;
+        status: z.ZodOptional<z.ZodEnum<["ACTIVE", "PENDING", "COMPLETED", "DEFAULTED", "CANCELLED"]>>;
+        imeiNumber: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        phone: string;
+        totalAmount: number;
+        downPayment: number;
+        months: number;
+        startDate: string;
+        monthly: number;
+        customerName: string;
+        productName: string;
+        status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+        cnic?: string | undefined;
+        area?: string | undefined;
+        imeiNumber?: string | undefined;
+        remaining?: number | undefined;
+    }, {
+        phone: string;
+        totalAmount: number;
+        downPayment: number;
+        months: number;
+        startDate: string;
+        monthly: number;
+        customerName: string;
+        productName: string;
+        status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+        cnic?: string | undefined;
+        area?: string | undefined;
+        imeiNumber?: string | undefined;
+        remaining?: number | undefined;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    rows: {
+        phone: string;
+        totalAmount: number;
+        downPayment: number;
+        months: number;
+        startDate: string;
+        monthly: number;
+        customerName: string;
+        productName: string;
+        status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+        cnic?: string | undefined;
+        area?: string | undefined;
+        imeiNumber?: string | undefined;
+        remaining?: number | undefined;
+    }[];
+}, {
+    rows: {
+        phone: string;
+        totalAmount: number;
+        downPayment: number;
+        months: number;
+        startDate: string;
+        monthly: number;
+        customerName: string;
+        productName: string;
+        status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+        cnic?: string | undefined;
+        area?: string | undefined;
+        imeiNumber?: string | undefined;
+        remaining?: number | undefined;
+    }[];
+}>;
+export type ImportInstallmentRow = z.infer<typeof importInstallmentRowSchema>;
+export type ImportInstallmentsInput = z.infer<typeof importInstallmentsSchema>;

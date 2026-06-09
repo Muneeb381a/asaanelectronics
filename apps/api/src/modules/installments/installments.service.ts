@@ -1,9 +1,12 @@
+import { randomUUID } from 'crypto';
 import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { fsm } from '../../utils/fsm.js';
+import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
+import type { ImportInstallmentRow } from '@assaan/shared';
 
 type CreateBody = {
   customerId:        string;
@@ -311,5 +314,101 @@ export class InstallmentsService {
       .where(eq(installments.id, id))
       .returning();
     return updated;
+  }
+
+  async bulkImport(rows: ImportInstallmentRow[], sellerId: string) {
+    let imported = 0;
+    let customersCreated = 0;
+    let customersLinked  = 0;
+    let productsCreated  = 0;
+    const errors: Array<{ row: number; message: string }> = [];
+
+    // In-memory caches so same phone/product within one import batch reuses created records
+    const customerCache = new Map<string, string>(); // phone → customerId
+    const productCache  = new Map<string, string>(); // lower(name) → productId
+
+    for (const [i, row] of rows.entries()) {
+      const rowNum = i + 2; // +2: row 1 = header, +1 for 1-based
+      try {
+        const startDate = new Date(row.startDate);
+        if (isNaN(startDate.getTime())) throw new AppError('Invalid start date — use YYYY-MM-DD format', 400);
+
+        // ── 1. Upsert customer by phone ─────────────────────────────────────
+        const phoneKey = row.phone.trim();
+        let customerId = customerCache.get(phoneKey);
+
+        if (!customerId) {
+          const existing = await db
+            .select({ id: customers.id })
+            .from(customers)
+            .where(and(eq(customers.sellerId, sellerId), eq(customers.phone, phoneKey)))
+            .limit(1);
+
+          if (existing.length > 0) {
+            customerId = existing[0]!.id;
+            customersLinked++;
+          } else {
+            const cnicRaw = row.cnic?.trim() || `IMPORT-${randomUUID()}`;
+            const [cnicHash] = hashCnicBoth(cnicRaw);
+            const cnicMasked = row.cnic?.trim() ? maskCnic(row.cnic.trim()) : 'XXXXX-XXXXXXX-X';
+
+            const [newCust] = await db
+              .insert(customers)
+              .values({ sellerId, name: row.customerName.trim(), phone: phoneKey, area: row.area?.trim() || null, cnicHash, cnicMasked })
+              .returning({ id: customers.id });
+            customerId = newCust!.id;
+            customersCreated++;
+          }
+          customerCache.set(phoneKey, customerId);
+        }
+
+        // ── 2. Upsert product by name (case-insensitive) ────────────────────
+        const productKey = row.productName.trim().toLowerCase();
+        let productId = productCache.get(productKey);
+
+        if (!productId) {
+          const existing = await db
+            .select({ id: products.id })
+            .from(products)
+            .where(and(eq(products.sellerId, sellerId), ilike(products.name, row.productName.trim())))
+            .limit(1);
+
+          if (existing.length > 0) {
+            productId = existing[0]!.id;
+          } else {
+            const [newProd] = await db
+              .insert(products)
+              .values({ sellerId, name: row.productName.trim(), price: String(row.totalAmount), stock: 0 })
+              .returning({ id: products.id });
+            productId = newProd!.id;
+            productsCreated++;
+          }
+          productCache.set(productKey, productId);
+        }
+
+        // ── 3. Insert installment (no stock decrement — historical data) ────
+        const remaining = row.remaining !== undefined ? row.remaining : row.totalAmount - row.downPayment;
+
+        await db.insert(installments).values({
+          customerId,
+          productId,
+          totalAmount:      String(row.totalAmount),
+          downPayment:      String(row.downPayment),
+          remaining:        String(remaining),
+          monthly:          String(row.monthly),
+          months:           row.months,
+          startDate,
+          status:           row.status ?? 'ACTIVE',
+          imeiNumber:       row.imeiNumber?.trim() || null,
+          paymentFrequency: 'monthly',
+        });
+
+        imported++;
+      } catch (e: unknown) {
+        errors.push({ row: rowNum, message: e instanceof AppError ? e.message : 'Unexpected error' });
+      }
+    }
+
+    return { imported, customersCreated, customersLinked, productsCreated, errors };
   }
 }

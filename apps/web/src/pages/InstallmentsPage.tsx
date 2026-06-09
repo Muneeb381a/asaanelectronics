@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload } from 'lucide-react';
+import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import { TableSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
 import InstallmentForm from '../features/installments/InstallmentForm.tsx';
@@ -407,7 +408,8 @@ export default function InstallmentsPage() {
   const staffPerms = user?.permissions as Record<string, boolean> | null | undefined;
   const canPay = isOwner || !!staffPerms?.canRecordPayment;
   const canCreate = isOwner || !!staffPerms?.canAddInstallment;
-  const [showForm, setShowForm] = useState(false);
+  const [showForm,   setShowForm]   = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
@@ -522,6 +524,13 @@ export default function InstallmentsPage() {
             {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             Export CSV
           </button>
+          {isOwner && (
+            <button onClick={() => setShowImport(true)}
+              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition">
+              <Upload size={14} />
+              Import
+            </button>
+          )}
           {canCreate && (
             <button onClick={() => setShowForm(true)}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
@@ -871,6 +880,14 @@ export default function InstallmentsPage() {
 
       {/* Bulk reminder modal */}
       {showReminders && <BulkReminderModal onClose={() => setShowReminders(false)} />}
+
+      {/* Import modal */}
+      {showImport && (
+        <ImportInstallmentsModal
+          onClose={() => setShowImport(false)}
+          onImported={() => { invalidate(); setShowImport(false); }}
+        />
+      )}
     </div>
   );
 }

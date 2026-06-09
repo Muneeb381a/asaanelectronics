@@ -4,6 +4,7 @@ import { InstallmentsService } from './installments.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
+import { importInstallmentsSchema } from '@assaan/shared';
 const svc   = new InstallmentsService();
 const audit = new AuditService();
 
@@ -111,6 +112,23 @@ export async function rescheduleInstallment(req: AuthRequest, res: Response) {
     before:  { months: before.months,  monthly: Number(before.monthly).toFixed(0) },
     after:   { months: result.months,  monthly: Number(result.monthly).toFixed(0) },
     reason:  (req.body as Record<string, unknown>)['reason'] as string | undefined,
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
+export async function importInstallments(req: AuthRequest, res: Response) {
+  const parsed = importInstallmentsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: parsed.error.errors[0]?.message ?? 'Invalid payload' });
+    return;
+  }
+  const result = await svc.bulkImport(parsed.data.rows, req.user!.sellerId!);
+  success(res, result, 200);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'INSTALLMENTS_IMPORTED', entityType: 'INSTALLMENT', entityId: 'bulk',
+    description: `Bulk import — ${result.imported} imported, ${result.errors.length} failed`,
+    meta: { imported: result.imported, customersCreated: result.customersCreated, productsCreated: result.productsCreated },
     ...auditCtx(req),
   }).catch(console.error);
 }

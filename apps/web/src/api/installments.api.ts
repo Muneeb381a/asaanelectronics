@@ -66,4 +66,7 @@ export const installmentsApi = {
 
   remove: (id: string) =>
     api.delete(`/installments/${id}`),
+
+  importBulk: (rows: import('@assaan/shared').ImportInstallmentRow[]) =>
+    api.post<{ data: { imported: number; customersCreated: number; customersLinked: number; productsCreated: number; errors: Array<{ row: number; message: string }> } }>('/installments/import', { rows }).then((r) => r.data.data),
 };

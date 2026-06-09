@@ -11,3 +11,21 @@ export const createInstallmentSchema = z.object({
     profitMarkup: z.number().min(0).optional(),
     paymentFrequency: z.enum(['monthly', 'daily']).default('monthly'),
 });
+export const importInstallmentRowSchema = z.object({
+    customerName: z.string().min(1, 'Customer name required'),
+    phone: z.string().min(1, 'Phone required'),
+    cnic: z.string().optional(),
+    area: z.string().optional(),
+    productName: z.string().min(1, 'Product name required'),
+    totalAmount: z.coerce.number().positive('Total amount must be > 0'),
+    downPayment: z.coerce.number().min(0, 'Down payment must be ≥ 0'),
+    monthly: z.coerce.number().positive('Monthly amount must be > 0'),
+    months: z.coerce.number().int().min(1).max(365),
+    startDate: z.string().min(1, 'Start date required'),
+    remaining: z.coerce.number().min(0).optional(),
+    status: z.enum(['ACTIVE', 'PENDING', 'COMPLETED', 'DEFAULTED', 'CANCELLED']).optional(),
+    imeiNumber: z.string().optional(),
+});
+export const importInstallmentsSchema = z.object({
+    rows: z.array(importInstallmentRowSchema).min(1).max(500),
+});
