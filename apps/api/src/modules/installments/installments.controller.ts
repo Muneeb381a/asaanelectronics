@@ -4,7 +4,7 @@ import { InstallmentsService } from './installments.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
-import { importInstallmentsSchema } from '@assaan/shared';
+import { importInstallmentsSchema, updateInstallmentSchema } from '@assaan/shared';
 const svc   = new InstallmentsService();
 const audit = new AuditService();
 
@@ -17,7 +17,8 @@ export async function listInstallments(req: AuthRequest, res: Response) {
   const status     = req.query['status']     as string | undefined;
   const search     = req.query['search']     as string | undefined;
   const customerId = req.query['customerId'] as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId));
+  const frequency  = req.query['frequency']  as string | undefined;
+  success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId, frequency));
 }
 
 export async function getInstallment(req: AuthRequest, res: Response) {
@@ -112,6 +113,25 @@ export async function rescheduleInstallment(req: AuthRequest, res: Response) {
     before:  { months: before.months,  monthly: Number(before.monthly).toFixed(0) },
     after:   { months: result.months,  monthly: Number(result.monthly).toFixed(0) },
     reason:  (req.body as Record<string, unknown>)['reason'] as string | undefined,
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
+export async function updateInstallment(req: AuthRequest, res: Response) {
+  const parsed = updateInstallmentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: parsed.error.errors[0]?.message ?? 'Invalid payload' });
+    return;
+  }
+  const before = await svc.getOne(req.params['id']!, req.user!.sellerId!);
+  const result = await svc.update(req.params['id']!, req.user!.sellerId!, parsed.data);
+  success(res, result);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'INSTALLMENT_UPDATED', entityType: 'INSTALLMENT', entityId: result.id,
+    description: `Edited installment — ${result.customerName} · ${result.productName}`,
+    before: { totalAmount: before.totalAmount, downPayment: before.downPayment, monthly: before.monthly, months: before.months },
+    after:  { totalAmount: result.totalAmount, downPayment: result.downPayment, monthly: result.monthly, months: result.months },
     ...auditCtx(req),
   }).catch(console.error);
 }

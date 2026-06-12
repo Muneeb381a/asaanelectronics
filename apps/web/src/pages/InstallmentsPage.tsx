@@ -414,6 +414,7 @@ export default function InstallmentsPage() {
   const [showReminders, setShowReminders] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [frequencyFilter, setFrequencyFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
@@ -434,8 +435,8 @@ export default function InstallmentsPage() {
   const staffMustSearch = !isOwner && debouncedSearch.trim().length < 2;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['installments', statusFilter, debouncedSearch, page],
-    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT }),
+    queryKey: ['installments', statusFilter, frequencyFilter, debouncedSearch, page],
+    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT }),
     enabled: !staffMustSearch,
   });
 
@@ -511,6 +512,7 @@ export default function InstallmentsPage() {
               try {
                 const result = await installmentsApi.exportAll({
                   status: statusFilter || undefined,
+                  frequency: frequencyFilter || undefined,
                   search: debouncedSearch || undefined,
                 });
                 const csv = buildCSV(result.data);
@@ -556,7 +558,17 @@ export default function InstallmentsPage() {
           }`}
           autoFocus={!isOwner}
         />
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
+          <button
+            onClick={() => { setFrequencyFilter(frequencyFilter === 'daily' ? '' : 'daily'); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+              frequencyFilter === 'daily'
+                ? 'bg-orange-500 border-orange-500 text-white'
+                : 'border-gray-200 text-gray-500 hover:bg-gray-100'
+            }`}>
+            Daily
+          </button>
+          <div className="w-px bg-gray-200 mx-1 self-stretch" />
           {STATUS_FILTERS.map((f) => (
             <button key={f.value}
               onClick={() => { setStatusFilter(f.value); setPage(1); }}

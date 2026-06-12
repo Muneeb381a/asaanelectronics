@@ -22,11 +22,12 @@ type CreateBody = {
 };
 
 export class InstallmentsService {
-  async list(sellerId: string, page: number, limit: number, status?: string, search?: string, customerId?: string) {
+  async list(sellerId: string, page: number, limit: number, status?: string, search?: string, customerId?: string, frequency?: string) {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
     if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED'));
     if (search)     conditions.push(ilike(customers.name, `%${search}%`));
     if (customerId) conditions.push(eq(installments.customerId, customerId));
+    if (frequency)  conditions.push(eq(installments.paymentFrequency, frequency as 'monthly' | 'daily'));
     const statusFilter = and(...conditions);
 
     const [rows, [{ count }]] = await Promise.all([
@@ -326,6 +327,47 @@ export class InstallmentsService {
       .where(eq(installments.id, id))
       .returning();
     return updated;
+  }
+
+  async update(id: string, sellerId: string, body: {
+    totalAmount?: number; downPayment?: number; monthly?: number; months?: number;
+    startDate?: string; imeiNumber?: string | null; cashPrice?: number | null;
+    profitMarkup?: number | null; paymentFrequency?: 'monthly' | 'daily';
+  }) {
+    const row = await this.getOne(id, sellerId);
+
+    const patch: Record<string, unknown> = {};
+
+    // Financial fields — recalculate remaining based on what's already been paid
+    if (body.totalAmount !== undefined || body.downPayment !== undefined) {
+      const newTotal = body.totalAmount ?? Number(row.totalAmount);
+      const newDown  = body.downPayment  ?? Number(row.downPayment);
+      if (newDown >= newTotal) throw new AppError('Down payment must be less than total amount', 400);
+      const alreadyPaid  = Number(row.totalAmount) - Number(row.downPayment) - Number(row.remaining);
+      const newRemaining = newTotal - newDown - alreadyPaid;
+      if (newRemaining < 0) throw new AppError('Cannot reduce total: customer has already paid more than the new amount', 400);
+      patch.totalAmount = String(newTotal.toFixed(2));
+      patch.downPayment = String(newDown.toFixed(2));
+      patch.remaining   = String(newRemaining.toFixed(2));
+      if (newRemaining === 0 && row.status === 'ACTIVE') patch.status = 'COMPLETED';
+    }
+
+    if (body.monthly          !== undefined) patch.monthly          = String(body.monthly.toFixed(2));
+    if (body.months           !== undefined) patch.months           = body.months;
+    if (body.startDate        !== undefined) patch.startDate        = new Date(body.startDate);
+    if (body.paymentFrequency !== undefined) patch.paymentFrequency = body.paymentFrequency;
+    if (body.imeiNumber       !== undefined) patch.imeiNumber       = body.imeiNumber;
+    if (body.cashPrice        !== undefined) patch.cashPrice        = body.cashPrice !== null ? String(body.cashPrice.toFixed(2)) : null;
+    if (body.profitMarkup     !== undefined) patch.profitMarkup     = body.profitMarkup !== null ? String(body.profitMarkup.toFixed(2)) : null;
+
+    if (Object.keys(patch).length === 0) throw new AppError('No fields to update', 400);
+
+    const [updated] = await db
+      .update(installments)
+      .set(patch as Parameters<typeof db.update>[0] extends never ? never : Record<string, unknown>)
+      .where(eq(installments.id, id))
+      .returning();
+    return { ...updated, customerName: row.customerName, productName: row.productName };
   }
 
   async bulkImport(rows: ImportInstallmentRow[], sellerId: string) {
