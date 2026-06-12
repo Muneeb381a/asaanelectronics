@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
 import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload } from 'lucide-react';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
+import EditInstallmentModal from '../components/EditInstallmentModal.tsx';
 import { TableSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
 import InstallmentForm from '../features/installments/InstallmentForm.tsx';
@@ -420,6 +421,7 @@ export default function InstallmentsPage() {
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
   const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
+  const [editInst, setEditInst] = useState<Installment | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
@@ -809,6 +811,12 @@ export default function InstallmentsPage() {
                 Close
               </button>
             )}
+            {isOwner && (
+              <button onClick={() => { close(); setEditInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition">
+                Edit
+              </button>
+            )}
             {(inst.status === 'PENDING' || inst.status === 'ACTIVE') && isOwner && (
               <button onClick={() => { close(); if (confirm('Cancel this installment?')) cancelMutation.mutate(inst.id); }}
                 className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition">
@@ -880,6 +888,15 @@ export default function InstallmentsPage() {
 
       {/* Bulk reminder modal */}
       {showReminders && <BulkReminderModal onClose={() => setShowReminders(false)} />}
+
+      {/* Edit modal */}
+      {editInst && (
+        <EditInstallmentModal
+          inst={editInst}
+          onClose={() => setEditInst(null)}
+          onSaved={() => { invalidate(); setEditInst(null); }}
+        />
+      )}
 
       {/* Import modal */}
       {showImport && (
