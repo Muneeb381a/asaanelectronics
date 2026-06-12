@@ -84,28 +84,17 @@ function CashflowBar({ data }: { data: Array<{ date: string; expected: number }>
 export default function DashboardPage() {
   const user    = useAuthStore((s) => s.user);
   const navigate = useNavigate();
-  const isOwner     = user?.role === 'SELLER_OWNER';
-  const canReports  = isOwner || !!user?.permissions?.canViewReports;
+  const isOwner = user?.role === 'SELLER_OWNER';
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['stats'],
-    queryFn:  statsApi.get,
+  const { data: dashboard, isLoading } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn:  statsApi.getDashboard,
     refetchInterval: 60_000,
   });
 
-  const { data: reports } = useQuery({
-    queryKey: ['reports'],
-    queryFn:  statsApi.getReports,
-    staleTime: 60_000,
-    enabled:  canReports,
-  });
-
-  const { data: advanced } = useQuery({
-    queryKey: ['advanced'],
-    queryFn:  statsApi.getAdvanced,
-    staleTime: 300_000,
-    enabled:  canReports,
-  });
+  const data     = dashboard?.stats;
+  const reports  = dashboard?.reports;
+  const advanced = dashboard?.advanced;
 
   const today = new Date().toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long' });
 

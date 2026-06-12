@@ -37,7 +37,15 @@ export interface Advanced {
   areaHeatmap: Array<{ city: string; overdueCount: number; defaultedCount: number }>;
 }
 
+export interface DashboardData {
+  stats:    Stats;
+  reports:  Reports | null;
+  advanced: Advanced | null;
+}
+
 export const statsApi = {
+  getDashboard: () => api.get<{ data: DashboardData }>('/stats/dashboard').then((r) => r.data.data),
+  // Individual endpoints kept for any page that needs just one piece
   get:         () => api.get<{ data: Stats }>('/stats').then((r) => r.data.data),
   getReports:  () => api.get<{ data: Reports }>('/stats/reports').then((r) => r.data.data),
   getAdvanced: () => api.get<{ data: Advanced }>('/stats/advanced').then((r) => r.data.data),

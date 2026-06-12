@@ -1,37 +1,55 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { usePortalStore } from '../store/portal.store.ts';
 import DashboardLayout from '../layouts/DashboardLayout.tsx';
 import OwnerLayout from '../layouts/OwnerLayout.tsx';
-import LandingPage from '../pages/LandingPage.tsx';
-import LoginPage from '../pages/LoginPage.tsx';
-import RegisterPage from '../pages/RegisterPage.tsx';
-import SetupPage from '../pages/SetupPage.tsx';
-import ForgotPasswordPage from '../pages/ForgotPasswordPage.tsx';
-import OnboardingPage from '../pages/OnboardingPage.tsx';
-import DashboardPage from '../pages/DashboardPage.tsx';
-import ProductsPage from '../pages/ProductsPage.tsx';
-import CustomersPage from '../pages/CustomersPage.tsx';
-import InstallmentsPage from '../pages/InstallmentsPage.tsx';
-import ShopsPage from '../pages/owner/ShopsPage.tsx';
-import ContactPage from '../pages/ContactPage.tsx';
-import ReportsPage from '../pages/ReportsPage.tsx';
-import StaffPage from '../pages/StaffPage.tsx';
-import VerificationQueuePage from '../pages/VerificationQueuePage.tsx';
-import SettingsPage from '../pages/SettingsPage.tsx';
-import LedgerPage from '../pages/LedgerPage.tsx';
-import AuditLogPage from '../pages/AuditLogPage.tsx';
-import ReturnsPage from '../pages/ReturnsPage.tsx';
-import ExpensesPage from '../pages/ExpensesPage.tsx';
-import BillingPage from '../pages/BillingPage.tsx';
-import RecoveryPage from '../pages/RecoveryPage.tsx';
-import RecoveryAgentsPage from '../pages/RecoveryAgentsPage.tsx';
-import CashSalesPage from '../pages/CashSalesPage.tsx';
-import ExportsPage from '../pages/ExportsPage.tsx';
-import PortalLoginPage from '../pages/portal/PortalLoginPage.tsx';
-import PortalDashboardPage from '../pages/portal/PortalDashboardPage.tsx';
 
+// ── Lazy page imports ─────────────────────────────────────────────────────────
+// Each page becomes its own JS chunk, loaded only when first navigated to.
+const LandingPage           = lazy(() => import('../pages/LandingPage.tsx'));
+const LoginPage             = lazy(() => import('../pages/LoginPage.tsx'));
+const RegisterPage          = lazy(() => import('../pages/RegisterPage.tsx'));
+const SetupPage             = lazy(() => import('../pages/SetupPage.tsx'));
+const ForgotPasswordPage    = lazy(() => import('../pages/ForgotPasswordPage.tsx'));
+const OnboardingPage        = lazy(() => import('../pages/OnboardingPage.tsx'));
+const ContactPage           = lazy(() => import('../pages/ContactPage.tsx'));
+const DashboardPage         = lazy(() => import('../pages/DashboardPage.tsx'));
+const ProductsPage          = lazy(() => import('../pages/ProductsPage.tsx'));
+const CustomersPage         = lazy(() => import('../pages/CustomersPage.tsx'));
+const InstallmentsPage      = lazy(() => import('../pages/InstallmentsPage.tsx'));
+const ReportsPage           = lazy(() => import('../pages/ReportsPage.tsx'));
+const StaffPage             = lazy(() => import('../pages/StaffPage.tsx'));
+const VerificationQueuePage = lazy(() => import('../pages/VerificationQueuePage.tsx'));
+const SettingsPage          = lazy(() => import('../pages/SettingsPage.tsx'));
+const LedgerPage            = lazy(() => import('../pages/LedgerPage.tsx'));
+const AuditLogPage          = lazy(() => import('../pages/AuditLogPage.tsx'));
+const ReturnsPage           = lazy(() => import('../pages/ReturnsPage.tsx'));
+const ExpensesPage          = lazy(() => import('../pages/ExpensesPage.tsx'));
+const BillingPage           = lazy(() => import('../pages/BillingPage.tsx'));
+const RecoveryPage          = lazy(() => import('../pages/RecoveryPage.tsx'));
+const RecoveryAgentsPage    = lazy(() => import('../pages/RecoveryAgentsPage.tsx'));
+const CashSalesPage         = lazy(() => import('../pages/CashSalesPage.tsx'));
+const ExportsPage           = lazy(() => import('../pages/ExportsPage.tsx'));
+const ShopsPage             = lazy(() => import('../pages/owner/ShopsPage.tsx'));
+const PortalLoginPage       = lazy(() => import('../pages/portal/PortalLoginPage.tsx'));
+const PortalDashboardPage   = lazy(() => import('../pages/portal/PortalDashboardPage.tsx'));
+
+// ── Fallback loader ────────────────────────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
+function S({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+}
+
+// ── Route guards ──────────────────────────────────────────────────────────────
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (!user) return <Navigate to="/login" replace />;
@@ -59,7 +77,6 @@ function OwnerRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-// Guards routes that only SELLER_OWNER should access
 function SellerOwnerGuard({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (user?.role !== 'SELLER_OWNER') return <Navigate to="/dashboard" replace />;
@@ -94,42 +111,42 @@ function PortalGuestRoute({ children }: { children: ReactNode }) {
 }
 
 export const router = createBrowserRouter([
-  { path: '/',                element: <LandingPage /> },
-  { path: '/contact',         element: <ContactPage /> },
-  { path: '/setup',           element: <GuestRoute><SetupPage /></GuestRoute> },
-  { path: '/login',           element: <GuestRoute><LoginPage /></GuestRoute> },
-  { path: '/register',        element: <GuestRoute><RegisterPage /></GuestRoute> },
-  { path: '/forgot-password', element: <GuestRoute><ForgotPasswordPage /></GuestRoute> },
-  { path: '/onboarding',      element: <OnboardingRoute><OnboardingPage /></OnboardingRoute> },
+  { path: '/',                element: <S><LandingPage /></S> },
+  { path: '/contact',         element: <S><ContactPage /></S> },
+  { path: '/setup',           element: <GuestRoute><S><SetupPage /></S></GuestRoute> },
+  { path: '/login',           element: <GuestRoute><S><LoginPage /></S></GuestRoute> },
+  { path: '/register',        element: <GuestRoute><S><RegisterPage /></S></GuestRoute> },
+  { path: '/forgot-password', element: <GuestRoute><S><ForgotPasswordPage /></S></GuestRoute> },
+  { path: '/onboarding',      element: <OnboardingRoute><S><OnboardingPage /></S></OnboardingRoute> },
   {
     element: <OwnerRoute><OwnerLayout /></OwnerRoute>,
     children: [
-      { path: '/owner', element: <ShopsPage /> },
+      { path: '/owner', element: <S><ShopsPage /></S> },
     ],
   },
   {
     element: <ProtectedRoute><DashboardLayout /></ProtectedRoute>,
     children: [
-      { path: '/dashboard',      element: <DashboardPage /> },
-      { path: '/reports',        element: <PermGuard perm="canViewReports"><ReportsPage /></PermGuard> },
-      { path: '/products',       element: <PermGuard perm="canManageProducts"><ProductsPage /></PermGuard> },
-      { path: '/customers',      element: <PermGuard perm={['canAddCustomer', 'canAddInstallment', 'canRecordPayment']}><CustomersPage /></PermGuard> },
-      { path: '/installments',   element: <PermGuard perm={['canAddInstallment', 'canRecordPayment']}><InstallmentsPage /></PermGuard> },
-      { path: '/cash-sales',     element: <PermGuard perm="canMakeCashSales"><CashSalesPage /></PermGuard> },
-      { path: '/returns',        element: <PermGuard perm="canManageReturns"><ReturnsPage /></PermGuard> },
-      { path: '/expenses',       element: <PermGuard perm="canRecordExpense"><ExpensesPage /></PermGuard> },
-      { path: '/ledger',         element: <SellerOwnerGuard><LedgerPage /></SellerOwnerGuard> },
-      { path: '/audit',          element: <SellerOwnerGuard><AuditLogPage /></SellerOwnerGuard> },
-      { path: '/staff',          element: <SellerOwnerGuard><StaffPage /></SellerOwnerGuard> },
-      { path: '/billing',        element: <SellerOwnerGuard><BillingPage /></SellerOwnerGuard> },
-      { path: '/recovery',       element: <SellerOwnerGuard><RecoveryPage /></SellerOwnerGuard> },
-      { path: '/recovery-agents',element: <SellerOwnerGuard><RecoveryAgentsPage /></SellerOwnerGuard> },
-      { path: '/exports',         element: <SellerOwnerGuard><ExportsPage /></SellerOwnerGuard> },
-      { path: '/settings',       element: <SellerOwnerGuard><SettingsPage /></SellerOwnerGuard> },
-      { path: '/verifications',  element: <VerificationQueuePage /> },
+      { path: '/dashboard',        element: <S><DashboardPage /></S> },
+      { path: '/reports',          element: <PermGuard perm="canViewReports"><S><ReportsPage /></S></PermGuard> },
+      { path: '/products',         element: <PermGuard perm="canManageProducts"><S><ProductsPage /></S></PermGuard> },
+      { path: '/customers',        element: <PermGuard perm={['canAddCustomer', 'canAddInstallment', 'canRecordPayment']}><S><CustomersPage /></S></PermGuard> },
+      { path: '/installments',     element: <PermGuard perm={['canAddInstallment', 'canRecordPayment']}><S><InstallmentsPage /></S></PermGuard> },
+      { path: '/cash-sales',       element: <PermGuard perm="canMakeCashSales"><S><CashSalesPage /></S></PermGuard> },
+      { path: '/returns',          element: <PermGuard perm="canManageReturns"><S><ReturnsPage /></S></PermGuard> },
+      { path: '/expenses',         element: <PermGuard perm="canRecordExpense"><S><ExpensesPage /></S></PermGuard> },
+      { path: '/ledger',           element: <SellerOwnerGuard><S><LedgerPage /></S></SellerOwnerGuard> },
+      { path: '/audit',            element: <SellerOwnerGuard><S><AuditLogPage /></S></SellerOwnerGuard> },
+      { path: '/staff',            element: <SellerOwnerGuard><S><StaffPage /></S></SellerOwnerGuard> },
+      { path: '/billing',          element: <SellerOwnerGuard><S><BillingPage /></S></SellerOwnerGuard> },
+      { path: '/recovery',         element: <SellerOwnerGuard><S><RecoveryPage /></S></SellerOwnerGuard> },
+      { path: '/recovery-agents',  element: <SellerOwnerGuard><S><RecoveryAgentsPage /></S></SellerOwnerGuard> },
+      { path: '/exports',          element: <SellerOwnerGuard><S><ExportsPage /></S></SellerOwnerGuard> },
+      { path: '/settings',         element: <SellerOwnerGuard><S><SettingsPage /></S></SellerOwnerGuard> },
+      { path: '/verifications',    element: <S><VerificationQueuePage /></S> },
     ],
   },
-  { path: '/portal',           element: <PortalGuestRoute><PortalLoginPage /></PortalGuestRoute> },
-  { path: '/portal/dashboard', element: <PortalAuthRoute><PortalDashboardPage /></PortalAuthRoute> },
+  { path: '/portal',           element: <PortalGuestRoute><S><PortalLoginPage /></S></PortalGuestRoute> },
+  { path: '/portal/dashboard', element: <PortalAuthRoute><S><PortalDashboardPage /></S></PortalAuthRoute> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

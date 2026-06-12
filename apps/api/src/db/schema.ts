@@ -353,6 +353,8 @@ export const payments = pgTable('payments', {
   index('idx_payments_installment').on(t.installmentId),
   index('idx_payments_paid_on').on(t.paidOn),
   index('idx_payments_installment_deleted').on(t.installmentId, t.deletedAt),
+  index('idx_payments_collected_by').on(t.collectedBy),
+  index('idx_payments_collected_by_date').on(t.collectedBy, t.paidOn),
 ]);
 
 export const cashSales = pgTable('cash_sales', {
@@ -372,6 +374,9 @@ export const cashSales = pgTable('cash_sales', {
   index('idx_cash_sales_seller').on(t.sellerId),
   index('idx_cash_sales_created_at').on(t.createdAt),
   index('idx_cash_sales_product').on(t.productId),
+  index('idx_cash_sales_seller_date').on(t.sellerId, t.createdAt),
+  index('idx_cash_sales_sold_by').on(t.soldByUserId),
+  index('idx_cash_sales_sold_by_date').on(t.soldByUserId, t.createdAt),
 ]);
 
 // ── Double-entry accounting ───────────────────────────────────────────────────
