@@ -37,7 +37,7 @@ interface ListResponse {
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const installmentsApi = {
-  list: (params?: { page?: number; limit?: number; status?: string; search?: string; customerId?: string; frequency?: string }) =>
+  list: (params?: { page?: number; limit?: number; status?: string; search?: string; customerId?: string; frequency?: string; sortBy?: string; sortDir?: string }) =>
     api.get<{ data: ListResponse }>('/installments', { params }).then(unwrap<ListResponse>),
 
   exportAll: (params?: { status?: string; search?: string; frequency?: string }) =>

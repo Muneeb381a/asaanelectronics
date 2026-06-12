@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import EditInstallmentModal from '../components/EditInstallmentModal.tsx';
 import { TableSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
@@ -145,7 +145,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
         {isLoading ? (
           <RowSkeleton rows={4} />
         ) : overdue.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-10">No overdue installments â€” all good!</p>
+          <p className="text-sm text-gray-400 text-center py-10">No overdue installments â€" all good!</p>
         ) : (
           <>
             <div className="flex-1 overflow-y-auto divide-y divide-gray-100 rounded-xl border border-gray-100 mb-4">
@@ -169,7 +169,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
                           : 'bg-green-600 text-white hover:bg-green-700'
                       }`}>
                       <MessageCircle size={12} />
-                      {isSent ? 'Sent âœ“' : 'Send'}
+                      {isSent ? 'Sent âœ"' : 'Send'}
                     </button>
                   </div>
                 );
@@ -269,7 +269,7 @@ function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => vo
                   row.isCurrent ? 'bg-blue-100 text-blue-700'   :
                                   'bg-gray-100 text-gray-500'
                 }`}>
-                  {row.isPaid ? 'âœ“' : row.period}
+                  {row.isPaid ? 'âœ"' : row.period}
                 </span>
                 <div>
                   <p className={`${row.isPaid ? 'text-gray-400' : row.isOverdue ? 'text-red-700 font-medium' : 'text-gray-900'}`}>
@@ -415,7 +415,22 @@ export default function InstallmentsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [frequencyFilter, setFrequencyFilter] = useState('');
+  const [sortBy,  setSortBy]  = useState('createdAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [search, setSearch] = useState('');
+
+  function toggleSort(col: string) {
+    if (sortBy === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(col); setSortDir('desc'); }
+    setPage(1);
+  }
+
+  function SortIcon({ col }: { col: string }) {
+    if (sortBy !== col) return <ArrowUpDown size={11} className="text-gray-300 shrink-0" />;
+    return sortDir === 'asc'
+      ? <ChevronUp size={11} className="text-blue-600 shrink-0" />
+      : <ChevronDown size={11} className="text-blue-600 shrink-0" />;
+  }
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
   const [payInst, setPayInst] = useState<Installment | null>(null);
@@ -435,8 +450,8 @@ export default function InstallmentsPage() {
   const staffMustSearch = !isOwner && debouncedSearch.trim().length < 2;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['installments', statusFilter, frequencyFilter, debouncedSearch, page],
-    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT }),
+    queryKey: ['installments', statusFilter, frequencyFilter, debouncedSearch, page, sortBy, sortDir],
+    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT, sortBy, sortDir }),
     enabled: !staffMustSearch,
   });
 
@@ -609,15 +624,152 @@ export default function InstallmentsPage() {
             ) : undefined}
           />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* ── Mobile card list (< md) ─────────────────────────────────── */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {data.data.map((inst: Installment) => {
+                const nextDue  = calcNextDueDate(inst);
+                const overdue  = nextDue && nextDue < new Date();
+                const isDaily  = inst.paymentFrequency === 'daily';
+                const daysLate = overdue && nextDue
+                  ? Math.floor((new Date().getTime() - nextDue.getTime()) / 86_400_000)
+                  : 0;
+                return (
+                  <div key={inst.id} className="p-4">
+                    {/* Row 1: name + status + ⋮ */}
+                    <div className="flex items-start justify-between mb-1.5">
+                      <div className="flex-1 min-w-0 mr-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-semibold text-gray-900 text-sm leading-snug">{inst.customerName}</p>
+                          <Badge status={inst.status} />
+                          {isDaily && (
+                            <span className="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700">Daily</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {inst.customerPhone}
+                          {inst.customerArea ? ` · ${inst.customerArea}` : ''}
+                        </p>
+                      </div>
+                      <button
+                        data-menu
+                        onClick={(e) => {
+                          if (openMenu === inst.id) { setOpenMenu(null); setMenuPos(null); return; }
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                          setOpenMenu(inst.id);
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition shrink-0">
+                        <MoreVertical size={16} />
+                      </button>
+                    </div>
+
+                    {/* Row 2: product */}
+                    <p className="text-xs text-gray-600 mb-3">
+                      <span className="font-medium">{inst.productName}</span>
+                      {inst.imeiNumber && (
+                        <span className="text-gray-400 font-mono"> · IMEI: {inst.imeiNumber}</span>
+                      )}
+                    </p>
+
+                    {/* Row 3: amount chips */}
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-gray-50 rounded-xl px-2 py-2 text-center">
+                        <p className="text-[10px] text-gray-400 mb-0.5">Total</p>
+                        <p className="text-xs font-bold text-gray-900 leading-snug">{pkr(inst.totalAmount)}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl px-2 py-2 text-center">
+                        <p className="text-[10px] text-gray-400 mb-0.5">{isDaily ? 'Daily' : 'Monthly'}</p>
+                        <p className="text-xs font-bold text-gray-900 leading-snug">{pkr(inst.monthly)}</p>
+                      </div>
+                      <div className={`rounded-xl px-2 py-2 text-center ${Number(inst.remaining) > 0 ? 'bg-orange-50' : 'bg-green-50'}`}>
+                        <p className="text-[10px] text-gray-400 mb-0.5">Remaining</p>
+                        <p className={`text-xs font-bold leading-snug ${Number(inst.remaining) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                          {pkr(inst.remaining)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Row 4: next due banner */}
+                    {nextDue && (
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 text-xs font-medium ${overdue ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${overdue ? 'bg-red-500' : 'bg-blue-500'}`} />
+                        <span>{overdue ? 'Overdue since' : 'Due'}: {nextDue.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                        {overdue && <span className="ml-auto font-semibold">{daysLate}d late</span>}
+                      </div>
+                    )}
+
+                    {/* Row 5: action buttons */}
+                    <div className="flex items-center gap-2">
+                      {inst.status === 'PENDING' && isOwner && (
+                        <button
+                          onClick={() => { if (confirm('Approve this installment?')) approveMutation.mutate(inst.id); }}
+                          className="flex-1 py-2 bg-green-600 text-white text-xs rounded-xl font-medium hover:bg-green-700 transition">
+                          Approve
+                        </button>
+                      )}
+                      {inst.status === 'ACTIVE' && canPay && (
+                        <button
+                          onClick={() => setPayInst(inst)}
+                          className="flex-1 py-2 bg-blue-600 text-white text-xs rounded-xl font-medium hover:bg-blue-700 transition">
+                          Record Payment
+                        </button>
+                      )}
+                      <button
+                        onClick={() => shopData && void openBill({
+                          shop: shopData,
+                          customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
+                          product: inst.productName,
+                          totalAmount: inst.totalAmount, downPayment: inst.downPayment,
+                          monthly: inst.monthly, months: inst.months, remaining: inst.remaining,
+                          status: inst.status, startDate: inst.startDate, installmentId: inst.id,
+                          invoiceNumber: inst.invoiceNumber, imeiNumber: inst.imeiNumber,
+                          cashPrice: inst.cashPrice, profitMarkup: inst.profitMarkup,
+                          murabahaMode: shopData.murabahaMode, paymentFrequency: inst.paymentFrequency,
+                          paymentAccounts: paymentAccountsData,
+                        })}
+                        className="p-2 text-gray-400 hover:text-indigo-600 transition rounded-xl border border-gray-100">
+                        <FileText size={15} />
+                      </button>
+                      {inst.status === 'ACTIVE' && shopData && (
+                        <button
+                          onClick={() => openWhatsApp(inst.customerPhone, reminderMessage({
+                            shopName: shopData.shopName, customerName: inst.customerName,
+                            productName: inst.productName, monthly: inst.monthly,
+                            remaining: inst.remaining, paymentFrequency: inst.paymentFrequency,
+                          }))}
+                          className="p-2 text-gray-400 hover:text-green-600 transition rounded-xl border border-gray-100">
+                          <MessageCircle size={15} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Desktop table (≥ md) ────────────────────────────────────── */}
+            <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Customer</th>
+                  <th onClick={() => toggleSort('customerName')}
+                    className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer hover:text-gray-900 select-none whitespace-nowrap">
+                    <span className="flex items-center gap-1">Customer <SortIcon col="customerName" /></span>
+                  </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Product</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Total</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Periodic</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Remaining</th>
+                  <th onClick={() => toggleSort('totalAmount')}
+                    className="text-right px-4 py-3 font-medium text-gray-600 cursor-pointer hover:text-gray-900 select-none whitespace-nowrap">
+                    <span className="flex items-center gap-1 justify-end">Total <SortIcon col="totalAmount" /></span>
+                  </th>
+                  <th onClick={() => toggleSort('monthly')}
+                    className="text-right px-4 py-3 font-medium text-gray-600 cursor-pointer hover:text-gray-900 select-none whitespace-nowrap">
+                    <span className="flex items-center gap-1 justify-end">Periodic <SortIcon col="monthly" /></span>
+                  </th>
+                  <th onClick={() => toggleSort('remaining')}
+                    className="text-right px-4 py-3 font-medium text-gray-600 cursor-pointer hover:text-gray-900 select-none whitespace-nowrap">
+                    <span className="flex items-center gap-1 justify-end">Remaining <SortIcon col="remaining" /></span>
+                  </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Next Due</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
                   <th className="px-4 py-3" />
@@ -654,7 +806,7 @@ export default function InstallmentsPage() {
                     <td className="px-4 py-3 text-sm">
                       {(() => {
                         const d = calcNextDueDate(inst);
-                        if (!d) return <span className="text-gray-300">â€”</span>;
+                        if (!d) return <span className="text-gray-300">—</span>;
                         const isOverdue = d < new Date();
                         return (
                           <span className={isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'}>
@@ -669,7 +821,6 @@ export default function InstallmentsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
-                        {/* Primary CTA */}
                         {inst.status === 'PENDING' && isOwner && (
                           <button
                             onClick={() => { if (confirm('Approve this installment?')) approveMutation.mutate(inst.id); }}
@@ -684,26 +835,17 @@ export default function InstallmentsPage() {
                             Pay
                           </button>
                         )}
-                        {/* Icon buttons */}
                         <button
                           onClick={() => shopData && void openBill({
                             shop: shopData,
                             customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
                             product: inst.productName,
-                            totalAmount: inst.totalAmount,
-                            downPayment: inst.downPayment,
-                            monthly: inst.monthly,
-                            months: inst.months,
-                            remaining: inst.remaining,
-                            status: inst.status,
-                            startDate: inst.startDate,
-                            installmentId: inst.id,
-                            invoiceNumber: inst.invoiceNumber,
-                            imeiNumber: inst.imeiNumber,
-                            cashPrice: inst.cashPrice,
-                            profitMarkup: inst.profitMarkup,
-                            murabahaMode: shopData.murabahaMode,
-                            paymentFrequency: inst.paymentFrequency,
+                            totalAmount: inst.totalAmount, downPayment: inst.downPayment,
+                            monthly: inst.monthly, months: inst.months, remaining: inst.remaining,
+                            status: inst.status, startDate: inst.startDate, installmentId: inst.id,
+                            invoiceNumber: inst.invoiceNumber, imeiNumber: inst.imeiNumber,
+                            cashPrice: inst.cashPrice, profitMarkup: inst.profitMarkup,
+                            murabahaMode: shopData.murabahaMode, paymentFrequency: inst.paymentFrequency,
                             paymentAccounts: paymentAccountsData,
                           })}
                           title="Bill"
@@ -712,23 +854,16 @@ export default function InstallmentsPage() {
                         </button>
                         {inst.status === 'ACTIVE' && shopData && (
                           <button
-                            onClick={() => openWhatsApp(
-                              inst.customerPhone,
-                              reminderMessage({
-                                shopName: shopData.shopName,
-                                customerName: inst.customerName,
-                                productName: inst.productName,
-                                monthly: inst.monthly,
-                                remaining: inst.remaining,
-                                paymentFrequency: inst.paymentFrequency,
-                              })
-                            )}
+                            onClick={() => openWhatsApp(inst.customerPhone, reminderMessage({
+                              shopName: shopData.shopName, customerName: inst.customerName,
+                              productName: inst.productName, monthly: inst.monthly,
+                              remaining: inst.remaining, paymentFrequency: inst.paymentFrequency,
+                            }))}
                             title="WhatsApp reminder"
                             className="p-2 text-gray-400 hover:text-green-600 transition rounded">
                             <MessageCircle size={14} />
                           </button>
                         )}
-                        {/* â‹® trigger */}
                         <button
                           data-menu
                           onClick={(e) => {
@@ -746,7 +881,8 @@ export default function InstallmentsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
 
@@ -754,7 +890,7 @@ export default function InstallmentsPage() {
       {data && data.total > LIMIT && (
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-gray-500">
-            Showing {(page - 1) * LIMIT + 1}â€“{Math.min(page * LIMIT, data.total)} of {data.total}
+            Showing {(page - 1) * LIMIT + 1}â€"{Math.min(page * LIMIT, data.total)} of {data.total}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -776,7 +912,7 @@ export default function InstallmentsPage() {
         </div>
       )}
 
-      {/* â‹® actions dropdown â€” portal so it escapes table overflow-hidden */}
+      {/* â‹® actions dropdown â€" portal so it escapes table overflow-hidden */}
       {(() => {
         const inst = data?.data.find((i) => i.id === openMenu);
         if (!openMenu || !inst || !menuPos) return null;

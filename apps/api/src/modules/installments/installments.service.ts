@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
@@ -22,13 +22,27 @@ type CreateBody = {
 };
 
 export class InstallmentsService {
-  async list(sellerId: string, page: number, limit: number, status?: string, search?: string, customerId?: string, frequency?: string) {
+  async list(
+    sellerId: string, page: number, limit: number,
+    status?: string, search?: string, customerId?: string, frequency?: string,
+    sortBy: string = 'createdAt', sortDir: string = 'desc',
+  ) {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
     if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED'));
     if (search)     conditions.push(ilike(customers.name, `%${search}%`));
     if (customerId) conditions.push(eq(installments.customerId, customerId));
     if (frequency)  conditions.push(eq(installments.paymentFrequency, frequency as 'monthly' | 'daily'));
     const statusFilter = and(...conditions);
+
+    const sortColMap: Record<string, Parameters<typeof asc>[0]> = {
+      createdAt:    installments.createdAt,
+      totalAmount:  installments.totalAmount,
+      remaining:    installments.remaining,
+      monthly:      installments.monthly,
+      customerName: customers.name,
+    };
+    const sortCol = sortColMap[sortBy] ?? installments.createdAt;
+    const orderExpr = sortDir === 'asc' ? asc(sortCol) : desc(sortCol);
 
     const [rows, [{ count }]] = await Promise.all([
       db
@@ -76,7 +90,7 @@ export class InstallmentsService {
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .innerJoin(products, eq(installments.productId, products.id))
         .where(statusFilter)
-        .orderBy(desc(installments.createdAt))
+        .orderBy(orderExpr)
         .limit(limit)
         .offset((page - 1) * limit),
       db

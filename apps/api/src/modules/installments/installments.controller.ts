@@ -18,7 +18,9 @@ export async function listInstallments(req: AuthRequest, res: Response) {
   const search     = req.query['search']     as string | undefined;
   const customerId = req.query['customerId'] as string | undefined;
   const frequency  = req.query['frequency']  as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId, frequency));
+  const sortBy     = req.query['sortBy']     as string | undefined;
+  const sortDir    = req.query['sortDir']    as string | undefined;
+  success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId, frequency, sortBy, sortDir));
 }
 
 export async function getInstallment(req: AuthRequest, res: Response) {
