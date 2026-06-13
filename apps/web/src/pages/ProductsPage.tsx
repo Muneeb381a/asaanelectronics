@@ -336,7 +336,7 @@ export default function ProductsPage() {
               className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" />
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {isLoading ? <TableSkeleton rows={5} cols={5} />
               : isError ? <div className="p-8 text-center text-sm text-red-500">Failed to load products.</div>
               : !data?.data.length ? (
@@ -348,60 +348,112 @@ export default function ProductsPage() {
                     </button>
                   } />
               ) : (
-                <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-600">Serial</th>
-                      <th className="text-right px-4 py-3 font-medium text-gray-600">Cash Price</th>
-                      <th className="text-right px-4 py-3 font-medium text-gray-600">Install Price</th>
-                      <th className="text-right px-4 py-3 font-medium text-gray-600">Stock</th>
-                      <th className="px-4 py-3" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
+                <>
+                  {/* ── Mobile card list (< md) ────────────────────────────── */}
+                  <div className="md:hidden divide-y divide-gray-100">
                     {data.data.map((p) => (
-                      <tr key={p.id} className={`transition ${
-                        p.stock === 0       ? 'bg-red-50 hover:bg-red-100'
-                        : p.stock <= LOW_STOCK ? 'bg-amber-50 hover:bg-gray-50'
-                        : 'hover:bg-gray-50'
+                      <div key={p.id} className={`px-4 py-3 ${
+                        p.stock === 0 ? 'bg-red-50' : p.stock <= LOW_STOCK ? 'bg-amber-50' : ''
                       }`}>
-                        <td className="px-4 py-3">
-                          <span className="font-medium text-gray-900">{p.name}</span>
-                          <StockBadge stock={p.stock} />
-                        </td>
-                        <td className="px-4 py-3 text-gray-500">{p.serial ?? '—'}</td>
-                        <td className="px-4 py-3 text-right text-gray-900">{formatPKR(p.price)}</td>
-                        <td className="px-4 py-3 text-right">
-                          {p.installmentPrice
-                            ? <span className="text-blue-700 font-medium">{formatPKR(p.installmentPrice)}</span>
-                            : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={`font-bold ${
-                            p.stock === 0       ? 'text-red-600'
-                            : p.stock <= LOW_STOCK ? 'text-amber-600'
-                            : 'text-gray-900'
-                          }`}>{p.stock}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => setModal({ mode: 'edit', product: p })} title="Edit"
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                              <StockBadge stock={p.stock} />
+                            </div>
+                            {p.serial && <p className="text-xs text-gray-400 mt-0.5 font-mono">{p.serial}</p>}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => setModal({ mode: 'edit', product: p })}
                               className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                               <Pencil size={14} />
                             </button>
-                            <button onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending} title="Delete"
+                            <button onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending}
                               className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
                               <Trash2 size={14} />
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                          <div className="bg-white rounded-lg px-2 py-1.5 text-center border border-gray-100">
+                            <p className="text-[10px] text-gray-400">Cash</p>
+                            <p className="text-xs font-bold text-gray-900">{formatPKR(p.price)}</p>
+                          </div>
+                          <div className="bg-white rounded-lg px-2 py-1.5 text-center border border-gray-100">
+                            <p className="text-[10px] text-gray-400">Install</p>
+                            <p className="text-xs font-bold text-blue-700">
+                              {p.installmentPrice ? formatPKR(p.installmentPrice) : '—'}
+                            </p>
+                          </div>
+                          <div className={`rounded-lg px-2 py-1.5 text-center border ${
+                            p.stock === 0 ? 'bg-red-50 border-red-100' : p.stock <= LOW_STOCK ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'
+                          }`}>
+                            <p className="text-[10px] text-gray-400">Stock</p>
+                            <p className={`text-xs font-bold ${
+                              p.stock === 0 ? 'text-red-600' : p.stock <= LOW_STOCK ? 'text-amber-600' : 'text-gray-900'
+                            }`}>{p.stock}</p>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                </div>
+                  </div>
+
+                  {/* ── Desktop table (≥ md) ───────────────────────────────── */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-600">Serial</th>
+                          <th className="text-right px-4 py-3 font-medium text-gray-600">Cash Price</th>
+                          <th className="text-right px-4 py-3 font-medium text-gray-600">Install Price</th>
+                          <th className="text-right px-4 py-3 font-medium text-gray-600">Stock</th>
+                          <th className="px-4 py-3" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {data.data.map((p) => (
+                          <tr key={p.id} className={`transition ${
+                            p.stock === 0       ? 'bg-red-50 hover:bg-red-100'
+                            : p.stock <= LOW_STOCK ? 'bg-amber-50 hover:bg-gray-50'
+                            : 'hover:bg-gray-50'
+                          }`}>
+                            <td className="px-4 py-3">
+                              <span className="font-medium text-gray-900">{p.name}</span>
+                              <StockBadge stock={p.stock} />
+                            </td>
+                            <td className="px-4 py-3 text-gray-500">{p.serial ?? '—'}</td>
+                            <td className="px-4 py-3 text-right text-gray-900">{formatPKR(p.price)}</td>
+                            <td className="px-4 py-3 text-right">
+                              {p.installmentPrice
+                                ? <span className="text-blue-700 font-medium">{formatPKR(p.installmentPrice)}</span>
+                                : <span className="text-gray-300">—</span>}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`font-bold ${
+                                p.stock === 0       ? 'text-red-600'
+                                : p.stock <= LOW_STOCK ? 'text-amber-600'
+                                : 'text-gray-900'
+                              }`}>{p.stock}</span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => setModal({ mode: 'edit', product: p })} title="Edit"
+                                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                                  <Pencil size={14} />
+                                </button>
+                                <button onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending} title="Delete"
+                                  className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
           </div>
 

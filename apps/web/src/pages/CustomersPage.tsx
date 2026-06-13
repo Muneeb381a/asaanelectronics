@@ -182,6 +182,7 @@ function NotesPanel({ customer }: { customer: Customer }) {
   const isOwner = user?.role === 'SELLER_OWNER';
   const [draft, setDraft] = useState('');
   const [page, setPage] = useState(1);
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const LIMIT = 10;
 
   const { data: notesPage, isLoading } = useQuery({
@@ -229,7 +230,7 @@ function NotesPanel({ customer }: { customer: Customer }) {
                   <p className="text-sm text-gray-800 leading-relaxed flex-1">{n.note}</p>
                   {isOwner && (
                     <button
-                      onClick={() => { if (confirm('Delete this note?')) deleteMutation.mutate(n.id); }}
+                      onClick={() => setDeleteNoteId(n.id)}
                       className="text-gray-300 hover:text-red-500 transition shrink-0 opacity-0 group-hover:opacity-100">
                       <Trash2 size={13} />
                     </button>
@@ -249,6 +250,17 @@ function NotesPanel({ customer }: { customer: Customer }) {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteNoteId !== null}
+        title="Note Delete Karo?"
+        description="Ye note hamesha ke liye delete ho jaega."
+        confirmLabel="Delete Karo"
+        variant="danger"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => { if (deleteNoteId) deleteMutation.mutate(deleteNoteId); setDeleteNoteId(null); }}
+        onCancel={() => setDeleteNoteId(null)}
+      />
 
       {/* Add note input */}
       <div className="px-6 py-4 border-t border-gray-100 shrink-0">
@@ -325,6 +337,7 @@ function RiskBreakdownPanel({ customerId, riskScore, riskLabel }: {
 
 function ReVerifyButton({ customerId }: { customerId: string }) {
   const qc = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const { mutate, isPending } = useMutation({
     mutationFn: () => verificationsApi.reVerify(customerId),
     onSuccess: () => {
@@ -336,12 +349,24 @@ function ReVerifyButton({ customerId }: { customerId: string }) {
   });
 
   return (
-    <button
-      onClick={() => { if (confirm('Reset verification status to Pending? AVO will need to be re-assigned.')) mutate(); }}
-      disabled={isPending}
-      className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-xs text-red-600 hover:bg-red-50 transition disabled:opacity-50">
-      {isPending ? 'Resetting…' : 'Re-submit for Verification'}
-    </button>
+    <>
+      <button
+        onClick={() => setConfirmOpen(true)}
+        disabled={isPending}
+        className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-xs text-red-600 hover:bg-red-50 transition disabled:opacity-50">
+        {isPending ? 'Resetting…' : 'Re-submit for Verification'}
+      </button>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Verification Reset Karo?"
+        description="Customer ka verification status Pending ho jaega. AVO ko dobara assign karna hoga."
+        confirmLabel="Reset Karo"
+        variant="warning"
+        isPending={isPending}
+        onConfirm={() => { mutate(); setConfirmOpen(false); }}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
   );
 }
 

@@ -458,7 +458,26 @@ export class InstallmentsService {
           productCache.set(productKey, productId);
         }
 
-        // ── 3. Insert installment (no stock decrement — historical data) ────
+        // ── 3. Dedup check — skip if identical installment already exists ──
+        const dup = await db
+          .select({ id: installments.id })
+          .from(installments)
+          .where(and(
+            eq(installments.customerId, customerId),
+            eq(installments.productId, productId),
+            eq(installments.totalAmount, String(row.totalAmount)),
+            eq(installments.downPayment, String(row.downPayment)),
+            eq(installments.startDate, startDate),
+            isNull(installments.deletedAt),
+          ))
+          .limit(1);
+
+        if (dup.length > 0) {
+          errors.push({ row: rowNum, message: `Duplicate — installment for ${row.customerName} (${row.productName}) on this start date already exists` });
+          continue;
+        }
+
+        // ── 4. Insert installment (no stock decrement — historical data) ────
         const remaining = row.remaining !== undefined ? row.remaining : row.totalAmount - row.downPayment;
 
         await db.insert(installments).values({

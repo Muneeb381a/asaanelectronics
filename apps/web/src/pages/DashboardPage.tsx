@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, CreditCard, AlertTriangle,
   Calendar, CheckCircle, Clock, Package, ArrowRight, BarChart3,
-  MapPin, Users, ShieldCheck, Zap,
+  MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
@@ -170,6 +170,47 @@ export default function DashboardPage() {
           <BarChart3 size={13} /> Full analytics
         </button>
       </div>
+
+      {/* Quick actions strip */}
+      {(() => {
+        const perms = user?.permissions as Record<string, boolean> | null | undefined;
+        const actions = [
+          isOwner || perms?.canAddInstallment
+            ? { label: 'New Installment', icon: CreditCard,  color: 'text-blue-600',    bg: 'bg-blue-50',    to: '/installments' }
+            : null,
+          isOwner || perms?.canAddCustomer
+            ? { label: 'Add Customer',    icon: Users,       color: 'text-violet-600',  bg: 'bg-violet-50',  to: '/customers' }
+            : null,
+          isOwner || perms?.canMakeCashSales
+            ? { label: 'Cash Sale',       icon: ShoppingCart,color: 'text-emerald-600', bg: 'bg-emerald-50', to: '/cash-sales' }
+            : null,
+          isOwner || perms?.canRecordExpense
+            ? { label: 'Add Expense',     icon: Receipt,     color: 'text-orange-600',  bg: 'bg-orange-50',  to: '/expenses' }
+            : null,
+          isOwner || perms?.canManageProducts
+            ? { label: 'Add Product',     icon: Package,     color: 'text-amber-600',   bg: 'bg-amber-50',   to: '/products' }
+            : null,
+        ].filter(Boolean) as { label: string; icon: React.ElementType; color: string; bg: string; to: string }[];
+
+        if (!actions.length) return null;
+        return (
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+            {actions.map((a) => (
+              <button
+                key={a.to}
+                onClick={() => navigate(a.to)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-100 bg-white hover:shadow-sm transition shrink-0 text-left"
+              >
+                <div className={`w-7 h-7 ${a.bg} rounded-lg flex items-center justify-center shrink-0`}>
+                  <a.icon size={14} className={a.color} />
+                </div>
+                <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">{a.label}</span>
+                <Plus size={10} className="text-gray-300 ml-0.5" />
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

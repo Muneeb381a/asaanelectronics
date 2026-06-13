@@ -585,7 +585,7 @@ export default function InstallmentsPage() {
             className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
               frequencyFilter === 'daily'
                 ? 'bg-orange-500 border-orange-500 text-white'
-                : 'border-gray-200 text-gray-500 hover:bg-gray-100'
+                : 'border-orange-200 text-orange-600 bg-orange-50 hover:bg-orange-100'
             }`}>
             Daily
           </button>
