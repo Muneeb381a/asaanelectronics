@@ -491,6 +491,28 @@ function SessionsSection() {
       >
         Refresh
       </button>
+
+      <ConfirmDialog
+        open={revokeAllConfirm}
+        title="Tamam Sessions Revoke Karo?"
+        description="Aap sab devices se logout ho jaenge aur dobara login karna hoga."
+        confirmLabel="Revoke All"
+        variant="danger"
+        isPending={revokeAllMutation.isPending}
+        onConfirm={() => { revokeAllMutation.mutate(); setRevokeAllConfirm(false); }}
+        onCancel={() => setRevokeAllConfirm(false)}
+      />
+
+      <ConfirmDialog
+        open={revokeSessionConfirm.open}
+        title="Session Revoke Karo?"
+        description="Is device ka session khatam ho jaega."
+        confirmLabel="Revoke"
+        variant="danger"
+        isPending={revokeMutation.isPending}
+        onConfirm={() => { if (revokeSessionConfirm.id) revokeMutation.mutate(revokeSessionConfirm.id); setRevokeSessionConfirm({ open: false, id: null }); }}
+        onCancel={() => setRevokeSessionConfirm({ open: false, id: null })}
+      />
     </div>
   );
 }
