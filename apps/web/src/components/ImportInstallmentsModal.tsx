@@ -26,6 +26,28 @@ const COLUMNS: Array<{ header: string; field: keyof ImportInstallmentRow; requir
   { header: 'IMEI',                   field: 'imeiNumber',   required: false },
 ];
 
+// Aliases for re-importing the exported CSV (different column names + transformations needed)
+function parseDateDMY(raw: string): string {
+  const parts = raw.trim().split('/');
+  if (parts.length === 3 && parts[2]!.length === 4) {
+    // D/M/YYYY (en-PK locale) → YYYY-MM-DD
+    return `${parts[2]}-${parts[1]!.padStart(2, '0')}-${parts[0]!.padStart(2, '0')}`;
+  }
+  return raw;
+}
+
+const EXPORT_ALIASES: Array<{ header: string; field: keyof ImportInstallmentRow; transform?: (v: string) => string }> = [
+  { header: 'Customer',     field: 'customerName' },
+  { header: 'Product',      field: 'productName' },
+  { header: 'Total (PKR)',  field: 'totalAmount' },
+  { header: 'Per Period',   field: 'monthly' },
+  { header: 'Remaining',    field: 'remaining' },
+  { header: 'Duration',     field: 'months', transform: (v) => v.replace(/\s*(months?|days?)\s*$/i, '').trim() },
+  { header: 'Status',       field: 'status', transform: (v) => v.toUpperCase() },
+  { header: 'Start Date',   field: 'startDate', transform: parseDateDMY },
+  // Phone, Area, IMEI, Down Payment have identical headers in both formats
+];
+
 const TEMPLATE_HEADERS = COLUMNS.map((c) => c.header).join(',');
 const TEMPLATE_EXAMPLE = [
   'Ahmed Ali', '03001234567', '42101-1234567-1', 'Karachi',
@@ -44,10 +66,21 @@ function parseRows(raw: Record<string, string>[]): ParsedRow[] {
   return raw.map((record, i) => {
     const rowNum = i + 2;
     const mapped: Record<string, unknown> = {};
+
+    // Primary: import template column names
     for (const col of COLUMNS) {
       const val = record[col.header]?.trim();
-      mapped[col.field] = val === '' || val === undefined ? undefined : val;
+      if (val !== undefined && val !== '') mapped[col.field] = val;
     }
+
+    // Fallback: export column aliases (only fills fields not already set above)
+    for (const alias of EXPORT_ALIASES) {
+      if (mapped[alias.field] !== undefined) continue;
+      const val = record[alias.header]?.trim();
+      if (!val) continue;
+      mapped[alias.field] = alias.transform ? alias.transform(val) : val;
+    }
+
     const result = importInstallmentRowSchema.safeParse(mapped);
     if (!result.success) {
       return { rowNum, data: null, error: result.error.errors[0]?.message ?? 'Invalid row' };
