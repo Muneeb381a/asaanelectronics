@@ -54,6 +54,10 @@ export const paymentsApi = {
   record: (data: RecordPaymentInput) =>
     api.post<{ data: RecordResult }>('/payments', data).then(unwrap<RecordResult>),
 
+  patch: (id: string, data: { amount?: number; method?: PaymentMethod; note?: string }) =>
+    api.patch<{ data: { remaining: number; completed: boolean } }>(`/payments/${id}`, data)
+      .then(unwrap<{ remaining: number; completed: boolean }>),
+
   remove: (id: string) =>
     api.delete(`/payments/${id}`),
 

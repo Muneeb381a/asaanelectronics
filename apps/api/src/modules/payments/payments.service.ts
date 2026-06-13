@@ -143,6 +143,68 @@ export class PaymentsService {
     });
   }
 
+  async update(id: string, sellerId: string, body: { amount?: number; method?: 'CASH' | 'BANK' | 'JAZZCASH' | 'EASYPAISA' | 'OTHER'; note?: string }) {
+    return db.transaction(async (tx) => {
+      const [pmt] = await tx
+        .select({
+          id:            payments.id,
+          amount:        payments.amount,
+          method:        payments.method,
+          installmentId: payments.installmentId,
+          instRemaining: installments.remaining,
+          instStatus:    installments.status,
+        })
+        .from(payments)
+        .innerJoin(installments, eq(payments.installmentId, installments.id))
+        .innerJoin(customers,    eq(installments.customerId, customers.id))
+        .where(and(eq(payments.id, id), eq(customers.sellerId, sellerId), isNull(payments.deletedAt)));
+
+      if (!pmt) throw new AppError('Payment not found', 404);
+
+      const oldAmount    = Number(pmt.amount);
+      const newAmount    = body.amount ?? oldAmount;
+      const oldRemaining = Number(pmt.instRemaining);
+
+      // remaining before this payment = currentRemaining + oldAmount
+      // new remaining = (remaining before payment) - newAmount
+      const newRemaining = oldRemaining + (oldAmount - newAmount);
+      if (newRemaining < -0.001) {
+        throw new AppError(
+          `Amount exceeds balance — max PKR ${(oldRemaining + oldAmount).toFixed(0)}`,
+          400,
+        );
+      }
+
+      const safeRemaining = Math.max(0, newRemaining);
+      const wasCompleted  = pmt.instStatus === 'COMPLETED';
+      const isCleared     = safeRemaining === 0;
+      const statusUpdate  = isCleared && !wasCompleted ? { status: 'COMPLETED' as const }
+                          : !isCleared && wasCompleted  ? { status: 'ACTIVE'    as const }
+                          : {};
+
+      await Promise.all([
+        tx.update(payments).set({
+          ...(body.amount !== undefined && { amount: String(newAmount) }),
+          ...(body.method !== undefined && { method: body.method }),
+          ...(body.note   !== undefined && { note: body.note || null }),
+        }).where(eq(payments.id, id)),
+
+        tx.update(installments).set({
+          remaining: String(safeRemaining.toFixed(2)),
+          ...statusUpdate,
+        }).where(eq(installments.id, pmt.installmentId)),
+      ]);
+
+      if (body.amount !== undefined && body.amount !== oldAmount) {
+        await tx.update(ledgerEntries)
+          .set({ amount: String(newAmount) })
+          .where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'PAYMENT')));
+      }
+
+      return { id, remaining: safeRemaining, completed: isCleared };
+    });
+  }
+
   async remove(id: string, sellerId: string, deletedBy: string) {
     const [pmt] = await db
       .select({

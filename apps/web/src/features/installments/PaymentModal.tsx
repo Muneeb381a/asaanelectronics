@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil } from 'lucide-react';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { installmentsApi, type Installment } from '../../api/installments.api.ts';
 import { paymentsApi, type PaymentMethod } from '../../api/payments.api.ts';
@@ -43,6 +44,15 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [receiptData, setReceiptData] = useState<InstallmentReceiptData | null>(null);
   const [billPayload, setBillPayload] = useState<BillData | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Edit payment state
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editMethod, setEditMethod] = useState<PaymentMethod>('CASH');
+  const [editNote, setEditNote] = useState('');
+
+  // Delete confirmation state
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { data: seller } = useQuery({
     queryKey: ['seller-me'],
@@ -165,9 +175,26 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       qc.invalidateQueries({ queryKey: ['installments'] });
       qc.invalidateQueries({ queryKey: ['payments', inst.id] });
       for (const key of extraInvalidate) qc.invalidateQueries({ queryKey: key });
+      setDeleteConfirmId(null);
       toast.success('Payment deleted');
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to delete')),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: () => paymentsApi.patch(editId!, {
+      amount: Number(editAmount),
+      method: editMethod,
+      note:   editNote.trim() || undefined,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['installments'] });
+      qc.invalidateQueries({ queryKey: ['payments', inst.id] });
+      for (const key of extraInvalidate) qc.invalidateQueries({ queryKey: key });
+      setEditId(null);
+      toast.success('Payment updated');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to update')),
   });
 
   // fetch latest remaining from server so it's accurate even if we came from the drawer
@@ -413,36 +440,118 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                 <p className="text-sm text-gray-400 text-center py-6">No payments recorded yet.</p>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {history.map((p) => (
-                    <div key={p.id} className="py-3 flex items-start justify-between group gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">{pkr(p.amount)}</p>
-                        <p className="text-xs text-gray-400">
-                          {p.method} · {new Date(p.paidOn).toLocaleDateString('en-PK')}
-                          {p.note && ` · ${p.note}`}
-                        </p>
-                        {p.collectorName && (
-                          <p className="text-[11px] text-violet-600 font-medium mt-0.5">by {p.collectorName}</p>
-                        )}
+                  {history.map((p) => {
+                    const isEditing = editId === p.id;
+                    const maxEditAmount = Number(p.amount) + Number(freshInst.remaining);
+                    const editAmountNum = Number(editAmount);
+                    const editInvalid = !editAmount || editAmountNum <= 0 || editAmountNum > maxEditAmount;
+
+                    if (isEditing) {
+                      return (
+                        <div key={p.id} className="py-3 space-y-2.5 bg-blue-50/50 -mx-4 px-4 border-x border-blue-100">
+                          <p className="text-xs font-medium text-blue-700">Payment edit karo</p>
+                          <div>
+                            <label className="text-[11px] text-gray-500 mb-1 block">Amount (PKR)</label>
+                            <input
+                              type="number" value={editAmount} min={1} max={maxEditAmount}
+                              onChange={(e) => setEditAmount(e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p className="text-[11px] text-gray-400 mt-0.5">Max: PKR {maxEditAmount.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-gray-500 mb-1 block">Method</label>
+                            <div className="flex flex-wrap gap-1">
+                              {METHODS.map((m) => (
+                                <button key={m} type="button" onClick={() => setEditMethod(m)}
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
+                                    editMethod === m
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'text-gray-600 border-gray-200 hover:border-blue-300'
+                                  }`}>
+                                  {m}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-gray-500 mb-1 block">Note</label>
+                            <input
+                              type="text" value={editNote} placeholder="optional"
+                              onChange={(e) => setEditNote(e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => setEditId(null)}
+                              className="flex-1 py-2 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => editMutation.mutate()}
+                              disabled={editInvalid || editMutation.isPending}
+                              className="flex-1 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50">
+                              {editMutation.isPending ? 'Saving…' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={p.id} className="py-3 flex items-start justify-between group gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900">{pkr(p.amount)}</p>
+                          <p className="text-xs text-gray-400">
+                            {p.method} · {new Date(p.paidOn).toLocaleDateString('en-PK')}
+                            {p.note && ` · ${p.note}`}
+                          </p>
+                          {p.collectorName && (
+                            <p className="text-[11px] text-violet-600 font-medium mt-0.5">by {p.collectorName}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {p.proofImageUrl && (
+                            <a href={p.proofImageUrl} target="_blank" rel="noreferrer"
+                              className="text-[11px] text-blue-500 hover:underline mr-1">Receipt</a>
+                          )}
+                          {isOwner && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditId(p.id);
+                                  setEditAmount(String(Number(p.amount)));
+                                  setEditMethod(p.method);
+                                  setEditNote(p.note ?? '');
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded transition">
+                                <Pencil size={12} />
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirmId(p.id)}
+                                disabled={deleteMutation.isPending}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition disabled:opacity-40">
+                                <X size={12} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {p.proofImageUrl && (
-                          <a href={p.proofImageUrl} target="_blank" rel="noreferrer"
-                            className="text-[11px] text-blue-500 hover:underline">Receipt</a>
-                        )}
-                        {isOwner && (
-                          <button
-                            onClick={() => { if (confirm('Delete this payment?')) deleteMutation.mutate(p.id); }}
-                            disabled={deleteMutation.isPending}
-                            className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition disabled:opacity-40">
-                            <X size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
+
+              <ConfirmDialog
+                open={deleteConfirmId !== null}
+                title="Payment Delete Karo?"
+                description="Ye payment hamesha ke liye delete ho jaegi aur remaining balance wapas ho jaega."
+                confirmLabel="Delete Karo"
+                variant="danger"
+                isPending={deleteMutation.isPending}
+                onConfirm={() => { if (deleteConfirmId) deleteMutation.mutate(deleteConfirmId); }}
+                onCancel={() => setDeleteConfirmId(null)}
+              />
             </div>
           )}
         </div>}

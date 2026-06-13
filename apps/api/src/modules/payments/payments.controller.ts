@@ -20,6 +20,19 @@ export async function listPayments(req: AuthRequest, res: Response) {
   }
 }
 
+export async function patchPayment(req: AuthRequest, res: Response) {
+  const { amount, method, note } = req.body as { amount?: number; method?: 'CASH' | 'BANK' | 'JAZZCASH' | 'EASYPAISA' | 'OTHER'; note?: string };
+  const result = await svc.update(req.params['id']!, req.user!.sellerId!, { amount, method, note });
+  success(res, result);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'PAYMENT_UPDATED', entityType: 'PAYMENT', entityId: req.params['id']!,
+    description: `Edited payment${amount !== undefined ? ` — new amount PKR ${Number(amount).toLocaleString()}` : ''}`,
+    meta: { amount, method, note },
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
 export async function deletePayment(req: AuthRequest, res: Response) {
   const removed = await svc.remove(req.params['id']!, req.user!.sellerId!, req.user!.userId);
   success(res, null);
