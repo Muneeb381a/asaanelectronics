@@ -29,7 +29,7 @@ export class CashSalesService {
     if (from) conds.push(gte(cashSales.createdAt, new Date(from)));
     if (to) {
       const toDate = new Date(to);
-      toDate.setHours(23, 59, 59, 999);
+      toDate.setUTCHours(23, 59, 59, 999);
       conds.push(lte(cashSales.createdAt, toDate));
     }
     if (search) conds.push(

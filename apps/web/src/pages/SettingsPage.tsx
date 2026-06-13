@@ -12,6 +12,7 @@ import { billingApi, type BillingUsage, type UsageStat } from '../api/billing.ap
 import { useAuthStore } from '../store/auth.store.ts';
 import { useNavigate } from 'react-router-dom';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 const inp = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
 
@@ -208,6 +209,7 @@ function TypeBadge({ type }: { type: PaymentAccountType }) {
 function PaymentAccountsSection({ isOwner }: { isOwner: boolean }) {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [removeAccountConfirm, setRemoveAccountConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [type, setType]               = useState<PaymentAccountType>('BANK');
   const [accountTitle, setAccountTitle] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -339,7 +341,7 @@ function PaymentAccountsSection({ isOwner }: { isOwner: boolean }) {
               </div>
               {isOwner && (
                 <button
-                  onClick={() => { if (confirm('Remove this account?')) removeMutation.mutate(acc.id); }}
+                  onClick={() => setRemoveAccountConfirm({ open: true, id: acc.id })}
                   disabled={removeMutation.isPending}
                   className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
                   <Trash2 size={13} />
@@ -349,6 +351,17 @@ function PaymentAccountsSection({ isOwner }: { isOwner: boolean }) {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={removeAccountConfirm.open}
+        title="Account Remove Karo?"
+        description="Ye payment account remove ho jaega aur installment bills mein dikhna band ho jaega."
+        confirmLabel="Remove Karo"
+        variant="danger"
+        isPending={removeMutation.isPending}
+        onConfirm={() => { if (removeAccountConfirm.id) removeMutation.mutate(removeAccountConfirm.id); setRemoveAccountConfirm({ open: false, id: null }); }}
+        onCancel={() => setRemoveAccountConfirm({ open: false, id: null })}
+      />
     </div>
   );
 }
@@ -358,6 +371,8 @@ function SessionsSection() {
   const qc = useQueryClient();
   const { clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const [revokeAllConfirm, setRevokeAllConfirm] = useState(false);
+  const [revokeSessionConfirm, setRevokeSessionConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
 
   const { data: sessions = [], isLoading, refetch } = useQuery({
     queryKey: ['sessions'],
@@ -407,10 +422,7 @@ function SessionsSection() {
         </div>
         {sessions.length > 1 && (
           <button
-            onClick={() => {
-              if (confirm('Revoke ALL sessions? You will be logged out everywhere.'))
-                revokeAllMutation.mutate();
-            }}
+            onClick={() => setRevokeAllConfirm(true)}
             disabled={revokeAllMutation.isPending}
             className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
           >
@@ -461,7 +473,7 @@ function SessionsSection() {
               </div>
 
               <button
-                onClick={() => { if (confirm('Revoke this session? That device will be signed out.')) revokeMutation.mutate(session.id); }}
+                onClick={() => setRevokeSessionConfirm({ open: true, id: session.id })}
                 disabled={revokeMutation.isPending}
                 title="Revoke this session"
                 className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 shrink-0"

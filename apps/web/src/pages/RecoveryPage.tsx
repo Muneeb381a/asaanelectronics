@@ -8,6 +8,7 @@ import {
 import { installmentsApi, type Installment } from '../api/installments.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { recoveryApi, type RecoveryActionType, type RecoveryAction } from '../api/recovery.api.ts';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -135,6 +136,7 @@ function LogModal({ installmentId, onClose }: { installmentId: string; onClose: 
 function RecoveryPanel({ inst }: { inst: Installment }) {
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
+  const [removeConfirm, setRemoveConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
 
   const { data: actions = [], isLoading } = useQuery({
     queryKey: ['recovery', inst.id],
@@ -142,7 +144,7 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
     staleTime: 30_000,
   });
 
-  const { mutate: remove } = useMutation({
+  const { mutate: remove, isPending: isRemoving } = useMutation({
     mutationFn: (id: string) => recoveryApi.remove(id),
     onSuccess: () => {
       toast.success('Action removed');
@@ -209,7 +211,7 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
                       {fmtDate(a.createdAt)} {a.actorName && `· ${a.actorName}`}
                     </p>
                   </div>
-                  <button onClick={() => { if (confirm('Remove this action?')) remove(a.id); }}
+                  <button onClick={() => setRemoveConfirm({ open: true, id: a.id })}
                     className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition shrink-0">
                     <Trash2 size={14} />
                   </button>
@@ -221,6 +223,17 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
       </div>
 
       {showModal && <LogModal installmentId={inst.id} onClose={() => setShowModal(false)} />}
+
+      <ConfirmDialog
+        open={removeConfirm.open}
+        title="Action Remove Karo?"
+        description="Ye recovery action log se hamesha ke liye delete ho jaegi."
+        confirmLabel="Remove Karo"
+        variant="danger"
+        isPending={isRemoving}
+        onConfirm={() => { if (removeConfirm.id) remove(removeConfirm.id); setRemoveConfirm({ open: false, id: null }); }}
+        onCancel={() => setRemoveConfirm({ open: false, id: null })}
+      />
     </div>
   );
 }

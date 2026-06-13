@@ -14,6 +14,7 @@ import {
   AlertTriangle, Zap, BarChart3, ShoppingCart, Brain, X,
 } from 'lucide-react';
 import { TableSkeleton, EmptyState, BlockSkeleton } from '../components/ui/Skeleton.tsx';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 const LOW_STOCK = 3;
 type Modal = { mode: 'add' } | { mode: 'edit'; product: Product } | null;
@@ -234,11 +235,14 @@ export default function ProductsPage() {
   const [modal, setModal]   = useState<Modal>(null);
   const [tab, setTab]       = useState<Tab>('inventory');
   const [search, setSearch] = useState('');
+  const [page, setPage]     = useState(1);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const debouncedSearch     = useDebounce(search, 300);
+  const LIMIT = 20;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['products', debouncedSearch],
-    queryFn:  () => productsApi.list({ search: debouncedSearch || undefined }),
+    queryKey: ['products', debouncedSearch, page],
+    queryFn:  () => productsApi.list({ search: debouncedSearch || undefined, page, limit: LIMIT }),
   });
 
   const { data: intelligence, isLoading: intelligenceLoading } = useQuery({
@@ -267,9 +271,7 @@ export default function ProductsPage() {
     onError:   (e) => toast.error(getErrorMessage(e, 'Failed to delete product')),
   });
 
-  const handleDelete = (id: string) => {
-    if (confirm('Delete this product? This cannot be undone.')) deleteMutation.mutate(id);
-  };
+  const handleDelete = (id: string) => setDeleteConfirm({ open: true, id });
 
   const isPending    = createMutation.isPending || updateMutation.isPending;
   const lowStockItems = data?.data.filter((p) => p.stock <= LOW_STOCK) ?? [];
@@ -330,7 +332,7 @@ export default function ProductsPage() {
 
           <div className="mb-4">
             <input type="text" placeholder="Search products…" value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" />
           </div>
 
@@ -402,6 +404,25 @@ export default function ProductsPage() {
                 </div>
               )}
           </div>
+
+          {data && data.total > LIMIT && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-gray-500">
+                Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, data.total)} of {data.total}
+              </p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600 font-medium">{page} / {Math.ceil(data.total / LIMIT)}</span>
+                <button onClick={() => setPage((p) => p + 1)} disabled={page * LIMIT >= data.total}
+                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -452,6 +473,17 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="Product Delete Karo?"
+        description="Ye product permanently delete ho jaega. Stock bhi hata diya jaega. Ye action undo nahi ho sakta."
+        confirmLabel="Delete Karo"
+        variant="danger"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => { if (deleteConfirm.id) deleteMutation.mutate(deleteConfirm.id); setDeleteConfirm({ open: false, id: null }); }}
+        onCancel={() => setDeleteConfirm({ open: false, id: null })}
+      />
     </div>
   );
 }

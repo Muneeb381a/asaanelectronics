@@ -6,7 +6,7 @@ import { createInstallmentSchema } from '@assaan/shared';
 import {
   listInstallments, getInstallment, createInstallment, defaultInstallment,
   cancelInstallment, rescheduleInstallment, deleteInstallment,
-  approveInstallment, closeInstallment, importInstallments,
+  approveInstallment, closeInstallment, importInstallments, updateInstallment,
 } from './installments.controller.js';
 
 const router = Router();
@@ -17,6 +17,7 @@ router.get('/',           listInstallments);
 router.get('/:id',        getInstallment);
 router.post('/',          requirePermission('canAddInstallment'), validate(createInstallmentSchema), createInstallment);
 router.post('/import',    requireOwner, importInstallments);
+router.patch('/:id',      requireOwner, updateInstallment);
 router.patch('/:id/approve',    requireOwner, approveInstallment);
 router.patch('/:id/close',      requireOwner, closeInstallment);
 router.patch('/:id/default',    requireOwner, defaultInstallment);

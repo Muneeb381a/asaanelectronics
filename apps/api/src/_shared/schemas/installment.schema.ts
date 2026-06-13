@@ -37,3 +37,17 @@ export const importInstallmentsSchema = z.object({
 
 export type ImportInstallmentRow    = z.infer<typeof importInstallmentRowSchema>;
 export type ImportInstallmentsInput = z.infer<typeof importInstallmentsSchema>;
+
+export const updateInstallmentSchema = z.object({
+  totalAmount:      z.number().positive().optional(),
+  downPayment:      z.number().min(0).optional(),
+  monthly:          z.number().positive().optional(),
+  months:           z.number().int().min(1).max(365).optional(),
+  startDate:        z.string().optional(),
+  imeiNumber:       z.string().max(20).nullable().optional(),
+  cashPrice:        z.number().positive().nullable().optional(),
+  profitMarkup:     z.number().min(0).nullable().optional(),
+  paymentFrequency: z.enum(['monthly', 'daily']).optional(),
+});
+
+export type UpdateInstallmentInput = z.infer<typeof updateInstallmentSchema>;

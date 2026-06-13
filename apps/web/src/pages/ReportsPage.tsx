@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
 import { verificationsApi, type AvoStat } from '../api/verifications.api.ts';
@@ -5,6 +6,7 @@ import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck } from 'lucide-react';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 function pkr(v: number) {
   return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
@@ -107,6 +109,7 @@ export default function ReportsPage() {
   const user = useAuthStore((s) => s.user);
   const isOwner    = user?.role === 'SELLER_OWNER';
   const canReports = isOwner || !!user?.permissions?.canViewReports;
+  const [remindAllConfirm, setRemindAllConfirm] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reports'],
@@ -183,18 +186,7 @@ export default function ReportsPage() {
         </div>
         {shopData && topDebtors.length > 0 && (
           <button
-            onClick={() => {
-              if (!confirm(`Send WhatsApp reminder to all ${topDebtors.length} debtors?`)) return;
-              topDebtors.forEach((d, i) => {
-                setTimeout(() => openWhatsApp(d.phone, reminderMessage({
-                  shopName: shopData.shopName,
-                  customerName: d.name,
-                  productName: d.count > 1 ? `${d.count} active plans` : 'your installment',
-                  monthly: 0,
-                  remaining: d.remaining,
-                })), i * 600);
-              });
-            }}
+            onClick={() => setRemindAllConfirm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
           >
             <Send size={14} />
@@ -437,6 +429,29 @@ export default function ReportsPage() {
         </div>
       )}
 
+      <ConfirmDialog
+        open={remindAllConfirm}
+        title={`${data?.topDebtors?.length ?? 0} customers ko reminder bhejo?`}
+        description="Tamam debtors ko ek ke baad ek WhatsApp reminder khula jaega. Confirm karne ke baad browser tabs khulenge."
+        confirmLabel="Remind All Bhejo"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={() => {
+          if (shopData && data?.topDebtors) {
+            data.topDebtors.forEach((d, i) => {
+              setTimeout(() => openWhatsApp(d.phone, reminderMessage({
+                shopName: shopData.shopName,
+                customerName: d.name,
+                productName: d.count > 1 ? `${d.count} active plans` : 'your installment',
+                monthly: 0,
+                remaining: d.remaining,
+              })), i * 600);
+            });
+          }
+          setRemindAllConfirm(false);
+        }}
+        onCancel={() => setRemindAllConfirm(false)}
+      />
     </div>
   );
 }

@@ -118,7 +118,7 @@ export interface CustomerLookupResult {
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const customersApi = {
-  list: (params?: { page?: number; limit?: number; search?: string; lifecycle?: string; verificationStatus?: string }) =>
+  list: (params?: { page?: number; limit?: number; search?: string; lifecycle?: string; verificationStatus?: string; sortBy?: string; sortDir?: string }) =>
     api.get<{ data: ListResponse }>('/customers', { params }).then(unwrap<ListResponse>),
 
   lifecycleCounts: () =>

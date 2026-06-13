@@ -156,3 +156,35 @@ export declare const importInstallmentsSchema: z.ZodObject<{
 }>;
 export type ImportInstallmentRow = z.infer<typeof importInstallmentRowSchema>;
 export type ImportInstallmentsInput = z.infer<typeof importInstallmentsSchema>;
+export declare const updateInstallmentSchema: z.ZodObject<{
+    totalAmount: z.ZodOptional<z.ZodNumber>;
+    downPayment: z.ZodOptional<z.ZodNumber>;
+    monthly: z.ZodOptional<z.ZodNumber>;
+    months: z.ZodOptional<z.ZodNumber>;
+    startDate: z.ZodOptional<z.ZodString>;
+    imeiNumber: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    cashPrice: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    profitMarkup: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    paymentFrequency: z.ZodOptional<z.ZodEnum<["monthly", "daily"]>>;
+}, "strip", z.ZodTypeAny, {
+    totalAmount?: number | undefined;
+    downPayment?: number | undefined;
+    months?: number | undefined;
+    startDate?: string | undefined;
+    imeiNumber?: string | null | undefined;
+    cashPrice?: number | null | undefined;
+    profitMarkup?: number | null | undefined;
+    monthly?: number | undefined;
+    paymentFrequency?: "monthly" | "daily" | undefined;
+}, {
+    totalAmount?: number | undefined;
+    downPayment?: number | undefined;
+    months?: number | undefined;
+    startDate?: string | undefined;
+    imeiNumber?: string | null | undefined;
+    cashPrice?: number | null | undefined;
+    profitMarkup?: number | null | undefined;
+    monthly?: number | undefined;
+    paymentFrequency?: "monthly" | "daily" | undefined;
+}>;
+export type UpdateInstallmentInput = z.infer<typeof updateInstallmentSchema>;

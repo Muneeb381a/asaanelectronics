@@ -12,6 +12,7 @@ import { expensesApi, type ExpenseCategory } from '../api/expenses.api.ts';
 import { accountingApi } from '../api/accounting.api.ts';
 import { reconciliationApi, type Anomaly } from '../api/reconciliation.api.ts';
 import { RowSkeleton } from '../components/ui/Skeleton.tsx';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 type Tab = 'balance' | 'cashbook' | 'daily' | 'pl' | 'expenses' | 'journal' | 'accounts' | 'reconcile';
 
@@ -330,6 +331,7 @@ function PLTab() {
 function ExpensesTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [from, setFrom] = useState(monthStart());
   const [to,   setTo]   = useState(today());
 
@@ -491,7 +493,7 @@ function ExpensesTab() {
                   <td className="px-4 py-3 text-right font-semibold text-red-500">{fmt(Number(e.amount))}</td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => { if (confirm('Delete this expense?')) deleteMutation.mutate(e.id); }}
+                      onClick={() => setDeleteConfirm({ open: true, id: e.id })}
                       disabled={deleteMutation.isPending}
                       className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     >
@@ -504,6 +506,17 @@ function ExpensesTab() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="Expense Delete Karo?"
+        description="Ye expense ledger se delete ho jaegi aur balance update ho jaega."
+        confirmLabel="Delete Karo"
+        variant="danger"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => { if (deleteConfirm.id) deleteMutation.mutate(deleteConfirm.id); setDeleteConfirm({ open: false, id: null }); }}
+        onCancel={() => setDeleteConfirm({ open: false, id: null })}
+      />
     </div>
   );
 }

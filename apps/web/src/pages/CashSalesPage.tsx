@@ -11,6 +11,7 @@ import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { openCashSaleBill } from '../utils/bill.ts';
 import { cashSaleWhatsappUrl } from '../utils/receipt.ts';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 const METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -210,15 +211,76 @@ export default function CashSalesPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[500px]">
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {sales.map((s) => (
+              <div key={s.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm">{s.productName}</p>
+                    {s.quantity > 1 && <p className="text-xs text-gray-400 mt-0.5">Qty: {s.quantity}</p>}
+                    {s.imeiNumber && <p className="text-xs text-gray-400 font-mono mt-0.5">{s.imeiNumber}</p>}
+                  </div>
+                  <p className="font-bold text-gray-900 text-sm shrink-0">PKR {Number(s.amount).toLocaleString()}</p>
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-600 truncate">{s.customerName ?? <span className="text-gray-400 italic">Walk-in</span>}</p>
+                    {s.customerPhone && <p className="text-xs text-gray-400">{s.customerPhone}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${METHOD_COLORS[s.method]}`}>
+                      {METHOD_LABELS[s.method]}
+                    </span>
+                    <p className="text-xs text-gray-400">{fmtDate(s.createdAt)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    onClick={() => void openCashSaleBill({
+                      shop:     { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
+                      customer: { name: s.customerName, phone: s.customerPhone },
+                      product:  s.productName,
+                      quantity: s.quantity,
+                      amount:   s.amount,
+                      method:   s.method,
+                      imeiNumber: s.imeiNumber,
+                      note:     s.note,
+                      soldAt:   s.createdAt,
+                      saleId:   s.id,
+                    })}
+                    className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-xs font-medium hover:bg-gray-50 transition flex items-center justify-center gap-1">
+                    <Printer size={12} /> Print
+                  </button>
+                  {isOwner && (
+                    <>
+                      <button
+                        onClick={() => setEditingSale(s)}
+                        className="flex-1 py-2 rounded-xl border border-blue-200 text-blue-600 text-xs font-medium hover:bg-blue-50 transition flex items-center justify-center gap-1">
+                        <Pencil size={12} /> Edit
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(s.id)}
+                        className="flex-1 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 transition flex items-center justify-center gap-1">
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Product</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Customer</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Amount</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide hidden sm:table-cell">Method</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide hidden md:table-cell">Date</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Method</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Date</th>
                   {isOwner && <th className="px-4 py-3" />}
                 </tr>
               </thead>
@@ -237,48 +299,30 @@ export default function CashSalesPage() {
                     <td className="px-4 py-3 text-right">
                       <span className="font-bold text-gray-900">PKR {Number(s.amount).toLocaleString()}</span>
                     </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
+                    <td className="px-4 py-3">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${METHOD_COLORS[s.method]}`}>
                         {METHOD_LABELS[s.method]}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs hidden md:table-cell">
+                    <td className="px-4 py-3 text-gray-400 text-xs">
                       {fmtDate(s.createdAt)}
                     </td>
                     {isOwner && (
                       <td className="px-4 py-3 text-right">
-                        {confirmDelete === s.id ? (
-                          <div className="flex items-center gap-1.5 justify-end">
-                            <button
-                              onClick={() => deleteMutation.mutate(s.id)}
-                              disabled={deleteMutation.isPending}
-                              className="text-xs font-semibold text-red-600 hover:text-red-700"
-                            >
-                              {deleteMutation.isPending ? '...' : 'Confirm'}
-                            </button>
-                            <button
-                              onClick={() => setConfirmDelete(null)}
-                              className="text-xs text-gray-400 hover:text-gray-600"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-0.5 justify-end">
-                            <button
-                              onClick={() => setEditingSale(s)}
-                              className="p-1.5 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              onClick={() => setConfirmDelete(s.id)}
-                              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-0.5 justify-end">
+                          <button
+                            onClick={() => setEditingSale(s)}
+                            className="p-1.5 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(s.id)}
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -286,6 +330,7 @@ export default function CashSalesPage() {
               </tbody>
             </table>
           </div>
+
           {salesPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
               <button
@@ -584,6 +629,17 @@ export default function CashSalesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Sale Delete Karo?"
+        description="Ye cash sale delete ho jaegi aur product ka stock wapis adjust ho jaega."
+        confirmLabel="Delete Karo"
+        variant="danger"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => { if (confirmDelete) deleteMutation.mutate(confirmDelete); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {/* Edit Cash Sale Modal */}
       {editingSale && (

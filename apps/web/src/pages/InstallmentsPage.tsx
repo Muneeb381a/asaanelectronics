@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
 import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import EditInstallmentModal from '../components/EditInstallmentModal.tsx';
 import { TableSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
@@ -440,6 +441,11 @@ export default function InstallmentsPage() {
   const [editInst, setEditInst] = useState<Installment | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [approveConfirm, setApproveConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [defaultConfirm, setDefaultConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [closeConfirm,   setCloseConfirm]   = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [cancelConfirm,  setCancelConfirm]  = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [deleteConfirm,  setDeleteConfirm]  = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
 
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
   const { data: paymentAccountsData = [] } = useQuery<PaymentAccount[]>({ queryKey: ['payment-accounts'], queryFn: sellersApi.listPaymentAccounts });
@@ -703,7 +709,7 @@ export default function InstallmentsPage() {
                     <div className="flex items-center gap-2">
                       {inst.status === 'PENDING' && isOwner && (
                         <button
-                          onClick={() => { if (confirm('Approve this installment?')) approveMutation.mutate(inst.id); }}
+                          onClick={() => setApproveConfirm({ open: true, id: inst.id })}
                           className="flex-1 py-2 bg-green-600 text-white text-xs rounded-xl font-medium hover:bg-green-700 transition">
                           Approve
                         </button>
@@ -823,7 +829,7 @@ export default function InstallmentsPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         {inst.status === 'PENDING' && isOwner && (
                           <button
-                            onClick={() => { if (confirm('Approve this installment?')) approveMutation.mutate(inst.id); }}
+                            onClick={() => setApproveConfirm({ open: true, id: inst.id })}
                             className="px-2.5 py-1 bg-green-600 text-white text-xs rounded-lg font-medium hover:bg-green-700 transition">
                             Approve
                           </button>
@@ -948,13 +954,13 @@ export default function InstallmentsPage() {
               </button>
             )}
             {inst.status === 'ACTIVE' && isOwner && (
-              <button onClick={() => { close(); if (confirm('Mark as defaulted?')) defaultMutation.mutate(inst.id); }}
+              <button onClick={() => { close(); setDefaultConfirm({ open: true, id: inst.id }); }}
                 className="w-full text-left px-3 py-2 text-xs text-orange-600 hover:bg-orange-50 transition">
                 Mark Default
               </button>
             )}
             {(inst.status === 'COMPLETED' || inst.status === 'DEFAULTED') && isOwner && (
-              <button onClick={() => { close(); if (confirm('Archive this installment as closed?')) closeMutation.mutate(inst.id); }}
+              <button onClick={() => { close(); setCloseConfirm({ open: true, id: inst.id }); }}
                 className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition">
                 Close
               </button>
@@ -966,13 +972,13 @@ export default function InstallmentsPage() {
               </button>
             )}
             {(inst.status === 'PENDING' || inst.status === 'ACTIVE') && isOwner && (
-              <button onClick={() => { close(); if (confirm('Cancel this installment?')) cancelMutation.mutate(inst.id); }}
+              <button onClick={() => { close(); setCancelConfirm({ open: true, id: inst.id }); }}
                 className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition">
                 Cancel
               </button>
             )}
             {isOwner && (
-              <button onClick={() => { close(); if (confirm('Permanently delete this installment? This cannot be undone.')) deleteMutation.mutate(inst.id); }}
+              <button onClick={() => { close(); setDeleteConfirm({ open: true, id: inst.id }); }}
                 className="w-full text-left px-3 py-2 text-xs text-red-700 hover:bg-red-50 transition font-medium">
                 Delete
               </button>
@@ -1053,6 +1059,57 @@ export default function InstallmentsPage() {
           onImported={() => { invalidate(); setShowImport(false); }}
         />
       )}
+
+      <ConfirmDialog
+        open={approveConfirm.open}
+        title="Installment Approve Karo?"
+        description="Approve karne ke baad customer active ho jaega aur payments shuru ho jaen gi."
+        confirmLabel="Approve Karo"
+        variant="info"
+        isPending={approveMutation.isPending}
+        onConfirm={() => { if (approveConfirm.id) approveMutation.mutate(approveConfirm.id); setApproveConfirm({ open: false, id: null }); }}
+        onCancel={() => setApproveConfirm({ open: false, id: null })}
+      />
+      <ConfirmDialog
+        open={defaultConfirm.open}
+        title="Default Mark Karo?"
+        description="Is installment ko defaulted mark kar diya jaega. Customer ko warning flag mil jaegi."
+        confirmLabel="Default Mark Karo"
+        variant="warning"
+        isPending={defaultMutation.isPending}
+        onConfirm={() => { if (defaultConfirm.id) defaultMutation.mutate(defaultConfirm.id); setDefaultConfirm({ open: false, id: null }); }}
+        onCancel={() => setDefaultConfirm({ open: false, id: null })}
+      />
+      <ConfirmDialog
+        open={closeConfirm.open}
+        title="Installment Close Karo?"
+        description="Is installment ko permanently archive kar diya jaega. Ye action undo nahi ho sakta."
+        confirmLabel="Close Karo"
+        variant="warning"
+        isPending={closeMutation.isPending}
+        onConfirm={() => { if (closeConfirm.id) closeMutation.mutate(closeConfirm.id); setCloseConfirm({ open: false, id: null }); }}
+        onCancel={() => setCloseConfirm({ open: false, id: null })}
+      />
+      <ConfirmDialog
+        open={cancelConfirm.open}
+        title="Installment Cancel Karo?"
+        description="Is installment ko cancel kar diya jaega. Customer ki baqi payments nahi li jaen gi."
+        confirmLabel="Cancel Karo"
+        variant="danger"
+        isPending={cancelMutation.isPending}
+        onConfirm={() => { if (cancelConfirm.id) cancelMutation.mutate(cancelConfirm.id); setCancelConfirm({ open: false, id: null }); }}
+        onCancel={() => setCancelConfirm({ open: false, id: null })}
+      />
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="Installment Delete Karo?"
+        description="Ye installment aur uski tamam payment history hamesha ke liye delete ho jaegi. Ye action undo nahi ho sakta."
+        confirmLabel="Delete Karo"
+        variant="danger"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => { if (deleteConfirm.id) deleteMutation.mutate(deleteConfirm.id); setDeleteConfirm({ open: false, id: null }); }}
+        onCancel={() => setDeleteConfirm({ open: false, id: null })}
+      />
     </div>
   );
 }

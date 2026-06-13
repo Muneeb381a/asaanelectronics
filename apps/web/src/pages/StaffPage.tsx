@@ -6,6 +6,7 @@ import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '
 import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { CardSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 type StaffType = 'ACCOUNT' | 'AVO' | 'MANAGER' | 'CASHIER' | 'CUSTOM';
 
@@ -332,8 +333,9 @@ function StaffCard({ member }: { member: StaffMember }) {
   const initials = member.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const frozen = isMemberFrozen(member);
   const [showFreeze, setShowFreeze] = useState(false);
+  const [removeConfirm, setRemoveConfirm] = useState(false);
 
-  const { mutate: remove } = useMutation({
+  const { mutate: remove, isPending: isRemoving } = useMutation({
     mutationFn: () => staffApi.remove(member.id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
   });
@@ -395,7 +397,7 @@ function StaffCard({ member }: { member: StaffMember }) {
                 </button>
               )}
               <button
-                onClick={() => { if (confirm(`Remove ${member.name}?`)) remove(); }}
+                onClick={() => setRemoveConfirm(true)}
                 className="text-gray-300 hover:text-red-500 transition p-1 rounded-lg hover:bg-red-50"
               >
                 <Trash2 size={14} />
@@ -425,6 +427,17 @@ function StaffCard({ member }: { member: StaffMember }) {
       </div>
 
       {showFreeze && <FreezeModal member={member} onClose={() => setShowFreeze(false)} />}
+
+      <ConfirmDialog
+        open={removeConfirm}
+        title={`${member.name} ko Remove Karo?`}
+        description="Is staff member ka account delete ho jaega aur wo login nahi kar sakey ga."
+        confirmLabel="Remove Karo"
+        variant="danger"
+        isPending={isRemoving}
+        onConfirm={() => { remove(); setRemoveConfirm(false); }}
+        onCancel={() => setRemoveConfirm(false)}
+      />
     </>
   );
 }

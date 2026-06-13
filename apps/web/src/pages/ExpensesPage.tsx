@@ -8,6 +8,7 @@ import {
 import { expensesApi, type ExpenseCategory, type Expense } from '../api/expenses.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 // ── Category meta ──────────────────────────────────────────────────────────────
 
@@ -171,6 +172,7 @@ export default function ExpensesPage() {
   const isOwner  = user?.role === 'SELLER_OWNER';
   const [showAdd,        setShowAdd]        = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [deleteConfirm, setDeleteConfirm]   = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [filterCat, setFilter]  = useState<ExpenseCategory | 'ALL'>('ALL');
   const [search,    setSearch]  = useState('');
   const bounds = monthBounds();
@@ -346,7 +348,7 @@ export default function ExpensesPage() {
                             <Pencil size={13} />
                           </button>
                           <button
-                            onClick={() => { if (confirm('Remove this expense?')) deleteMutation.mutate(e.id); }}
+                            onClick={() => setDeleteConfirm({ open: true, id: e.id })}
                             disabled={deleteMutation.isPending}
                             className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40 shrink-0">
                             <Trash2 size={13} />
@@ -364,6 +366,17 @@ export default function ExpensesPage() {
 
       {showAdd          && <AddModal onClose={() => setShowAdd(false)} />}
       {editingExpense   && <AddModal expense={editingExpense} onClose={() => setEditingExpense(null)} />}
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="Expense Delete Karo?"
+        description="Ye expense hamesha ke liye delete ho jaegi. Ye action undo nahi ho sakta."
+        confirmLabel="Delete Karo"
+        variant="danger"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => { if (deleteConfirm.id) deleteMutation.mutate(deleteConfirm.id); setDeleteConfirm({ open: false, id: null }); }}
+        onCancel={() => setDeleteConfirm({ open: false, id: null })}
+      />
     </div>
   );
 }

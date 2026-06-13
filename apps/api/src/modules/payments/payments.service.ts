@@ -60,7 +60,7 @@ export class PaymentsService {
     if (from) conds.push(gte(payments.paidOn, new Date(from)));
     if (to) {
       const toDate = new Date(to);
-      toDate.setHours(23, 59, 59, 999);
+      toDate.setUTCHours(23, 59, 59, 999);
       conds.push(lte(payments.paidOn, toDate));
     }
     return db
@@ -82,7 +82,8 @@ export class PaymentsService {
       .innerJoin(products,     eq(installments.productId,  products.id))
       .leftJoin(users,         eq(payments.collectedBy,    users.id))
       .where(and(...conds))
-      .orderBy(desc(payments.paidOn));
+      .orderBy(desc(payments.paidOn))
+      .limit(1000);
   }
 
   async record(sellerId: string, body: CreateBody) {

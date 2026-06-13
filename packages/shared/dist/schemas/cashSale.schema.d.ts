@@ -14,8 +14,8 @@ export declare const createCashSaleSchema: z.ZodObject<{
     method: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER";
     quantity: number;
     imeiNumber?: string | undefined;
-    note?: string | undefined;
     customerName?: string | undefined;
+    note?: string | undefined;
     customerPhone?: string | undefined;
 }, {
     productId: string;
@@ -23,8 +23,8 @@ export declare const createCashSaleSchema: z.ZodObject<{
     method: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER";
     quantity: number;
     imeiNumber?: string | undefined;
-    note?: string | undefined;
     customerName?: string | undefined;
+    note?: string | undefined;
     customerPhone?: string | undefined;
 }>;
 export type CreateCashSaleInput = z.infer<typeof createCashSaleSchema>;

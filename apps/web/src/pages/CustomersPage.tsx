@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
-import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users } from 'lucide-react';
+import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { customersApi, type Customer, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import type { CreateCustomerInput } from '@assaan/shared';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
@@ -20,6 +20,7 @@ import { useAuthStore } from '../store/auth.store.ts';
 import CustomerAgreementPrint from '../components/CustomerAgreementPrint.tsx';
 import CustomerStatementPrint from '../components/CustomerStatementPrint.tsx';
 import { TableSkeleton, CardSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 const VSTATUS: Record<VerificationStatus, { label: string; cls: string; icon: React.ReactNode }> = {
   PENDING:      { label: 'Pending',    cls: 'bg-amber-100 text-amber-700', icon: <Clock size={10} /> },
@@ -983,19 +984,25 @@ export default function CustomersPage() {
   const [lifecycle, setLifecycle] = useState('');
   const [verifFilter, setVerifFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [closeFormConfirm, setCloseFormConfirm] = useState(false);
   const debouncedSearch = useDebounce(search, 300);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, lifecycle, verifFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, lifecycle, verifFilter, sortBy, sortDir]);
 
   const LIMIT = 20;
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['customers', debouncedSearch, lifecycle, verifFilter, page],
+    queryKey: ['customers', debouncedSearch, lifecycle, verifFilter, page, sortBy, sortDir],
     queryFn: () => customersApi.list({
       search: debouncedSearch || undefined,
       lifecycle: lifecycle || undefined,
       verificationStatus: verifFilter || undefined,
       page,
       limit: LIMIT,
+      sortBy,
+      sortDir,
     }),
   });
 
@@ -1014,9 +1021,7 @@ export default function CustomersPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ['customers'] });
 
   function safeCloseModal() {
-    if (window.confirm('Form band karna chahte hain? Bhari hui details delete ho jaen gi.')) {
-      setModal(null);
-    }
+    setCloseFormConfirm(true);
   }
 
   const createMutation = useMutation({
@@ -1039,7 +1044,7 @@ export default function CustomersPage() {
   });
 
   const handleDelete = (id: string) => {
-    if (confirm('Delete this customer? This cannot be undone.')) deleteMutation.mutate(id);
+    setDeleteConfirm({ open: true, id });
   };
 
   // ── Staff CNIC-only view (staff without canAddCustomer/canEditCustomer) ────────
@@ -1048,6 +1053,17 @@ export default function CustomersPage() {
   if (!canManageCustomers) {
     return <StaffCnicView qc={qc} createMutation={createMutation} updateMutation={updateMutation} />;
   }
+
+  const SortIcon = ({ col }: { col: string }) => {
+    if (sortBy !== col) return <ArrowUpDown size={13} className="text-gray-300 ml-1" />;
+    return sortDir === 'asc'
+      ? <ChevronUp size={13} className="text-blue-500 ml-1" />
+      : <ChevronDown size={13} className="text-blue-500 ml-1" />;
+  };
+  const toggleSort = (col: string) => {
+    if (sortBy === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(col); setSortDir('desc'); }
+  };
 
   // ── Full view (owner + permitted staff) ───────────────────────────────────────
   return (
@@ -1100,9 +1116,16 @@ export default function CustomersPage() {
         onSelect={(s) => { setLifecycle(s); }}
       />
 
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-100">
         {isLoading ? (
-          <TableSkeleton rows={5} cols={5} />
+          <>
+            <div className="md:hidden p-4 space-y-3">
+              <CardSkeleton /><CardSkeleton /><CardSkeleton />
+            </div>
+            <div className="hidden md:block">
+              <TableSkeleton rows={5} cols={6} />
+            </div>
+          </>
         ) : isError ? (
           <div className="p-8 text-center text-sm text-red-500">Failed to load customers.</div>
         ) : !data?.data.length ? (
@@ -1117,70 +1140,150 @@ export default function CustomersPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">CNIC</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Credit</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Verification</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+          <>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-gray-100">
               {data.data.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setHistoryCustomer(c)}
-                        className="font-medium text-gray-900 hover:text-blue-600 text-left transition"
-                      >
-                        {c.name}
-                      </button>
-                      {c.customerType === 'dukaan-dar' && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 whitespace-nowrap">Dukaan-Dar</span>
-                      )}
+                <div key={c.id} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5">
+                      {c.name.charAt(0).toUpperCase()}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">{c.cnicMasked}</td>
-                  <td className="px-4 py-3 text-gray-700">{c.phone}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <LifecycleBadge stage={c.lifecycleStage ?? 'LEAD'} />
-                      <RiskBadge score={c.riskScore ?? 0} label={c.riskLabel ?? 'GOOD'} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => setHistoryCustomer(c)}
+                          className="font-semibold text-gray-900 hover:text-blue-600 transition text-sm text-left"
+                        >
+                          {c.name}
+                        </button>
+                        {c.customerType === 'dukaan-dar' && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">DD</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <LifecycleBadge stage={c.lifecycleStage ?? 'LEAD'} />
+                        <RiskBadge score={c.riskScore ?? 0} label={c.riskLabel ?? 'GOOD'} />
+                        <VerifBadge status={c.verificationStatus ?? 'PENDING'} />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        {c.phone}
+                        {c.area ? <span className="text-gray-300 mx-1">·</span> : null}
+                        {c.area && <span>{c.area}</span>}
+                      </p>
+                      <p className="text-xs text-gray-400 font-mono mt-0.5">{c.cnicMasked}</p>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <VerifBadge status={c.verificationStatus ?? 'PENDING'} />
-                      {isOwner && c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
-                        <button onClick={() => setAssignAvoFor(c)}
-                          className="text-[10px] text-blue-500 hover:underline">Assign AVO</button>
-                      )}
-                      {isOwner && c.verificationStatus === 'UNDER_REVIEW' && (
-                        <button onClick={() => setAssignAvoFor(c)}
-                          className="text-[10px] text-indigo-500 hover:underline">Reassign</button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <button onClick={() => setHistoryCustomer(c)}
-                      className="text-indigo-500 hover:underline mr-3 text-xs">History</button>
-                    <button onClick={() => setModal({ mode: 'edit', customer: c })}
-                      className="text-blue-600 hover:underline mr-3 text-xs">Edit</button>
+                  </div>
+                  {isOwner && c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
+                    <button onClick={() => setAssignAvoFor(c)}
+                      className="mt-2 text-[10px] text-blue-500 hover:underline">Assign AVO</button>
+                  )}
+                  {isOwner && c.verificationStatus === 'UNDER_REVIEW' && (
+                    <button onClick={() => setAssignAvoFor(c)}
+                      className="mt-2 text-[10px] text-indigo-500 hover:underline">Reassign AVO</button>
+                  )}
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={() => setHistoryCustomer(c)}
+                      className="flex-1 py-2 rounded-xl border border-indigo-200 text-indigo-600 text-xs font-medium hover:bg-indigo-50 transition">
+                      History
+                    </button>
+                    <button
+                      onClick={() => setModal({ mode: 'edit', customer: c })}
+                      className="flex-1 py-2 rounded-xl border border-blue-200 text-blue-600 text-xs font-medium hover:bg-blue-50 transition">
+                      Edit
+                    </button>
                     {isOwner && (
-                      <button onClick={() => handleDelete(c.id)} disabled={deleteMutation.isPending}
-                        className="px-2.5 py-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs transition disabled:opacity-40">Delete</button>
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        disabled={deleteMutation.isPending}
+                        className="flex-1 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 transition disabled:opacity-40">
+                        Delete
+                      </button>
                     )}
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-          </div>
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">
+                      <button onClick={() => toggleSort('name')} className="flex items-center hover:text-gray-800 transition">
+                        Name<SortIcon col="name" />
+                      </button>
+                    </th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">CNIC</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Credit</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Verification</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">
+                      <button onClick={() => toggleSort('createdAt')} className="flex items-center hover:text-gray-800 transition">
+                        Added<SortIcon col="createdAt" />
+                      </button>
+                    </th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {data.data.map((c) => (
+                    <tr key={c.id} className="hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setHistoryCustomer(c)}
+                            className="font-medium text-gray-900 hover:text-blue-600 text-left transition"
+                          >
+                            {c.name}
+                          </button>
+                          {c.customerType === 'dukaan-dar' && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 whitespace-nowrap">Dukaan-Dar</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 font-mono text-xs">{c.cnicMasked}</td>
+                      <td className="px-4 py-3 text-gray-700">{c.phone}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <LifecycleBadge stage={c.lifecycleStage ?? 'LEAD'} />
+                          <RiskBadge score={c.riskScore ?? 0} label={c.riskLabel ?? 'GOOD'} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <VerifBadge status={c.verificationStatus ?? 'PENDING'} />
+                          {isOwner && c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
+                            <button onClick={() => setAssignAvoFor(c)}
+                              className="text-[10px] text-blue-500 hover:underline">Assign AVO</button>
+                          )}
+                          {isOwner && c.verificationStatus === 'UNDER_REVIEW' && (
+                            <button onClick={() => setAssignAvoFor(c)}
+                              className="text-[10px] text-indigo-500 hover:underline">Reassign</button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-400">
+                        {new Date(c.createdAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <button onClick={() => setHistoryCustomer(c)}
+                          className="text-indigo-500 hover:underline mr-3 text-xs">History</button>
+                        <button onClick={() => setModal({ mode: 'edit', customer: c })}
+                          className="text-blue-600 hover:underline mr-3 text-xs">Edit</button>
+                        {isOwner && (
+                          <button onClick={() => handleDelete(c.id)} disabled={deleteMutation.isPending}
+                            className="px-2.5 py-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs transition disabled:opacity-40">Delete</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -1255,6 +1358,31 @@ export default function CustomersPage() {
           onClose={() => setAssignAvoFor(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="Customer Delete Karo?"
+        description="Customer ke saath uske tamam installments bhi delete ho jaen ge. Ye action undo nahi ho sakta."
+        confirmLabel="Delete Karo"
+        variant="danger"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteConfirm.id) deleteMutation.mutate(deleteConfirm.id);
+          setDeleteConfirm({ open: false, id: null });
+        }}
+        onCancel={() => setDeleteConfirm({ open: false, id: null })}
+      />
+
+      <ConfirmDialog
+        open={closeFormConfirm}
+        title="Form Band Karo?"
+        description="Bhari hui details delete ho jaen gi. Kya aap waqai form band karna chahte hain?"
+        confirmLabel="Haan, Band Karo"
+        cancelLabel="Wapis Jao"
+        variant="warning"
+        onConfirm={() => { setCloseFormConfirm(false); setModal(null); }}
+        onCancel={() => setCloseFormConfirm(false)}
+      />
     </div>
   );
 }

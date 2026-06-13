@@ -232,6 +232,7 @@ export const products = pgTable('products', {
 }, (t) => [
   index('idx_products_seller').on(t.sellerId),
   index('idx_products_name').on(t.sellerId, t.name),
+  index('idx_products_seller_deleted').on(t.sellerId, t.deletedAt),
 ]);
 
 export const installments = pgTable('installments', {
@@ -261,6 +262,7 @@ export const installments = pgTable('installments', {
   index('idx_installments_customer').on(t.customerId),
   index('idx_installments_status').on(t.status),
   index('idx_installments_customer_deleted').on(t.customerId, t.deletedAt),
+  index('idx_installments_customer_status_del').on(t.customerId, t.status, t.deletedAt),
   index('idx_installments_start_date').on(t.startDate),
   index('idx_installments_seller_status').on(t.status, t.deletedAt),
 ]);
@@ -292,6 +294,7 @@ export const ledgerEntries = pgTable('ledger_entries', {
 }, (t) => [
   index('idx_ledger_seller').on(t.sellerId),
   index('idx_ledger_date').on(t.date),
+  index('idx_ledger_seller_date').on(t.sellerId, t.date),
   index('idx_ledger_type').on(t.type),
 ]);
 

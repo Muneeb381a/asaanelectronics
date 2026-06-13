@@ -153,6 +153,7 @@ export class InstallmentsService {
     ]);
     if (!customer) throw new AppError('Customer not found', 404);
     if (!product) throw new AppError('Product not found', 404);
+    // Quick pre-check (not race-safe, but gives fast error for obvious OOS)
     if (product.stock < 1) throw new AppError('Product is out of stock', 400);
 
     const blacklisted = await db.query.installments.findFirst({
@@ -171,6 +172,15 @@ export class InstallmentsService {
     return db.transaction(async (tx) => {
       // Advisory lock prevents concurrent invoice number generation for same seller
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sellerId}))`);
+
+      // Atomically decrement stock only if still > 0 — prevents race condition where
+      // two concurrent requests both passed the pre-check but only one should succeed
+      const decremented = await tx
+        .update(products)
+        .set({ stock: sql`${products.stock} - 1` })
+        .where(and(eq(products.id, body.productId), sql`${products.stock} > 0`))
+        .returning({ stock: products.stock });
+      if (!decremented.length) throw new AppError('Product is out of stock', 400);
 
       // 1. Generate sequential invoice number per seller per year
       const year = new Date().getFullYear();
@@ -204,12 +214,6 @@ export class InstallmentsService {
           paymentFrequency: freq,
         })
         .returning();
-
-      // 2. Decrement product stock by 1
-      await tx
-        .update(products)
-        .set({ stock: sql`${products.stock} - 1` })
-        .where(eq(products.id, body.productId));
 
       // 3. Record down payment as first payment entry + ledger CREDIT (if > 0)
       if (body.downPayment > 0) {

@@ -32,8 +32,8 @@ export class LedgerService {
 
   async dailySummary(sellerId: string, date?: string) {
     const day   = date ? new Date(date) : new Date();
-    const start = new Date(day); start.setHours(0, 0, 0, 0);
-    const end   = new Date(day); end.setHours(23, 59, 59, 999);
+    const start = new Date(day); start.setUTCHours(0, 0, 0, 0);
+    const end   = new Date(day); end.setUTCHours(23, 59, 59, 999);
 
     const [row] = await db
       .select({
