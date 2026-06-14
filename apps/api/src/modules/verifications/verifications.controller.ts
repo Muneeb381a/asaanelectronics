@@ -30,6 +30,12 @@ export async function reVerifyCustomer(req: AuthRequest, res: Response, next: Ne
   } catch (e) { next(e); }
 }
 
+export async function ownerVerifyCustomer(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    res.json({ success: true, data: await svc.ownerVerify(req.params['id']!, req.user!.userId, req.user!.sellerId!, req.body) });
+  } catch (e) { next(e); }
+}
+
 export async function avoStats(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     res.json({ success: true, data: await svc.avoStats(req.user!.sellerId!) });

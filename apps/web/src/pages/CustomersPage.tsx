@@ -370,10 +370,111 @@ function ReVerifyButton({ customerId }: { customerId: string }) {
   );
 }
 
+function OwnerDirectVerifyModal({ customer, onClose }: { customer: Customer; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<'APPROVED' | 'REJECTED'>('APPROVED');
+  const [notes, setNotes] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => verificationsApi.ownerVerify(customer.id, { status, notes: notes.trim() || undefined }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      qc.invalidateQueries({ queryKey: ['verif-report', customer.id] });
+      qc.invalidateQueries({ queryKey: ['customers-lifecycle-counts'] });
+      toast.success(status === 'APPROVED' ? 'Customer verified' : 'Customer rejected');
+      onClose();
+    },
+    onError: (e: any) => toast.error(getErrorMessage(e)),
+  });
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck size={18} className="text-blue-600" />
+            <h3 className="text-sm font-semibold text-gray-900">Direct Verify</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-5">Customer: <span className="font-medium text-gray-700">{customer.name}</span></p>
+
+          <p className="text-xs font-medium text-gray-700 mb-2">Verification Decision</p>
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setStatus('APPROVED')}
+              className={`flex-1 py-2.5 rounded-xl border-2 text-xs font-semibold transition ${
+                status === 'APPROVED'
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-gray-200 text-gray-500 hover:border-gray-300'
+              }`}
+            >
+              <ShieldCheck size={14} className="inline mr-1.5 -mt-0.5" />
+              Approve
+            </button>
+            <button
+              onClick={() => setStatus('REJECTED')}
+              className={`flex-1 py-2.5 rounded-xl border-2 text-xs font-semibold transition ${
+                status === 'REJECTED'
+                  ? 'border-red-500 bg-red-50 text-red-700'
+                  : 'border-gray-200 text-gray-500 hover:border-gray-300'
+              }`}
+            >
+              <ShieldX size={14} className="inline mr-1.5 -mt-0.5" />
+              Reject
+            </button>
+          </div>
+
+          <label className="block text-xs font-medium text-gray-700 mb-1.5">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="Add a note about this decision…"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent mb-5"
+          />
+
+          <div className="flex gap-2">
+            <button onClick={onClose} className="flex-1 border border-gray-200 rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50 transition">
+              Cancel
+            </button>
+            <button
+              onClick={() => setConfirmOpen(true)}
+              disabled={isPending}
+              className={`flex-1 rounded-xl py-2 text-sm font-medium transition disabled:opacity-50 ${
+                status === 'APPROVED'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+            >
+              {isPending ? 'Saving…' : status === 'APPROVED' ? 'Approve Customer' : 'Reject Customer'}
+            </button>
+          </div>
+        </div>
+      </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title={status === 'APPROVED' ? 'Customer Approve Karo?' : 'Customer Reject Karo?'}
+        description={
+          status === 'APPROVED'
+            ? `${customer.name} ko directly verified mark kar diya jaega. AVO assignment ki zaroorat nahi hogi.`
+            : `${customer.name} ko rejected mark kar diya jaega. Aap baad mein re-verify bhi kar sakte hain.`
+        }
+        confirmLabel={status === 'APPROVED' ? 'Approve Karo' : 'Reject Karo'}
+        variant={status === 'APPROVED' ? 'info' : 'danger'}
+        isPending={isPending}
+        onConfirm={() => { mutate(); setConfirmOpen(false); }}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
+  );
+}
+
 function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onClose: () => void }) {
   const [showPrint, setShowPrint] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
   const [showNewInstallment, setShowNewInstallment] = useState(false);
+  const [showDirectVerifyDrawer, setShowDirectVerifyDrawer] = useState(false);
   const [payInst, setPayInst] = useState<Installment | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'notes'>('history');
   const [visible, setVisible] = useState(false);
@@ -536,6 +637,19 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                 <ReVerifyButton customerId={customer.id} />
               )}
             </div>
+          </div>
+        )}
+
+        {/* Owner direct-verify panel */}
+        {isOwnerInDrawer && customer.verificationStatus !== 'APPROVED' && (
+          <div className="px-6 py-3 border-b border-gray-50 shrink-0">
+            <button
+              onClick={() => setShowDirectVerifyDrawer(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-emerald-300 text-emerald-700 text-xs font-medium hover:bg-emerald-50 transition"
+            >
+              <ShieldCheck size={14} />
+              Direct Verify (Owner)
+            </button>
           </div>
         )}
 
@@ -736,6 +850,13 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
           </div>
         </div>
       </div>
+    )}
+
+    {showDirectVerifyDrawer && (
+      <OwnerDirectVerifyModal
+        customer={customer}
+        onClose={() => setShowDirectVerifyDrawer(false)}
+      />
     )}
     </>
   );
@@ -1005,6 +1126,7 @@ export default function CustomersPage() {
   const [modal, setModal] = useState<Modal>(null);
   const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
   const [assignAvoFor, setAssignAvoFor] = useState<Customer | null>(null);
+  const [directVerifyFor, setDirectVerifyFor] = useState<Customer | null>(null);
   const [search,    setSearch]    = useState('');
   const [lifecycle, setLifecycle] = useState('');
   const [verifFilter, setVerifFilter] = useState('');
@@ -1200,13 +1322,19 @@ export default function CustomersPage() {
                       <p className="text-xs text-gray-400 font-mono mt-0.5">{c.cnicMasked}</p>
                     </div>
                   </div>
-                  {isOwner && c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
-                    <button onClick={() => setAssignAvoFor(c)}
-                      className="mt-2 text-[10px] text-blue-500 hover:underline">Assign AVO</button>
-                  )}
-                  {isOwner && c.verificationStatus === 'UNDER_REVIEW' && (
-                    <button onClick={() => setAssignAvoFor(c)}
-                      className="mt-2 text-[10px] text-indigo-500 hover:underline">Reassign AVO</button>
+                  {isOwner && c.verificationStatus !== 'APPROVED' && (
+                    <div className="flex items-center gap-3 mt-2">
+                      {c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
+                        <button onClick={() => setAssignAvoFor(c)}
+                          className="text-[10px] text-blue-500 hover:underline">Assign AVO</button>
+                      )}
+                      {c.verificationStatus === 'UNDER_REVIEW' && (
+                        <button onClick={() => setAssignAvoFor(c)}
+                          className="text-[10px] text-indigo-500 hover:underline">Reassign AVO</button>
+                      )}
+                      <button onClick={() => setDirectVerifyFor(c)}
+                        className="text-[10px] text-emerald-600 hover:underline font-semibold">Direct Verify</button>
+                    </div>
                   )}
                   <div className="flex items-center gap-2 mt-3">
                     <button
@@ -1281,14 +1409,18 @@ export default function CustomersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <VerifBadge status={c.verificationStatus ?? 'PENDING'} />
-                          {isOwner && c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
-                            <button onClick={() => setAssignAvoFor(c)}
-                              className="text-[10px] text-blue-500 hover:underline">Assign AVO</button>
-                          )}
-                          {isOwner && c.verificationStatus === 'UNDER_REVIEW' && (
-                            <button onClick={() => setAssignAvoFor(c)}
-                              className="text-[10px] text-indigo-500 hover:underline">Reassign</button>
-                          )}
+                          {isOwner && c.verificationStatus !== 'APPROVED' && (<>
+                            {c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
+                              <button onClick={() => setAssignAvoFor(c)}
+                                className="text-[10px] text-blue-500 hover:underline">Assign AVO</button>
+                            )}
+                            {c.verificationStatus === 'UNDER_REVIEW' && (
+                              <button onClick={() => setAssignAvoFor(c)}
+                                className="text-[10px] text-indigo-500 hover:underline">Reassign</button>
+                            )}
+                            <button onClick={() => setDirectVerifyFor(c)}
+                              className="text-[10px] text-emerald-600 hover:underline font-semibold">Direct Verify</button>
+                          </>)}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400">
@@ -1382,6 +1514,13 @@ export default function CustomersPage() {
           customer={assignAvoFor}
           avos={staffList}
           onClose={() => setAssignAvoFor(null)}
+        />
+      )}
+
+      {directVerifyFor && (
+        <OwnerDirectVerifyModal
+          customer={directVerifyFor}
+          onClose={() => setDirectVerifyFor(null)}
         />
       )}
 

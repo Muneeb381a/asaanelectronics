@@ -14,3 +14,10 @@ export const submitVerificationSchema = z.object({
 });
 
 export type SubmitVerificationInput = z.infer<typeof submitVerificationSchema>;
+
+export const ownerVerifySchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED']),
+  notes:  z.string().max(500).optional(),
+});
+
+export type OwnerVerifyInput = z.infer<typeof ownerVerifySchema>;

@@ -4,6 +4,8 @@ import { verifications, customers, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { fsm } from '../../utils/fsm.js';
 
+type OwnerVerifyBody = { status: 'APPROVED' | 'REJECTED'; notes?: string };
+
 type SubmitBody = {
   status: 'APPROVED' | 'REJECTED';
   addressVerified: boolean;
@@ -117,6 +119,35 @@ export class VerificationsService {
       .where(eq(verifications.customerId, customerId));
 
     return row ?? null;
+  }
+
+  /** Owner: directly verify/reject a customer without AVO */
+  async ownerVerify(customerId: string, ownerId: string, sellerId: string, body: OwnerVerifyBody) {
+    const customer = await db.query.customers.findFirst({
+      where: and(eq(customers.id, customerId), eq(customers.sellerId, sellerId)),
+      columns: { id: true, verificationStatus: true },
+    });
+    if (!customer) throw new AppError('Customer not found', 404);
+
+    await db.transaction(async (tx) => {
+      // Delete any existing verification record (UNIQUE constraint on customerId)
+      await tx.delete(verifications).where(eq(verifications.customerId, customerId));
+      await tx.insert(verifications).values({
+        customerId,
+        avoId: ownerId,
+        status: body.status,
+        addressVerified: true,
+        employerVerified: true,
+        guarantor1Reachable: true,
+        guarantor2Reachable: true,
+        notes: body.notes,
+      });
+      await tx.update(customers)
+        .set({ verificationStatus: body.status, assignedAvoId: null })
+        .where(eq(customers.id, customerId));
+    });
+
+    return { ok: true };
   }
 
   /** Owner: reset rejected customer back to PENDING for re-verification */

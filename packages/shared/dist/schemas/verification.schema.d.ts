@@ -34,3 +34,14 @@ export declare const submitVerificationSchema: z.ZodObject<{
     notes?: string | undefined;
 }>;
 export type SubmitVerificationInput = z.infer<typeof submitVerificationSchema>;
+export declare const ownerVerifySchema: z.ZodObject<{
+    status: z.ZodEnum<["APPROVED", "REJECTED"]>;
+    notes: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    status: "APPROVED" | "REJECTED";
+    notes?: string | undefined;
+}, {
+    status: "APPROVED" | "REJECTED";
+    notes?: string | undefined;
+}>;
+export type OwnerVerifyInput = z.infer<typeof ownerVerifySchema>;

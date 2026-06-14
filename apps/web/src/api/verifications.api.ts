@@ -71,4 +71,7 @@ export const verificationsApi = {
 
   reVerify: (customerId: string) =>
     api.post(`/verifications/customers/${customerId}/re-verify`).then((r) => r.data),
+
+  ownerVerify: (customerId: string, body: { status: 'APPROVED' | 'REJECTED'; notes?: string }) =>
+    api.post(`/verifications/customers/${customerId}/owner-verify`, body).then((r) => r.data),
 };

@@ -11,3 +11,7 @@ export const submitVerificationSchema = z.object({
     longitude: z.number(),
     locationAccuracy: z.number(),
 });
+export const ownerVerifySchema = z.object({
+    status: z.enum(['APPROVED', 'REJECTED']),
+    notes: z.string().max(500).optional(),
+});
