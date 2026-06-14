@@ -388,7 +388,7 @@ export class InstallmentsService {
     return { ...updated, customerName: row.customerName, productName: row.productName };
   }
 
-  async bulkImport(rows: ImportInstallmentRow[], sellerId: string) {
+  async bulkImport(rows: ImportInstallmentRow[], sellerId: string, createdByUserId: string) {
     let imported = 0;
     let customersCreated = 0;
     let customersLinked  = 0;
@@ -426,7 +426,7 @@ export class InstallmentsService {
 
             const [newCust] = await db
               .insert(customers)
-              .values({ sellerId, name: row.customerName.trim(), phone: phoneKey, area: row.area?.trim() || null, cnicHash, cnicMasked })
+              .values({ sellerId, name: row.customerName.trim(), phone: phoneKey, area: row.area?.trim() || null, cnicHash, cnicMasked, createdByUserId })
               .returning({ id: customers.id });
             customerId = newCust!.id;
             customersCreated++;

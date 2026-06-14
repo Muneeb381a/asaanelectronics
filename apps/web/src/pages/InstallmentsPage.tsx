@@ -1108,7 +1108,12 @@ export default function InstallmentsPage() {
       {showImport && (
         <ImportInstallmentsModal
           onClose={() => setShowImport(false)}
-          onImported={() => { invalidate(); setShowImport(false); }}
+          onImported={() => {
+            invalidate();
+            void qc.invalidateQueries({ queryKey: ['customers'] });
+            void qc.invalidateQueries({ queryKey: ['customers-lifecycle-counts'] });
+            setShowImport(false);
+          }}
         />
       )}
 

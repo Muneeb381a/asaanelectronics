@@ -144,7 +144,7 @@ export async function importInstallments(req: AuthRequest, res: Response) {
     res.status(400).json({ message: parsed.error.errors[0]?.message ?? 'Invalid payload' });
     return;
   }
-  const result = await svc.bulkImport(parsed.data.rows, req.user!.sellerId!);
+  const result = await svc.bulkImport(parsed.data.rows, req.user!.sellerId!, req.user!.userId);
   success(res, result, 200);
   void audit.log({
     sellerId: req.user!.sellerId!, userId: req.user!.userId,
