@@ -459,6 +459,7 @@ export default function InstallmentsPage() {
     queryKey: ['installments', statusFilter, frequencyFilter, debouncedSearch, page, sortBy, sortDir],
     queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT, sortBy, sortDir }),
     enabled: !staffMustSearch,
+    staleTime: 30_000,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['installments'] });

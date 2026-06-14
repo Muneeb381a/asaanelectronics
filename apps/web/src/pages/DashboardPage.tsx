@@ -89,7 +89,8 @@ export default function DashboardPage() {
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn:  statsApi.getDashboard,
-    refetchInterval: 60_000,
+    staleTime:       60_000,
+    refetchInterval: 5 * 60_000,
   });
 
   const data     = dashboard?.stats;

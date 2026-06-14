@@ -101,10 +101,27 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       proofImageUrl: proofImageUrl || undefined,
     }),
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['installments'] });
-      qc.invalidateQueries({ queryKey: ['payments', inst.id] });
-      qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
-      for (const key of extraInvalidate) qc.invalidateQueries({ queryKey: key });
+      // Update every installment list page in cache instantly — no network call
+      type ListCache = { data: typeof inst[]; total: number; page: number; limit: number };
+      qc.setQueriesData<ListCache>(
+        { queryKey: ['installments'], exact: false },
+        (cached) => {
+          if (!cached?.data) return cached;
+          return {
+            ...cached,
+            data: cached.data.map((i) =>
+              i.id === inst.id
+                ? { ...i, remaining: String(data.remaining), ...(data.completed && { status: 'COMPLETED' as const }) }
+                : i
+            ),
+          };
+        },
+      );
+      // Refresh just this installment's detail (1 request) + payments list
+      void qc.invalidateQueries({ queryKey: ['installment-single', inst.id] });
+      void qc.invalidateQueries({ queryKey: ['payments', inst.id] });
+      void qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
+      for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
 
       // Calculate installment progress
@@ -172,9 +189,12 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const deleteMutation = useMutation({
     mutationFn: (id: string) => paymentsApi.remove(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['installments'] });
-      qc.invalidateQueries({ queryKey: ['payments', inst.id] });
-      for (const key of extraInvalidate) qc.invalidateQueries({ queryKey: key });
+      // Refresh single installment (gets corrected remaining) + payments list
+      void qc.invalidateQueries({ queryKey: ['installment-single', inst.id] });
+      void qc.invalidateQueries({ queryKey: ['payments', inst.id] });
+      // Mark list stale but don't force immediate refetch (lazy refresh on next visit)
+      void qc.invalidateQueries({ queryKey: ['installments'], exact: false, refetchType: 'none' });
+      for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       setDeleteConfirmId(null);
       toast.success('Payment deleted');
     },
@@ -187,10 +207,26 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       method: editMethod,
       note:   editNote.trim() || undefined,
     }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['installments'] });
-      qc.invalidateQueries({ queryKey: ['payments', inst.id] });
-      for (const key of extraInvalidate) qc.invalidateQueries({ queryKey: key });
+    onSuccess: (data) => {
+      // Update list cache instantly with corrected remaining
+      type ListCache = { data: typeof inst[]; total: number; page: number; limit: number };
+      qc.setQueriesData<ListCache>(
+        { queryKey: ['installments'], exact: false },
+        (cached) => {
+          if (!cached?.data) return cached;
+          return {
+            ...cached,
+            data: cached.data.map((i) =>
+              i.id === inst.id
+                ? { ...i, remaining: String(data.remaining), ...(data.completed && { status: 'COMPLETED' as const }) }
+                : i
+            ),
+          };
+        },
+      );
+      void qc.invalidateQueries({ queryKey: ['installment-single', inst.id] });
+      void qc.invalidateQueries({ queryKey: ['payments', inst.id] });
+      for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       setEditId(null);
       toast.success('Payment updated');
     },
