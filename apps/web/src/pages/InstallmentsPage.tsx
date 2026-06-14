@@ -1,6 +1,6 @@
 ﻿import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
 import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
@@ -460,6 +460,7 @@ export default function InstallmentsPage() {
     queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT, sortBy, sortDir }),
     enabled: !staffMustSearch,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
   // Full list invalidation — only used for create & bulk import (new items, unknown sort position)
@@ -476,6 +477,25 @@ export default function InstallmentsPage() {
       },
     );
     qc.setQueryData(['installment-single', updated.id], updated);
+  }
+
+  // Optimistic status change: cancel in-flight, snapshot, patch status, return context for rollback
+  async function optimisticStatus(id: string, status: InstallmentStatus) {
+    await qc.cancelQueries({ queryKey: ['installment-single', id] });
+    const prevSingle = qc.getQueryData<Installment>(['installment-single', id]);
+    const prevLists = qc.getQueriesData<ListCache>({ queryKey: ['installments'], exact: false });
+    qc.setQueryData<Installment>(['installment-single', id], (old) => old ? { ...old, status } : old);
+    qc.setQueriesData<ListCache>({ queryKey: ['installments'], exact: false }, (cached) => {
+      if (!cached?.data) return cached;
+      return { ...cached, data: cached.data.map((i) => i.id === id ? { ...i, status } : i) };
+    });
+    return { prevSingle, prevLists };
+  }
+
+  type OptCtx = Awaited<ReturnType<typeof optimisticStatus>>;
+  function rollbackStatus(id: string, ctx: OptCtx | undefined) {
+    if (ctx?.prevSingle !== undefined) qc.setQueryData(['installment-single', id], ctx.prevSingle);
+    if (ctx?.prevLists) for (const [key, val] of ctx.prevLists) qc.setQueryData(key, val);
   }
 
   useEffect(() => {
@@ -500,21 +520,24 @@ export default function InstallmentsPage() {
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.approve(id),
-    // API returns updated Installment — patch cache instantly, no refetch
+    onMutate: (id) => optimisticStatus(id, 'ACTIVE'),
+    // API returns updated Installment — confirm with real server data
     onSuccess: (updated) => { patchListCache(updated); toast.success('Installment approved'); },
-    onError: (e) => toast.error(getErrorMessage(e, 'Failed to approve')),
+    onError: (e, id, ctx) => { rollbackStatus(id, ctx); toast.error(getErrorMessage(e, 'Failed to approve')); },
   });
 
   const closeMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.close(id),
+    onMutate: (id) => optimisticStatus(id, 'CLOSED'),
     onSuccess: (updated) => { patchListCache(updated); toast.success('Installment closed'); },
-    onError: (e) => toast.error(getErrorMessage(e, 'Failed to close')),
+    onError: (e, id, ctx) => { rollbackStatus(id, ctx); toast.error(getErrorMessage(e, 'Failed to close')); },
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.cancel(id),
+    onMutate: (id) => optimisticStatus(id, 'CANCELLED'),
     onSuccess: (updated) => { patchListCache(updated); toast.success('Installment cancelled'); },
-    onError: (e) => toast.error(getErrorMessage(e, 'Failed to cancel')),
+    onError: (e, id, ctx) => { rollbackStatus(id, ctx); toast.error(getErrorMessage(e, 'Failed to cancel')); },
   });
 
   const deleteMutation = useMutation({
@@ -536,8 +559,9 @@ export default function InstallmentsPage() {
 
   const defaultMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.markDefault(id),
+    onMutate: (id) => optimisticStatus(id, 'DEFAULTED'),
     onSuccess: (updated) => { patchListCache(updated); toast.success('Marked as defaulted'); },
-    onError: (e) => toast.error(getErrorMessage(e)),
+    onError: (e, id, ctx) => { rollbackStatus(id, ctx); toast.error(getErrorMessage(e)); },
   });
 
   return (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
@@ -1029,6 +1029,7 @@ export default function CustomersPage() {
       sortBy,
       sortDir,
     }),
+    placeholderData: keepPreviousData,
   });
 
   const { data: lifecycleCounts = {} } = useQuery({
