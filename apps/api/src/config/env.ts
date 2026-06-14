@@ -11,7 +11,7 @@ const schema = z.object({
   CNIC_HASH_PEPPER: z.string().min(16),
   CLOUDINARY_URL: z.string(),
   RESEND_API_KEY: z.string(),
-  EMAIL_FROM: z.string().min(1, 'EMAIL_FROM must be set (e.g. Assaan Electronics <noreply@yourdomain.com>)'),
+  EMAIL_FROM: z.string().optional(),
   CORS_ORIGIN: z.string(),
   GROQ_API_KEY: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

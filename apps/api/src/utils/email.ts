@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 
 const resend = new Resend(env.RESEND_API_KEY);
 const FROM = env.EMAIL_FROM;
+if (!FROM) console.warn('[email] WARNING: EMAIL_FROM env var not set — emails will fail. Set it in Vercel to Assaan Electronics <noreply@asaanelectronics.online>');
 
 export async function sendOtpEmail(to: string, name: string, code: string, purpose: 'LOGIN' | 'PASSWORD_RESET') {
   const isReset   = purpose === 'PASSWORD_RESET';
@@ -80,6 +81,8 @@ For your security, never share this code with anyone.
 If you did not request this, ignore this email.
 
 © ${new Date().getFullYear()} Assaan Electronics`;
+
+  if (!FROM) throw new Error('EMAIL_FROM env var is not set. Add it in Vercel: Assaan Electronics <noreply@asaanelectronics.online>');
 
   const { error } = await resend.emails.send({
     from:    FROM,
