@@ -1,10 +1,45 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck, CreditCard, Calendar } from 'lucide-react';
+import {
+  Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck,
+  CreditCard, Calendar, Search, AlertTriangle, Clock,
+} from 'lucide-react';
 import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan } from '../../api/owner.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+type ShopStatus = 'active' | 'suspended' | 'expired';
+
+function shopStatus(shop: Shop): ShopStatus {
+  if (!shop.isActive) return 'suspended';
+  const now = Date.now();
+  if (shop.plan === 'TRIAL' && shop.trialEndsAt && new Date(shop.trialEndsAt).getTime() < now) return 'expired';
+  if (shop.planExpiresAt && new Date(shop.planExpiresAt).getTime() < now) return 'expired';
+  return 'active';
+}
+
+function daysLabel(shop: Shop): { text: string; urgent: boolean } | null {
+  const now = Date.now();
+  if (shop.plan === 'TRIAL' && shop.trialEndsAt) {
+    const days = Math.ceil((new Date(shop.trialEndsAt).getTime() - now) / 86_400_000);
+    if (days < 0) return { text: 'Trial expired', urgent: true };
+    if (days === 0) return { text: 'Trial expires today', urgent: true };
+    return { text: `Trial: ${days}d left`, urgent: days <= 3 };
+  }
+  if (shop.planExpiresAt) {
+    const days = Math.ceil((new Date(shop.planExpiresAt).getTime() - now) / 86_400_000);
+    if (days < 0) return { text: 'Plan expired', urgent: true };
+    if (days === 0) return { text: 'Expires today', urgent: true };
+    return { text: `Expires ${new Date(shop.planExpiresAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}`, urgent: days <= 7 };
+  }
+  return null;
+}
+
+// ── plan styles ───────────────────────────────────────────────────────────────
 
 const PLAN_STYLES: Record<string, string> = {
   TRIAL:      'bg-amber-50 text-amber-600 border-amber-200',
@@ -14,13 +49,19 @@ const PLAN_STYLES: Record<string, string> = {
 };
 
 const PLAN_LABELS: Record<Plan, string> = {
-  TRIAL: 'Trial (14 days free)',
-  BASIC: 'Basic — Rs 2,999/mo',
-  PRO:   'Pro — Rs 7,999/mo',
+  TRIAL:      'Trial (14 days free)',
+  BASIC:      'Basic — Rs 2,999/mo',
+  PRO:        'Pro — Rs 7,999/mo',
   ENTERPRISE: 'Enterprise — Custom',
 };
 
-type Modal = { type: 'shop' } | { type: 'owner'; shop: Shop } | { type: 'plan'; shop: Shop } | null;
+const STATUS_META: Record<ShopStatus, { label: string; cls: string; icon: React.ReactNode }> = {
+  active:    { label: 'Active',     cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <ShieldCheck size={10} /> },
+  suspended: { label: 'Suspended',  cls: 'bg-red-100 text-red-600 border-red-200',             icon: <ShieldOff size={10} /> },
+  expired:   { label: 'Expired',    cls: 'bg-orange-100 text-orange-700 border-orange-200',    icon: <AlertTriangle size={10} /> },
+};
+
+// ── shared field ─────────────────────────────────────────────────────────────
 
 function Field({ label, value, onChange, type = 'text', placeholder = '' }: {
   label: string; value: string; onChange: (v: string) => void;
@@ -34,6 +75,8 @@ function Field({ label, value, onChange, type = 'text', placeholder = '' }: {
     </div>
   );
 }
+
+// ── modals ────────────────────────────────────────────────────────────────────
 
 function ShopFormModal({ onClose, onSubmit, isPending }: {
   onClose: () => void; onSubmit: (d: CreateShopInput) => void; isPending: boolean;
@@ -62,9 +105,7 @@ function ShopFormModal({ onClose, onSubmit, isPending }: {
       </div>
       <div className="flex gap-2 pt-1">
         <button onClick={onClose}
-          className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
-          Cancel
-        </button>
+          className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Cancel</button>
         <button onClick={() => onSubmit({ ...form, address: form.address || undefined })}
           disabled={!form.shopName || !form.phone || isPending}
           className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition disabled:opacity-50">
@@ -97,9 +138,7 @@ function OwnerFormModal({ shop, onClose, onSubmit, isPending }: {
       <Field label="Password" value={form.password} onChange={(v) => set('password', v)} type="password" placeholder="Min 8 characters" />
       <div className="flex gap-2 pt-1">
         <button onClick={onClose}
-          className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
-          Cancel
-        </button>
+          className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Cancel</button>
         <button onClick={() => onSubmit(form)}
           disabled={!form.name || !form.email || form.password.length < 8 || isPending}
           className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition disabled:opacity-50">
@@ -116,9 +155,7 @@ function PlanChangeModal({ shop, onClose, onSubmit, isPending }: {
   isPending: boolean;
 }) {
   const [plan, setPlan] = useState<Plan>(shop.plan);
-  const [expiresAt, setExpiresAt] = useState(
-    shop.planExpiresAt ? shop.planExpiresAt.slice(0, 10) : ''
-  );
+  const [expiresAt, setExpiresAt] = useState(shop.planExpiresAt ? shop.planExpiresAt.slice(0, 10) : '');
 
   return (
     <div className="space-y-4">
@@ -131,7 +168,6 @@ function PlanChangeModal({ shop, onClose, onSubmit, isPending }: {
           <p className="text-xs text-gray-500">Current plan: <span className="font-medium">{shop.plan}</span></p>
         </div>
       </div>
-
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-2">New Plan</label>
         <div className="space-y-2">
@@ -146,7 +182,6 @@ function PlanChangeModal({ shop, onClose, onSubmit, isPending }: {
           ))}
         </div>
       </div>
-
       {plan !== 'TRIAL' && (
         <div>
           <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
@@ -158,15 +193,10 @@ function PlanChangeModal({ shop, onClose, onSubmit, isPending }: {
           <p className="text-xs text-gray-400 mt-1">Leave blank for no expiry</p>
         </div>
       )}
-
       <div className="flex gap-2 pt-1">
         <button onClick={onClose}
-          className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
-          Cancel
-        </button>
-        <button
-          onClick={() => onSubmit(plan, expiresAt || undefined)}
-          disabled={isPending}
+          className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Cancel</button>
+        <button onClick={() => onSubmit(plan, expiresAt || undefined)} disabled={isPending}
           className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition disabled:opacity-50">
           {isPending ? 'Updating…' : 'Update Plan'}
         </button>
@@ -175,98 +205,150 @@ function PlanChangeModal({ shop, onClose, onSubmit, isPending }: {
   );
 }
 
+// ── shop card ─────────────────────────────────────────────────────────────────
+
 function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan }: {
-  shop: Shop; onAddOwner: () => void; onDelete: () => void; onToggleStatus: () => void; onChangePlan: () => void;
+  shop: Shop;
+  onAddOwner: () => void;
+  onDelete: () => void;
+  onToggleStatus: () => void;
+  onChangePlan: () => void;
 }) {
-  const suspended = !shop.isActive;
+  const status = shopStatus(shop);
+  const meta   = STATUS_META[status];
+  const expiry = daysLabel(shop);
+
   return (
-    <div className={`rounded-2xl border shadow-sm p-5 flex flex-col gap-4 transition-shadow hover:shadow-md ${suspended ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100'}`}>
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${suspended ? 'bg-gray-100' : 'bg-indigo-50'}`}>
-            <Store size={18} className={suspended ? 'text-gray-400' : 'text-indigo-600'} />
-          </div>
-          <div>
-            <p className={`font-semibold text-sm leading-tight ${suspended ? 'text-gray-400' : 'text-gray-900'}`}>{shop.shopName}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${PLAN_STYLES[shop.plan]}`}>
-                {shop.plan}
-              </span>
-              {suspended && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600 border border-red-200">
-                  <ShieldOff size={10} /> Suspended
+    <div className={`rounded-2xl border flex flex-col gap-0 overflow-hidden transition-shadow hover:shadow-md ${
+      status === 'suspended' ? 'bg-gray-50 border-gray-200' :
+      status === 'expired'   ? 'bg-orange-50/40 border-orange-100' :
+      'bg-white border-gray-100 shadow-sm'
+    }`}>
+      {/* Top colour bar */}
+      <div className={`h-1 w-full ${
+        status === 'suspended' ? 'bg-gray-300' :
+        status === 'expired'   ? 'bg-orange-400' :
+        'bg-indigo-500'
+      }`} />
+
+      <div className="p-5 flex flex-col gap-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              status === 'active' ? 'bg-indigo-50' : status === 'expired' ? 'bg-orange-100' : 'bg-gray-100'
+            }`}>
+              <Store size={18} className={
+                status === 'active' ? 'text-indigo-600' : status === 'expired' ? 'text-orange-500' : 'text-gray-400'
+              } />
+            </div>
+            <div className="min-w-0">
+              <p className={`font-semibold text-sm leading-tight truncate ${status === 'suspended' ? 'text-gray-400' : 'text-gray-900'}`}>
+                {shop.shopName}
+              </p>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${PLAN_STYLES[shop.plan]}`}>
+                  {shop.plan}
                 </span>
-              )}
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${meta.cls}`}>
+                  {meta.icon} {meta.label}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onChangePlan}
-            title="Change plan"
-            className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
-            <CreditCard size={14} />
-          </button>
-          <button
-            onClick={onToggleStatus}
-            title={suspended ? 'Activate shop' : 'Suspend shop'}
-            className={`p-1.5 rounded-lg transition ${suspended ? 'text-emerald-500 hover:bg-emerald-50' : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50'}`}>
-            {suspended ? <ShieldCheck size={14} /> : <ShieldOff size={14} />}
-          </button>
-          {!shop.ownerName && (
-            <button onClick={onDelete}
+
+          {/* Action icons */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button onClick={onChangePlan} title="Change plan"
+              className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
+              <CreditCard size={14} />
+            </button>
+            <button onClick={onToggleStatus}
+              title={status === 'suspended' ? 'Activate shop' : 'Suspend shop'}
+              className={`p-2 rounded-lg transition ${
+                status === 'suspended'
+                  ? 'text-emerald-500 hover:bg-emerald-50'
+                  : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50'
+              }`}>
+              {status === 'suspended' ? <ShieldCheck size={14} /> : <ShieldOff size={14} />}
+            </button>
+            <button onClick={onDelete} title="Delete shop"
               className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
               <Trash2 size={14} />
             </button>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Phone size={11} className="text-gray-300 shrink-0" />
+            {shop.phone}
+          </div>
+          {shop.address && (
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <MapPin size={11} className="text-gray-300 shrink-0" />
+              {shop.address}
+            </div>
+          )}
+          {expiry && (
+            <div className={`flex items-center gap-1.5 text-xs font-medium ${expiry.urgent ? 'text-red-500' : 'text-gray-400'}`}>
+              <Clock size={11} className="shrink-0" />
+              {expiry.text}
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Details */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Phone size={12} className="text-gray-300 shrink-0" />
-          {shop.phone}
+        {/* Owner */}
+        <div className="pt-3 border-t border-gray-100">
+          {shop.ownerName ? (
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                {shop.ownerName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-gray-900 truncate">{shop.ownerName}</p>
+                <p className="text-[10px] text-gray-400 truncate">{shop.ownerEmail}</p>
+              </div>
+              <Crown size={12} className="text-amber-400 ml-auto shrink-0" />
+            </div>
+          ) : (
+            <button onClick={onAddOwner}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-indigo-200 text-indigo-500 hover:bg-indigo-50 text-xs font-medium transition">
+              <UserPlus size={13} />
+              Add owner
+            </button>
+          )}
         </div>
-        {shop.address && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <MapPin size={12} className="text-gray-300 shrink-0" />
-            {shop.address}
-          </div>
-        )}
-      </div>
-
-      {/* Owner */}
-      <div className="pt-3 border-t border-gray-50">
-        {shop.ownerName ? (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {shop.ownerName.charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-gray-900 truncate">{shop.ownerName}</p>
-              <p className="text-xs text-gray-400 truncate">{shop.ownerEmail}</p>
-            </div>
-            <Crown size={12} className="text-amber-400 ml-auto shrink-0" />
-          </div>
-        ) : (
-          <button onClick={onAddOwner}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-indigo-200 text-indigo-500 hover:bg-indigo-50 text-xs font-medium transition">
-            <UserPlus size={13} />
-            Add owner
-          </button>
-        )}
       </div>
     </div>
   );
 }
 
+// ── filter bar ────────────────────────────────────────────────────────────────
+
+type FilterTab = 'all' | 'active' | 'suspended' | 'expired';
+
+const FILTER_TABS: { key: FilterTab; label: string }[] = [
+  { key: 'all',       label: 'All'       },
+  { key: 'active',    label: 'Active'    },
+  { key: 'suspended', label: 'Suspended' },
+  { key: 'expired',   label: 'Expired'   },
+];
+
+// ── main page ─────────────────────────────────────────────────────────────────
+
+type Modal = { type: 'shop' } | { type: 'owner'; shop: Shop } | { type: 'plan'; shop: Shop } | null;
+
 export default function ShopsPage() {
   const qc = useQueryClient();
-  const [modal, setModal] = useState<Modal>(null);
+  const [modal, setModal]           = useState<Modal>(null);
+  const [filter, setFilter]         = useState<FilterTab>('all');
+  const [search, setSearch]         = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
+  const [statusConfirm, setStatusConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
 
-  const { data: shops, isLoading, isError } = useQuery({
+  const { data: shops = [], isLoading, isError } = useQuery({
     queryKey: ['owner-shops'],
     queryFn: ownerApi.listShops,
   });
@@ -288,8 +370,8 @@ export default function ShopsPage() {
 
   const deleteShopMutation = useMutation({
     mutationFn: ownerApi.deleteShop,
-    onSuccess: () => { invalidate(); toast.success('Shop deleted'); },
-    onError: (e) => toast.error(getErrorMessage(e)),
+    onSuccess: () => { invalidate(); toast.success('Shop deleted'); setDeleteConfirm({ open: false, shop: null }); },
+    onError: (e) => { toast.error(getErrorMessage(e)); setDeleteConfirm({ open: false, shop: null }); },
   });
 
   const toggleStatusMutation = useMutation({
@@ -298,8 +380,9 @@ export default function ShopsPage() {
     onSuccess: (_, vars) => {
       invalidate();
       toast.success(vars.isActive ? 'Shop activated' : 'Shop suspended');
+      setStatusConfirm({ open: false, shop: null });
     },
-    onError: (e) => toast.error(getErrorMessage(e)),
+    onError: (e) => { toast.error(getErrorMessage(e)); setStatusConfirm({ open: false, shop: null }); },
   });
 
   const changePlanMutation = useMutation({
@@ -309,13 +392,34 @@ export default function ShopsPage() {
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
-  const total = shops?.length ?? 0;
-  const withOwner = shops?.filter((s) => s.ownerName).length ?? 0;
-  const trialCount = shops?.filter((s) => s.plan === 'TRIAL').length ?? 0;
-  const proCount = shops?.filter((s) => s.plan === 'PRO').length ?? 0;
+  // counts per filter
+  const counts = useMemo(() => ({
+    all:       shops.length,
+    active:    shops.filter((s) => shopStatus(s) === 'active').length,
+    suspended: shops.filter((s) => shopStatus(s) === 'suspended').length,
+    expired:   shops.filter((s) => shopStatus(s) === 'expired').length,
+  }), [shops]);
+
+  const filtered = useMemo(() => {
+    let list = shops;
+    if (filter !== 'all') list = list.filter((s) => shopStatus(s) === filter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((s) =>
+        s.shopName.toLowerCase().includes(q) ||
+        s.phone.includes(q) ||
+        (s.ownerName?.toLowerCase().includes(q) ?? false),
+      );
+    }
+    return list;
+  }, [shops, filter, search]);
+
+  const pendingToggle = statusConfirm.shop;
+  const willActivate  = pendingToggle ? !pendingToggle.isActive : false;
 
   return (
     <div className="px-4 py-5 sm:p-6 max-w-6xl mx-auto">
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -328,60 +432,102 @@ export default function ShopsPage() {
         </button>
       </div>
 
-      {/* Overview stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Total shops',    value: total,      color: 'text-gray-900', bg: 'bg-gray-50' },
-          { label: 'With owner',     value: withOwner,  color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'On trial',       value: trialCount, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Pro plan',       value: proCount,   color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Total',     value: counts.all,       color: 'text-gray-900',    bg: 'bg-gray-50',    border: 'border-gray-100' },
+          { label: 'Active',    value: counts.active,    color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+          { label: 'Suspended', value: counts.suspended, color: 'text-red-500',     bg: 'bg-red-50',     border: 'border-red-100' },
+          { label: 'Expired',   value: counts.expired,   color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100' },
         ].map((s) => (
-          <div key={s.label} className={`${s.bg} rounded-2xl p-4`}>
+          <button
+            key={s.label}
+            onClick={() => setFilter(s.label.toLowerCase() as FilterTab)}
+            className={`${s.bg} border ${s.border} rounded-2xl p-4 text-left transition hover:shadow-sm ${
+              filter === s.label.toLowerCase() ? 'ring-2 ring-indigo-400' : ''
+            }`}
+          >
             <p className="text-xs text-gray-500 font-medium">{s.label}</p>
             <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-          </div>
+          </button>
         ))}
       </div>
 
-      {/* Shop cards */}
+      {/* Search + Filter tabs */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1 max-w-xs">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search shops…"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          />
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {FILTER_TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setFilter(t.key)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                filter === t.key
+                  ? t.key === 'active'    ? 'bg-emerald-600 text-white border-emerald-600'
+                  : t.key === 'suspended' ? 'bg-red-500 text-white border-red-500'
+                  : t.key === 'expired'   ? 'bg-orange-500 text-white border-orange-500'
+                  : 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {t.label}
+              <span className={`ml-1.5 font-mono ${filter === t.key ? 'opacity-80' : 'text-gray-400'}`}>
+                {counts[t.key]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => <CardSkeleton key={i} />)}
         </div>
       ) : isError ? (
         <div className="text-center py-16 text-sm text-red-500">Failed to load shops.</div>
-      ) : !shops?.length ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-20">
           <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Store size={28} className="text-indigo-400" />
           </div>
-          <p className="text-gray-500 font-medium">No shops yet</p>
-          <p className="text-sm text-gray-400 mt-1">Create your first shop to get started.</p>
-          <button onClick={() => setModal({ type: 'shop' })}
-            className="mt-4 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition">
-            + New shop
-          </button>
+          <p className="text-gray-500 font-medium">
+            {shops.length === 0 ? 'No shops yet' : `No ${filter === 'all' ? '' : filter + ' '}shops found`}
+          </p>
+          {shops.length === 0 && (
+            <>
+              <p className="text-sm text-gray-400 mt-1">Create your first shop to get started.</p>
+              <button onClick={() => setModal({ type: 'shop' })}
+                className="mt-4 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition">
+                + New shop
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {shops.map((shop) => (
+          {filtered.map((shop) => (
             <ShopCard
               key={shop.id}
               shop={shop}
               onAddOwner={() => setModal({ type: 'owner', shop })}
               onChangePlan={() => setModal({ type: 'plan', shop })}
-              onDelete={() => { if (confirm('Delete this shop?')) deleteShopMutation.mutate(shop.id); }}
-              onToggleStatus={() => {
-                const action = shop.isActive ? 'suspend' : 'activate';
-                if (confirm(`Are you sure you want to ${action} "${shop.shopName}"?`))
-                  toggleStatusMutation.mutate({ id: shop.id, isActive: !shop.isActive });
-              }}
+              onDelete={() => setDeleteConfirm({ open: true, shop })}
+              onToggleStatus={() => setStatusConfirm({ open: true, shop })}
             />
           ))}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Form modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
           onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}>
@@ -413,6 +559,40 @@ export default function ShopsPage() {
           </div>
         </div>
       )}
+
+      {/* Delete confirm */}
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="Shop Delete Karo?"
+        description={
+          deleteConfirm.shop?.ownerName
+            ? `"${deleteConfirm.shop.shopName}" ka owner "${deleteConfirm.shop.ownerName}" hai. Delete karne se pehle owner account hatana hoga.`
+            : `"${deleteConfirm.shop?.shopName ?? ''}" permanently delete ho jaegi. Ye action undo nahi ho sakta.`
+        }
+        confirmLabel="Delete Karo"
+        variant="danger"
+        isPending={deleteShopMutation.isPending}
+        onConfirm={() => { if (deleteConfirm.shop) deleteShopMutation.mutate(deleteConfirm.shop.id); }}
+        onCancel={() => setDeleteConfirm({ open: false, shop: null })}
+      />
+
+      {/* Suspend / Activate confirm */}
+      <ConfirmDialog
+        open={statusConfirm.open}
+        title={willActivate ? 'Shop Activate Karo?' : 'Shop Suspend Karo?'}
+        description={
+          willActivate
+            ? `"${pendingToggle?.shopName}" ko wapas activate kar diya jaega. Owner login kar sakenge.`
+            : `"${pendingToggle?.shopName}" suspend ho jaegi. Owner aur staff login nahi kar sakenge.`
+        }
+        confirmLabel={willActivate ? 'Activate Karo' : 'Suspend Karo'}
+        variant={willActivate ? 'info' : 'warning'}
+        isPending={toggleStatusMutation.isPending}
+        onConfirm={() => {
+          if (pendingToggle) toggleStatusMutation.mutate({ id: pendingToggle.id, isActive: !pendingToggle.isActive });
+        }}
+        onCancel={() => setStatusConfirm({ open: false, shop: null })}
+      />
     </div>
   );
 }

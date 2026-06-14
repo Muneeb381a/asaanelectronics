@@ -15,6 +15,7 @@ export class OwnerService {
         plan: sellers.plan,
         isActive: sellers.isActive,
         trialEndsAt: sellers.trialEndsAt,
+        planExpiresAt: sellers.planExpiresAt,
         createdAt: sellers.createdAt,
         ownerName: users.name,
         ownerEmail: users.email,
