@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "pnpm --filter @assaan/shared build && tsc",
+    "vercel-build": "pnpm --filter @assaan/shared build && pnpm db:push --force && tsc",
     "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

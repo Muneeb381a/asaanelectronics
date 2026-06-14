@@ -37,11 +37,19 @@ export async function getDashboard(req: AuthRequest, res: Response) {
     canReports = !!(dbUser?.permissions as StaffPermissions | null)?.canViewReports;
   }
 
-  const [stats, reports, advanced] = await Promise.all([
-    svc.getStats(sellerId, staffUserId),
-    canReports ? svc.getReports(sellerId) : Promise.resolve(null),
-    canReports ? svc.getAdvanced(sellerId) : Promise.resolve(null),
+  const settle = <T>(p: Promise<T>) =>
+    p.then((v) => ({ ok: true as const, value: v }))
+     .catch((e: Error) => { console.error('[dashboard]', e.message); return { ok: false as const, value: null }; });
+
+  const [statsR, reportsR, advancedR] = await Promise.all([
+    settle(svc.getStats(sellerId, staffUserId)),
+    canReports ? settle(svc.getReports(sellerId)) : Promise.resolve({ ok: true as const, value: null }),
+    canReports ? settle(svc.getAdvanced(sellerId)) : Promise.resolve({ ok: true as const, value: null }),
   ]);
 
-  success(res, { stats, reports, advanced });
+  success(res, {
+    stats:    statsR.value,
+    reports:  reportsR.value,
+    advanced: advancedR.value,
+  });
 }

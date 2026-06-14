@@ -15,6 +15,13 @@
       "when": 1781359480557,
       "tag": "0001_puzzling_darkhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781415433536,
+      "tag": "0002_daffy_toro",
+      "breakpoints": true
     }
   ]
 }
