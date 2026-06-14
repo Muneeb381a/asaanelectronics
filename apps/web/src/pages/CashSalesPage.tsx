@@ -69,12 +69,36 @@ export default function CashSalesPage() {
   const salesPages = Math.max(1, Math.ceil(salesTotal / 20));
   const products   = productsData?.data ?? [];
 
+  type SaleList = { data: CashSale[]; total: number; page: number; limit: number };
+
   const createMutation = useMutation({
     mutationFn: cashSalesApi.create,
     onSuccess: (result) => {
-      void qc.invalidateQueries({ queryKey: ['cash-sales'] });
-      void qc.invalidateQueries({ queryKey: ['products'] });
-      void qc.invalidateQueries({ queryKey: ['products-picker'] });
+      // Prepend new sale to the active list page instantly
+      qc.setQueryData<SaleList>(
+        ['cash-sales', listSearch, listPage],
+        (cached) => {
+          if (!cached) return cached;
+          return { ...cached, data: [result, ...cached.data].slice(0, cached.limit), total: cached.total + 1 };
+        },
+      );
+      // Mark other pages stale — refetch lazily when visited, not right now
+      void qc.invalidateQueries({ queryKey: ['cash-sales'], exact: false, refetchType: 'none' });
+      // Decrement stock in products picker without a network call
+      if (selectedProd) {
+        qc.setQueriesData<{ data: Product[]; total: number; page: number; limit: number }>(
+          { queryKey: ['products-picker'], exact: false },
+          (cached) => {
+            if (!cached?.data) return cached;
+            return {
+              ...cached,
+              data: cached.data.map((p) =>
+                p.id === selectedProd.id ? { ...p, stock: Math.max(0, p.stock - form.quantity) } : p
+              ),
+            };
+          },
+        );
+      }
       setLastSale(result);
       void openCashSaleBill({
         shop:     { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
@@ -93,10 +117,17 @@ export default function CashSalesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: cashSalesApi.remove,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['cash-sales'] });
-      void qc.invalidateQueries({ queryKey: ['products'] });
-      void qc.invalidateQueries({ queryKey: ['products-picker'] });
+    onSuccess: (_, id) => {
+      // Remove from whichever cached page contains this sale
+      qc.setQueriesData<SaleList>(
+        { queryKey: ['cash-sales'], exact: false },
+        (cached) => {
+          if (!cached?.data) return cached;
+          const filtered = cached.data.filter((s) => s.id !== id);
+          if (filtered.length === cached.data.length) return cached;
+          return { ...cached, data: filtered, total: Math.max(0, cached.total - 1) };
+        },
+      );
       setConfirmDelete(null);
     },
   });
@@ -104,8 +135,15 @@ export default function CashSalesPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Parameters<typeof cashSalesApi.update>[1] }) =>
       cashSalesApi.update(id, body),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['cash-sales'] });
+    onSuccess: (updated) => {
+      // Replace the updated sale in all cached pages
+      qc.setQueriesData<SaleList>(
+        { queryKey: ['cash-sales'], exact: false },
+        (cached) => {
+          if (!cached?.data) return cached;
+          return { ...cached, data: cached.data.map((s) => s.id === updated.id ? updated : s) };
+        },
+      );
       toast.success('Sale updated');
       setEditingSale(null);
     },
