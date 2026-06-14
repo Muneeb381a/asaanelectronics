@@ -1,0 +1,2 @@
+CREATE INDEX "idx_installments_product" ON "installments" USING btree ("product_id");--> statement-breakpoint
+CREATE INDEX "idx_payments_inst_date" ON "payments" USING btree ("installment_id","paid_on");

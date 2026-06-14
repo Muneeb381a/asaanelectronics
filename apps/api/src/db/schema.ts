@@ -265,6 +265,7 @@ export const installments = pgTable('installments', {
   index('idx_installments_customer_status_del').on(t.customerId, t.status, t.deletedAt),
   index('idx_installments_start_date').on(t.startDate),
   index('idx_installments_seller_status').on(t.status, t.deletedAt),
+  index('idx_installments_product').on(t.productId),
 ]);
 
 export const expenses = pgTable('expenses', {
@@ -358,6 +359,7 @@ export const payments = pgTable('payments', {
   index('idx_payments_installment_deleted').on(t.installmentId, t.deletedAt),
   index('idx_payments_collected_by').on(t.collectedBy),
   index('idx_payments_collected_by_date').on(t.collectedBy, t.paidOn),
+  index('idx_payments_inst_date').on(t.installmentId, t.paidOn),
 ]);
 
 export const cashSales = pgTable('cash_sales', {

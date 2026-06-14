@@ -448,7 +448,7 @@ export default function InstallmentsPage() {
   const [deleteConfirm,  setDeleteConfirm]  = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
 
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
-  const { data: paymentAccountsData = [] } = useQuery<PaymentAccount[]>({ queryKey: ['payment-accounts'], queryFn: sellersApi.listPaymentAccounts });
+  const { data: paymentAccountsData = [] } = useQuery<PaymentAccount[]>({ queryKey: ['payment-accounts'], queryFn: sellersApi.listPaymentAccounts, staleTime: 10 * 60_000 });
 
   const LIMIT = 20;
 
