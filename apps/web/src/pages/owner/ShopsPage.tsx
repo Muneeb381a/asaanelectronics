@@ -563,13 +563,9 @@ export default function ShopsPage() {
       {/* Delete confirm */}
       <ConfirmDialog
         open={deleteConfirm.open}
-        title="Shop Delete Karo?"
-        description={
-          deleteConfirm.shop?.ownerName
-            ? `"${deleteConfirm.shop.shopName}" ka owner "${deleteConfirm.shop.ownerName}" hai. Delete karne se pehle owner account hatana hoga.`
-            : `"${deleteConfirm.shop?.shopName ?? ''}" permanently delete ho jaegi. Ye action undo nahi ho sakta.`
-        }
-        confirmLabel="Delete Karo"
+        title="Shop Permanently Delete Karo?"
+        description={`"${deleteConfirm.shop?.shopName ?? ''}" aur iska sara data — customers, installments, payments, products, staff accounts — permanently delete ho jaega. Ye action undo nahi ho sakta.`}
+        confirmLabel="Haan, Delete Karo"
         variant="danger"
         isPending={deleteShopMutation.isPending}
         onConfirm={() => { if (deleteConfirm.shop) deleteShopMutation.mutate(deleteConfirm.shop.id); }}
