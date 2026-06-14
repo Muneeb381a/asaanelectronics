@@ -1123,6 +1123,8 @@ export default function CustomersPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isOwner = user?.role === 'SELLER_OWNER';
+  const userPerms = user?.permissions as Record<string, boolean> | null | undefined;
+  const canAssignAvo = isOwner || !!userPerms?.canVerifyCustomers;
   const [modal, setModal] = useState<Modal>(null);
   const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
   const [assignAvoFor, setAssignAvoFor] = useState<Customer | null>(null);
@@ -1163,7 +1165,7 @@ export default function CustomersPage() {
   const { data: staffList = [] } = useQuery({
     queryKey: ['staff'],
     queryFn: staffApi.list,
-    enabled: isOwner,
+    enabled: canAssignAvo,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['customers'] });
@@ -1322,7 +1324,7 @@ export default function CustomersPage() {
                       <p className="text-xs text-gray-400 font-mono mt-0.5">{c.cnicMasked}</p>
                     </div>
                   </div>
-                  {isOwner && c.verificationStatus !== 'APPROVED' && (
+                  {canAssignAvo && c.verificationStatus !== 'APPROVED' && (
                     <div className="flex items-center gap-3 mt-2">
                       {c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
                         <button onClick={() => setAssignAvoFor(c)}
@@ -1332,8 +1334,10 @@ export default function CustomersPage() {
                         <button onClick={() => setAssignAvoFor(c)}
                           className="text-[10px] text-indigo-500 hover:underline">Reassign AVO</button>
                       )}
-                      <button onClick={() => setDirectVerifyFor(c)}
-                        className="text-[10px] text-emerald-600 hover:underline font-semibold">Direct Verify</button>
+                      {isOwner && (
+                        <button onClick={() => setDirectVerifyFor(c)}
+                          className="text-[10px] text-emerald-600 hover:underline font-semibold">Direct Verify</button>
+                      )}
                     </div>
                   )}
                   <div className="flex items-center gap-2 mt-3">
@@ -1409,7 +1413,7 @@ export default function CustomersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <VerifBadge status={c.verificationStatus ?? 'PENDING'} />
-                          {isOwner && c.verificationStatus !== 'APPROVED' && (<>
+                          {canAssignAvo && c.verificationStatus !== 'APPROVED' && (<>
                             {c.verificationStatus === 'PENDING' && !c.assignedAvoId && (
                               <button onClick={() => setAssignAvoFor(c)}
                                 className="text-[10px] text-blue-500 hover:underline">Assign AVO</button>
@@ -1418,8 +1422,10 @@ export default function CustomersPage() {
                               <button onClick={() => setAssignAvoFor(c)}
                                 className="text-[10px] text-indigo-500 hover:underline">Reassign</button>
                             )}
-                            <button onClick={() => setDirectVerifyFor(c)}
-                              className="text-[10px] text-emerald-600 hover:underline font-semibold">Direct Verify</button>
+                            {isOwner && (
+                              <button onClick={() => setDirectVerifyFor(c)}
+                                className="text-[10px] text-emerald-600 hover:underline font-semibold">Direct Verify</button>
+                            )}
                           </>)}
                         </div>
                       </td>

@@ -20,7 +20,7 @@ router.get('/:id',              getCustomer);
 router.get('/:id/risk-breakdown', getRiskBreakdown);
 router.post('/',      requirePermission('canAddCustomer'),  validate(createCustomerSchema), createCustomer);
 router.patch('/:id',  requirePermission('canEditCustomer'), validate(updateCustomerSchema), updateCustomer);
-router.patch('/:id/assign-avo', requireOwner, assignAvo);
+router.patch('/:id/assign-avo', requirePermission('canVerifyCustomers'), assignAvo);
 router.delete('/:id', requireOwner, deleteCustomer);
 
 router.get('/:customerId/notes',            listNotes);
