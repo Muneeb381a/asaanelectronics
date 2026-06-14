@@ -90,6 +90,7 @@ export default function DashboardPage() {
     queryKey: ['dashboard'],
     queryFn:  statsApi.getDashboard,
     staleTime:       60_000,
+    gcTime:          5 * 60_000,
     refetchInterval: 5 * 60_000,
   });
 

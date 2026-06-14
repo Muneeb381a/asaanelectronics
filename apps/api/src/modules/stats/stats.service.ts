@@ -3,8 +3,23 @@ import { db } from '../../db/index.js';
 import { cashSales, customers, installments, payments, products, recoveryActions } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
 
+// ── In-memory TTL cache (per-process, survives request boundaries) ─────────────
+const _statsCache = new Map<string, { at: number; data: unknown }>();
+
+async function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
+  const e = _statsCache.get(key);
+  if (e && (Date.now() - e.at) < ttlMs) return e.data as T;
+  const result = await fn();
+  _statsCache.set(key, { at: Date.now(), data: result });
+  return result;
+}
+
 export class StatsService {
   async getReports(sellerId: string) {
+    return withCache(`reports:${sellerId}`, 60_000, () => this._getReports(sellerId));
+  }
+
+  private async _getReports(sellerId: string) {
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
@@ -134,6 +149,11 @@ export class StatsService {
   }
 
   async getStats(sellerId: string, userId?: string) {
+    const key = userId ? `stats:${sellerId}:${userId}` : `stats:${sellerId}`;
+    return withCache(key, 30_000, () => this._getStats(sellerId, userId));
+  }
+
+  private async _getStats(sellerId: string, userId?: string) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart.getTime() + 86_400_000);
@@ -302,6 +322,10 @@ export class StatsService {
   }
 
   async getAdvanced(sellerId: string) {
+    return withCache(`advanced:${sellerId}`, 120_000, () => this._getAdvanced(sellerId));
+  }
+
+  private async _getAdvanced(sellerId: string) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
 
     const [cashflowRows, recoveryRows, staffRows, areaRows] = await Promise.all([

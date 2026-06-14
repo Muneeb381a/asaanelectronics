@@ -73,16 +73,43 @@ export default function CashSalesPage() {
 
   const createMutation = useMutation({
     mutationFn: cashSalesApi.create,
-    onSuccess: (result) => {
-      // Prepend new sale to the active list page instantly
-      qc.setQueryData<SaleList>(
-        ['cash-sales', listSearch, listPage],
-        (cached) => {
-          if (!cached) return cached;
-          return { ...cached, data: [result, ...cached.data].slice(0, cached.limit), total: cached.total + 1 };
-        },
-      );
-      // Mark other pages stale — refetch lazily when visited, not right now
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ['cash-sales', listSearch, listPage] });
+      const prev = qc.getQueryData<SaleList>(['cash-sales', listSearch, listPage]);
+      const tempId = `optimistic-${Date.now()}`;
+      const optimistic: CashSale = {
+        id:              tempId,
+        sellerId:        '',
+        productId:       vars.productId,
+        quantity:        vars.quantity ?? 1,
+        amount:          String(vars.amount),
+        method:          vars.method,
+        customerName:    vars.customerName ?? null,
+        customerPhone:   vars.customerPhone ?? null,
+        imeiNumber:      vars.imeiNumber   ?? null,
+        note:            vars.note         ?? null,
+        soldByUserId:    user?.id ?? null,
+        createdAt:       new Date().toISOString(),
+        productName:     selectedProd?.name ?? '',
+        productCategory: selectedProd?.category ?? null,
+      };
+      qc.setQueryData<SaleList>(['cash-sales', listSearch, listPage], (cached) => {
+        if (!cached) return cached;
+        return { ...cached, data: [optimistic, ...cached.data].slice(0, cached.limit), total: cached.total + 1 };
+      });
+      return { prev, tempId };
+    },
+    onSuccess: (result, _vars, context) => {
+      // Replace temp item with real server response across all cached pages
+      qc.setQueriesData<SaleList>({ queryKey: ['cash-sales'], exact: false }, (cached) => {
+        if (!cached?.data) return cached;
+        const idx = cached.data.findIndex((s) => s.id === context?.tempId);
+        if (idx === -1) return cached;
+        const newData = [...cached.data];
+        newData[idx] = result;
+        return { ...cached, data: newData };
+      });
+      // Mark other pages stale — refetch lazily when visited
       void qc.invalidateQueries({ queryKey: ['cash-sales'], exact: false, refetchType: 'none' });
       // Decrement stock in products picker without a network call
       if (selectedProd) {
@@ -93,7 +120,7 @@ export default function CashSalesPage() {
             return {
               ...cached,
               data: cached.data.map((p) =>
-                p.id === selectedProd.id ? { ...p, stock: Math.max(0, p.stock - form.quantity) } : p
+                p.id === selectedProd.id ? { ...p, stock: Math.max(0, p.stock - (result.quantity ?? 1)) } : p
               ),
             };
           },
@@ -112,6 +139,10 @@ export default function CashSalesPage() {
         soldAt:   result.createdAt,
         saleId:   result.id,
       });
+    },
+    onError: (_e, _vars, context) => {
+      if (context?.prev !== undefined) qc.setQueryData(['cash-sales', listSearch, listPage], context.prev);
+      toast.error('Failed to record sale');
     },
   });
 
