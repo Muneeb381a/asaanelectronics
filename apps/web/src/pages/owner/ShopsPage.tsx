@@ -8,6 +8,7 @@ import {
 import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan } from '../../api/owner.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
+import { fmtDate } from '../../utils/dateFormat.ts';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -34,7 +35,7 @@ function daysLabel(shop: Shop): { text: string; urgent: boolean } | null {
     const days = Math.ceil((new Date(shop.planExpiresAt).getTime() - now) / 86_400_000);
     if (days < 0) return { text: 'Plan expired', urgent: true };
     if (days === 0) return { text: 'Expires today', urgent: true };
-    return { text: `Expires ${new Date(shop.planExpiresAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}`, urgent: days <= 7 };
+    return { text: `Expires ${fmtDate(shop.planExpiresAt)}`, urgent: days <= 7 };
   }
   return null;
 }

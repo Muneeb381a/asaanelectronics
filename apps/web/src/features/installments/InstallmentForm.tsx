@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ShieldCheck, ShieldX, Clock, X } from 'lucide-react';
 import { customersApi } from '../../api/customers.api.ts';
 import { productsApi } from '../../api/products.api.ts';
+import { fmtDate } from '../../utils/dateFormat.ts';
 
 const formSchema = z.object({
   customerId:        z.string().min(1, 'Select a customer'),
@@ -72,10 +73,6 @@ function addDays(date: Date, n: number) {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
   return d;
-}
-
-function fmtDate(d: Date) {
-  return d.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 const inp = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';

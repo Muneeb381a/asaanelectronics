@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { fmtDate } from './dateFormat.ts';
 
 export interface BillPaymentAccount {
   type: string;
@@ -62,10 +63,6 @@ function addDays(date: Date, n: number): Date {
   return d;
 }
 
-function fmtDate(d: Date) {
-  return d.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
 const STATUS_UR: Record<string, string> = {
   ACTIVE: 'فعال', COMPLETED: 'مکمل', DEFAULTED: 'ڈیفالٹ',
   CANCELLED: 'منسوخ', PENDING: 'زیر التواء', CLOSED: 'بند',
@@ -91,7 +88,7 @@ function buildSchedule(data: BillData): { month: number; due: string; amount: st
 
 export async function openBill(data: BillData) {
   const invoiceNo  = data.invoiceNumber ?? `INV-${new Date().getFullYear()}-${data.installmentId.slice(0, 6).toUpperCase()}`;
-  const printDate  = new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+  const printDate  = fmtDate(new Date());
   const isDaily    = data.paymentFrequency === 'daily';
   const startDate  = fmtDate(new Date(data.startDate));
   const endDate    = fmtDate(isDaily
@@ -275,7 +272,7 @@ export async function openBill(data: BillData) {
     <!-- FOOTER -->
     <div style="margin-top:6px;padding-top:5px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:9px;color:#94a3b8">${data.shop.shopName} · ${data.shop.phone}</div>
-      <div style="font-size:9px;color:#94a3b8">Ref: ${data.installmentId.slice(0, 8).toUpperCase()} · ${new Date().toLocaleDateString('en-PK')}</div>
+      <div style="font-size:9px;color:#94a3b8">Ref: ${data.installmentId.slice(0, 8).toUpperCase()} · ${fmtDate(new Date())}</div>
     </div>
   </div>`; }
 
@@ -337,7 +334,7 @@ export async function openBill(data: BillData) {
 
 export async function openCashSaleBill(data: CashSaleBillData) {
   const invoiceNo = `CS-${data.saleId.slice(0, 6).toUpperCase()}`;
-  const saleDate  = new Date(data.soldAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+  const saleDate  = fmtDate(data.soldAt);
   const method    = METHOD_LABELS[data.method] ?? data.method;
 
   const qrPayload = [

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { Customer } from '../api/customers.api.ts';
+import { fmtDate, fmtDateTime } from '../utils/dateFormat.ts';
 
 interface Props {
   customer: Customer;
@@ -7,10 +8,6 @@ interface Props {
   shopAddress: string | null;
   shopPhone: string;
   onClose: () => void;
-}
-
-function today() {
-  return new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 function refNo() {
@@ -154,7 +151,7 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
                     Installment Agreement
                   </div>
                   <div style={{ fontSize: 9, color: '#64748b', marginTop: 7 }}>Ref No: <span style={{ color: '#93c5fd', fontWeight: 600 }}>{REF}</span></div>
-                  <div style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>Date: <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{today()}</span></div>
+                  <div style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>Date: <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{fmtDate(new Date())}</span></div>
                 </div>
               </div>
               <div style={{ height: 4, background: 'linear-gradient(90deg, #f59e0b, #3b82f6, #f59e0b)', marginTop: 18, marginLeft: -36, marginRight: -36 }} />
@@ -296,7 +293,7 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
                 </div>
                 <div style={{ textAlign: 'right', fontSize: 8, color: '#94a3b8' }}>
                   <div>Ref: {REF}</div>
-                  <div>Generated: {new Date().toLocaleString('en-PK')}</div>
+                  <div>Generated: {fmtDateTime(new Date())}</div>
                 </div>
               </div>
 

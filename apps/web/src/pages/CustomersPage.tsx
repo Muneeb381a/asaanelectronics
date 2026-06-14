@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
+import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
 import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { customersApi, type Customer, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import type { CreateCustomerInput } from '@assaan/shared';
@@ -237,7 +238,7 @@ function NotesPanel({ customer }: { customer: Customer }) {
                   )}
                 </div>
                 <p className="text-[10px] text-amber-600 mt-1.5">
-                  {n.authorName ?? 'Unknown'} · {new Date(n.createdAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  {n.authorName ?? 'Unknown'} · {fmtDate(n.createdAt)}
                 </p>
               </div>
             ))}
@@ -698,7 +699,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                       <div className="min-w-0">
                         <p className="font-semibold text-sm text-gray-900 truncate" title={inst.productName}>{inst.productName}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          Started {new Date(inst.startDate).toLocaleDateString('en-PK', { month: 'short', year: 'numeric' })}
+                          Started {fmtMonthYear(inst.startDate)}
                           {' · '}{inst.months} months
                         </p>
                       </div>
@@ -971,7 +972,7 @@ function StaffCnicView({
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{inst.productName}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {inst.months} months · Started {new Date(inst.startDate).toLocaleDateString('en-PK', { month: 'short', year: 'numeric' })}
+                          {inst.months} months · Started {fmtMonthYear(inst.startDate)}
                         </p>
                       </div>
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">Active</span>
@@ -1430,7 +1431,7 @@ export default function CustomersPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400">
-                        {new Date(c.createdAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {fmtDate(c.createdAt)}
                       </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <button onClick={() => setHistoryCustomer(c)}

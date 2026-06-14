@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
+import { fmtDate } from '../utils/dateFormat.ts';
 import { cashSalesApi, type CashSale, type PaymentMethod } from '../api/cashSales.api.ts';
 import { productsApi, type Product } from '../api/products.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
@@ -207,10 +208,6 @@ export default function CashSalesPage() {
       imeiNumber:    form.imeiNumber    || undefined,
       note:          form.note          || undefined,
     });
-  }
-
-  function fmtDate(iso: string) {
-    return new Date(iso).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   const todayTotal = sales

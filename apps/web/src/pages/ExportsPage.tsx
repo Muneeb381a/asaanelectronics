@@ -8,6 +8,7 @@ import { returnsApi } from '../api/returns.api.ts';
 import { expensesApi } from '../api/expenses.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { printReport } from '../utils/exportPdf.ts';
+import { fmtDate } from '../utils/dateFormat.ts';
 
 type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses';
 
@@ -30,10 +31,6 @@ const RETURN_STATUS_LABELS: Record<string, string> = {
 
 function pkr(n: number | string) {
   return 'PKR ' + Number(n).toLocaleString('en-PK', { maximumFractionDigits: 0 });
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function todayStr() {

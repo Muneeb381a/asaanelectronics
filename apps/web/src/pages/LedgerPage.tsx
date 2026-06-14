@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ledgerApi } from '../api/ledger.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import { fmtDateTime } from '../utils/dateFormat.ts';
 import { expensesApi, type ExpenseCategory } from '../api/expenses.api.ts';
 import { accountingApi } from '../api/accounting.api.ts';
 import { reconciliationApi, type Anomaly } from '../api/reconciliation.api.ts';
@@ -591,7 +592,7 @@ function JournalTab() {
                   {je.refType && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">{je.refType}</span>
                   )}
-                  <span className="text-xs text-gray-400">{new Date(je.postedAt).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                  <span className="text-xs text-gray-400">{fmtDateTime(je.postedAt)}</span>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -845,7 +846,7 @@ function ReconcileTab() {
               {history.map((h) => (
                 <tr key={h.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2.5 text-gray-700 text-xs">
-                    {new Date(h.runAt).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                    {fmtDateTime(h.runAt)}
                   </td>
                   <td className="px-4 py-2.5">
                     <span className="text-xs text-gray-400">{h.trigger}</span>

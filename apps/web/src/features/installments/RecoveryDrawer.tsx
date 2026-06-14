@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { recoveryApi, type RecoveryAction, type RecoveryActionType } from '../../api/recovery.api.ts';
 import type { Installment } from '../../api/installments.api.ts';
+import { fmtDate, fmtDateTime } from '../../utils/dateFormat.ts';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 type ActionConfig = {
@@ -25,19 +26,6 @@ const ACTION_CONFIG: Record<RecoveryActionType, ActionConfig> = {
 };
 
 const ACTION_TYPES = Object.keys(ACTION_CONFIG) as RecoveryActionType[];
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('en-PK', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  });
-}
-
-function formatPromiseDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-PK', {
-    day: '2-digit', month: 'long', year: 'numeric',
-  });
-}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -77,7 +65,7 @@ function TimelineItem({ action, onDelete }: { action: RecoveryAction; onDelete: 
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-gray-400" title={formatDate(action.createdAt)}>
+            <span className="text-xs text-gray-400" title={fmtDateTime(action.createdAt)}>
               {timeAgo(action.createdAt)}
             </span>
             <button
@@ -93,7 +81,7 @@ function TimelineItem({ action, onDelete }: { action: RecoveryAction; onDelete: 
           <div className="mt-1 inline-flex items-center gap-1 bg-green-50 border border-green-200 rounded-lg px-2 py-0.5">
             <CalendarCheck size={11} className="text-green-600" />
             <span className="text-xs text-green-700 font-medium">
-              Will pay by {formatPromiseDate(action.promiseDate!)}
+              Will pay by {fmtDate(action.promiseDate!)}
             </span>
           </div>
         )}
@@ -102,7 +90,7 @@ function TimelineItem({ action, onDelete }: { action: RecoveryAction; onDelete: 
           <p className="mt-1 text-sm text-gray-600 leading-snug">{action.note}</p>
         )}
 
-        <p className="text-xs text-gray-300 mt-1">{formatDate(action.createdAt)}</p>
+        <p className="text-xs text-gray-300 mt-1">{fmtDateTime(action.createdAt)}</p>
       </div>
     </div>
   );

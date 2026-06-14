@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { returnsApi, type Return, type ReturnType, type ReturnReason, type ReturnCondition, type ResolutionType } from '../api/returns.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import { fmtDate } from '../utils/dateFormat.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { productsApi } from '../api/products.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -377,7 +378,7 @@ function ReturnCard({ ret, isOwner, onResolve }: { ret: Return; isOwner: boolean
 
         <div className="text-right shrink-0">
           <p className="text-xs text-gray-400">
-            {new Date(ret.createdAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+            {fmtDate(ret.createdAt)}
           </p>
           {ret.refundAmount && (
             <p className="text-xs font-semibold text-emerald-600 mt-0.5">

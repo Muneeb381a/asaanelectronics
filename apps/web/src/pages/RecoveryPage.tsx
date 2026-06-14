@@ -9,13 +9,11 @@ import { installmentsApi, type Installment } from '../api/installments.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { recoveryApi, type RecoveryActionType, type RecoveryAction } from '../api/recovery.api.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
+import { fmtDate } from '../utils/dateFormat.ts';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function pkr(v: string | number) { return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
-}
 
 function daysSince(d: string) {
   const diff = Date.now() - new Date(d).getTime();

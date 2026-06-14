@@ -1,3 +1,5 @@
+import { fmtDate, fmtDateTime } from './dateFormat.ts';
+
 export interface InstallmentReceiptData {
   shopName: string;
   shopPhone?: string | null;
@@ -38,16 +40,6 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 function mLabel(m: string) { return METHOD_LABELS[m] ?? m; }
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString('en-PK', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
-
-function fmtDateShort(iso: string) {
-  return new Date(iso).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-}
 
 function pkr(n: number) {
   return 'PKR ' + n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
@@ -110,7 +102,7 @@ function openPrint(content: string, width = 380, height = 700) {
 export function printInstallmentReceipt(d: InstallmentReceiptData) {
   const freq = d.paymentFrequency === 'daily' ? 'Daily' : 'Monthly';
   const invoiceNo = d.invoiceNumber ?? '';
-  const printDate = fmtDateShort(d.paidOn);
+  const printDate = fmtDate(d.paidOn);
 
   const hasProg = d.paidInstallments !== undefined && d.totalInstallments !== undefined;
   const paidInst = d.paidInstallments ?? 0;
@@ -235,7 +227,7 @@ export function printCashSaleReceipt(d: CashSaleReceiptData) {
     ${d.shopPhone ? `<div class="sub">${d.shopPhone}</div>` : ''}
     <div class="sub">Cash Sale Receipt</div>
     <hr/>
-    <div class="row"><span class="lbl">Date</span><span class="val">${fmtDate(d.soldAt)}</span></div>
+    <div class="row"><span class="lbl">Date</span><span class="val">${fmtDateTime(d.soldAt)}</span></div>
     <div class="row"><span class="lbl">Customer</span><span class="val">${d.customerName ?? 'Walk-in'}</span></div>
     ${d.customerPhone ? `<div class="row"><span class="lbl">Phone</span><span class="val">${d.customerPhone}</span></div>` : ''}
     <div class="row"><span class="lbl">Product</span><span class="val">${d.productName}</span></div>
@@ -259,7 +251,7 @@ export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
   const lines = [
     `*Payment Receipt — ${d.shopName}*`,
     `━━━━━━━━━━━━━━━━━━━`,
-    `Date: ${fmtDate(d.paidOn)}`,
+    `Date: ${fmtDateTime(d.paidOn)}`,
     d.invoiceNumber ? `Invoice: ${d.invoiceNumber}` : '',
     `Customer: ${d.customerName}`,
     d.customerPhone ? `Phone: ${d.customerPhone}` : '',
@@ -282,7 +274,7 @@ export function cashSaleWhatsappUrl(d: CashSaleReceiptData): string {
   const lines = [
     `*Cash Sale — ${d.shopName}*`,
     `━━━━━━━━━━━━━━━━━━━`,
-    `Date: ${fmtDate(d.soldAt)}`,
+    `Date: ${fmtDateTime(d.soldAt)}`,
     `Customer: ${d.customerName ?? 'Walk-in'}`,
     d.customerPhone ? `Phone: ${d.customerPhone}` : '',
     `Product: ${d.productName}`,

@@ -6,6 +6,7 @@ import {
   RotateCcw, CheckCircle, PhoneCall, XCircle,
 } from 'lucide-react';
 import { auditApi, type AuditLog } from '../api/audit.api.ts';
+import { fmtDateTime } from '../utils/dateFormat.ts';
 import { CardSkeleton } from '../components/ui/Skeleton.tsx';
 
 // ── Action config ─────────────────────────────────────────────────────────────
@@ -75,13 +76,6 @@ function timeAgo(iso: string): string {
   if (hrs < 24)  return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   return `${days}d ago`;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-PK', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  });
 }
 
 function initials(name: string | null): string {
@@ -181,8 +175,8 @@ function LogRow({ log }: { log: AuditLog }) {
 
           {/* Footer */}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
-            <span className="text-xs text-gray-400" title={formatDate(log.createdAt)}>
-              {timeAgo(log.createdAt)} · {formatDate(log.createdAt)}
+            <span className="text-xs text-gray-400" title={fmtDateTime(log.createdAt)}>
+              {timeAgo(log.createdAt)} · {fmtDateTime(log.createdAt)}
             </span>
             {log.ip && <span className="text-xs text-gray-300">IP: {log.ip}</span>}
             {log.userAgent && (

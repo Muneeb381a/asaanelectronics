@@ -8,6 +8,7 @@ import { installmentsApi, type Installment } from '../../api/installments.api.ts
 import { paymentsApi, type PaymentMethod } from '../../api/payments.api.ts';
 import { staffApi } from '../../api/staff.api.ts';
 import { sellersApi } from '../../api/sellers.api.ts';
+import { fmtDate } from '../../utils/dateFormat.ts';
 import { api } from '../../api/client.ts';
 import { RowSkeleton } from '../../components/ui/Skeleton.tsx';
 import { getErrorMessage } from '../../utils/error.ts';
@@ -570,7 +571,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-900">{pkr(p.amount)}</p>
                           <p className="text-xs text-gray-400">
-                            {p.method} · {new Date(p.paidOn).toLocaleDateString('en-PK')}
+                            {p.method} · {fmtDate(p.paidOn)}
                             {p.note && ` · ${p.note}`}
                           </p>
                           {p.collectorName && (

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Users, Calendar, Image, Phone } from 'lucide-react';
 import { recoveryAgentsApi, type AgentStat, type AgentCollection } from '../api/recovery-agents.api.ts';
 import { RowSkeleton } from '../components/ui/Skeleton.tsx';
+import { fmtDate, fmtDateShort } from '../utils/dateFormat.ts';
 
 function pkr(v: number) {
   return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
@@ -66,7 +67,7 @@ function AgentCard({ stat, onDrill }: { stat: AgentStat; onDrill: () => void }) 
       {stat.lastCollectedAt && (
         <p className="text-[11px] text-gray-400 mt-3 flex items-center gap-1.5">
           <Calendar size={11} />
-          Last: {new Date(stat.lastCollectedAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+          Last: {fmtDate(stat.lastCollectedAt)}
         </p>
       )}
     </button>
@@ -95,7 +96,7 @@ function CollectionRow({ c }: { c: AgentCollection }) {
             {c.method}
           </span>
           <span className="text-[10px] text-gray-400">
-            {new Date(c.paidOn).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })}
+            {fmtDateShort(c.paidOn)}
           </span>
           {c.proofImageUrl && (
             <a href={c.proofImageUrl} target="_blank" rel="noreferrer"
@@ -147,7 +148,7 @@ function AgentDrillDown({ stat, onBack }: { stat: AgentStat; onBack: () => void 
         <StatCard label="This Month"         value={pkr(stat.thisMonthTotal)} sub={`${stat.thisMonthCount} payments`} color="blue" />
         <StatCard label="Last Active"
           value={stat.lastCollectedAt
-            ? new Date(stat.lastCollectedAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })
+            ? fmtDateShort(stat.lastCollectedAt)
             : '—'}
           color="orange" />
       </div>

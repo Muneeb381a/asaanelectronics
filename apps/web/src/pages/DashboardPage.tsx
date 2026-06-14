@@ -8,6 +8,7 @@ import {
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
+import { fmtDate } from '../utils/dateFormat.ts';
 
 function pkr(v: number) {
   return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
@@ -98,7 +99,7 @@ export default function DashboardPage() {
   const reports  = dashboard?.reports;
   const advanced = dashboard?.advanced;
 
-  const today = new Date().toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long' });
+  const today = fmtDate(new Date());
 
   // Derived values
   const thisMonth = reports?.monthlyCollections.at(-1)?.total ?? 0;

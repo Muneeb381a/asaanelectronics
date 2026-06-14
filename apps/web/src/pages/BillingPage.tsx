@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Wallet, Users, CreditCard, Package, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { billingApi, type Plan } from '../api/billing.api.ts';
+import { fmtDate } from '../utils/dateFormat.ts';
 
 const PLAN_COLORS: Record<Plan, { bg: string; text: string; border: string }> = {
   TRIAL:      { bg: 'bg-gray-100',   text: 'text-gray-700',   border: 'border-gray-300'   },
@@ -80,7 +81,7 @@ export default function BillingPage() {
   const statusText = data.trialExpired ? 'Trial expired'
     : data.planExpired ? 'Plan expired'
     : data.trialDaysLeft !== null ? `${data.trialDaysLeft} day${data.trialDaysLeft !== 1 ? 's' : ''} left in trial`
-    : data.planExpiresAt ? `Renews ${new Date(data.planExpiresAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    : data.planExpiresAt ? `Renews ${fmtDate(data.planExpiresAt)}`
     : 'Active';
 
   return (

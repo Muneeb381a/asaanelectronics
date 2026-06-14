@@ -17,6 +17,7 @@ import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi, type PaymentAccount } from '../api/sellers.api.ts';
 import { openBill } from '../utils/bill.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import { fmtDate } from '../utils/dateFormat.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 
 function calcNextDueDate(inst: Installment): Date | null {
@@ -50,8 +51,8 @@ function buildCSV(rows: Installment[]) {
       isDaily ? 'Daily' : 'Monthly',
       isDaily ? `${i.months} days` : `${i.months} months`,
       i.status,
-      new Date(i.startDate).toLocaleDateString('en-PK'),
-      next ? next.toLocaleDateString('en-PK') : '',
+      fmtDate(i.startDate),
+      next ? fmtDate(next) : '',
     ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',');
   });
   return [header.join(','), ...body].join('\n');
@@ -274,7 +275,7 @@ function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => vo
                 </span>
                 <div>
                   <p className={`${row.isPaid ? 'text-gray-400' : row.isOverdue ? 'text-red-700 font-medium' : 'text-gray-900'}`}>
-                    {row.dueDate.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {fmtDate(row.dueDate)}
                     {row.isOverdue  && <span className="ml-1.5 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">Overdue</span>}
                     {row.isCurrent && !row.isOverdue && <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">Due now</span>}
                   </p>
@@ -752,7 +753,7 @@ export default function InstallmentsPage() {
                     {nextDue && (
                       <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 text-xs font-medium ${overdue ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${overdue ? 'bg-red-500' : 'bg-blue-500'}`} />
-                        <span>{overdue ? 'Overdue since' : 'Due'}: {nextDue.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                        <span>{overdue ? 'Overdue since' : 'Due'}: {fmtDate(nextDue)}</span>
                         {overdue && <span className="ml-auto font-semibold">{daysLate}d late</span>}
                       </div>
                     )}
@@ -868,7 +869,7 @@ export default function InstallmentsPage() {
                         const isOverdue = d < new Date();
                         return (
                           <span className={isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'}>
-                            {d.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            {fmtDate(d)}
                             {isOverdue && <span className="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded">overdue</span>}
                           </span>
                         );

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { Customer } from '../api/customers.api.ts';
 import type { Installment } from '../api/installments.api.ts';
+import { fmtDate, fmtDateTime } from '../utils/dateFormat.ts';
 
 interface Props {
   customer: Customer;
@@ -12,9 +13,6 @@ interface Props {
 
 function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
-}
-function fmtDate(d: string | Date) {
-  return new Date(d).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 export default function CustomerStatementPrint({ customer, installments, shopName, shopPhone, onClose }: Props) {
@@ -155,7 +153,7 @@ export default function CustomerStatementPrint({ customer, installments, shopNam
               {/* Footer */}
               <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 8, paddingTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#94a3b8' }}>
                 <span>{shopName} · Customer Account Statement</span>
-                <span>Generated: {new Date().toLocaleString('en-PK')}</span>
+                <span>Generated: {fmtDateTime(new Date())}</span>
               </div>
             </div>
           </div>

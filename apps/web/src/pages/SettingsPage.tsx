@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { sellersApi, type PaymentAccount, type PaymentAccountType } from '../api/sellers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import { fmtDate } from '../utils/dateFormat.ts';
 import { sessionsApi, type Session } from '../api/sessions.api.ts';
 import { billingApi, type BillingUsage, type UsageStat } from '../api/billing.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -75,10 +76,10 @@ function UsageBar({ stat, label, icon }: { stat: UsageStat; label: string; icon:
 // ── Billing section ───────────────────────────────────────────────────────────
 function BillingSection({ usage }: { usage: BillingUsage }) {
   const expiry = usage.planExpiresAt
-    ? new Date(usage.planExpiresAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' })
+    ? fmtDate(usage.planExpiresAt)
     : null;
   const trialEnd = usage.trialEndsAt
-    ? new Date(usage.trialEndsAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' })
+    ? fmtDate(usage.trialEndsAt)
     : null;
 
   return (
@@ -466,9 +467,7 @@ function SessionsSection() {
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {session.ip ?? 'IP unknown'} · Last active {timeAgo(session.lastActiveAt)}
-                  {' · '}Logged in {new Date(session.createdAt).toLocaleDateString('en-PK', {
-                    day: '2-digit', month: 'short', year: 'numeric',
-                  })}
+                  {' · '}Logged in {fmtDate(session.createdAt)}
                 </p>
               </div>
 

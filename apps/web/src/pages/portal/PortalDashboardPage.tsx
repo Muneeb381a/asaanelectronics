@@ -8,15 +8,12 @@ import {
 } from 'lucide-react';
 import { portalApi, type PortalInstallment, type PortalPayment } from '../../api/portal.api.ts';
 import { usePortalStore } from '../../store/portal.store.ts';
+import { fmtDate } from '../../utils/dateFormat.ts';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
 function pkr(v: number) {
   return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
-}
-
-function fmtDate(d: string | Date) {
-  return new Date(d).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // ── Verification status pipeline ───────────────────────────────────────────────

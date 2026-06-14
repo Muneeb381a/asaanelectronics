@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { expensesApi, type ExpenseCategory, type Expense } from '../api/expenses.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
@@ -27,9 +28,7 @@ const CATS = Object.keys(CAT) as ExpenseCategory[];
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function pkr(v: number) { return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+
 function monthBounds() {
   const now  = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -229,7 +228,7 @@ export default function ExpensesPage() {
             <ChevronLeft size={15} />
           </button>
           <span className="text-sm font-semibold text-gray-700 px-2 min-w-28 text-center">
-            {new Date(from + 'T12:00:00').toLocaleDateString('en-PK', { month: 'long', year: 'numeric' })}
+            {fmtMonthYear(new Date(from + 'T12:00:00'))}
           </span>
           <button
             onClick={() => {

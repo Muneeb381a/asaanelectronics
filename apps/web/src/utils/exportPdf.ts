@@ -1,3 +1,5 @@
+import { fmtDateTime } from './dateFormat.ts';
+
 export interface ReportConfig {
   title: string;
   subtitle?: string;
@@ -32,9 +34,7 @@ tbody td { padding: 7px 10px; border-bottom: 1px solid #e0e0e0; vertical-align: 
 `;
 
 function buildHtml(cfg: ReportConfig): string {
-  const now = new Date().toLocaleString('en-PK', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
+  const now = fmtDateTime(new Date());
 
   const thCells = cfg.columns.map((c) => `<th>${c}</th>`).join('');
   const bodyRows = cfg.rows.length === 0
