@@ -462,7 +462,21 @@ export default function InstallmentsPage() {
     staleTime: 30_000,
   });
 
+  // Full list invalidation — only used for create & bulk import (new items, unknown sort position)
   const invalidate = () => qc.invalidateQueries({ queryKey: ['installments'] });
+
+  // Update a single installment in every cached list page + single-detail cache
+  type ListCache = { data: Installment[]; total: number; page: number; limit: number };
+  function patchListCache(updated: Installment) {
+    qc.setQueriesData<ListCache>(
+      { queryKey: ['installments'], exact: false },
+      (cached) => {
+        if (!cached?.data) return cached;
+        return { ...cached, data: cached.data.map((i) => i.id === updated.id ? updated : i) };
+      },
+    );
+    qc.setQueryData(['installment-single', updated.id], updated);
+  }
 
   useEffect(() => {
     const close = () => { setOpenMenu(null); setMenuPos(null); };
@@ -479,37 +493,50 @@ export default function InstallmentsPage() {
 
   const createMutation = useMutation({
     mutationFn: installmentsApi.create,
-    onSuccess: () => { invalidate(); setShowForm(false); toast.success('Installment created'); },
+    // Full invalidation — new item needs correct sort position + total count update
+    onSuccess: () => { void invalidate(); setShowForm(false); toast.success('Installment created'); },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to create installment')),
   });
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.approve(id),
-    onSuccess: () => { invalidate(); toast.success('Installment approved'); },
+    // API returns updated Installment — patch cache instantly, no refetch
+    onSuccess: (updated) => { patchListCache(updated); toast.success('Installment approved'); },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to approve')),
   });
 
   const closeMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.close(id),
-    onSuccess: () => { invalidate(); toast.success('Installment closed'); },
+    onSuccess: (updated) => { patchListCache(updated); toast.success('Installment closed'); },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to close')),
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.cancel(id),
-    onSuccess: () => { invalidate(); toast.success('Installment cancelled'); },
+    onSuccess: (updated) => { patchListCache(updated); toast.success('Installment cancelled'); },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to cancel')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.remove(id),
-    onSuccess: () => { invalidate(); toast.success('Installment deleted'); },
+    onSuccess: (_, id) => {
+      // Remove from every cached list page + update total count
+      qc.setQueriesData<ListCache>(
+        { queryKey: ['installments'], exact: false },
+        (cached) => {
+          if (!cached?.data) return cached;
+          return { ...cached, data: cached.data.filter((i) => i.id !== id), total: Math.max(0, cached.total - 1) };
+        },
+      );
+      qc.removeQueries({ queryKey: ['installment-single', id] });
+      toast.success('Installment deleted');
+    },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to delete')),
   });
 
   const defaultMutation = useMutation({
     mutationFn: (id: string) => installmentsApi.markDefault(id),
-    onSuccess: () => { invalidate(); toast.success('Marked as defaulted'); },
+    onSuccess: (updated) => { patchListCache(updated); toast.success('Marked as defaulted'); },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
