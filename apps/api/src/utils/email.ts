@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 import { env } from '../config/env.js';
 
 const resend = new Resend(env.RESEND_API_KEY);
-const FROM = env.EMAIL_FROM ?? 'Assaan Electronics <onboarding@resend.dev>';
+const FROM = env.EMAIL_FROM;
 
 export async function sendOtpEmail(to: string, name: string, code: string, purpose: 'LOGIN' | 'PASSWORD_RESET') {
   const isReset   = purpose === 'PASSWORD_RESET';
