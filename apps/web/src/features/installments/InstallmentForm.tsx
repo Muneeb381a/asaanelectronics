@@ -12,7 +12,7 @@ const formSchema = z.object({
   productId:         z.string().min(1, 'Select a product'),
   totalAmount:       z.number({ invalid_type_error: 'Required' }).positive(),
   downPayment:       z.number({ invalid_type_error: 'Required' }).min(0),
-  months:            z.number().int().min(1).max(365),
+  months:            z.number().int().min(1).max(1095),
   startDate:         z.string().min(1, 'Required'),
   imeiNumber:        z.string().max(20).optional(),
   cashPrice:         z.number({ invalid_type_error: 'Required' }).positive().optional(),
@@ -32,8 +32,24 @@ interface Props {
 }
 
 const MONTH_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
-const DAY_OPTIONS   = [7, 10, 15, 20, 25, 30, 45, 60, 90];
+const DAY_OPTIONS   = [7, 10, 15, 20, 25, 30, 45, 60, 90, 120];
 const DOWN_PRESETS  = [10, 20, 25, 30, 50];
+
+function daysToHuman(d: number): string {
+  if (d < 30) return `${d} din`;
+  const months = Math.floor(d / 30);
+  const days   = d % 30;
+  if (days === 0) return `${months} mahina`;
+  return `${months} mahina ${days} din`;
+}
+
+function monthsToHuman(m: number): string {
+  if (m < 12) return `${m} mahina`;
+  const years  = Math.floor(m / 12);
+  const months = m % 12;
+  if (months === 0) return `${years} saal`;
+  return `${years} saal ${months} mahina`;
+}
 
 const VSTATUS = {
   PENDING:      { label: 'Pending',    cls: 'text-amber-600 bg-amber-50',     icon: <Clock size={10} /> },
@@ -204,6 +220,8 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
   });
 
   const [dpIsFirst, setDpIsFirst] = useState(false);
+  const [calcMode, setCalcMode]   = useState<'duration' | 'amount'>('duration');
+  const [amountInput, setAmountInput] = useState<number | ''>('');
 
   const [
     customerId, productId, totalAmount, downPayment, months, startDate,
@@ -298,11 +316,40 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
   const periodic = dpIsFirst && dpFirstMonthly !== null
     ? dpFirstMonthly
-    : (months && remaining > 0
-      ? isDaily
-        ? Math.round((remaining / months) / 5) * 5
-        : Math.round((remaining / months) / 25) * 25
-      : 0);
+    : calcMode === 'amount' && amountPerPeriod > 0
+      ? amountPerPeriod
+      : (months && remaining > 0
+        ? isDaily
+          ? Math.round((remaining / months) / 5) * 5
+          : Math.round((remaining / months) / 25) * 25
+        : 0);
+
+  // Amount-first mode: derive duration from per-period amount
+  const amountPerPeriod = typeof amountInput === 'number' && amountInput > 0 ? amountInput : 0;
+  const calcDuration = amountPerPeriod > 0 && remaining > 0
+    ? Math.ceil(remaining / amountPerPeriod)
+    : 0;
+  // Last payment in amount-first mode (could be smaller than amountPerPeriod)
+  const lastPayment = calcDuration > 0
+    ? remaining - amountPerPeriod * (calcDuration - 1)
+    : 0;
+  const lastPaymentDiffers = lastPayment > 0 && Math.abs(lastPayment - amountPerPeriod) > 1;
+
+  // Sync calculated duration back to form when in amount-first mode
+  useEffect(() => {
+    if (calcMode === 'amount' && calcDuration > 0) {
+      setValue('months', calcDuration);
+    }
+  }, [calcMode, calcDuration, setValue]);
+
+  // Reset amountInput when switching calc modes or frequency; reset calcMode on frequency change
+  useEffect(() => {
+    setAmountInput('');
+  }, [calcMode, paymentFrequency]);
+
+  useEffect(() => {
+    setCalcMode('duration');
+  }, [paymentFrequency]);
 
   // Future installment count (excludes the down payment month when dpIsFirst)
   const futureMonths = dpIsFirst ? (months ?? 1) - 1 : (months ?? 0);
@@ -553,50 +600,168 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       <Divider />
 
       {/* Duration */}
-      <div>
-        <Label>{isDaily ? 'Duration (Days)' : 'Duration'}</Label>
-        <Controller
-          name="months"
-          control={control}
-          render={({ field }) => (
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1.5">
-                {(isDaily ? DAY_OPTIONS : MONTH_OPTIONS).map((n) => (
-                  <button key={n} type="button" onClick={() => field.onChange(n)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                      field.value === n
-                        ? isDaily
-                          ? 'bg-orange-500 border-orange-500 text-white'
-                          : 'bg-blue-600 border-blue-600 text-white'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}>
-                    {isDaily ? `${n}d` : `${n}m`}
-                  </button>
-                ))}
+      <div className="space-y-3">
+        {/* Mode toggle */}
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-gray-500 shrink-0">
+            {isDaily ? 'Duration (Days)' : 'Duration'}
+          </p>
+          <div className="ml-auto flex rounded-lg border border-gray-200 overflow-hidden text-[11px] font-semibold">
+            {(['duration', 'amount'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setCalcMode(m)}
+                className={`px-2.5 py-1 transition ${
+                  calcMode === m
+                    ? isDaily
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-gray-600 bg-white'
+                }`}
+              >
+                {m === 'duration'
+                  ? (isDaily ? 'Din chunno' : 'Mahine chunno')
+                  : (isDaily ? 'Roz ka amount' : 'Mahine ka amount')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {calcMode === 'duration' ? (
+          /* ── Duration-first mode (original) ── */
+          <Controller
+            name="months"
+            control={control}
+            render={({ field }) => (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {(isDaily ? DAY_OPTIONS : MONTH_OPTIONS).map((n) => (
+                    <button key={n} type="button" onClick={() => field.onChange(n)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                        field.value === n
+                          ? isDaily
+                            ? 'bg-orange-500 border-orange-500 text-white'
+                            : 'bg-blue-600 border-blue-600 text-white'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`}>
+                      {isDaily ? `${n}d` : `${n}m`}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={1095}
+                    value={field.value ?? ''}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1 && v <= 1095) field.onChange(v);
+                      else if (e.target.value === '') field.onChange(undefined);
+                    }}
+                    placeholder={isDaily ? 'Custom days…' : 'Custom months…'}
+                    className="w-36 px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+                  />
+                  {field.value && !(isDaily ? DAY_OPTIONS : MONTH_OPTIONS).includes(field.value) && (
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${isDaily ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                      {field.value}{isDaily ? 'd' : 'm'} ✓
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={field.value ?? ''}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    if (!isNaN(v) && v >= 1 && v <= 365) field.onChange(v);
-                    else if (e.target.value === '') field.onChange(undefined);
-                  }}
-                  placeholder={isDaily ? 'Custom days…' : 'Custom months…'}
-                  className="w-36 px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
-                />
-                {field.value && !(isDaily ? DAY_OPTIONS : MONTH_OPTIONS).includes(field.value) && (
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${isDaily ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                    {field.value}{isDaily ? 'd' : 'm'} ✓
-                  </span>
+            )}
+          />
+        ) : (
+          /* ── Amount-first mode (new) ── */
+          <div className="space-y-3">
+            <div>
+              <Label>
+                {isDaily ? 'Roz ka payment (PKR)' : 'Mahine ka payment (PKR)'}
+              </Label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={amountInput}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setAmountInput(isNaN(v) || v <= 0 ? '' : v);
+                }}
+                placeholder={isDaily ? 'e.g. 200' : 'e.g. 3000'}
+                className={`${inp} ${isDaily ? 'focus:border-orange-400 focus:ring-orange-50' : ''}`}
+                autoFocus
+              />
+              {remaining <= 0 && (
+                <p className="text-[11px] text-amber-500 mt-1">Pehle total amount aur down payment fill karo</p>
+              )}
+            </div>
+
+            {/* Result card */}
+            {calcDuration > 0 && remaining > 0 && (
+              <div className={`rounded-xl border p-4 space-y-2.5 ${isDaily ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
+                {/* Main result */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${isDaily ? 'text-orange-500' : 'text-blue-500'}`}>
+                      {isDaily ? 'Total Days' : 'Total Months'}
+                    </p>
+                    <p className={`text-2xl font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
+                      {calcDuration}
+                      <span className={`text-sm font-semibold ml-1 ${isDaily ? 'text-orange-500' : 'text-blue-500'}`}>
+                        {isDaily ? 'din' : 'mahine'}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-gray-400 font-medium mb-0.5">Asan andaza</p>
+                    <p className={`text-sm font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
+                      {isDaily ? daysToHuman(calcDuration) : monthsToHuman(calcDuration)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Breakdown row */}
+                <div className={`border-t pt-2.5 grid grid-cols-3 gap-2 text-center ${isDaily ? 'border-orange-200' : 'border-blue-200'}`}>
+                  <div>
+                    <p className="text-[10px] text-gray-400 mb-0.5">Baqi raqam</p>
+                    <p className="text-xs font-bold text-gray-800">{pkr(remaining)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 mb-0.5">{isDaily ? 'Roz' : 'Mahana'}</p>
+                    <p className={`text-xs font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>{pkr(amountPerPeriod)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 mb-0.5">Aakhri payment</p>
+                    <p className={`text-xs font-bold ${lastPaymentDiffers ? 'text-amber-600' : 'text-gray-800'}`}>
+                      {pkr(lastPayment)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Completion date */}
+                {startDate && (
+                  <div className={`border-t pt-2.5 flex items-center justify-between ${isDaily ? 'border-orange-200' : 'border-blue-200'}`}>
+                    <p className="text-[11px] text-gray-500 font-medium">Khatam hogi</p>
+                    <p className={`text-xs font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
+                      {fmtDate(isDaily
+                        ? addDays(new Date(startDate), calcDuration)
+                        : addMonths(new Date(startDate), calcDuration)
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {/* Warning: last payment differs */}
+                {lastPaymentDiffers && (
+                  <p className={`text-[10px] ${isDaily ? 'text-orange-600' : 'text-blue-600'} bg-white/60 rounded-lg px-2 py-1.5`}>
+                    ⚠ Aakhri {isDaily ? 'din' : 'mahine'} mein {pkr(lastPayment)} banega (baki amount adjust hoti hai)
+                  </p>
                 )}
               </div>
-            </div>
-          )}
-        />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Start date */}
@@ -678,7 +843,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition font-medium">
           Cancel
         </button>
-        <button type="submit" disabled={isPending}
+        <button type="submit" disabled={isPending || (calcMode === 'amount' && amountPerPeriod === 0)}
           className={`flex-1 py-2.5 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition ${
             isDaily ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'
           }`}>
