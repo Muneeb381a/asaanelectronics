@@ -100,8 +100,37 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       collectedBy: isOwner ? (collectedBy || undefined) : (user?.id ?? undefined),
       proofImageUrl: proofImageUrl || undefined,
     }),
-    onSuccess: (data) => {
-      // Update every installment list page in cache instantly — no network call
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['installment-single', inst.id] });
+      const prevSingle = qc.getQueryData<Installment>(['installment-single', inst.id]);
+      type ListCache = { data: Installment[]; total: number; page: number; limit: number };
+      const prevLists = qc.getQueriesData<ListCache>({ queryKey: ['installments'], exact: false });
+      const oldRemaining = Number(prevSingle?.remaining ?? inst.remaining);
+      const newRemaining = Math.max(0, oldRemaining - Number(amount));
+      const willComplete = newRemaining <= 0.001;
+      qc.setQueryData<Installment>(['installment-single', inst.id], (old) =>
+        old ? { ...old, remaining: String(newRemaining), ...(willComplete && { status: 'COMPLETED' as const }) } : old,
+      );
+      qc.setQueriesData<ListCache>({ queryKey: ['installments'], exact: false }, (cached) => {
+        if (!cached?.data) return cached;
+        return {
+          ...cached,
+          data: cached.data.map((i) =>
+            i.id === inst.id
+              ? { ...i, remaining: String(newRemaining), ...(willComplete && { status: 'COMPLETED' as const }) }
+              : i
+          ),
+        };
+      });
+      return { prevSingle, prevLists, oldRemaining };
+    },
+    onError: (e, _vars, context) => {
+      if (context?.prevSingle !== undefined) qc.setQueryData(['installment-single', inst.id], context.prevSingle);
+      if (context?.prevLists) for (const [key, data] of context.prevLists) qc.setQueryData(key, data);
+      toast.error(getErrorMessage(e, 'Payment failed'));
+    },
+    onSuccess: (data, _vars, context) => {
+      // Confirm with real server values (overwrite optimistic)
       type ListCache = { data: typeof inst[]; total: number; page: number; limit: number };
       qc.setQueriesData<ListCache>(
         { queryKey: ['installments'], exact: false },
@@ -117,19 +146,22 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
           };
         },
       );
-      // Refresh just this installment's detail (1 request) + payments list
-      void qc.invalidateQueries({ queryKey: ['installment-single', inst.id] });
+      qc.setQueryData<Installment>(['installment-single', inst.id], (old) =>
+        old ? { ...old, remaining: String(data.remaining), ...(data.completed && { status: 'COMPLETED' as const }) } : old,
+      );
       void qc.invalidateQueries({ queryKey: ['payments', inst.id] });
       void qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
       for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
 
+      // Use pre-mutation remaining so receipt calculation is accurate
+      const oldRemaining = context?.oldRemaining ?? Number(inst.remaining);
       // Calculate installment progress
       const totalInstallments = freshInst.months;
       const monthly = Number(freshInst.monthly);
       const totalMinusDP = Number(freshInst.totalAmount) - Number(freshInst.downPayment);
       // Before this payment, how many were fully paid?
-      const paidAmountBefore = totalMinusDP - Number(freshInst.remaining);
+      const paidAmountBefore = totalMinusDP - oldRemaining;
       const paidFullBefore = Math.max(0, Math.floor(paidAmountBefore / monthly + 0.001));
       const currentMonth = paidFullBefore + 1; // this payment is installment #currentMonth
       // After this payment, how many are fully paid?
@@ -183,7 +215,6 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       setBillPayload(bd);
       void openBill(bd);
     },
-    onError: (e) => toast.error(getErrorMessage(e, 'Payment failed')),
   });
 
   const deleteMutation = useMutation({
