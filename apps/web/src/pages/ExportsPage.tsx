@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt } from 'lucide-react';
+import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt, BarChart3 } from 'lucide-react';
 import { installmentsApi } from '../api/installments.api.ts';
 import { paymentsApi } from '../api/payments.api.ts';
 import { cashSalesApi } from '../api/cashSales.api.ts';
 import { returnsApi } from '../api/returns.api.ts';
 import { expensesApi } from '../api/expenses.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
+import { reportsApi } from '../api/reports.api.ts';
 import { printReport } from '../utils/exportPdf.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 
-type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses';
+type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses' | 'monthly';
 
 const METHOD_LABELS: Record<string, string> = {
   CASH: 'Cash', BANK: 'Bank', JAZZCASH: 'JazzCash', EASYPAISA: 'EasyPaisa', OTHER: 'Other',
@@ -54,6 +55,7 @@ export default function ExportsPage() {
   const [cashRange, setCashRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [expenseRange, setExpenseRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [returnsStatus, setReturnsStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED'>('ALL');
+  const [monthlyYear, setMonthlyYear] = useState(new Date().getFullYear());
 
   const { data: seller } = useQuery({
     queryKey: ['seller-me'],
@@ -117,12 +119,20 @@ export default function ExportsPage() {
     enabled: tab === 'expenses',
   });
 
+  const monthlyQ = useQuery({
+    queryKey: ['export-monthly', monthlyYear],
+    queryFn: () => reportsApi.getMonthly(monthlyYear),
+    staleTime: 5 * 60_000,
+    enabled: tab === 'monthly',
+  });
+
   const overdue   = (overdueQ.data?.data   ?? []).filter((i) => i.isOverdue);
   const defaulters = defaultersQ.data?.data ?? [];
   const todayPay  = Array.isArray(todayPayQ.data) ? todayPayQ.data : [];
   const cashSales = cashQ.data?.data ?? [];
   const returnsList = returnsQ.data?.data ?? [];
   const expensesList = expensesQ.data ?? [];
+  const monthlyRows = monthlyQ.data ?? [];
 
   function downloadOverdueOnly() {
     const totalRem = overdue.reduce((s, i) => s + Number(i.remaining), 0);
@@ -312,12 +322,13 @@ export default function ExportsPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: typeof FileDown }[] = [
-    { id: 'overdue',    label: 'Overdue',          icon: AlertTriangle },
+    { id: 'monthly',    label: 'Monthly Report',    icon: BarChart3 },
+    { id: 'overdue',    label: 'Overdue',           icon: AlertTriangle },
     { id: 'defaulters', label: 'Defaulters',        icon: ShieldX },
     { id: 'today',      label: "Today's Payments",  icon: CalendarCheck },
-    { id: 'cashsales',  label: 'Cash Sales',         icon: ShoppingCart },
-    { id: 'returns',    label: 'Returns',            icon: Undo2 },
-    { id: 'expenses',   label: 'Expenses',           icon: Receipt },
+    { id: 'cashsales',  label: 'Cash Sales',        icon: ShoppingCart },
+    { id: 'returns',    label: 'Returns',           icon: Undo2 },
+    { id: 'expenses',   label: 'Expenses',          icon: Receipt },
   ];
 
   const isLoading =
@@ -326,7 +337,8 @@ export default function ExportsPage() {
     (tab === 'today'      && todayPayQ.isFetching) ||
     (tab === 'cashsales'  && cashQ.isFetching) ||
     (tab === 'returns'    && returnsQ.isFetching) ||
-    (tab === 'expenses'   && expensesQ.isFetching);
+    (tab === 'expenses'   && expensesQ.isFetching) ||
+    (tab === 'monthly'    && monthlyQ.isFetching);
 
   function refetchCurrent() {
     if (tab === 'overdue')    { void overdueQ.refetch(); void defaultersQ.refetch(); }
@@ -335,6 +347,70 @@ export default function ExportsPage() {
     if (tab === 'cashsales')  void cashQ.refetch();
     if (tab === 'returns')    void returnsQ.refetch();
     if (tab === 'expenses')   void expensesQ.refetch();
+    if (tab === 'monthly')    void monthlyQ.refetch();
+  }
+
+  function downloadMonthlyPdf() {
+    const activeMonths = monthlyRows.filter((r) => r.newInstallments > 0 || r.newCustomers > 0 || r.paymentsCollected > 0 || r.cashSalesAmount > 0);
+    const totals = monthlyRows.reduce(
+      (acc, r) => ({
+        newInstallments:   acc.newInstallments   + r.newInstallments,
+        totalSaleAmount:   acc.totalSaleAmount   + r.totalSaleAmount,
+        downPayments:      acc.downPayments      + r.downPayments,
+        newCustomers:      acc.newCustomers      + r.newCustomers,
+        paymentsCollected: acc.paymentsCollected + r.paymentsCollected,
+        cashSalesCount:    acc.cashSalesCount    + r.cashSalesCount,
+        cashSalesAmount:   acc.cashSalesAmount   + r.cashSalesAmount,
+        totalExpenses:     acc.totalExpenses     + r.totalExpenses,
+        netRevenue:        acc.netRevenue        + r.netRevenue,
+      }),
+      { newInstallments: 0, totalSaleAmount: 0, downPayments: 0, newCustomers: 0, paymentsCollected: 0, cashSalesCount: 0, cashSalesAmount: 0, totalExpenses: 0, netRevenue: 0 },
+    );
+    const fmt = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+    printReport({
+      title: `Monthly Business Report — ${monthlyYear}`,
+      subtitle: `Full-year summary for ${monthlyYear}`,
+      shopName,
+      shopPhone: seller?.phone,
+      columns: ['Month', 'New Customers', 'New Installments', 'Sale Amount', 'Down Payments', 'Collections', 'Cash Sales', 'Cash Revenue', 'Expenses', 'Net Revenue'],
+      rows: [
+        ...monthlyRows.map((r) => [
+          r.monthName,
+          r.newCustomers,
+          r.newInstallments,
+          r.totalSaleAmount  > 0 ? `PKR ${fmt(r.totalSaleAmount)}`  : '-',
+          r.downPayments     > 0 ? `PKR ${fmt(r.downPayments)}`     : '-',
+          r.paymentsCollected > 0 ? `PKR ${fmt(r.paymentsCollected)}` : '-',
+          r.cashSalesCount   > 0 ? r.cashSalesCount : '-',
+          r.cashSalesAmount  > 0 ? `PKR ${fmt(r.cashSalesAmount)}`  : '-',
+          r.totalExpenses    > 0 ? `PKR ${fmt(r.totalExpenses)}`    : '-',
+          r.netRevenue !== 0 ? `PKR ${fmt(r.netRevenue)}`           : '-',
+        ]),
+        // Totals row
+        [
+          'TOTAL',
+          totals.newCustomers,
+          totals.newInstallments,
+          `PKR ${fmt(totals.totalSaleAmount)}`,
+          `PKR ${fmt(totals.downPayments)}`,
+          `PKR ${fmt(totals.paymentsCollected)}`,
+          totals.cashSalesCount,
+          `PKR ${fmt(totals.cashSalesAmount)}`,
+          `PKR ${fmt(totals.totalExpenses)}`,
+          `PKR ${fmt(totals.netRevenue)}`,
+        ],
+      ],
+      summary: [
+        `<strong>Year:</strong> ${monthlyYear}`,
+        `<strong>Active months:</strong> ${activeMonths.length}`,
+        `<strong>New customers:</strong> ${totals.newCustomers}`,
+        `<strong>New installments:</strong> ${totals.newInstallments}  ·  Total sale value: PKR ${fmt(totals.totalSaleAmount)}`,
+        `<strong>Total collections (installments):</strong> PKR ${fmt(totals.paymentsCollected)}`,
+        `<strong>Cash sales:</strong> ${totals.cashSalesCount}  ·  Revenue: PKR ${fmt(totals.cashSalesAmount)}`,
+        `<strong>Total expenses:</strong> PKR ${fmt(totals.totalExpenses)}`,
+        `<strong>Net revenue:</strong> PKR ${fmt(totals.netRevenue)}`,
+      ],
+    });
   }
 
   return (
@@ -372,6 +448,137 @@ export default function ExportsPage() {
           </button>
         ))}
       </div>
+
+      {/* Monthly Report tab */}
+      {tab === 'monthly' && (() => {
+        const fmt = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+        const totals = monthlyRows.reduce(
+          (acc, r) => ({
+            newInstallments:   acc.newInstallments   + r.newInstallments,
+            totalSaleAmount:   acc.totalSaleAmount   + r.totalSaleAmount,
+            newCustomers:      acc.newCustomers      + r.newCustomers,
+            paymentsCollected: acc.paymentsCollected + r.paymentsCollected,
+            cashSalesAmount:   acc.cashSalesAmount   + r.cashSalesAmount,
+            totalExpenses:     acc.totalExpenses     + r.totalExpenses,
+            netRevenue:        acc.netRevenue        + r.netRevenue,
+          }),
+          { newInstallments: 0, totalSaleAmount: 0, newCustomers: 0, paymentsCollected: 0, cashSalesAmount: 0, totalExpenses: 0, netRevenue: 0 },
+        );
+        const currentYear = new Date().getFullYear();
+        const yearOptions = Array.from({ length: currentYear - 2023 }, (_, i) => currentYear - i);
+
+        return (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold text-gray-900">Monthly Business Report</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Month-by-month breakdown — customers, installments, collections, cash sales, expenses</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Year picker */}
+                <select
+                  value={monthlyYear}
+                  onChange={(e) => setMonthlyYear(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={downloadMonthlyPdf}
+                  disabled={monthlyQ.isLoading || monthlyRows.length === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <FileDown size={15} />
+                  Download PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Year totals strip */}
+            {!monthlyQ.isLoading && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 divide-x divide-y sm:divide-y-0 border-b border-gray-100">
+                {[
+                  { label: 'New Customers',  value: totals.newCustomers,      color: 'text-blue-600' },
+                  { label: 'New Installs',   value: totals.newInstallments,   color: 'text-indigo-600' },
+                  { label: 'Sale Value',     value: `PKR ${fmt(totals.totalSaleAmount)}`, color: 'text-gray-900' },
+                  { label: 'Collections',    value: `PKR ${fmt(totals.paymentsCollected)}`, color: 'text-green-700' },
+                  { label: 'Cash Revenue',   value: `PKR ${fmt(totals.cashSalesAmount)}`,  color: 'text-green-700' },
+                  { label: 'Expenses',       value: `PKR ${fmt(totals.totalExpenses)}`,    color: 'text-red-600' },
+                  { label: 'Net Revenue',    value: `PKR ${fmt(totals.netRevenue)}`,       color: totals.netRevenue >= 0 ? 'text-green-700' : 'text-red-600' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="px-4 py-3 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+                    <p className={`text-sm font-semibold ${color}`}>{value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              {monthlyQ.isLoading ? (
+                <div className="flex items-center justify-center py-16 text-gray-400 text-sm gap-2">
+                  <RefreshCw size={14} className="animate-spin" /> Loading…
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <Th>Month</Th>
+                      <Th right>New Customers</Th>
+                      <Th right>New Installments</Th>
+                      <Th right>Sale Amount</Th>
+                      <Th right>Down Payments</Th>
+                      <Th right>Collections</Th>
+                      <Th right>Cash Sales</Th>
+                      <Th right>Cash Revenue</Th>
+                      <Th right>Expenses</Th>
+                      <Th right>Net Revenue</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyRows.map((r) => {
+                      const isEmpty = r.newInstallments === 0 && r.newCustomers === 0 && r.paymentsCollected === 0 && r.cashSalesAmount === 0;
+                      return (
+                        <tr key={r.month} className={`border-b border-gray-100 ${isEmpty ? 'opacity-40' : 'hover:bg-gray-50'}`}>
+                          <Td bold>{r.monthName}</Td>
+                          <Td right>{r.newCustomers > 0 ? r.newCustomers : '-'}</Td>
+                          <Td right>{r.newInstallments > 0 ? r.newInstallments : '-'}</Td>
+                          <Td right>{r.totalSaleAmount > 0 ? `PKR ${fmt(r.totalSaleAmount)}` : '-'}</Td>
+                          <Td right>{r.downPayments > 0 ? `PKR ${fmt(r.downPayments)}` : '-'}</Td>
+                          <Td right green={r.paymentsCollected > 0}>{r.paymentsCollected > 0 ? `PKR ${fmt(r.paymentsCollected)}` : '-'}</Td>
+                          <Td right>{r.cashSalesCount > 0 ? r.cashSalesCount : '-'}</Td>
+                          <Td right green={r.cashSalesAmount > 0}>{r.cashSalesAmount > 0 ? `PKR ${fmt(r.cashSalesAmount)}` : '-'}</Td>
+                          <Td right red={r.totalExpenses > 0}>{r.totalExpenses > 0 ? `PKR ${fmt(r.totalExpenses)}` : '-'}</Td>
+                          <Td right green={r.netRevenue > 0} red={r.netRevenue < 0}>
+                            {r.netRevenue !== 0 ? `PKR ${fmt(r.netRevenue)}` : '-'}
+                          </Td>
+                        </tr>
+                      );
+                    })}
+                    {/* Totals row */}
+                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
+                      <Td bold>Total {monthlyYear}</Td>
+                      <Td right bold>{totals.newCustomers}</Td>
+                      <Td right bold>{totals.newInstallments}</Td>
+                      <Td right bold>PKR {fmt(totals.totalSaleAmount)}</Td>
+                      <Td right bold>PKR {fmt(totals.totalSaleAmount > 0 ? monthlyRows.reduce((s, r) => s + r.downPayments, 0) : 0)}</Td>
+                      <Td right green bold>PKR {fmt(totals.paymentsCollected)}</Td>
+                      <Td right bold>{monthlyRows.reduce((s, r) => s + r.cashSalesCount, 0)}</Td>
+                      <Td right green bold>PKR {fmt(totals.cashSalesAmount)}</Td>
+                      <Td right red bold>PKR {fmt(totals.totalExpenses)}</Td>
+                      <Td right green={totals.netRevenue >= 0} red={totals.netRevenue < 0} bold>PKR {fmt(totals.netRevenue)}</Td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Overdue tab */}
       {tab === 'overdue' && (
@@ -768,9 +975,10 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 function Td({ children, right, bold, red, green }: {
   children: React.ReactNode; right?: boolean; bold?: boolean; red?: boolean; green?: boolean;
 }) {
-  return (
-    <td className={`px-4 py-2.5 whitespace-nowrap ${right ? 'text-right' : ''} ${bold ? 'font-medium text-gray-900' : 'text-gray-600'} ${red ? 'text-red-600 font-medium' : ''} ${green ? 'text-green-700 font-medium' : ''}`}>
-      {children}
-    </td>
-  );
+  let cls = `px-4 py-2.5 whitespace-nowrap ${right ? 'text-right' : ''}`;
+  if (red)        cls += ' text-red-600 font-medium';
+  else if (green) cls += ' text-green-700 font-medium';
+  else if (bold)  cls += ' font-semibold text-gray-900';
+  else            cls += ' text-gray-600';
+  return <td className={cls}>{children}</td>;
 }

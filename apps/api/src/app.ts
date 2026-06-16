@@ -31,6 +31,7 @@ import reconciliationRoutes    from './modules/reconciliation/reconciliation.rou
 import portalRoutes            from './modules/portal/portal.routes.js';
 import cashSalesRoutes         from './modules/cashSales/cashSales.routes.js';
 import productUnitsRoutes      from './modules/productUnits/productUnits.routes.js';
+import reportsRoutes           from './modules/reports/reports.routes.js';
 
 const app = express();
 
@@ -91,6 +92,7 @@ app.use('/api/reconciliation', reconciliationRoutes);
 app.use('/api/portal',         portalRoutes);
 app.use('/api/cash-sales',     cashSalesRoutes);
 app.use('/api/units',          productUnitsRoutes);
+app.use('/api/reports',        reportsRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
 app.use(errorMiddleware);
