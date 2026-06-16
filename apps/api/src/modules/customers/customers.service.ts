@@ -103,8 +103,13 @@ export class CustomersService {
     const base = staffUserId
       ? and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), eq(customers.createdByUserId, staffUserId))
       : and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt));
-    const searchCond = search
-      ? and(base, or(ilike(customers.name, `%${search}%`), ilike(customers.phone, `%${search}%`)))
+    const cleanSearch = search?.trim().replace(/-/g, '');
+    const searchCond = cleanSearch
+      ? and(base, or(
+          ilike(customers.name,       `%${cleanSearch}%`),
+          ilike(customers.phone,      `%${cleanSearch}%`),
+          ilike(customers.cnicMasked, `%${cleanSearch}%`),
+        ))
       : base;
     const lifecycleCond = lifecycle ? and(searchCond, sql`${lifecycleSQL} = ${lifecycle}`) : searchCond;
     const where = verificationStatus
