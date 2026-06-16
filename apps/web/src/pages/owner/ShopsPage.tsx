@@ -443,7 +443,7 @@ export default function ShopsPage() {
         ].map((s) => (
           <button
             key={s.label}
-            onClick={() => setFilter(s.label.toLowerCase() as FilterTab)}
+            onClick={() => setFilter((s.label === 'Total' ? 'all' : s.label.toLowerCase()) as FilterTab)}
             className={`${s.bg} border ${s.border} rounded-2xl p-4 text-left transition hover:shadow-sm ${
               filter === s.label.toLowerCase() ? 'ring-2 ring-indigo-400' : ''
             }`}
