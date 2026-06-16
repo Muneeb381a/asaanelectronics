@@ -1233,7 +1233,7 @@ export default function CustomersPage() {
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <input
           type="text"
-          placeholder="Search by name or phone…"
+          placeholder="Search by name, phone, or CNIC…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"

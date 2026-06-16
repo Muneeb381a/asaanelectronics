@@ -625,7 +625,7 @@ export default function InstallmentsPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <input
           type="text"
-          placeholder={isOwner ? 'Search by customer name…' : 'Customer ka naam likhو (min 2 letters)…'}
+          placeholder={isOwner ? 'Search by name, phone, or CNIC…' : 'Naam, phone ya CNIC likhو…'}
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className={`w-full sm:max-w-xs px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 transition ${
@@ -667,8 +667,8 @@ export default function InstallmentsPage() {
             <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
               <CreditCard size={26} className="text-blue-400" />
             </div>
-            <p className="text-sm font-semibold text-gray-700 mb-1">Customer ka naam search karo</p>
-            <p className="text-xs text-gray-400">Upar search box mein customer ka naam likhو — installments dikhein gi</p>
+            <p className="text-sm font-semibold text-gray-700 mb-1">Customer search karo</p>
+            <p className="text-xs text-gray-400">Naam, phone number ya CNIC likhو — installments dikhein gi</p>
           </div>
         ) : isLoading ? (
           <TableSkeleton rows={5} cols={7} />

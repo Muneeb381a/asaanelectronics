@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { and, asc, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
@@ -30,7 +30,14 @@ export class InstallmentsService {
   ) {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
     if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED'));
-    if (search)     conditions.push(ilike(customers.name, `%${search}%`));
+    if (search) {
+      const cleanSearch = search.trim().replace(/-/g, '');
+      conditions.push(or(
+        ilike(customers.name,       `%${cleanSearch}%`),
+        ilike(customers.phone,      `%${cleanSearch}%`),
+        ilike(customers.cnicMasked, `%${cleanSearch}%`),
+      )!);
+    }
     if (customerId) conditions.push(eq(installments.customerId, customerId));
     if (frequency)  conditions.push(eq(installments.paymentFrequency, frequency as 'monthly' | 'daily'));
     const statusFilter = and(...conditions);
