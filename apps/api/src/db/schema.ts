@@ -511,6 +511,35 @@ export const paymentAccounts = pgTable('payment_accounts', {
   index('idx_payment_accounts_seller').on(t.sellerId),
 ]);
 
+// ── IMEI / Physical unit inventory ────────────────────────────────────────────
+// Each row represents one physical phone unit identified by its IMEI.
+// status lifecycle: available → sold | defective | returned → available (re-sold)
+export const unitStatusEnum = pgEnum('unit_status', ['available', 'sold', 'defective', 'returned']);
+
+export const productUnits = pgTable('product_units', {
+  id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:      text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  productId:     text('product_id').references(() => products.id, { onDelete: 'set null' }),
+  imei:          text('imei').notNull(),
+  imei2:         text('imei2'),
+  color:         text('color'),
+  storageGb:     integer('storage_gb'),
+  condition:     text('condition').default('new').notNull(),
+  purchasePrice: decimal('purchase_price', { precision: 12, scale: 2 }),
+  status:        unitStatusEnum('status').default('available').notNull(),
+  notes:         text('notes'),
+  soldAt:        timestamp('sold_at', { withTimezone: true }),
+  saleType:      text('sale_type'),
+  soldToName:    text('sold_to_name'),
+  deletedAt:     timestamp('deleted_at', { withTimezone: true }),
+  createdAt:     timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('idx_product_units_seller_imei').on(t.sellerId, t.imei),
+  index('idx_product_units_seller').on(t.sellerId),
+  index('idx_product_units_status').on(t.status),
+  index('idx_product_units_product').on(t.productId),
+]);
+
 // OCR result cache — keyed by SHA-256 hash of the raw image bytes.
 // Prevents duplicate Groq API calls for the same image (re-uploads, same
 // guarantor used across multiple customers, testing, form re-submissions).

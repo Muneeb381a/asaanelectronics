@@ -4,6 +4,7 @@ import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { markUnitSoldInTx, markUnitAvailableInTx } from '../productUnits/productUnits.service.js';
 import { fsm } from '../../utils/fsm.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
@@ -195,7 +196,12 @@ export class InstallmentsService {
       `);
       const invoiceNumber = `INV-${year}-${String(nextSeq).padStart(4, '0')}`;
 
-      // 2. Insert installment
+      // 2a. Validate + claim IMEI unit (throws 409 if already sold)
+      if (body.imeiNumber) {
+        await markUnitSoldInTx(tx, body.imeiNumber, sellerId, 'installment', customer.name);
+      }
+
+      // 2b. Insert installment
       const [installment] = await tx
         .insert(installments)
         .values({
@@ -290,6 +296,11 @@ export class InstallmentsService {
     const now = new Date();
     await db.transaction(async (tx) => {
       await tx.update(installments).set({ deletedAt: now, deletedBy }).where(eq(installments.id, id));
+
+      // Release the IMEI unit back to available if one was claimed
+      if (row.imeiNumber) {
+        await markUnitAvailableInTx(tx, row.imeiNumber, sellerId);
+      }
 
       // Soft-delete all payments for this installment
       const affectedPayments = await tx

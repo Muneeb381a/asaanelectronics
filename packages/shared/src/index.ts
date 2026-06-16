@@ -9,3 +9,4 @@ export * from './schemas/recovery.schema.js';
 export * from './schemas/staff.schema.js';
 export * from './schemas/verification.schema.js';
 export * from './schemas/cashSale.schema.js';
+export * from './schemas/productUnit.schema.js';

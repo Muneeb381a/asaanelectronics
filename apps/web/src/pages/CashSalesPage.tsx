@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ShoppingCart, Plus, Loader2, Search, CheckCircle2, X, Trash2, Pencil, Printer, MessageCircle,
+  ShoppingCart, Plus, Loader2, Search, CheckCircle2, X, Trash2, Pencil, Printer, MessageCircle, AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 import { cashSalesApi, type CashSale, type PaymentMethod } from '../api/cashSales.api.ts';
 import { productsApi, type Product } from '../api/products.api.ts';
+import { productUnitsApi } from '../api/productUnits.api.ts';
+import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { openCashSaleBill } from '../utils/bill.ts';
@@ -68,6 +70,14 @@ export default function CashSalesPage() {
   const sales      = salesData?.data  ?? [];
   const salesTotal = salesData?.total ?? 0;
   const salesPages = Math.max(1, Math.ceil(salesTotal / 20));
+
+  const debouncedImeiCS = useDebounce(form.imeiNumber.replace(/\D/g, ''), 500);
+  const { data: imeiLookupCS, isFetching: imeiCheckingCS } = useQuery({
+    queryKey: ['imei-lookup-cs', debouncedImeiCS],
+    queryFn:  () => productUnitsApi.lookup(debouncedImeiCS),
+    enabled:  debouncedImeiCS.length === 15 && showModal,
+    staleTime: 10_000,
+  });
   const products   = productsData?.data ?? [];
 
   type SaleList = { data: CashSale[]; total: number; page: number; limit: number };
@@ -648,11 +658,34 @@ export default function CashSalesPage() {
                       </label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        maxLength={15}
                         value={form.imeiNumber}
-                        onChange={(e) => setForm((f) => ({ ...f, imeiNumber: e.target.value }))}
+                        onChange={(e) => setForm((f) => ({ ...f, imeiNumber: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
                         placeholder="15-digit IMEI"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition font-mono"
                       />
+                      {debouncedImeiCS.length === 15 && (
+                        imeiCheckingCS ? (
+                          <p className="text-[10px] text-gray-400 mt-1">Checking…</p>
+                        ) : imeiLookupCS?.found ? (
+                          imeiLookupCS.unit!.status === 'available' ? (
+                            <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
+                              <CheckCircle2 size={10} /> Available{imeiLookupCS.unit!.productName ? ` — ${imeiLookupCS.unit!.productName}` : ''}
+                            </p>
+                          ) : imeiLookupCS.unit!.status === 'sold' ? (
+                            <p className="text-[10px] text-red-600 mt-1 flex items-center gap-1">
+                              <AlertTriangle size={10} /> Already sold to {imeiLookupCS.unit!.soldToName ?? 'another customer'}
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                              <AlertTriangle size={10} /> Status: {imeiLookupCS.unit!.status}
+                            </p>
+                          )
+                        ) : (
+                          <p className="text-[10px] text-gray-400 mt-1">Not in inventory</p>
+                        )
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1.5">

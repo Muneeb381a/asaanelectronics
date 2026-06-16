@@ -19,6 +19,8 @@ export interface InstallmentReceiptData {
   paidInstallments?: number;
   totalInstallments?: number;
   currentMonth?: number;
+  periodDueDate?: string;
+  daysLate?: number;
 }
 
 export interface CashSaleReceiptData {
@@ -113,6 +115,13 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
   const curMonth = d.currentMonth ?? paidInst;
   const pct = totalInst > 0 ? Math.round((paidInst / totalInst) * 100) : 0;
 
+  const periodDueInfo = d.periodDueDate
+    ? `<div style="font-size:7px;color:#3b82f6">Due: ${fmtDate(d.periodDueDate)}</div>` +
+      (d.daysLate && d.daysLate > 0
+        ? `<div style="font-size:7px;color:#dc2626;font-weight:700">${d.daysLate}d late</div>`
+        : `<div style="font-size:6.5px;color:#059669;font-weight:600">✓ on time</div>`)
+    : `<div style="font-size:7.5px;color:#3b82f6">installment</div>`;
+
   const progressSection = hasProg ? `
     <div style="border:1px solid #e2e8f0;border-radius:5px;padding:8px 10px;margin-bottom:6px">
       <div style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:6px">
@@ -132,7 +141,7 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
         <div style="text-align:center;background:#dbeafe;border:1px solid #93c5fd;border-radius:5px;padding:5px 3px">
           <div style="font-size:7px;color:#1e40af;font-weight:700;letter-spacing:.3px">${isDaily ? 'DAY' : 'MONTH'} #</div>
           <div style="font-size:18px;font-weight:800;color:#1e40af;line-height:1.2">${curMonth}</div>
-          <div style="font-size:7.5px;color:#3b82f6">installment</div>
+          ${periodDueInfo}
         </div>
       </div>
       <div style="background:#f1f5f9;border-radius:20px;height:7px;overflow:hidden">
@@ -262,6 +271,9 @@ export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
     `Amount Paid: *${pkr(d.amountPaid)}*`,
     `Method: ${mLabel(d.method)}`,
     hasProg ? `Installment: *#${d.currentMonth ?? d.paidInstallments} of ${d.totalInstallments}*` : '',
+    hasProg && d.periodDueDate
+      ? `📅 Due date: ${fmtDate(d.periodDueDate)}${d.daysLate && d.daysLate > 0 ? ` · ${d.daysLate} din late` : ' ✓'}`
+      : '',
     hasProg ? `✅ Paid: ${d.paidInstallments}  |  ⏳ Pending: ${pendingInst}` : '',
     d.completed ? `Status: ✅ FULLY PAID — Congratulations!` : `Remaining Amount: ${pkr(d.remaining)}`,
     !d.completed && !hasProg ? `${freq} Installment: ${pkr(d.monthly)}` : '',

@@ -1,10 +1,12 @@
 import { z } from 'zod';
+// 1095 = 3 years in days (daily plans can run longer than 365 days)
+const MONTHS_MAX = 1095;
 export const createInstallmentSchema = z.object({
     customerId: z.string(),
     productId: z.string(),
     totalAmount: z.number().positive(),
     downPayment: z.number().min(0),
-    months: z.number().int().min(1).max(365),
+    months: z.number().int().min(1).max(MONTHS_MAX),
     startDate: z.string().datetime(),
     imeiNumber: z.string().max(20).optional(),
     cashPrice: z.number().positive().optional(),
@@ -20,7 +22,7 @@ export const importInstallmentRowSchema = z.object({
     totalAmount: z.coerce.number().positive('Total amount must be > 0'),
     downPayment: z.coerce.number().min(0, 'Down payment must be ≥ 0'),
     monthly: z.coerce.number().positive('Monthly amount must be > 0'),
-    months: z.coerce.number().int().min(1).max(365),
+    months: z.coerce.number().int().min(1).max(MONTHS_MAX),
     startDate: z.string().min(1, 'Start date required'),
     remaining: z.coerce.number().min(0).optional(),
     status: z.enum(['ACTIVE', 'PENDING', 'COMPLETED', 'DEFAULTED', 'CANCELLED']).optional(),
@@ -33,7 +35,7 @@ export const updateInstallmentSchema = z.object({
     totalAmount: z.number().positive().optional(),
     downPayment: z.number().min(0).optional(),
     monthly: z.number().positive().optional(),
-    months: z.number().int().min(1).max(365).optional(),
+    months: z.number().int().min(1).max(MONTHS_MAX).optional(),
     startDate: z.string().optional(),
     imeiNumber: z.string().max(20).nullable().optional(),
     cashPrice: z.number().positive().nullable().optional(),

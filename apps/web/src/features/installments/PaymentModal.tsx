@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil } from 'lucide-react';
@@ -171,6 +171,21 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         ? totalInstallments
         : Math.floor(paidAmountAfter / monthly + 0.001);
 
+      // Which period's due date does this payment cover?
+      const isDaily = freshInst.paymentFrequency === 'daily';
+      const periodDueD = new Date(freshInst.startDate);
+      if (isDaily) periodDueD.setDate(periodDueD.getDate() + currentMonth);
+      else periodDueD.setMonth(periodDueD.getMonth() + currentMonth);
+      const periodDueDateStr = [
+        periodDueD.getFullYear(),
+        String(periodDueD.getMonth() + 1).padStart(2, '0'),
+        String(periodDueD.getDate()).padStart(2, '0'),
+      ].join('-');
+      const daysLate = Math.max(
+        0,
+        Math.floor((new Date(data.payment.paidOn).getTime() - periodDueD.getTime()) / 86_400_000),
+      );
+
       const receiptPayload: InstallmentReceiptData = {
         shopName:          seller?.shopName ?? 'Receipt',
         shopPhone:         seller?.phone,
@@ -189,6 +204,8 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         paidInstallments,
         totalInstallments,
         currentMonth,
+        periodDueDate: periodDueDateStr,
+        daysLate,
       };
 
       const bd: BillData = {
@@ -276,6 +293,34 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const amountNum = Number(amount);
   const amountInvalid = !amount || amountNum <= 0 || amountNum > remaining + 0.01;
 
+  const historyWithPeriods = useMemo(() => {
+    if (!history) return [];
+    const mo = Number(freshInst.monthly);
+    const hIsDaily = freshInst.paymentFrequency === 'daily';
+    const sd = new Date(freshInst.startDate);
+    const sorted = [...history].sort(
+      (a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime(),
+    );
+    let cumulative = 0;
+    const enriched = sorted.map((p) => {
+      const periodNum = mo > 0 ? Math.max(1, Math.floor(cumulative / mo + 0.001) + 1) : undefined;
+      const periodDue = periodNum !== undefined
+        ? (() => {
+            const d = new Date(sd);
+            if (hIsDaily) d.setDate(d.getDate() + periodNum);
+            else d.setMonth(d.getMonth() + periodNum);
+            return d;
+          })()
+        : undefined;
+      const late = periodDue
+        ? Math.max(0, Math.floor((new Date(p.paidOn).getTime() - periodDue.getTime()) / 86_400_000))
+        : 0;
+      cumulative += Number(p.amount);
+      return { ...p, periodNum, periodDue, late };
+    });
+    return enriched.reverse();
+  }, [history, freshInst.monthly, freshInst.paymentFrequency, freshInst.startDate]);
+
   return (
     <div
       className="fixed inset-0 z-70 flex flex-col sm:items-center sm:justify-center bg-black/50 backdrop-blur-sm sm:p-4"
@@ -336,9 +381,18 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                   <p className="text-[10px] text-emerald-600">of {receiptData.totalInstallments}</p>
                 </div>
                 <div className="flex flex-col items-center bg-blue-50 rounded-xl py-2.5 px-1">
-                  <p className="text-[10px] text-gray-400 mb-0.5">This Month</p>
+                  <p className="text-[10px] text-gray-400 mb-0.5">
+                    {receiptData.paymentFrequency === 'daily' ? 'This Day' : 'This Month'}
+                  </p>
                   <p className="text-lg font-bold text-blue-700">#{receiptData.currentMonth}</p>
-                  <p className="text-[10px] text-blue-500">installment</p>
+                  {receiptData.periodDueDate ? (
+                    <p className="text-[9px] text-blue-400">Due: {fmtDate(receiptData.periodDueDate)}</p>
+                  ) : (
+                    <p className="text-[10px] text-blue-500">installment</p>
+                  )}
+                  {!!receiptData.daysLate && receiptData.daysLate > 0 && (
+                    <p className="text-[9px] text-red-500 font-semibold">{receiptData.daysLate}d late</p>
+                  )}
                 </div>
                 <div className="flex flex-col items-center bg-orange-50 rounded-xl py-2.5 px-1">
                   <p className="text-[10px] text-gray-400 mb-0.5">Pending</p>
@@ -508,7 +562,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                 <p className="text-sm text-gray-400 text-center py-6">No payments recorded yet.</p>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {history.map((p) => {
+                  {historyWithPeriods.map((p) => {
                     const isEditing = editId === p.id;
                     const maxEditAmount = Number(p.amount) + Number(freshInst.remaining);
                     const editAmountNum = Number(editAmount);
@@ -569,11 +623,24 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                     return (
                       <div key={p.id} className="py-3 flex items-start justify-between group gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900">{pkr(p.amount)}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-medium text-gray-900">{pkr(p.amount)}</p>
+                            {p.periodNum !== undefined && (
+                              <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">
+                                {freshInst.paymentFrequency === 'daily' ? 'Din' : 'Month'} #{p.periodNum}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-400">
                             {p.method} · {fmtDate(p.paidOn)}
                             {p.note && ` · ${p.note}`}
                           </p>
+                          {p.periodDue && (
+                            <p className="text-[10px] text-gray-400">
+                              Due: {fmtDate(p.periodDue)}
+                              {p.late > 0 && <span className="text-red-500 ml-1">{p.late}d late</span>}
+                            </p>
+                          )}
                           {p.collectorName && (
                             <p className="text-[11px] text-violet-600 font-medium mt-0.5">by {p.collectorName}</p>
                           )}

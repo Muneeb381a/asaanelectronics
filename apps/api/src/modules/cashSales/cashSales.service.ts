@@ -2,6 +2,7 @@ import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { cashSales, ledgerEntries, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { markUnitSoldInTx } from '../productUnits/productUnits.service.js';
 
 type CreateBody = {
   productId:     string;
@@ -82,6 +83,12 @@ export class CashSalesService {
     if (product.stock < body.quantity) throw new AppError(`Insufficient stock — only ${product.stock} available`, 400);
 
     return db.transaction(async (tx) => {
+      // Validate + claim IMEI unit before inserting (throws 409 if already sold)
+      if (body.imeiNumber) {
+        const soldToName = body.customerName ?? 'Cash Customer';
+        await markUnitSoldInTx(tx, body.imeiNumber, sellerId, 'cash', soldToName);
+      }
+
       const [sale] = await tx
         .insert(cashSales)
         .values({

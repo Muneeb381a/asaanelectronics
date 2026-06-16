@@ -3,9 +3,10 @@ import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ShieldCheck, ShieldX, Clock, X } from 'lucide-react';
+import { ChevronDown, ShieldCheck, ShieldX, Clock, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { customersApi } from '../../api/customers.api.ts';
 import { productsApi } from '../../api/products.api.ts';
+import { productUnitsApi } from '../../api/productUnits.api.ts';
 import { fmtDate } from '../../utils/dateFormat.ts';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 
@@ -257,6 +258,15 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
   const [customerQuery, setCustomerQuery] = useState('');
   const debouncedCustomerQuery = useDebounce(customerQuery, 300);
+
+  const imeiValue     = useWatch({ control, name: 'imeiNumber' }) as string | undefined;
+  const debouncedImei = useDebounce((imeiValue ?? '').replace(/\D/g, ''), 500);
+  const { data: imeiLookup, isFetching: imeiChecking } = useQuery({
+    queryKey: ['imei-lookup', debouncedImei],
+    queryFn:  () => productUnitsApi.lookup(debouncedImei),
+    enabled:  debouncedImei.length === 15,
+    staleTime: 10_000,
+  });
 
   const { data: customers } = useQuery({
     queryKey: ['customers-form-search', debouncedCustomerQuery],
@@ -819,12 +829,36 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
         <Label>IMEI Number <span className="text-gray-400 font-normal">(optional — for phones)</span></Label>
         <input
           type="text"
-          maxLength={20}
-          placeholder="e.g. 352088123456789"
+          inputMode="numeric"
+          maxLength={15}
+          placeholder="15-digit IMEI (dial *#06# on device)"
           {...register('imeiNumber')}
           className={inp}
         />
-        <p className="text-[11px] text-gray-400 mt-1">Dial *#06# on the device to find IMEI</p>
+        {/* Real-time IMEI status */}
+        {debouncedImei.length === 15 && (
+          imeiChecking ? (
+            <p className="text-[11px] text-gray-400 mt-1">Checking availability…</p>
+          ) : imeiLookup?.found ? (
+            imeiLookup.unit!.status === 'available' ? (
+              <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
+                <CheckCircle2 size={11} /> Available in inventory
+                {imeiLookup.unit!.productName && ` — ${imeiLookup.unit!.productName}`}
+              </p>
+            ) : imeiLookup.unit!.status === 'sold' ? (
+              <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                <AlertTriangle size={11} /> Already sold to {imeiLookup.unit!.soldToName ?? 'another customer'} — this sale will be blocked
+              </p>
+            ) : (
+              <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                <AlertTriangle size={11} /> Unit is marked as {imeiLookup.unit!.status} in inventory
+              </p>
+            )
+          ) : (
+            <p className="text-[11px] text-gray-400 mt-1">Not in inventory — will be recorded as new unit</p>
+          )
+        )}
+        {!debouncedImei.length && <p className="text-[11px] text-gray-400 mt-1">Dial *#06# on the device to find IMEI</p>}
       </div>
 
       <Divider />
