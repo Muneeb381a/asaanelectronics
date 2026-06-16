@@ -100,7 +100,9 @@ function openPrint(content: string, width = 380, height = 700) {
 }
 
 export function printInstallmentReceipt(d: InstallmentReceiptData) {
-  const freq = d.paymentFrequency === 'daily' ? 'Daily' : 'Monthly';
+  const isDaily = d.paymentFrequency === 'daily';
+  const freq = isDaily ? 'Daily' : 'Monthly';
+  const periodLabel = isDaily ? 'days' : 'months';
   const invoiceNo = d.invoiceNumber ?? '';
   const printDate = fmtDate(d.paidOn);
 
@@ -125,11 +127,11 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
         <div style="text-align:center;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:5px 3px">
           <div style="font-size:7px;color:#92400e;font-weight:700;letter-spacing:.3px">PENDING · باقی</div>
           <div style="font-size:18px;font-weight:800;color:#92400e;line-height:1.2">${pendingInst}</div>
-          <div style="font-size:7.5px;color:#b45309">${freq.toLowerCase()}s left</div>
+          <div style="font-size:7.5px;color:#b45309">${periodLabel} left</div>
         </div>
         <div style="text-align:center;background:#dbeafe;border:1px solid #93c5fd;border-radius:5px;padding:5px 3px">
-          <div style="font-size:7px;color:#1e40af;font-weight:700;letter-spacing:.3px">THIS ${freq.toUpperCase()}</div>
-          <div style="font-size:18px;font-weight:800;color:#1e40af;line-height:1.2">#${curMonth}</div>
+          <div style="font-size:7px;color:#1e40af;font-weight:700;letter-spacing:.3px">${isDaily ? 'DAY' : 'MONTH'} #</div>
+          <div style="font-size:18px;font-weight:800;color:#1e40af;line-height:1.2">${curMonth}</div>
           <div style="font-size:7.5px;color:#3b82f6">installment</div>
         </div>
       </div>
@@ -138,7 +140,7 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:3px">
         <span style="font-size:8px;color:#059669;font-weight:600">${paidInst} paid (${pct}%)</span>
-        <span style="font-size:8px;color:#94a3b8">${totalInst} total ${freq.toLowerCase()}s</span>
+        <span style="font-size:8px;color:#94a3b8">${totalInst} total ${periodLabel}</span>
       </div>
     </div>` : '';
 

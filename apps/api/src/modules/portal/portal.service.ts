@@ -175,13 +175,13 @@ export class PortalService {
       const months        = r.months;
       const installmentDue = totalAmount - downPayment;
       const paid          = Number(r.totalPaid ?? 0);
-      const isDaily     = r.paymentFrequency === 'daily';
-      const paidMonths  = monthly > 0 ? Math.round(paid / monthly) : 0;
-      const dueDate     = new Date(r.startDate);
+      const isDaily    = r.paymentFrequency === 'daily';
+      const paidMonths = monthly > 0 ? Math.floor(paid / monthly) : 0;
+      const dueDate    = new Date(r.startDate);
       if (isDaily) {
-        dueDate.setDate(dueDate.getDate() + months);
+        dueDate.setDate(dueDate.getDate() + paidMonths + 1);
       } else {
-        dueDate.setMonth(dueDate.getMonth() + months);
+        dueDate.setMonth(dueDate.getMonth() + paidMonths + 1);
       }
 
       return {

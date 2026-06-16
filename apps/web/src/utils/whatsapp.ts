@@ -17,18 +17,23 @@ export function reminderMessage(opts: {
   monthly: string | number;
   remaining: string | number;
   paymentFrequency?: string | null;
+  daysOverdue?: number;
 }) {
   const isDaily   = opts.paymentFrequency === 'daily';
   const monthly   = 'PKR ' + Number(opts.monthly).toLocaleString('en-PK',   { maximumFractionDigits: 0 });
   const remaining = 'PKR ' + Number(opts.remaining).toLocaleString('en-PK', { maximumFractionDigits: 0 });
   const instLabel = isDaily ? 'Daily Installment' : 'Monthly Installment';
+  const overdueLine = opts.daysOverdue && opts.daysOverdue > 0
+    ? `⚠️ *Overdue:* ${opts.daysOverdue} ${isDaily ? 'days' : 'month(s)'} pending\n`
+    : '';
   return (
     `Dear ${opts.customerName},\n\n` +
     `This is a payment reminder from *${opts.shopName}*.\n\n` +
     `📦 *Product:* ${opts.productName}\n` +
     `💰 *${instLabel}:* ${monthly}\n` +
-    `⏳ *Remaining Balance:* ${remaining}\n\n` +
-    `Please arrange your payment at your earliest convenience.\n\n` +
+    `⏳ *Remaining Balance:* ${remaining}\n` +
+    overdueLine +
+    `\nPlease arrange your payment at your earliest convenience.\n\n` +
     `— ${opts.shopName}`
   );
 }

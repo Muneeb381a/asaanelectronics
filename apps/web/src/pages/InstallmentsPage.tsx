@@ -107,7 +107,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
 
   const [sent, setSent] = useState<Set<string>>(new Set());
 
-  function send(inst: Installment) {
+  function send(inst: Installment, daysOverdue?: number) {
     if (!shopData) return;
     openWhatsApp(inst.customerPhone, reminderMessage({
       shopName: shopData.shopName,
@@ -116,13 +116,16 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
       monthly: inst.monthly,
       remaining: inst.remaining,
       paymentFrequency: inst.paymentFrequency,
+      daysOverdue,
     }));
     setSent((s) => new Set(s).add(inst.id));
   }
 
   function sendAll() {
     overdue.filter((i) => !sent.has(i.id)).forEach((inst, idx) => {
-      setTimeout(() => send(inst), idx * 500);
+      const dueDate = calcNextDueDate(inst);
+      const daysLate = dueDate ? Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / 86_400_000)) : 0;
+      setTimeout(() => send(inst, daysLate), idx * 500);
     });
   }
 
@@ -163,7 +166,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
                       <p className="text-[11px] text-red-500 font-medium">{daysLate}d overdue</p>
                     </div>
                     <button
-                      onClick={() => send(inst)}
+                      onClick={() => send(inst, daysLate)}
                       disabled={isSent}
                       className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium transition disabled:cursor-default ${
                         isSent
@@ -866,11 +869,17 @@ export default function InstallmentsPage() {
                       {(() => {
                         const d = calcNextDueDate(inst);
                         if (!d) return <span className="text-gray-300">—</span>;
-                        const isOverdue = d < new Date();
+                        const now2 = new Date();
+                        const isOverdue = d < now2;
+                        const daysLate = isOverdue ? Math.floor((now2.getTime() - d.getTime()) / 86_400_000) : 0;
                         return (
                           <span className={isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'}>
                             {fmtDate(d)}
-                            {isOverdue && <span className="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded">overdue</span>}
+                            {isOverdue && (
+                              <span className="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded">
+                                {daysLate}d late
+                              </span>
+                            )}
                           </span>
                         );
                       })()}
