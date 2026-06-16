@@ -185,6 +185,7 @@ export class StatsService {
         monthCashSales:   Number(monthCashSales[0]?.total   ?? 0),
         activeCount:       0,
         overdueCount:      0,
+        overdueAmount:     0,
         recentInstallments: [],
         lowStockItems:     [],
         promisesDueCount:  0,
@@ -247,7 +248,7 @@ export class StatsService {
         .where(and(eq(customers.sellerId, sellerId), eq(installments.status, 'ACTIVE'), isNull(installments.deletedAt), isNull(customers.deletedAt))),
 
       db
-        .select({ total: count() })
+        .select({ total: count(), amount: sum(installments.remaining) })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .where(and(
@@ -313,8 +314,9 @@ export class StatsService {
       monthCollections: Number(monthCollections[0]?.total ?? 0),
       todayCashSales:   Number(todayCashSales[0]?.total   ?? 0),
       monthCashSales:   Number(monthCashSales[0]?.total   ?? 0),
-      activeCount: Number(activeCount[0]?.total ?? 0),
-      overdueCount: Number(overdueCount[0]?.total ?? 0),
+      activeCount:   Number(activeCount[0]?.total  ?? 0),
+      overdueCount:  Number(overdueCount[0]?.total  ?? 0),
+      overdueAmount: Number(overdueCount[0]?.amount ?? 0),
       recentInstallments: recent,
       lowStockItems,
       promisesDueCount: Number(promisesData[0]?.total ?? 0),

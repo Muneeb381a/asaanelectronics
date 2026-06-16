@@ -149,9 +149,11 @@ export default function DashboardPage() {
     {
       label: 'Overdue',
       value: String(data?.overdueCount ?? 0),
+      sub: (data?.overdueAmount ?? 0) > 0 ? `${pkr(data!.overdueAmount)} outstanding` : undefined,
       icon: AlertTriangle,
       light: (data?.overdueCount ?? 0) > 0 ? 'bg-red-50'  : 'bg-gray-50',
       text:  (data?.overdueCount ?? 0) > 0 ? 'text-red-500' : 'text-gray-400',
+      to: '/installments',
     },
   ];
 
@@ -220,7 +222,11 @@ export default function DashboardPage() {
         {isLoading
           ? [0, 1, 2, 3].map((i) => <StatCardSkeleton key={i} />)
           : statCards.map((card) => (
-            <div key={card.label} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <div
+              key={card.label}
+              className={`bg-white rounded-2xl border border-gray-100 p-5 shadow-sm ${'to' in card && card.to ? 'cursor-pointer hover:shadow-md hover:border-gray-200 transition-shadow' : ''}`}
+              onClick={'to' in card && card.to ? () => navigate(card.to!) : undefined}
+            >
               <div className={`w-9 h-9 ${card.light} rounded-xl flex items-center justify-center mb-3`}>
                 <card.icon size={18} className={card.text} />
               </div>
