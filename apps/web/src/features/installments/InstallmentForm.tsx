@@ -7,6 +7,7 @@ import { ChevronDown, ShieldCheck, ShieldX, Clock, X } from 'lucide-react';
 import { customersApi } from '../../api/customers.api.ts';
 import { productsApi } from '../../api/products.api.ts';
 import { fmtDate } from '../../utils/dateFormat.ts';
+import { useDebounce } from '../../hooks/useDebounce.ts';
 
 const formSchema = z.object({
   customerId:        z.string().min(1, 'Select a customer'),
@@ -92,13 +93,14 @@ interface SelectOption {
 }
 
 function SearchableSelect({
-  options, value, onChange, placeholder = 'Search…', error,
+  options, value, onChange, placeholder = 'Search…', error, onQueryChange,
 }: {
   options: SelectOption[];
   value: string;
   onChange: (id: string) => void;
   placeholder?: string;
   error?: string;
+  onQueryChange?: (q: string) => void;
 }) {
   const [query, setQuery]   = useState('');
   const [open, setOpen]     = useState(false);
@@ -118,12 +120,13 @@ function SearchableSelect({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const filtered = query.trim()
-    ? options.filter((o) =>
+  // When onQueryChange is set, filtering is server-side — skip client filter
+  const filtered = (onQueryChange || !query.trim())
+    ? options
+    : options.filter((o) =>
         o.label.toLowerCase().includes(query.toLowerCase()) ||
         o.sublabel?.toLowerCase().includes(query.toLowerCase()),
-      )
-    : options;
+      );
 
   const displayValue = open ? query : (selected?.label ?? '');
 
@@ -138,7 +141,7 @@ function SearchableSelect({
           ref={inputRef}
           type="text"
           value={displayValue}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); onQueryChange?.(e.target.value); }}
           onFocus={() => setOpen(true)}
           placeholder={placeholder}
           autoComplete="off"
@@ -252,9 +255,15 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDaily]);
 
+  const [customerQuery, setCustomerQuery] = useState('');
+  const debouncedCustomerQuery = useDebounce(customerQuery, 300);
+
   const { data: customers } = useQuery({
-    queryKey: ['customers-all'],
-    queryFn: () => customersApi.list({ limit: 500 }),
+    queryKey: ['customers-form-search', debouncedCustomerQuery],
+    queryFn: () => customersApi.list({
+      search: debouncedCustomerQuery || undefined,
+      limit: 50,
+    }),
   });
 
   const { data: products } = useQuery({
@@ -262,7 +271,13 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     queryFn: () => productsApi.list({ limit: 200 }),
   });
 
-  const selectedCustomer = customers?.data.find((c) => c.id === customerId);
+  const { data: fetchedCustomer } = useQuery({
+    queryKey: ['customer-single', customerId],
+    queryFn:  () => customersApi.getOne(customerId!),
+    enabled:  !!customerId,
+    staleTime: 60_000,
+  });
+  const selectedCustomer = customers?.data.find((c) => c.id === customerId) ?? fetchedCustomer;
   const selectedProduct  = products?.data.find((p) => p.id === productId);
 
   const cashPriceDisplay = selectedProduct ? Number(selectedProduct.price) : null;
@@ -423,7 +438,8 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
             })) ?? []}
             value={customerId ?? ''}
             onChange={(id) => setValue('customerId', id, { shouldValidate: true })}
-            placeholder="Customer search karo — naam ya phone…"
+            onQueryChange={setCustomerQuery}
+            placeholder="Naam, mobile number ya CNIC sy search karo…"
             error={errors.customerId?.message}
           />
 
