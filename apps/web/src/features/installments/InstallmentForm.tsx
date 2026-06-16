@@ -326,6 +326,16 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     ? effectiveTotal - dpFirstMonthly
     : effectiveTotal - (downPayment || 0);
 
+  // Amount-first mode — must be declared before `periodic` uses amountPerPeriod
+  const amountPerPeriod = typeof amountInput === 'number' && amountInput > 0 ? amountInput : 0;
+  const calcDuration = amountPerPeriod > 0 && remaining > 0
+    ? Math.ceil(remaining / amountPerPeriod)
+    : 0;
+  const lastPayment = calcDuration > 0
+    ? remaining - amountPerPeriod * (calcDuration - 1)
+    : 0;
+  const lastPaymentDiffers = lastPayment > 0 && Math.abs(lastPayment - amountPerPeriod) > 1;
+
   const periodic = dpIsFirst && dpFirstMonthly !== null
     ? dpFirstMonthly
     : calcMode === 'amount' && amountPerPeriod > 0
@@ -335,17 +345,6 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           ? Math.round((remaining / months) / 5) * 5
           : Math.round((remaining / months) / 25) * 25
         : 0);
-
-  // Amount-first mode: derive duration from per-period amount
-  const amountPerPeriod = typeof amountInput === 'number' && amountInput > 0 ? amountInput : 0;
-  const calcDuration = amountPerPeriod > 0 && remaining > 0
-    ? Math.ceil(remaining / amountPerPeriod)
-    : 0;
-  // Last payment in amount-first mode (could be smaller than amountPerPeriod)
-  const lastPayment = calcDuration > 0
-    ? remaining - amountPerPeriod * (calcDuration - 1)
-    : 0;
-  const lastPaymentDiffers = lastPayment > 0 && Math.abs(lastPayment - amountPerPeriod) > 1;
 
   // Sync calculated duration back to form when in amount-first mode
   useEffect(() => {
@@ -705,6 +704,28 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
                 className={`${inp} ${isDaily ? 'focus:border-orange-400 focus:ring-orange-50' : ''}`}
                 autoFocus
               />
+              {/* Quick-pick presets */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(isDaily
+                  ? [100, 150, 200, 300, 400, 500, 750, 1000]
+                  : [1000, 1500, 2000, 3000, 5000, 10000]
+                ).map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setAmountInput(preset)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${
+                      amountInput === preset
+                        ? isDaily
+                          ? 'bg-orange-500 border-orange-500 text-white'
+                          : 'bg-blue-600 border-blue-600 text-white'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    {preset >= 1000 ? `${preset / 1000}k` : preset}
+                  </button>
+                ))}
+              </div>
               {remaining <= 0 && (
                 <p className="text-[11px] text-amber-500 mt-1">Pehle total amount aur down payment fill karo</p>
               )}
@@ -712,40 +733,50 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
             {/* Result card */}
             {calcDuration > 0 && remaining > 0 && (
-              <div className={`rounded-xl border p-4 space-y-2.5 ${isDaily ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
-                {/* Main result */}
+              <div className={`rounded-xl border p-4 space-y-3 ${isDaily ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
+
+                {/* Formula line */}
+                <p className={`text-[10px] font-mono text-center ${isDaily ? 'text-orange-500' : 'text-blue-500'}`}>
+                  {pkr(remaining)} ÷ {pkr(amountPerPeriod)}/{isDaily ? 'din' : 'mahina'} = {calcDuration} {isDaily ? 'din' : 'mahine'}
+                </p>
+
+                {/* Big result */}
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${isDaily ? 'text-orange-500' : 'text-blue-500'}`}>
-                      {isDaily ? 'Total Days' : 'Total Months'}
+                      {isDaily ? 'Kul Din' : 'Kul Mahine'}
                     </p>
-                    <p className={`text-2xl font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
+                    <p className={`text-3xl font-extrabold leading-none ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
                       {calcDuration}
-                      <span className={`text-sm font-semibold ml-1 ${isDaily ? 'text-orange-500' : 'text-blue-500'}`}>
+                      <span className={`text-base font-bold ml-1.5 ${isDaily ? 'text-orange-500' : 'text-blue-500'}`}>
                         {isDaily ? 'din' : 'mahine'}
                       </span>
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-gray-400 font-medium mb-0.5">Asan andaza</p>
-                    <p className={`text-sm font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
+                  <div className={`text-right px-3 py-2 rounded-xl ${isDaily ? 'bg-orange-100' : 'bg-blue-100'}`}>
+                    <p className="text-[9px] text-gray-400 mb-0.5">Asan andaza</p>
+                    <p className={`text-sm font-bold ${isDaily ? 'text-orange-800' : 'text-blue-800'}`}>
                       {isDaily ? daysToHuman(calcDuration) : monthsToHuman(calcDuration)}
                     </p>
                   </div>
                 </div>
 
-                {/* Breakdown row */}
-                <div className={`border-t pt-2.5 grid grid-cols-3 gap-2 text-center ${isDaily ? 'border-orange-200' : 'border-blue-200'}`}>
+                {/* 3-col breakdown */}
+                <div className={`border-t pt-3 grid grid-cols-3 gap-2 text-center ${isDaily ? 'border-orange-200' : 'border-blue-200'}`}>
                   <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">Baqi raqam</p>
+                    <p className="text-[9px] text-gray-400 mb-0.5 uppercase tracking-wide">Baqi raqam</p>
                     <p className="text-xs font-bold text-gray-800">{pkr(remaining)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">{isDaily ? 'Roz' : 'Mahana'}</p>
+                    <p className={`text-[9px] mb-0.5 uppercase tracking-wide ${isDaily ? 'text-orange-500' : 'text-blue-500'}`}>
+                      {isDaily ? 'Roz' : 'Mahana'}
+                    </p>
                     <p className={`text-xs font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>{pkr(amountPerPeriod)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">Aakhri payment</p>
+                    <p className={`text-[9px] mb-0.5 uppercase tracking-wide ${lastPaymentDiffers ? 'text-amber-500' : 'text-gray-400'}`}>
+                      Aakhri payment
+                    </p>
                     <p className={`text-xs font-bold ${lastPaymentDiffers ? 'text-amber-600' : 'text-gray-800'}`}>
                       {pkr(lastPayment)}
                     </p>
@@ -755,8 +786,8 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
                 {/* Completion date */}
                 {startDate && (
                   <div className={`border-t pt-2.5 flex items-center justify-between ${isDaily ? 'border-orange-200' : 'border-blue-200'}`}>
-                    <p className="text-[11px] text-gray-500 font-medium">Khatam hogi</p>
-                    <p className={`text-xs font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
+                    <p className="text-[11px] text-gray-500 font-medium">Installment khatam hogi</p>
+                    <p className={`text-sm font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
                       {fmtDate(isDaily
                         ? addDays(new Date(startDate), calcDuration)
                         : addMonths(new Date(startDate), calcDuration)
@@ -765,10 +796,10 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
                   </div>
                 )}
 
-                {/* Warning: last payment differs */}
+                {/* Last payment warning */}
                 {lastPaymentDiffers && (
-                  <p className={`text-[10px] ${isDaily ? 'text-orange-600' : 'text-blue-600'} bg-white/60 rounded-lg px-2 py-1.5`}>
-                    ⚠ Aakhri {isDaily ? 'din' : 'mahine'} mein {pkr(lastPayment)} banega (baki amount adjust hoti hai)
+                  <p className={`text-[10px] ${isDaily ? 'text-orange-700' : 'text-blue-700'} bg-white/70 rounded-lg px-2.5 py-1.5`}>
+                    ⚠ Aakhri {isDaily ? 'din' : 'mahine'} mein {pkr(lastPayment)} banega — baqi amount adjust hogi
                   </p>
                 )}
               </div>
