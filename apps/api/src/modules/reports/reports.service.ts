@@ -1,4 +1,4 @@
-import { and, count, eq, gte, isNull, lt, sql, sum } from 'drizzle-orm';
+import { and, asc, count, eq, gte, isNull, lt, lte, or, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments } from '../../db/schema.js';
 
@@ -6,6 +6,18 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+export type MonthlyCustomerRow = {
+  srNo:          number;
+  clientId:      string;
+  customerName:  string;
+  customerPhone: string;
+  rupees:        number;     // paidAmount if Paid, monthly installment if Pending
+  paidAmount:    number;
+  monthlyAmount: number;
+  remaining:     number;
+  status:        'Paid' | 'Pending';
+};
 
 export type MonthlyReportRow = {
   month: number;
@@ -130,6 +142,83 @@ export class ReportsService {
         cashSalesAmount,
         totalExpenses,
         netRevenue:        paymentsCollected + cashSalesAmount - totalExpenses,
+      };
+    });
+  }
+
+  async getMonthlyCustomers(sellerId: string, year: number, month: number): Promise<MonthlyCustomerRow[]> {
+    const monthStart = new Date(year, month - 1, 1);
+    const monthEnd   = new Date(year, month, 0, 23, 59, 59, 999); // last moment of last day
+
+    // Correlated subquery: sum of payments made in this specific month for each installment
+    const paidInMonthExpr = sql<string | null>`(
+      SELECT SUM(p.amount)
+      FROM payments p
+      WHERE p.installment_id = ${installments.id}
+        AND p.deleted_at IS NULL
+        AND p.paid_on >= ${monthStart}
+        AND p.paid_on <= ${monthEnd}
+    )`;
+
+    // Installments to include:
+    //  1. ACTIVE installments that started on or before month end (were active in this month)
+    //  2. Any installment (any status) that has a payment recorded in this month
+    const rows = await db
+      .select({
+        invoiceNumber: installments.invoiceNumber,
+        customerName:  customers.name,
+        customerPhone: customers.phone,
+        monthly:       installments.monthly,
+        remaining:     installments.remaining,
+        paidInMonth:   paidInMonthExpr,
+      })
+      .from(installments)
+      .innerJoin(customers, eq(installments.customerId, customers.id))
+      .where(and(
+        eq(customers.sellerId, sellerId),
+        isNull(installments.deletedAt),
+        isNull(customers.deletedAt),
+        or(
+          // Active installments running in this month
+          and(
+            eq(installments.status, 'ACTIVE'),
+            lte(installments.startDate, monthEnd),
+          ),
+          // Any installment with a payment in this month (includes completed/defaulted)
+          sql`EXISTS (
+            SELECT 1 FROM payments p
+            WHERE p.installment_id = ${installments.id}
+              AND p.deleted_at IS NULL
+              AND p.paid_on >= ${monthStart}
+              AND p.paid_on <= ${monthEnd}
+          )`,
+        ),
+      ))
+      .orderBy(asc(customers.name));
+
+    // Sort: Paid first, then Pending; within each group alphabetical
+    const sorted = [...rows].sort((a, b) => {
+      const aPaid = Number(a.paidInMonth ?? 0) > 0;
+      const bPaid = Number(b.paidInMonth ?? 0) > 0;
+      if (aPaid && !bPaid) return -1;
+      if (!aPaid && bPaid) return 1;
+      return a.customerName.localeCompare(b.customerName);
+    });
+
+    return sorted.map((r, idx) => {
+      const paid       = Number(r.paidInMonth ?? 0);
+      const monthly    = Number(r.monthly);
+      const isPaid     = paid > 0;
+      return {
+        srNo:          idx + 1,
+        clientId:      r.invoiceNumber ?? '—',
+        customerName:  r.customerName,
+        customerPhone: r.customerPhone,
+        rupees:        isPaid ? paid : monthly,
+        paidAmount:    paid,
+        monthlyAmount: monthly,
+        remaining:     Number(r.remaining),
+        status:        isPaid ? 'Paid' : 'Pending',
       };
     });
   }

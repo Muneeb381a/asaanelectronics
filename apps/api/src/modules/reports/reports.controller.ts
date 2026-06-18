@@ -14,3 +14,15 @@ export async function getMonthlyReport(req: AuthRequest, res: Response) {
   }
   success(res, await svc.getMonthlyReport(sellerId, year));
 }
+
+export async function getMonthlyCustomers(req: AuthRequest, res: Response) {
+  const sellerId = req.user!.sellerId!;
+  const now      = new Date();
+  const year     = parseInt(req.query['year']  as string) || now.getFullYear();
+  const month    = parseInt(req.query['month'] as string) || now.getMonth() + 1;
+  if (year < 2020 || year > now.getFullYear() + 1 || month < 1 || month > 12) {
+    res.status(400).json({ success: false, data: null, error: 'Invalid year or month' });
+    return;
+  }
+  success(res, await svc.getMonthlyCustomers(sellerId, year, month));
+}

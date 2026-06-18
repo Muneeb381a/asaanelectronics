@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt, BarChart3 } from 'lucide-react';
+import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt, BarChart3, Users } from 'lucide-react';
 import { installmentsApi } from '../api/installments.api.ts';
 import { paymentsApi } from '../api/payments.api.ts';
 import { cashSalesApi } from '../api/cashSales.api.ts';
@@ -11,7 +11,7 @@ import { reportsApi } from '../api/reports.api.ts';
 import { printReport } from '../utils/exportPdf.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 
-type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses' | 'monthly';
+type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses' | 'monthly' | 'monthly-customers';
 
 const METHOD_LABELS: Record<string, string> = {
   CASH: 'Cash', BANK: 'Bank', JAZZCASH: 'JazzCash', EASYPAISA: 'EasyPaisa', OTHER: 'Other',
@@ -56,6 +56,8 @@ export default function ExportsPage() {
   const [expenseRange, setExpenseRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [returnsStatus, setReturnsStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED'>('ALL');
   const [monthlyYear, setMonthlyYear] = useState(new Date().getFullYear());
+  const [custYear,  setCustYear]  = useState(new Date().getFullYear());
+  const [custMonth, setCustMonth] = useState(new Date().getMonth() + 1);
 
   const { data: seller } = useQuery({
     queryKey: ['seller-me'],
@@ -126,6 +128,13 @@ export default function ExportsPage() {
     enabled: tab === 'monthly',
   });
 
+  const custMonthlyQ = useQuery({
+    queryKey: ['export-monthly-customers', custYear, custMonth],
+    queryFn: () => reportsApi.getMonthlyCustomers(custYear, custMonth),
+    staleTime: 5 * 60_000,
+    enabled: tab === 'monthly-customers',
+  });
+
   const overdue   = (overdueQ.data?.data   ?? []).filter((i) => i.isOverdue);
   const defaulters = defaultersQ.data?.data ?? [];
   const todayPay  = Array.isArray(todayPayQ.data) ? todayPayQ.data : [];
@@ -133,6 +142,7 @@ export default function ExportsPage() {
   const returnsList = returnsQ.data?.data ?? [];
   const expensesList = expensesQ.data ?? [];
   const monthlyRows = monthlyQ.data ?? [];
+  const custRows    = custMonthlyQ.data ?? [];
 
   function downloadOverdueOnly() {
     const totalRem = overdue.reduce((s, i) => s + Number(i.remaining), 0);
@@ -322,8 +332,9 @@ export default function ExportsPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: typeof FileDown }[] = [
-    { id: 'monthly',    label: 'Monthly Report',    icon: BarChart3 },
-    { id: 'overdue',    label: 'Overdue',           icon: AlertTriangle },
+    { id: 'monthly',           label: 'Monthly Summary',  icon: BarChart3 },
+    { id: 'monthly-customers', label: 'Monthly Customers', icon: Users },
+    { id: 'overdue',           label: 'Overdue',           icon: AlertTriangle },
     { id: 'defaulters', label: 'Defaulters',        icon: ShieldX },
     { id: 'today',      label: "Today's Payments",  icon: CalendarCheck },
     { id: 'cashsales',  label: 'Cash Sales',        icon: ShoppingCart },
@@ -338,7 +349,8 @@ export default function ExportsPage() {
     (tab === 'cashsales'  && cashQ.isFetching) ||
     (tab === 'returns'    && returnsQ.isFetching) ||
     (tab === 'expenses'   && expensesQ.isFetching) ||
-    (tab === 'monthly'    && monthlyQ.isFetching);
+    (tab === 'monthly'           && monthlyQ.isFetching) ||
+    (tab === 'monthly-customers' && custMonthlyQ.isFetching);
 
   function refetchCurrent() {
     if (tab === 'overdue')    { void overdueQ.refetch(); void defaultersQ.refetch(); }
@@ -347,7 +359,45 @@ export default function ExportsPage() {
     if (tab === 'cashsales')  void cashQ.refetch();
     if (tab === 'returns')    void returnsQ.refetch();
     if (tab === 'expenses')   void expensesQ.refetch();
-    if (tab === 'monthly')    void monthlyQ.refetch();
+    if (tab === 'monthly')           void monthlyQ.refetch();
+    if (tab === 'monthly-customers') void custMonthlyQ.refetch();
+  }
+
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+
+  function downloadMonthlyCustomersPdf() {
+    const monthLabel = `${MONTH_NAMES[custMonth - 1]} ${custYear}`;
+    const fmt = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+    const paidCount    = custRows.filter((r) => r.status === 'Paid').length;
+    const pendingCount = custRows.filter((r) => r.status === 'Pending').length;
+    const totalCollected = custRows.reduce((s, r) => s + r.paidAmount, 0);
+    const totalPending   = custRows.filter((r) => r.status === 'Pending').reduce((s, r) => s + r.monthlyAmount, 0);
+
+    printReport({
+      title: `Monthly Installment Report — ${monthLabel}`,
+      subtitle: `Customer-wise payment status for ${monthLabel}`,
+      shopName,
+      shopPhone: seller?.phone,
+      columns: ['Sr No', 'Client ID', 'Customer Name', 'Rupees', 'Mobile Number', 'Status'],
+      rows: custRows.map((r) => [
+        r.srNo,
+        r.clientId,
+        r.customerName,
+        `PKR ${fmt(r.rupees)}`,
+        r.customerPhone,
+        r.status,
+      ]),
+      summary: [
+        `<strong>Month:</strong> ${monthLabel}`,
+        `<strong>Total customers:</strong> ${custRows.length}`,
+        `<strong>Paid:</strong> ${paidCount}  &nbsp;|&nbsp;  <strong>Pending:</strong> ${pendingCount}`,
+        `<strong>Total collected this month:</strong> PKR ${fmt(totalCollected)}`,
+        `<strong>Total pending this month:</strong> PKR ${fmt(totalPending)}`,
+      ],
+    });
   }
 
   function downloadMonthlyPdf() {
@@ -448,6 +498,149 @@ export default function ExportsPage() {
           </button>
         ))}
       </div>
+
+      {/* Monthly Customers tab */}
+      {tab === 'monthly-customers' && (() => {
+        const fmt        = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+        const paidRows   = custRows.filter((r) => r.status === 'Paid');
+        const pendingRows = custRows.filter((r) => r.status === 'Pending');
+        const collected  = paidRows.reduce((s, r) => s + r.paidAmount, 0);
+        const pending    = pendingRows.reduce((s, r) => s + r.monthlyAmount, 0);
+        const currentYear = new Date().getFullYear();
+        const yearOptions = Array.from({ length: currentYear - 2023 }, (_, i) => currentYear - i);
+
+        return (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold text-gray-900">Monthly Customer Report</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Per-customer installment status for the selected month
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Month picker */}
+                <select
+                  value={custMonth}
+                  onChange={(e) => setCustMonth(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {MONTH_NAMES.map((m, i) => (
+                    <option key={i + 1} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                {/* Year picker */}
+                <select
+                  value={custYear}
+                  onChange={(e) => setCustYear(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={downloadMonthlyCustomersPdf}
+                  disabled={custMonthlyQ.isLoading || custRows.length === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <FileDown size={15} />
+                  Download PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Stats strip */}
+            {!custMonthlyQ.isLoading && custRows.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x border-b border-gray-100">
+                {[
+                  { label: 'Total Customers', value: custRows.length,   color: 'text-gray-900' },
+                  { label: 'Paid',            value: paidRows.length,   color: 'text-green-700' },
+                  { label: 'Pending',         value: pendingRows.length, color: 'text-orange-600' },
+                  { label: 'Collected',       value: `PKR ${fmt(collected)}`, color: 'text-green-700' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="px-4 py-3 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+                    <p className={`text-sm font-semibold ${color}`}>{value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              {custMonthlyQ.isLoading ? (
+                <div className="flex items-center justify-center py-16 text-gray-400 text-sm gap-2">
+                  <RefreshCw size={14} className="animate-spin" /> Loading…
+                </div>
+              ) : custRows.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
+                  <Users size={28} className="opacity-30" />
+                  <p className="text-sm">No installment activity in this month</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <Th>Sr No</Th>
+                      <Th>Client ID</Th>
+                      <Th>Customer Name</Th>
+                      <Th right>Rupees</Th>
+                      <Th>Mobile Number</Th>
+                      <Th>Status</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {custRows.map((r) => (
+                      <tr key={`${r.clientId}-${r.srNo}`} className="border-b border-gray-100 hover:bg-gray-50">
+                        <Td>{r.srNo}</Td>
+                        <Td><span className="font-mono text-xs">{r.clientId}</span></Td>
+                        <Td bold>{r.customerName}</Td>
+                        <Td right>
+                          <span className={r.status === 'Paid' ? 'text-green-700 font-semibold' : 'text-orange-600 font-semibold'}>
+                            PKR {fmt(r.rupees)}
+                          </span>
+                        </Td>
+                        <Td>{r.customerPhone}</Td>
+                        <Td>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            r.status === 'Paid'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {r.status === 'Paid' ? '✓ Paid' : '⏳ Pending'}
+                          </span>
+                        </Td>
+                      </tr>
+                    ))}
+                    {/* Summary footer row */}
+                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold text-sm">
+                      <Td bold>—</Td>
+                      <Td bold>—</Td>
+                      <Td bold>Total ({custRows.length} customers)</Td>
+                      <Td right bold>
+                        <span className="text-green-700">PKR {fmt(collected)}</span>
+                        {pending > 0 && (
+                          <span className="block text-xs text-orange-500 font-normal">
+                            PKR {fmt(pending)} pending
+                          </span>
+                        )}
+                      </Td>
+                      <Td bold>—</Td>
+                      <Td bold>
+                        <span className="text-green-700">{paidRows.length} paid</span>
+                        {' / '}
+                        <span className="text-orange-600">{pendingRows.length} pending</span>
+                      </Td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Monthly Report tab */}
       {tab === 'monthly' && (() => {
