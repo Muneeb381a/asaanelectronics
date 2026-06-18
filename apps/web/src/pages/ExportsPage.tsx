@@ -400,6 +400,34 @@ export default function ExportsPage() {
     });
   }
 
+  function downloadMonthlyCustomersBlankPdf() {
+    const monthLabel = `${MONTH_NAMES[custMonth - 1]} ${custYear}`;
+    const fmt = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+    const totalMonthly = custRows.reduce((s, r) => s + r.monthlyAmount, 0);
+    printReport({
+      title: `Monthly Collection Register — ${monthLabel}`,
+      subtitle: `Printable register for manual collection tracking — ${monthLabel}`,
+      shopName,
+      shopPhone: seller?.phone,
+      columns: ['Sr No', 'Client ID', 'Customer Name', 'Rupees', 'Mobile Number', 'Status'],
+      rows: custRows.map((r) => [
+        r.srNo,
+        r.clientId,
+        r.customerName,
+        `PKR ${fmt(r.monthlyAmount)}`,
+        r.customerPhone,
+        '',
+      ]),
+      summary: [
+        `<strong>Month:</strong> ${monthLabel}`,
+        `<strong>Total customers:</strong> ${custRows.length}`,
+        `<strong>Total monthly amount:</strong> PKR ${fmt(totalMonthly)}`,
+        `<strong>Collector:</strong> _______________________`,
+        `<strong>Date:</strong> _______________________`,
+      ],
+    });
+  }
+
   function downloadMonthlyPdf() {
     const activeMonths = monthlyRows.filter((r) => r.newInstallments > 0 || r.newCustomers > 0 || r.paymentsCollected > 0 || r.cashSalesAmount > 0);
     const totals = monthlyRows.reduce(
@@ -540,6 +568,14 @@ export default function ExportsPage() {
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
+                <button
+                  onClick={downloadMonthlyCustomersBlankPdf}
+                  disabled={custMonthlyQ.isLoading || custRows.length === 0}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <FileDown size={15} />
+                  Print Blank Register
+                </button>
                 <button
                   onClick={downloadMonthlyCustomersPdf}
                   disabled={custMonthlyQ.isLoading || custRows.length === 0}
