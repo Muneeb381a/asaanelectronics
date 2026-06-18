@@ -116,7 +116,7 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
   const pct = totalInst > 0 ? Math.round((paidInst / totalInst) * 100) : 0;
 
   const periodDueInfo = d.periodDueDate
-    ? `<div style="font-size:7px;color:#3b82f6">Due: ${fmtDate(d.periodDueDate)}</div>` +
+    ? `<div style="font-size:7px;color:#3b82f6;font-weight:600">Qist: ${fmtDate(d.periodDueDate)}</div>` +
       (d.daysLate && d.daysLate > 0
         ? `<div style="font-size:7px;color:#dc2626;font-weight:700">${d.daysLate}d late</div>`
         : `<div style="font-size:6.5px;color:#059669;font-weight:600">✓ on time</div>`)
@@ -151,6 +151,20 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
         <span style="font-size:8px;color:#059669;font-weight:600">${paidInst} paid (${pct}%)</span>
         <span style="font-size:8px;color:#94a3b8">${totalInst} total ${periodLabel}</span>
       </div>
+      ${d.periodDueDate ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px;border-top:1px dashed #e2e8f0;padding-top:6px">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:4px 6px">
+          <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#1e40af;margin-bottom:1px">📅 Qist ki tarikh</div>
+          <div style="font-size:9px;font-weight:700;color:#1e3a8a">${fmtDate(d.periodDueDate)}</div>
+          ${(d.daysLate ?? 0) > 0
+            ? `<div style="font-size:7px;color:#dc2626;font-weight:700">⚠️ ${d.daysLate} din late</div>`
+            : `<div style="font-size:7px;color:#059669;font-weight:600">✓ On time</div>`}
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:4px 6px">
+          <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#065f46;margin-bottom:1px">📆 Payment ki tarikh</div>
+          <div style="font-size:9px;font-weight:700;color:#064e3b">${printDate}</div>
+        </div>
+      </div>` : ''}
     </div>` : '';
 
   const completedBadge = d.completed ? `
@@ -256,13 +270,21 @@ export function printCashSaleReceipt(d: CashSaleReceiptData) {
 }
 
 export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
-  const freq = d.paymentFrequency === 'daily' ? 'Daily' : 'Monthly';
+  const isDaily = d.paymentFrequency === 'daily';
   const hasProg = d.paidInstallments !== undefined && d.totalInstallments !== undefined;
   const pendingInst = (d.totalInstallments ?? 0) - (d.paidInstallments ?? 0);
+
+  // Build the late/on-time status line
+  let lateStatus = '';
+  if (hasProg && d.periodDueDate) {
+    lateStatus = (d.daysLate ?? 0) > 0
+      ? `⚠️ ${d.daysLate} din late`
+      : `✅ On time`;
+  }
+
   const lines = [
     `*Payment Receipt — ${d.shopName}*`,
     `━━━━━━━━━━━━━━━━━━━`,
-    `Date: ${fmtDateTime(d.paidOn)}`,
     d.invoiceNumber ? `Invoice: ${d.invoiceNumber}` : '',
     `Customer: ${d.customerName}`,
     d.customerPhone ? `Phone: ${d.customerPhone}` : '',
@@ -270,16 +292,24 @@ export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
     `━━━━━━━━━━━━━━━━━━━`,
     `Amount Paid: *${pkr(d.amountPaid)}*`,
     `Method: ${mLabel(d.method)}`,
-    hasProg ? `Installment: *#${d.currentMonth ?? d.paidInstallments} of ${d.totalInstallments}*` : '',
-    hasProg && d.periodDueDate
-      ? `📅 Due date: ${fmtDate(d.periodDueDate)}${d.daysLate && d.daysLate > 0 ? ` · ${d.daysLate} din late` : ' ✓'}`
+    hasProg
+      ? `${isDaily ? 'Din' : 'Month'} #: *${d.currentMonth ?? d.paidInstallments} / ${d.totalInstallments}*`
       : '',
-    hasProg ? `✅ Paid: ${d.paidInstallments}  |  ⏳ Pending: ${pendingInst}` : '',
-    d.completed ? `Status: ✅ FULLY PAID — Congratulations!` : `Remaining Amount: ${pkr(d.remaining)}`,
-    !d.completed && !hasProg ? `${freq} Installment: ${pkr(d.monthly)}` : '',
+    `━━━━━━━━━━━━━━━━━━━`,
+    // Both dates clearly separated
+    hasProg && d.periodDueDate
+      ? `📅 Qist ki tarikh:   ${fmtDate(d.periodDueDate)}`
+      : '',
+    `📆 Payment ki tarikh: ${fmtDate(d.paidOn)}`,
+    lateStatus,
+    `━━━━━━━━━━━━━━━━━━━`,
+    hasProg ? `✅ Ada: ${d.paidInstallments}  |  ⏳ Baqi: ${pendingInst}` : '',
+    d.completed
+      ? `🎉 Mubarak! Tamam qisten ada ho gayin.`
+      : `Remaining: ${pkr(d.remaining)}`,
     d.note ? `Note: ${d.note}` : '',
     `━━━━━━━━━━━━━━━━━━━`,
-    `Thank you for your payment! 🙏`,
+    `Shukriya! 🙏`,
   ].filter(Boolean).join('\n');
   return `https://wa.me/?text=${encodeURIComponent(lines)}`;
 }

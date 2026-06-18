@@ -404,6 +404,24 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
               </div>
             )}
 
+            {/* Dates row — both dates clearly labeled */}
+            {receiptData.periodDueDate && (
+              <div className="w-full grid grid-cols-2 gap-2">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5">
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-blue-400 mb-0.5">📅 Qist ki tarikh</p>
+                  <p className="text-xs font-bold text-blue-800">{fmtDate(receiptData.periodDueDate)}</p>
+                  <p className="text-[9px] text-blue-400 mt-0.5">jis din ki qist thi</p>
+                </div>
+                <div className="bg-green-50 border border-green-100 rounded-xl p-2.5">
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-green-400 mb-0.5">📆 Payment ki tarikh</p>
+                  <p className="text-xs font-bold text-green-800">{fmtDate(receiptData.paidOn)}</p>
+                  <p className={`text-[9px] mt-0.5 font-semibold ${(receiptData.daysLate ?? 0) > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    {(receiptData.daysLate ?? 0) > 0 ? `⚠️ ${receiptData.daysLate} din late` : '✓ On time'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Progress bar */}
             {receiptData.totalInstallments !== undefined && receiptData.totalInstallments > 0 && (
               <div className="w-full">
