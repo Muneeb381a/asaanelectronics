@@ -32,11 +32,16 @@ export class InstallmentsService {
     if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED'));
     if (search) {
       const cleanSearch = search.trim().replace(/-/g, '');
-      conditions.push(or(
-        ilike(customers.name,       `%${cleanSearch}%`),
-        ilike(customers.phone,      `%${cleanSearch}%`),
-        ilike(customers.cnicMasked, `%${cleanSearch}%`),
-      )!);
+      const conds: SQL[] = [
+        ilike(customers.name,  `%${cleanSearch}%`),
+        ilike(customers.phone, `%${cleanSearch}%`),
+      ];
+      if (/^\d{13}$/.test(cleanSearch)) {
+        const [hmac, legacy] = hashCnicBoth(cleanSearch);
+        conds.push(eq(customers.cnicHash, hmac));
+        conds.push(eq(customers.cnicHash, legacy));
+      }
+      conditions.push(or(...conds)!);
     }
     if (customerId) conditions.push(eq(installments.customerId, customerId));
     if (frequency)  conditions.push(eq(installments.paymentFrequency, frequency as 'monthly' | 'daily'));

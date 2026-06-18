@@ -625,7 +625,7 @@ export default function InstallmentsPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <input
           type="text"
-          placeholder={isOwner ? 'Search by name, phone, or CNIC…' : 'Naam, phone ya CNIC likhو…'}
+          placeholder={isOwner ? 'Search by name, phone, or CNIC (13 digits)…' : 'Naam, phone ya pura CNIC (13 ہندسے) likhو…'}
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className={`w-full sm:max-w-xs px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 transition ${
@@ -668,7 +668,7 @@ export default function InstallmentsPage() {
               <CreditCard size={26} className="text-blue-400" />
             </div>
             <p className="text-sm font-semibold text-gray-700 mb-1">Customer search karo</p>
-            <p className="text-xs text-gray-400">Naam, phone number ya CNIC likhو — installments dikhein gi</p>
+            <p className="text-xs text-gray-400">Naam ya phone number likhو, ya pura CNIC (13 ہندسے بغیر dashes) — installments dikhein gi</p>
           </div>
         ) : isLoading ? (
           <TableSkeleton rows={5} cols={7} />

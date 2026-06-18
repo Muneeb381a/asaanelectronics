@@ -103,14 +103,20 @@ export class CustomersService {
     const base = staffUserId
       ? and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), eq(customers.createdByUserId, staffUserId))
       : and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt));
-    const cleanSearch = search?.trim().replace(/-/g, '');
-    const searchCond = cleanSearch
-      ? and(base, or(
-          ilike(customers.name,       `%${cleanSearch}%`),
-          ilike(customers.phone,      `%${cleanSearch}%`),
-          ilike(customers.cnicMasked, `%${cleanSearch}%`),
-        ))
-      : base;
+    const cleanSearch = search?.trim().replace(/-/g, '') ?? '';
+    let searchCond: SQL | undefined = base;
+    if (cleanSearch) {
+      const conds: SQL[] = [
+        ilike(customers.name,  `%${cleanSearch}%`),
+        ilike(customers.phone, `%${cleanSearch}%`),
+      ];
+      if (/^\d{13}$/.test(cleanSearch)) {
+        const [hmac, legacy] = hashCnicBoth(cleanSearch);
+        conds.push(eq(customers.cnicHash, hmac));
+        conds.push(eq(customers.cnicHash, legacy));
+      }
+      searchCond = and(base, or(...conds));
+    }
     const lifecycleCond = lifecycle ? and(searchCond, sql`${lifecycleSQL} = ${lifecycle}`) : searchCond;
     const where = verificationStatus
       ? and(lifecycleCond, eq(customers.verificationStatus, verificationStatus as 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED'))
