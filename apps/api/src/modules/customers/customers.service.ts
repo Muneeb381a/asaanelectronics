@@ -110,6 +110,12 @@ export class CustomersService {
         ilike(customers.name,  `%${cleanSearch}%`),
         ilike(customers.phone, `%${cleanSearch}%`),
       ];
+      // Long digit string (country code, extra digits) — also try first 10/11 digits as phone
+      if (/^\d{12,}$/.test(cleanSearch)) {
+        conds.push(ilike(customers.phone, `%${cleanSearch.slice(0, 11)}%`));
+        conds.push(ilike(customers.phone, `%${cleanSearch.slice(0, 10)}%`));
+      }
+      // 13-digit input → also try CNIC hash lookup
       if (/^\d{13}$/.test(cleanSearch)) {
         const [hmac, legacy] = hashCnicBoth(cleanSearch);
         conds.push(eq(customers.cnicHash, hmac));

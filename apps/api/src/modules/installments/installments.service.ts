@@ -29,13 +29,20 @@ export class InstallmentsService {
     sortBy: string = 'createdAt', sortDir: string = 'desc',
   ) {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
-    if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED'));
+    if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED' | 'PENDING'));
     if (search) {
       const cleanSearch = search.trim().replace(/-/g, '');
       const conds: SQL[] = [
         ilike(customers.name,  `%${cleanSearch}%`),
         ilike(customers.phone, `%${cleanSearch}%`),
       ];
+      // If input is longer than 11 digits (e.g. typed with country code or extra chars),
+      // also try the first 10/11 digits so partial phone matches still work.
+      if (/^\d{12,}$/.test(cleanSearch)) {
+        conds.push(ilike(customers.phone, `%${cleanSearch.slice(0, 11)}%`));
+        conds.push(ilike(customers.phone, `%${cleanSearch.slice(0, 10)}%`));
+      }
+      // 13-digit input → could be a CNIC; also do hash lookup
       if (/^\d{13}$/.test(cleanSearch)) {
         const [hmac, legacy] = hashCnicBoth(cleanSearch);
         conds.push(eq(customers.cnicHash, hmac));
