@@ -32,13 +32,19 @@ export async function listCustomers(req: AuthRequest, res: Response) {
   const search             = req.query['search']             as string | undefined;
   const lifecycle          = req.query['lifecycle']          as string | undefined;
   const verificationStatus = req.query['verificationStatus'] as string | undefined;
+  // Staff see only their own customers on the Customers page.
+  // Pass ?scope=shop to bypass (used by installment form pickers for payment recording).
+  const staffUserId = req.user!.role === 'SELLER_OWNER' || req.query['scope'] === 'shop'
+    ? undefined
+    : req.user!.userId;
   const sortBy  = req.query['sortBy']  as string | undefined;
   const sortDir = req.query['sortDir'] as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, search, lifecycle, verificationStatus, undefined, sortBy, sortDir));
+  success(res, await svc.list(req.user!.sellerId!, page, limit, search, lifecycle, verificationStatus, staffUserId, sortBy, sortDir));
 }
 
 export async function getLifecycleCounts(req: AuthRequest, res: Response) {
-  success(res, await svc.lifecycleCounts(req.user!.sellerId!, undefined));
+  const staffForCounts = req.user!.role === 'SELLER_OWNER' ? undefined : req.user!.userId;
+  success(res, await svc.lifecycleCounts(req.user!.sellerId!, staffForCounts));
 }
 
 export async function getCustomer(req: AuthRequest, res: Response) {

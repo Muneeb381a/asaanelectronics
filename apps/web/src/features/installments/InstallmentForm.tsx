@@ -273,6 +273,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     queryFn: () => customersApi.list({
       search: debouncedCustomerQuery || undefined,
       limit: 50,
+      scope: 'shop',
     }),
   });
 
