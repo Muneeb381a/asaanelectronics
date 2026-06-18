@@ -437,7 +437,22 @@ export default function InstallmentsPage() {
       : <ChevronDown size={11} className="text-blue-600 shrink-0" />;
   }
   const [page, setPage] = useState(1);
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, 350);
+  const [committedSearch, setCommittedSearch] = useState('');
+
+  // Short queries (names, partial phones < 10 chars) auto-commit as you type.
+  // Long digit strings (full phone / CNIC) require Enter or the Search button.
+  useEffect(() => {
+    if (debouncedSearch.replace(/-/g, '').length < 10) {
+      setCommittedSearch(debouncedSearch);
+    }
+  }, [debouncedSearch]);
+
+  function submitSearch() {
+    setCommittedSearch(search.trim());
+    setPage(1);
+  }
+
   const [payInst, setPayInst] = useState<Installment | null>(null);
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
@@ -457,11 +472,11 @@ export default function InstallmentsPage() {
   const LIMIT = 20;
 
   // Staff must search first — don't load all installments by default
-  const staffMustSearch = !isOwner && debouncedSearch.trim().length < 2;
+  const staffMustSearch = !isOwner && committedSearch.trim().length < 2;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['installments', statusFilter, frequencyFilter, debouncedSearch, page, sortBy, sortDir],
-    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: debouncedSearch || undefined, page, limit: LIMIT, sortBy, sortDir }),
+    queryKey: ['installments', statusFilter, frequencyFilter, committedSearch, page, sortBy, sortDir],
+    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: committedSearch || undefined, page, limit: LIMIT, sortBy, sortDir }),
     enabled: !staffMustSearch,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
@@ -590,7 +605,7 @@ export default function InstallmentsPage() {
                 const result = await installmentsApi.exportAll({
                   status: statusFilter || undefined,
                   frequency: frequencyFilter || undefined,
-                  search: debouncedSearch || undefined,
+                  search: committedSearch || undefined,
                 });
                 const csv = buildCSV(result.data);
                 const a = document.createElement('a');
@@ -623,18 +638,38 @@ export default function InstallmentsPage() {
 
       {/* Filter row */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <input
-          type="text"
-          placeholder={isOwner ? 'Search by name, phone, or CNIC (13 digits)…' : 'Naam, phone ya pura CNIC (13 ہندسے) likhو…'}
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className={`w-full sm:max-w-xs px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 transition ${
-            !isOwner && staffMustSearch
-              ? 'border-blue-300 ring-1 ring-blue-200 bg-blue-50/40'
-              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-          }`}
-          autoFocus={!isOwner}
-        />
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder={isOwner ? 'Name, phone, or CNIC…' : 'Naam, phone ya CNIC…'}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); }}
+              className={`w-52 sm:w-64 pl-3 ${search ? 'pr-7' : 'pr-3'} py-2 border rounded-lg text-sm outline-none focus:ring-1 transition ${
+                !isOwner && staffMustSearch
+                  ? 'border-blue-300 ring-1 ring-blue-200 bg-blue-50/40'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              }`}
+              autoFocus={!isOwner}
+            />
+            {search && (
+              <button
+                onClick={() => { setSearch(''); setCommittedSearch(''); setPage(1); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                title="Clear"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={submitSearch}
+            className="shrink-0 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+          >
+            Search
+          </button>
+        </div>
         <div className="flex gap-1 flex-wrap">
           <button
             onClick={() => { setFrequencyFilter(frequencyFilter === 'daily' ? '' : 'daily'); setPage(1); }}

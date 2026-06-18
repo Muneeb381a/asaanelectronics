@@ -1138,15 +1138,27 @@ export default function CustomersPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [closeFormConfirm, setCloseFormConfirm] = useState(false);
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, 350);
+  const [committedSearch, setCommittedSearch] = useState('');
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, lifecycle, verifFilter, sortBy, sortDir]);
+  useEffect(() => {
+    if (debouncedSearch.replace(/-/g, '').length < 10) {
+      setCommittedSearch(debouncedSearch);
+    }
+  }, [debouncedSearch]);
+
+  function submitSearch() {
+    setCommittedSearch(search.trim());
+    setPage(1);
+  }
+
+  useEffect(() => { setPage(1); }, [committedSearch, lifecycle, verifFilter, sortBy, sortDir]);
 
   const LIMIT = 20;
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['customers', debouncedSearch, lifecycle, verifFilter, page, sortBy, sortDir],
+    queryKey: ['customers', committedSearch, lifecycle, verifFilter, page, sortBy, sortDir],
     queryFn: () => customersApi.list({
-      search: debouncedSearch || undefined,
+      search: committedSearch || undefined,
       lifecycle: lifecycle || undefined,
       verificationStatus: verifFilter || undefined,
       page,
@@ -1231,13 +1243,33 @@ export default function CustomersPage() {
       </div>
 
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <input
-          type="text"
-          placeholder="Search by name, phone, or CNIC (13 digits)…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-        />
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Name, phone, or CNIC…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); }}
+              className={`w-52 sm:w-64 pl-3 ${search ? 'pr-7' : 'pr-3'} py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition`}
+            />
+            {search && (
+              <button
+                onClick={() => { setSearch(''); setCommittedSearch(''); setPage(1); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                title="Clear"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={submitSearch}
+            className="shrink-0 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+          >
+            Search
+          </button>
+        </div>
         <div className="flex items-center gap-1.5">
           {([
             { value: '',             label: 'All' },
