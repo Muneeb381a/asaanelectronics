@@ -12,6 +12,7 @@ export type StaffPermissions = {
   canManageReturns: boolean;
   canSearchCnic: boolean;
   canMakeCashSales: boolean;
+  canViewAllInstallments: boolean;
 };
 
 export type StaffMember = {
@@ -25,17 +26,18 @@ export type StaffMember = {
 };
 
 const PERM_LABELS: Record<keyof StaffPermissions, string> = {
-  canAddCustomer:    'Add customers',
-  canEditCustomer:   'Edit customers',
-  canAddInstallment: 'Add installments',
-  canRecordPayment:  'Record payments',
-  canViewReports:    'View reports',
-  canManageProducts: 'Manage products',
-  canVerifyCustomers:'AVO — Verify customers',
-  canRecordExpense:  'Record expenses',
-  canManageReturns:  'Manage returns',
-  canSearchCnic:     'CNIC Search (bureau lookup)',
-  canMakeCashSales:  'Cash Sales',
+  canAddCustomer:         'Add customers',
+  canEditCustomer:        'Edit customers',
+  canAddInstallment:      'Add installments',
+  canRecordPayment:       'Record payments',
+  canViewReports:         'View reports',
+  canManageProducts:      'Manage products',
+  canVerifyCustomers:     'AVO — Verify customers',
+  canRecordExpense:       'Record expenses',
+  canManageReturns:       'Manage returns',
+  canSearchCnic:          'CNIC Search (bureau lookup)',
+  canMakeCashSales:       'Cash Sales',
+  canViewAllInstallments: 'Search all installments (not just own)',
 };
 
 export { PERM_LABELS };

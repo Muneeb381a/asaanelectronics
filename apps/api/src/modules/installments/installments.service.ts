@@ -27,8 +27,11 @@ export class InstallmentsService {
     sellerId: string, page: number, limit: number,
     status?: string, search?: string, customerId?: string, frequency?: string,
     sortBy: string = 'createdAt', sortDir: string = 'desc',
+    staffUserId?: string,
   ) {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
+    // Restrict to staff's own customers when they lack canViewAllInstallments
+    if (staffUserId) conditions.push(eq(customers.createdByUserId, staffUserId));
     if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED' | 'PENDING'));
     if (search) {
       const cleanSearch = search.trim().replace(/-/g, '');

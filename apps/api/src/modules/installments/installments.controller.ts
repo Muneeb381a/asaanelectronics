@@ -1,10 +1,13 @@
 import type { Response } from 'express';
 import type { AuthRequest } from '../../middleware/auth.js';
+import { eq } from 'drizzle-orm';
 import { InstallmentsService } from './installments.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
 import { importInstallmentsSchema, updateInstallmentSchema } from '@assaan/shared';
+import { db } from '../../db/index.js';
+import { users } from '../../db/schema.js';
 const svc   = new InstallmentsService();
 const audit = new AuditService();
 
@@ -20,7 +23,20 @@ export async function listInstallments(req: AuthRequest, res: Response) {
   const frequency  = req.query['frequency']  as string | undefined;
   const sortBy     = req.query['sortBy']     as string | undefined;
   const sortDir    = req.query['sortDir']    as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId, frequency, sortBy, sortDir));
+
+  // Staff without canViewAllInstallments see only their own customers' installments.
+  // Owners and staff with the permission see all shop installments.
+  let staffUserId: string | undefined;
+  if (req.user!.role !== 'SELLER_OWNER') {
+    const member = await db.query.users.findFirst({
+      where: eq(users.id, req.user!.userId),
+      columns: { permissions: true },
+    });
+    const canViewAll = member?.permissions?.canViewAllInstallments ?? true;
+    if (!canViewAll) staffUserId = req.user!.userId;
+  }
+
+  success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId, frequency, sortBy, sortDir, staffUserId));
 }
 
 export async function getInstallment(req: AuthRequest, res: Response) {
