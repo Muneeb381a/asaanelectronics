@@ -369,12 +369,19 @@ export default function ExportsPage() {
   ];
 
   function downloadMonthlyCustomersPdf() {
-    const monthLabel = `${MONTH_NAMES[custMonth - 1]} ${custYear}`;
+    const monthLabel  = `${MONTH_NAMES[custMonth - 1]} ${custYear}`;
+    const daysInMonth = new Date(custYear, custMonth, 0).getDate();
     const fmt = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
-    const paidCount    = custRows.filter((r) => r.status === 'Paid').length;
-    const pendingCount = custRows.filter((r) => r.status === 'Pending').length;
+
+    const expectedAmount = (r: typeof custRows[number]) =>
+      r.paymentFrequency === 'daily' ? r.monthlyAmount * daysInMonth : r.monthlyAmount;
+
+    const paidCount      = custRows.filter((r) => r.status === 'Paid').length;
+    const pendingCount   = custRows.filter((r) => r.status === 'Pending').length;
     const totalCollected = custRows.reduce((s, r) => s + r.paidAmount, 0);
-    const totalPending   = custRows.filter((r) => r.status === 'Pending').reduce((s, r) => s + r.monthlyAmount, 0);
+    const totalPending   = custRows
+      .filter((r) => r.status === 'Pending')
+      .reduce((s, r) => s + expectedAmount(r), 0);
 
     printReport({
       title: `Monthly Installment Report — ${monthLabel}`,
@@ -386,7 +393,9 @@ export default function ExportsPage() {
         r.srNo,
         r.clientId,
         r.customerName,
-        `PKR ${fmt(r.rupees)}`,
+        r.status === 'Paid'
+          ? `PKR ${fmt(r.paidAmount)}`
+          : `PKR ${fmt(expectedAmount(r))}`,
         r.customerPhone,
         r.status,
       ]),
@@ -536,11 +545,14 @@ export default function ExportsPage() {
 
       {/* Monthly Customers tab */}
       {tab === 'monthly-customers' && (() => {
-        const fmt        = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
-        const paidRows   = custRows.filter((r) => r.status === 'Paid');
+        const fmt         = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+        const daysInMonth = new Date(custYear, custMonth, 0).getDate();
+        const expectedAmt = (r: typeof custRows[number]) =>
+          r.paymentFrequency === 'daily' ? r.monthlyAmount * daysInMonth : r.monthlyAmount;
+        const paidRows    = custRows.filter((r) => r.status === 'Paid');
         const pendingRows = custRows.filter((r) => r.status === 'Pending');
-        const collected  = paidRows.reduce((s, r) => s + r.paidAmount, 0);
-        const pending    = pendingRows.reduce((s, r) => s + r.monthlyAmount, 0);
+        const collected   = paidRows.reduce((s, r) => s + r.paidAmount, 0);
+        const pending     = pendingRows.reduce((s, r) => s + expectedAmt(r), 0);
         const currentYear = new Date().getFullYear();
         const yearOptions = Array.from({ length: currentYear - 2023 }, (_, i) => currentYear - i);
 
@@ -642,7 +654,7 @@ export default function ExportsPage() {
                         <Td bold>{r.customerName}</Td>
                         <Td right>
                           <span className={r.status === 'Paid' ? 'text-green-700 font-semibold' : 'text-orange-600 font-semibold'}>
-                            PKR {fmt(r.rupees)}
+                            PKR {fmt(r.status === 'Paid' ? r.paidAmount : expectedAmt(r))}
                           </span>
                         </Td>
                         <Td>{r.customerPhone}</Td>

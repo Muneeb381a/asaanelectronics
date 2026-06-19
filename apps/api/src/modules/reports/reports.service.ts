@@ -170,7 +170,7 @@ export class ReportsService {
         eq(customers.sellerId,      sellerId),
         isNull(installments.deletedAt),
         isNull(customers.deletedAt),
-        eq(installments.status,     'ACTIVE'),
+        inArray(installments.status, ['ACTIVE', 'DEFAULTED']),
         lte(installments.startDate, monthEnd),
       ))
       .orderBy(asc(customers.name));
