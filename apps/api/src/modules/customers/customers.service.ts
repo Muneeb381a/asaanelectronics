@@ -26,28 +26,33 @@ function riskLabel(score: number): 'GOOD' | 'AVERAGE' | 'RISKY' | 'BLACKLIST' {
   return 'BLACKLIST';
 }
 
-// Reused in SELECT and WHERE — must stay in sync
-const lifecycleSQL = sql<string>`(
-  CASE
-    WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL)
-      THEN 'DEFAULT'
-    WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL
-      AND (CASE WHEN i.payment_frequency = 'daily'
-        THEN i.start_date + (i.months || ' days')::interval
-        ELSE i.start_date + (i.months || ' months')::interval
-      END) < NOW())
-      THEN 'AT_RISK'
-    WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE'    AND i.deleted_at IS NULL)
-     AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
-      THEN 'REPEAT'
-    WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL)
-      THEN 'ACTIVE'
-    WHEN NOT EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status IN ('ACTIVE','PENDING') AND i.deleted_at IS NULL)
-     AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
-      THEN 'CLOSED'
-    WHEN ${customers.verificationStatus} = 'APPROVED' THEN 'VERIFIED'
-    ELSE 'LEAD'
-  END
+// Single aggregate subquery per row — replaces 6 correlated EXISTS (one full-scan covers all stages)
+// Uses idx_installments_customer_deleted(customerId, deletedAt) for the inner WHERE.
+const lifecycleSQL = sql<string>`COALESCE(
+  (
+    SELECT CASE
+      WHEN MAX(CASE WHEN i.status = 'DEFAULTED' THEN 1 ELSE 0 END) = 1
+        THEN 'DEFAULT'
+      WHEN MAX(CASE WHEN i.status = 'ACTIVE' AND (
+          CASE WHEN i.payment_frequency = 'daily'
+            THEN i.start_date + (i.months || ' days')::interval
+            ELSE i.start_date + (i.months || ' months')::interval
+          END) < NOW() THEN 1 ELSE 0 END) = 1
+        THEN 'AT_RISK'
+      WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE')    > 0
+       AND COUNT(*) FILTER (WHERE i.status = 'COMPLETED') > 0
+        THEN 'REPEAT'
+      WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE') > 0
+        THEN 'ACTIVE'
+      WHEN COUNT(*) FILTER (WHERE i.status IN ('ACTIVE','PENDING')) = 0
+       AND COUNT(*) FILTER (WHERE i.status = 'COMPLETED') > 0
+        THEN 'CLOSED'
+      ELSE NULL
+    END
+    FROM installments i
+    WHERE i.customer_id = ${customers.id} AND i.deleted_at IS NULL
+  ),
+  CASE WHEN ${customers.verificationStatus} = 'APPROVED' THEN 'VERIFIED' ELSE 'LEAD' END
 )`;
 
 type CreateBody = {
@@ -180,7 +185,9 @@ export class CustomersService {
     const sortCol = sortColMap[sortBy ?? 'createdAt'] ?? customers.createdAt;
     const orderExpr = sortDir === 'asc' ? asc(sortCol) : desc(sortCol);
 
-    const [rows, [{ count }]] = await Promise.all([
+    // When lifecycle filter is active, the regular WHERE clause forces PostgreSQL to run
+    // lifecycleSQL for every customer (N × 1 subquery). Use a CTE-based count instead.
+    const [rows, total] = await Promise.all([
       db.select({
         id: customers.id,
         sellerId: customers.sellerId,
@@ -226,7 +233,10 @@ export class CustomersService {
         lifecycleStage: lifecycleSQL,
       }).from(customers).where(where).limit(limit).offset((page - 1) * limit)
         .orderBy(orderExpr),
-      db.select({ count: sql<number>`count(*)::int` }).from(customers).where(where),
+      lifecycle
+        ? this.countWithLifecycle(sellerId, lifecycle, cleanSearch || undefined, verificationStatus, staffUserId)
+        : db.select({ count: sql<number>`count(*)::int` }).from(customers).where(where)
+            .then((r) => r[0]!.count),
     ]);
 
     const data = rows.map((r) => ({
@@ -234,7 +244,7 @@ export class CustomersService {
       riskScore: Number(r.riskScore),
       riskLabel: riskLabel(Number(r.riskScore)),
     }));
-    return { data, total: count, page, limit };
+    return { data, total, page, limit };
   }
 
   async lifecycleCounts(sellerId: string, staffUserId?: string) {
@@ -280,6 +290,68 @@ export class CustomersService {
     };
     for (const r of rows) counts[r.stage] = r.count;
     return counts;
+  }
+
+  // CTE-based count for lifecycle-filtered queries — avoids N×subquery per customer row.
+  // One aggregation pass on installments, then classify + count in one JOIN.
+  private async countWithLifecycle(
+    sellerId: string, lifecycle: string,
+    search?: string, verificationStatus?: string, staffUserId?: string,
+  ): Promise<number> {
+    // Build base WHERE conditions without lifecycle
+    let whereSQL: SQL = sql`c.seller_id = ${sellerId} AND c.deleted_at IS NULL`;
+    if (staffUserId)         whereSQL = sql`${whereSQL} AND c.created_by_user_id = ${staffUserId}`;
+    if (verificationStatus)  whereSQL = sql`${whereSQL} AND c.verification_status = ${verificationStatus}`;
+    if (search) {
+      const parts: SQL[] = [
+        sql`c.name ILIKE ${'%' + search + '%'}`,
+        sql`c.phone ILIKE ${'%' + search + '%'}`,
+      ];
+      if (/^\d{12,}$/.test(search)) {
+        parts.push(sql`c.phone ILIKE ${'%' + search.slice(0, 11) + '%'}`);
+        parts.push(sql`c.phone ILIKE ${'%' + search.slice(0, 10) + '%'}`);
+      }
+      if (/^\d{13}$/.test(search)) {
+        const [hmac, legacy] = hashCnicBoth(search);
+        parts.push(sql`c.cnic_hash = ${hmac}`);
+        parts.push(sql`c.cnic_hash = ${legacy}`);
+      }
+      const orSQL = parts.slice(1).reduce<SQL>((acc, p) => sql`${acc} OR ${p}`, parts[0]!);
+      whereSQL = sql`${whereSQL} AND (${orSQL})`;
+    }
+
+    const result = await db.execute<{ count: number }>(sql`
+      WITH inst_agg AS (
+        SELECT
+          customer_id,
+          MAX(CASE WHEN status = 'DEFAULTED' THEN 1 ELSE 0 END)              AS is_defaulted,
+          MAX(CASE WHEN status = 'ACTIVE' AND (
+            CASE WHEN payment_frequency = 'daily'
+              THEN start_date + (months || ' days')::interval
+              ELSE start_date + (months || ' months')::interval
+            END) < NOW() THEN 1 ELSE 0 END)                                  AS is_at_risk,
+          COUNT(*) FILTER (WHERE status = 'ACTIVE')                           AS active,
+          COUNT(*) FILTER (WHERE status = 'COMPLETED')                        AS completed,
+          COUNT(*) FILTER (WHERE status IN ('ACTIVE','PENDING'))              AS active_or_pending
+        FROM installments
+        WHERE deleted_at IS NULL
+        GROUP BY customer_id
+      )
+      SELECT COUNT(*)::int AS count
+      FROM customers c
+      LEFT JOIN inst_agg ia ON ia.customer_id = c.id
+      WHERE ${whereSQL}
+        AND CASE
+          WHEN COALESCE(ia.is_defaulted, 0) = 1 THEN 'DEFAULT'
+          WHEN COALESCE(ia.is_at_risk,   0) = 1 THEN 'AT_RISK'
+          WHEN COALESCE(ia.active,   0) > 0 AND COALESCE(ia.completed, 0) > 0 THEN 'REPEAT'
+          WHEN COALESCE(ia.active,   0) > 0 THEN 'ACTIVE'
+          WHEN COALESCE(ia.active_or_pending, 0) = 0 AND COALESCE(ia.completed, 0) > 0 THEN 'CLOSED'
+          WHEN c.verification_status = 'APPROVED' THEN 'VERIFIED'
+          ELSE 'LEAD'
+        END = ${lifecycle}
+    `);
+    return Number(result[0]?.count ?? 0);
   }
 
   async lookupByCnic(sellerId: string, cnic: string) {
@@ -413,16 +485,19 @@ export class CustomersService {
   }
 
   async create(sellerId: string, body: CreateBody, createdByUserId?: string) {
-    // Plan limit check
-    const seller = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { plan: true } });
-    const limit = PLAN_LIMITS[seller?.plan ?? 'TRIAL'].customers;
-    if (!isUnlimited(limit)) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(customers).where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt)));
-      if (count >= limit) throw new AppError(`Customer limit reached (${limit} on ${seller?.plan ?? 'TRIAL'} plan). Please upgrade.`, 402);
-    }
-
     const hash = hashCnic(body.cnic);
-    const [existingCnic, existingPhone] = await Promise.all([
+
+    // Build document hash conditions upfront (pure computation, no DB call)
+    const hashConds: SQL[] = [];
+    if (body.cnicFrontHash)   hashConds.push(eq(customers.cnicFrontHash,   body.cnicFrontHash));
+    if (body.cnicBackHash)    hashConds.push(eq(customers.cnicBackHash,    body.cnicBackHash));
+    if (body.blankChequeHash) hashConds.push(eq(customers.blankChequeHash, body.blankChequeHash));
+
+    // All 5 pre-insert checks in ONE parallel round trip (was 4–5 sequential round trips)
+    const [seller, countRows, existingCnic, existingPhone, dupDoc] = await Promise.all([
+      db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { plan: true } }),
+      db.select({ count: sql<number>`count(*)::int` }).from(customers)
+        .where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt))),
       db.query.customers.findFirst({
         where: and(eq(customers.sellerId, sellerId), eq(customers.cnicHash, hash)),
         columns: { id: true, deletedAt: true },
@@ -431,24 +506,27 @@ export class CustomersService {
         where: and(eq(customers.sellerId, sellerId), eq(customers.phone, body.phone), isNull(customers.deletedAt)),
         columns: { id: true, cnicMasked: true },
       }),
+      hashConds.length > 0
+        ? db.query.customers.findFirst({
+            where: and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), or(...hashConds)),
+            columns: { cnicMasked: true },
+          })
+        : Promise.resolve(null as null),
     ]);
+
+    // Plan limit check
+    const planLimit = PLAN_LIMITS[seller?.plan ?? 'TRIAL'].customers;
+    if (!isUnlimited(planLimit) && countRows[0]!.count >= planLimit) {
+      throw new AppError(`Customer limit reached (${planLimit} on ${seller?.plan ?? 'TRIAL'} plan). Please upgrade.`, 402);
+    }
+
+    // Duplicate checks
     if (existingCnic) {
       if (!existingCnic.deletedAt) throw new AppError('A customer with this CNIC already exists', 409);
       throw new AppError('A deleted customer record with this CNIC exists. Contact support to restore the account.', 409);
     }
     if (existingPhone) throw new AppError(`Phone number already registered to customer ${existingPhone.cnicMasked}`, 409);
-
-    const hashConds: SQL[] = [];
-    if (body.cnicFrontHash)   hashConds.push(eq(customers.cnicFrontHash,   body.cnicFrontHash));
-    if (body.cnicBackHash)    hashConds.push(eq(customers.cnicBackHash,    body.cnicBackHash));
-    if (body.blankChequeHash) hashConds.push(eq(customers.blankChequeHash, body.blankChequeHash));
-    if (hashConds.length > 0) {
-      const dupDoc = await db.query.customers.findFirst({
-        where: and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), or(...hashConds)),
-        columns: { cnicMasked: true },
-      });
-      if (dupDoc) throw new AppError(`Duplicate document detected — this image is already linked to customer ${dupDoc.cnicMasked}. Possible fraud.`, 409);
-    }
+    if (dupDoc) throw new AppError(`Duplicate document detected — this image is already linked to customer ${dupDoc.cnicMasked}. Possible fraud.`, 409);
 
     const [customer] = await db
       .insert(customers)

@@ -190,6 +190,8 @@ export const customers = pgTable(
     index('idx_blank_cheque_hash').on(t.sellerId, t.blankChequeHash),
     index('idx_customers_phone').on(t.phone),
     index('idx_customers_name').on(t.sellerId, t.name),
+    index('idx_customers_seller_del_created').on(t.sellerId, t.deletedAt, t.createdAt),
+    index('idx_customers_created_by').on(t.createdByUserId, t.sellerId),
   ],
 );
 

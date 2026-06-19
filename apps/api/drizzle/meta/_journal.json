@@ -22,6 +22,13 @@
       "when": 1781415433536,
       "tag": "0002_daffy_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781887659443,
+      "tag": "0003_fantastic_nehzno",
+      "breakpoints": true
     }
   ]
 }

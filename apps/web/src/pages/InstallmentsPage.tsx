@@ -324,8 +324,23 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
     mutationFn: () => installmentsApi.reschedule(inst.id, mode === 'months'
       ? { newMonths: Number(value) }
       : { newMonthly: Number(value) }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['installments'] });
+    onSuccess: (updated) => {
+      // Patch only the fields that changed — avoids full list refetch
+      type ListCache = { data: Installment[]; total: number; page: number; limit: number };
+      qc.setQueriesData<ListCache>({ queryKey: ['installments'], exact: false }, (cached) => {
+        if (!cached?.data) return cached;
+        return {
+          ...cached,
+          data: cached.data.map((i) =>
+            i.id === inst.id
+              ? { ...i, monthly: updated.monthly, months: updated.months, status: updated.status }
+              : i
+          ),
+        };
+      });
+      qc.setQueryData(['installment-single', inst.id], (old: Installment | undefined) =>
+        old ? { ...old, monthly: updated.monthly, months: updated.months, status: updated.status } : old
+      );
       toast.success('Installment rescheduled');
       onClose();
     },
