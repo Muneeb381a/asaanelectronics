@@ -401,9 +401,16 @@ export default function ExportsPage() {
   }
 
   function downloadMonthlyCustomersBlankPdf() {
-    const monthLabel = `${MONTH_NAMES[custMonth - 1]} ${custYear}`;
+    const monthLabel  = `${MONTH_NAMES[custMonth - 1]} ${custYear}`;
+    const daysInMonth = new Date(custYear, custMonth, 0).getDate();
     const fmt = (n: number) => n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
-    const totalMonthly = custRows.reduce((s, r) => s + r.monthlyAmount, 0);
+
+    // Daily customers: per-day amount × days in month; monthly: just monthly amount
+    const expectedAmount = (r: typeof custRows[number]) =>
+      r.paymentFrequency === 'daily' ? r.monthlyAmount * daysInMonth : r.monthlyAmount;
+
+    const totalMonthly = custRows.reduce((s, r) => s + expectedAmount(r), 0);
+
     printReport({
       title: `Monthly Collection Register — ${monthLabel}`,
       subtitle: `Printable register for manual collection tracking — ${monthLabel}`,
@@ -414,14 +421,14 @@ export default function ExportsPage() {
         r.srNo,
         r.clientId,
         r.customerName,
-        `PKR ${fmt(r.monthlyAmount)}`,
+        `PKR ${fmt(expectedAmount(r))}`,
         r.customerPhone,
         '',
       ]),
       summary: [
-        `<strong>Month:</strong> ${monthLabel}`,
+        `<strong>Month:</strong> ${monthLabel}  (${daysInMonth} days)`,
         `<strong>Total customers:</strong> ${custRows.length}`,
-        `<strong>Total monthly amount:</strong> PKR ${fmt(totalMonthly)}`,
+        `<strong>Total expected this month:</strong> PKR ${fmt(totalMonthly)}`,
         `<strong>Collector:</strong> _______________________`,
         `<strong>Date:</strong> _______________________`,
       ],

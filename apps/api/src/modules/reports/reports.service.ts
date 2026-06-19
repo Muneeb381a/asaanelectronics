@@ -8,15 +8,16 @@ const MONTH_NAMES = [
 ];
 
 export type MonthlyCustomerRow = {
-  srNo:          number;
-  clientId:      string;
-  customerName:  string;
-  customerPhone: string;
-  rupees:        number;     // paidAmount if Paid, monthly installment if Pending
-  paidAmount:    number;
-  monthlyAmount: number;
-  remaining:     number;
-  status:        'Paid' | 'Pending';
+  srNo:              number;
+  clientId:          string;
+  customerName:      string;
+  customerPhone:     string;
+  rupees:            number;
+  paidAmount:        number;
+  monthlyAmount:     number;
+  remaining:         number;
+  status:            'Paid' | 'Pending';
+  paymentFrequency:  'monthly' | 'daily';
 };
 
 export type MonthlyReportRow = {
@@ -151,12 +152,13 @@ export class ReportsService {
     const monthEnd   = new Date(year, month, 0, 23, 59, 59, 999);
 
     const instCols = {
-      id:            installments.id,
-      invoiceNumber: installments.invoiceNumber,
-      customerName:  customers.name,
-      customerPhone: customers.phone,
-      monthly:       installments.monthly,
-      remaining:     installments.remaining,
+      id:               installments.id,
+      invoiceNumber:    installments.invoiceNumber,
+      customerName:     customers.name,
+      customerPhone:    customers.phone,
+      monthly:          installments.monthly,
+      remaining:        installments.remaining,
+      paymentFrequency: installments.paymentFrequency,
     };
 
     // 1. All ACTIVE installments that were open during this month
@@ -226,15 +228,16 @@ export class ReportsService {
       const monthly = Number(r.monthly);
       const isPaid  = paid > 0;
       return {
-        srNo:          idx + 1,
-        clientId:      r.invoiceNumber ?? '—',
-        customerName:  r.customerName,
-        customerPhone: r.customerPhone,
-        rupees:        isPaid ? paid : monthly,
-        paidAmount:    paid,
-        monthlyAmount: monthly,
-        remaining:     Number(r.remaining),
-        status:        (isPaid ? 'Paid' : 'Pending') as 'Paid' | 'Pending',
+        srNo:             idx + 1,
+        clientId:         r.invoiceNumber ?? '—',
+        customerName:     r.customerName,
+        customerPhone:    r.customerPhone,
+        rupees:           isPaid ? paid : monthly,
+        paidAmount:       paid,
+        monthlyAmount:    monthly,
+        remaining:        Number(r.remaining),
+        status:           (isPaid ? 'Paid' : 'Pending') as 'Paid' | 'Pending',
+        paymentFrequency: (r.paymentFrequency ?? 'monthly') as 'monthly' | 'daily',
       };
     });
   }

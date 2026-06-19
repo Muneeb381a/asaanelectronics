@@ -15,15 +15,16 @@ export type MonthlyReportRow = {
 };
 
 export type MonthlyCustomerRow = {
-  srNo:          number;
-  clientId:      string;
-  customerName:  string;
-  customerPhone: string;
-  rupees:        number;
-  paidAmount:    number;
-  monthlyAmount: number;
-  remaining:     number;
-  status:        'Paid' | 'Pending';
+  srNo:             number;
+  clientId:         string;
+  customerName:     string;
+  customerPhone:    string;
+  rupees:           number;
+  paidAmount:       number;
+  monthlyAmount:    number;
+  remaining:        number;
+  status:           'Paid' | 'Pending';
+  paymentFrequency: 'monthly' | 'daily';
 };
 
 export const reportsApi = {
