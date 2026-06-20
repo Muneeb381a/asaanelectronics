@@ -148,8 +148,10 @@ export class ReportsService {
   }
 
   async getMonthlyCustomers(sellerId: string, year: number, month: number): Promise<MonthlyCustomerRow[]> {
-    const monthStart = new Date(year, month - 1, 1);
-    const monthEnd   = new Date(year, month, 0, 23, 59, 59, 999);
+    // UTC boundaries — consistent with paidOn storage (same approach as listBySeller)
+    const monthStart  = new Date(Date.UTC(year, month - 1, 1));
+    const monthEnd    = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
     const instCols = {
       id:               installments.id,
@@ -161,7 +163,7 @@ export class ReportsService {
       paymentFrequency: installments.paymentFrequency,
     };
 
-    // 1. All ACTIVE installments that were open during this month
+    // 1. All ACTIVE + DEFAULTED installments that started on or before this month
     const activeRows = await db
       .select(instCols)
       .from(installments)
@@ -194,11 +196,10 @@ export class ReportsService {
       ))
       .groupBy(payments.installmentId);
 
-    const payMap      = new Map(payRows.map((p) => [p.installmentId, Number(p.total ?? 0)]));
-    const activeIds   = new Set(activeRows.map((r) => r.id));
+    const payMap    = new Map(payRows.map((p) => [p.installmentId, Number(p.total ?? 0)]));
+    const activeIds = new Set(activeRows.map((r) => r.id));
 
-    // 3. Fetch non-ACTIVE installments that still have a payment in this month
-    //    (e.g. completed installments that were paid off during this period)
+    // 3. Fetch installments completed this month (final payment made during this period)
     const extraIds = [...payMap.keys()].filter((id) => !activeIds.has(id));
     const extraRows = extraIds.length > 0
       ? await db
@@ -213,26 +214,42 @@ export class ReportsService {
           ))
       : [];
 
+    // "Paid" = customer paid the full expected monthly amount this period.
+    // Completed installments (extraRows) are always Paid — they cleared their balance this month.
+    // Partial payments (paid > 0 but < monthly amount) still count as Pending.
+    const getIsPaid = (r: { id: string; monthly: string | null; paymentFrequency: string | null }) => {
+      const paid = payMap.get(r.id) ?? 0;
+      if (!activeIds.has(r.id)) return paid > 0; // completed this month — always Paid
+      const monthly     = Number(r.monthly ?? 0);
+      const expectedAmt = (r.paymentFrequency ?? 'monthly') === 'daily'
+        ? monthly * daysInMonth
+        : monthly;
+      return paid >= expectedAmt;
+    };
+
     // Merge, sort: Paid first then Pending, alphabetical within each group
     const all = [...activeRows, ...extraRows];
     all.sort((a, b) => {
-      const aPaid = (payMap.get(a.id) ?? 0) > 0;
-      const bPaid = (payMap.get(b.id) ?? 0) > 0;
+      const aPaid = getIsPaid(a);
+      const bPaid = getIsPaid(b);
       if (aPaid && !bPaid) return -1;
       if (!aPaid && bPaid) return  1;
       return a.customerName.localeCompare(b.customerName);
     });
 
     return all.map((r, idx) => {
-      const paid    = payMap.get(r.id) ?? 0;
-      const monthly = Number(r.monthly);
-      const isPaid  = paid > 0;
+      const paid        = payMap.get(r.id) ?? 0;
+      const monthly     = Number(r.monthly);
+      const expectedAmt = (r.paymentFrequency ?? 'monthly') === 'daily'
+        ? monthly * daysInMonth
+        : monthly;
+      const isPaid      = getIsPaid(r);
       return {
         srNo:             idx + 1,
         clientId:         r.invoiceNumber ?? '—',
         customerName:     r.customerName,
         customerPhone:    r.customerPhone,
-        rupees:           isPaid ? paid : monthly,
+        rupees:           isPaid ? paid : expectedAmt,
         paidAmount:       paid,
         monthlyAmount:    monthly,
         remaining:        Number(r.remaining),
