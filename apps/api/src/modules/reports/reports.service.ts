@@ -164,7 +164,8 @@ export class ReportsService {
       instStatus:       installments.status,
     };
 
-    // 1. All ACTIVE + DEFAULTED installments that started on or before this month
+    // 1. All PENDING + ACTIVE + DEFAULTED installments that started on or before this month.
+    //    PENDING = created but not yet activated by owner (still shows as outstanding obligation).
     const activeRows = await db
       .select(instCols)
       .from(installments)
@@ -173,7 +174,7 @@ export class ReportsService {
         eq(customers.sellerId,      sellerId),
         isNull(installments.deletedAt),
         isNull(customers.deletedAt),
-        inArray(installments.status, ['ACTIVE', 'DEFAULTED']),
+        inArray(installments.status, ['PENDING', 'ACTIVE', 'DEFAULTED']),
         lte(installments.startDate, monthEnd),
       ))
       .orderBy(asc(customers.name));
@@ -226,6 +227,7 @@ export class ReportsService {
       instStatus: string | null;
     }): 'Paid' | 'Pending' | 'Defaulted' => {
       if (r.instStatus === 'DEFAULTED') return 'Defaulted';
+      if (r.instStatus === 'PENDING')   return 'Pending';
       const paid = payMap.get(r.id) ?? 0;
       if (!activeIds.has(r.id)) return paid > 0 ? 'Paid' : 'Pending'; // extraRows = completed this month
       const monthly     = Number(r.monthly ?? 0);
