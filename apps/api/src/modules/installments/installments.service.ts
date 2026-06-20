@@ -20,6 +20,7 @@ type CreateBody = {
   cashPrice?:        number;
   profitMarkup?:     number;
   paymentFrequency?: 'monthly' | 'daily';
+  paymentDueDay?:    number;
 };
 
 export class InstallmentsService {
@@ -89,6 +90,7 @@ export class InstallmentsService {
           cashPrice:         installments.cashPrice,
           profitMarkup:      installments.profitMarkup,
           paymentFrequency:  installments.paymentFrequency,
+          paymentDueDay:     installments.paymentDueDay,
           customerArea:      customers.area,
           isOverdue: sql<boolean>`(
             ${installments.status} = 'ACTIVE' AND (
@@ -99,12 +101,14 @@ export class InstallmentsService {
                     / NULLIF(${installments.monthly}::numeric, 0)
                   )) + 1) || ' days'
                 )::interval
-                ELSE ${installments.startDate} + (
-                  (GREATEST(0, FLOOR(
-                    (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
-                    / NULLIF(${installments.monthly}::numeric, 0)
-                  )) + 1) || ' months'
-                )::interval
+                ELSE (
+                  DATE_TRUNC('month', ${installments.startDate} + (
+                    (GREATEST(0, FLOOR(
+                      (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+                      / NULLIF(${installments.monthly}::numeric, 0)
+                    )) + 1) || ' months'
+                  )::interval)::date + (${installments.paymentDueDay} - 1)
+                )
               END
             ) < now()
           )`,
@@ -148,6 +152,7 @@ export class InstallmentsService {
         cashPrice:         installments.cashPrice,
         profitMarkup:      installments.profitMarkup,
         paymentFrequency:  installments.paymentFrequency,
+        paymentDueDay:     installments.paymentDueDay,
         customerArea:      customers.area,
         isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
           CASE WHEN ${installments.paymentFrequency} = 'daily'
@@ -240,6 +245,7 @@ export class InstallmentsService {
           cashPrice:        body.cashPrice    != null ? String(body.cashPrice)    : null,
           profitMarkup:     body.profitMarkup  != null ? String(body.profitMarkup) : null,
           paymentFrequency: freq,
+          paymentDueDay:    body.paymentDueDay ?? 10,
         })
         .returning();
 

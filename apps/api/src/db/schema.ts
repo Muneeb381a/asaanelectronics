@@ -259,6 +259,7 @@ export const installments = pgTable('installments', {
   cashPrice:        decimal('cash_price',    { precision: 12, scale: 2 }),
   profitMarkup:     decimal('profit_markup', { precision: 12, scale: 2 }),
   paymentFrequency: text('payment_frequency').default('monthly').notNull(),
+  paymentDueDay:    integer('payment_due_day').default(10).notNull(),
   createdAt:        timestamp('created_at').defaultNow().notNull(),
   deletedAt:    timestamp('deleted_at'),
   deletedBy:    text('deleted_by').references(() => users.id, { onDelete: 'set null' }),

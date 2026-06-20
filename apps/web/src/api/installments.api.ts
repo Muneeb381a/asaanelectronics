@@ -24,6 +24,7 @@ export interface Installment {
   cashPrice:        string | null;
   profitMarkup:     string | null;
   paymentFrequency: string | null;
+  paymentDueDay:    number;
   customerArea:     string | null;
 }
 

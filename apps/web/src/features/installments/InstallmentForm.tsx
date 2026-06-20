@@ -21,6 +21,7 @@ const formSchema = z.object({
   cashPrice:         z.number({ invalid_type_error: 'Required' }).positive().optional(),
   profitMarkup:      z.number({ invalid_type_error: 'Required' }).min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
+  paymentDueDay:     z.number().int().min(1).max(31).default(10),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -65,10 +66,11 @@ function pkr(n: number) {
   return 'PKR ' + n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
-function addMonths(date: Date, n: number) {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + n);
-  return d;
+function dueDateForPeriod(startDate: Date, periodN: number, dueDay: number): Date {
+  const year    = startDate.getFullYear();
+  const month   = startDate.getMonth() + periodN;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(dueDay, lastDay));
 }
 
 function addDays(date: Date, n: number) {
@@ -215,6 +217,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       startDate: new Date().toISOString().slice(0, 10),
       downPayment: 0,
       paymentFrequency: 'monthly',
+      paymentDueDay: 10,
       // Pre-fill when customer is locked (staff CNIC flow)
       ...(lockedCustomerId ? { customerId: lockedCustomerId } : {}),
     },
@@ -226,10 +229,10 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
   const [
     customerId, productId, totalAmount, downPayment, months, startDate,
-    cashPrice, profitMarkup, paymentFrequency,
+    cashPrice, profitMarkup, paymentFrequency, paymentDueDay,
   ] = useWatch({
     control,
-    name: ['customerId', 'productId', 'totalAmount', 'downPayment', 'months', 'startDate', 'cashPrice', 'profitMarkup', 'paymentFrequency'],
+    name: ['customerId', 'productId', 'totalAmount', 'downPayment', 'months', 'startDate', 'cashPrice', 'profitMarkup', 'paymentFrequency', 'paymentDueDay'],
   });
 
   const isDaily = paymentFrequency === 'daily';
@@ -378,9 +381,10 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
   const schedule: { date: Date; amount: number }[] = [];
   if (periodic > 0 && startDate) {
-    const base = new Date(startDate);
+    const base    = new Date(startDate);
+    const dueDay  = paymentDueDay ?? 10;
     for (let i = 1; i <= futureMonths; i++) {
-      schedule.push({ date: isDaily ? addDays(base, i) : addMonths(base, i), amount: periodic });
+      schedule.push({ date: isDaily ? addDays(base, i) : dueDateForPeriod(base, i, dueDay), amount: periodic });
     }
   }
 
@@ -819,10 +823,25 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
         )}
       </div>
 
-      {/* Start date */}
-      <div>
-        <Label>{isDaily ? 'First Payment Date' : 'First Instalment Date'}</Label>
-        <input type="date" {...register('startDate')} className={inp} />
+      {/* Start date + due day */}
+      <div className={!isDaily ? 'grid grid-cols-2 gap-3' : ''}>
+        <div>
+          <Label>{isDaily ? 'First Payment Date' : 'First Instalment Date'}</Label>
+          <input type="date" {...register('startDate')} className={inp} />
+        </div>
+        {!isDaily && (
+          <div>
+            <Label>Qist Jama Hone Ka Din</Label>
+            <input
+              type="number"
+              min={1}
+              max={31}
+              {...register('paymentDueDay', { valueAsNumber: true })}
+              className={inp}
+            />
+            <p className="text-[11px] text-gray-400 mt-1">Har mahine is din (default: 10)</p>
+          </div>
+        )}
       </div>
 
       {/* IMEI number */}

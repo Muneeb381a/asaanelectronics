@@ -147,6 +147,7 @@ export class PortalService {
         status:           installments.status,
         invoiceNumber:    installments.invoiceNumber,
         paymentFrequency: installments.paymentFrequency,
+        paymentDueDay:    installments.paymentDueDay,
         createdAt:        installments.createdAt,
         productName:      products.name,
         productBrand:     products.brand,
@@ -163,7 +164,8 @@ export class PortalService {
         installments.id, installments.totalAmount, installments.downPayment,
         installments.remaining, installments.monthly, installments.months,
         installments.startDate, installments.status, installments.invoiceNumber,
-        installments.paymentFrequency, installments.createdAt, products.name, products.brand,
+        installments.paymentFrequency, installments.paymentDueDay, installments.createdAt,
+        products.name, products.brand,
       )
       .orderBy(desc(installments.createdAt));
 
@@ -181,7 +183,11 @@ export class PortalService {
       if (isDaily) {
         dueDate.setDate(dueDate.getDate() + paidMonths + 1);
       } else {
-        dueDate.setMonth(dueDate.getMonth() + paidMonths + 1);
+        const dueDay   = r.paymentDueDay ?? 10;
+        const year     = dueDate.getFullYear();
+        const month    = dueDate.getMonth() + paidMonths + 1;
+        const lastDay  = new Date(year, month + 1, 0).getDate();
+        dueDate.setFullYear(year, month, Math.min(dueDay, lastDay));
       }
 
       return {

@@ -14,6 +14,7 @@ export const createInstallmentSchema = z.object({
   cashPrice:         z.number().positive().optional(),
   profitMarkup:      z.number().min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
+  paymentDueDay:     z.number().int().min(1).max(31).default(10).optional(),
 });
 
 export type CreateInstallmentInput = z.infer<typeof createInstallmentSchema>;
@@ -51,6 +52,7 @@ export const updateInstallmentSchema = z.object({
   cashPrice:        z.number().positive().nullable().optional(),
   profitMarkup:     z.number().min(0).nullable().optional(),
   paymentFrequency: z.enum(['monthly', 'daily']).optional(),
+  paymentDueDay:    z.number().int().min(1).max(31).optional(),
 });
 
 export type UpdateInstallmentInput = z.infer<typeof updateInstallmentSchema>;

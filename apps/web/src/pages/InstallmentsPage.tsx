@@ -211,9 +211,18 @@ function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => vo
   const now          = new Date();
 
   const rows = Array.from({ length: inst.months }, (_, i) => {
-    const dueDate = new Date(inst.startDate);
-    if (isDaily) dueDate.setDate(dueDate.getDate() + i + 1);
-    else dueDate.setMonth(dueDate.getMonth() + i + 1);
+    const base    = new Date(inst.startDate);
+    let dueDate: Date;
+    if (isDaily) {
+      base.setDate(base.getDate() + i + 1);
+      dueDate = base;
+    } else {
+      const dueDay  = inst.paymentDueDay ?? 10;
+      const year    = base.getFullYear();
+      const month   = base.getMonth() + i + 1;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      dueDate = new Date(year, month, Math.min(dueDay, lastDay));
+    }
 
     const isPaid    = i < periodsPaid;
     const isCurrent = i === periodsPaid;

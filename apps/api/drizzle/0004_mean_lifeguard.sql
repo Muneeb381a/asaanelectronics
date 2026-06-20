@@ -1,0 +1,1 @@
+ALTER TABLE "installments" ADD COLUMN "payment_due_day" integer DEFAULT 10 NOT NULL;
