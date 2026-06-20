@@ -23,7 +23,7 @@ export type MonthlyCustomerRow = {
   paidAmount:       number;
   monthlyAmount:    number;
   remaining:        number;
-  status:           'Paid' | 'Pending';
+  status:           'Paid' | 'Pending' | 'Defaulted';
   paymentFrequency: 'monthly' | 'daily';
 };
 

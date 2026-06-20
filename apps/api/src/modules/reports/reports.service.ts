@@ -16,7 +16,7 @@ export type MonthlyCustomerRow = {
   paidAmount:        number;
   monthlyAmount:     number;
   remaining:         number;
-  status:            'Paid' | 'Pending';
+  status:            'Paid' | 'Pending' | 'Defaulted';
   paymentFrequency:  'monthly' | 'daily';
 };
 
@@ -161,6 +161,7 @@ export class ReportsService {
       monthly:          installments.monthly,
       remaining:        installments.remaining,
       paymentFrequency: installments.paymentFrequency,
+      instStatus:       installments.status,
     };
 
     // 1. All ACTIVE + DEFAULTED installments that started on or before this month
@@ -214,26 +215,32 @@ export class ReportsService {
           ))
       : [];
 
-    // "Paid" = customer paid the full expected monthly amount this period.
-    // Completed installments (extraRows) are always Paid — they cleared their balance this month.
-    // Partial payments (paid > 0 but < monthly amount) still count as Pending.
-    const getIsPaid = (r: { id: string; monthly: string | null; paymentFrequency: string | null }) => {
+    // Determine final status for each row:
+    // - DEFAULTED installments → always 'Defaulted' (even if they paid before being defaulted)
+    // - extraRows (COMPLETED this month) → always 'Paid' if any payment exists
+    // - ACTIVE/others → 'Paid' only if paid >= full monthly amount; partial = 'Pending'
+    const getRowStatus = (r: {
+      id: string;
+      monthly: string | null;
+      paymentFrequency: string | null;
+      instStatus: string | null;
+    }): 'Paid' | 'Pending' | 'Defaulted' => {
+      if (r.instStatus === 'DEFAULTED') return 'Defaulted';
       const paid = payMap.get(r.id) ?? 0;
-      if (!activeIds.has(r.id)) return paid > 0; // completed this month — always Paid
+      if (!activeIds.has(r.id)) return paid > 0 ? 'Paid' : 'Pending'; // extraRows = completed this month
       const monthly     = Number(r.monthly ?? 0);
       const expectedAmt = (r.paymentFrequency ?? 'monthly') === 'daily'
         ? monthly * daysInMonth
         : monthly;
-      return paid >= expectedAmt;
+      return paid >= expectedAmt ? 'Paid' : 'Pending';
     };
 
-    // Merge, sort: Paid first then Pending, alphabetical within each group
+    // Sort: Paid first, then Pending, then Defaulted — alphabetical within each group
+    const statusOrder = { Paid: 0, Pending: 1, Defaulted: 2 } as const;
     const all = [...activeRows, ...extraRows];
     all.sort((a, b) => {
-      const aPaid = getIsPaid(a);
-      const bPaid = getIsPaid(b);
-      if (aPaid && !bPaid) return -1;
-      if (!aPaid && bPaid) return  1;
+      const diff = statusOrder[getRowStatus(a)] - statusOrder[getRowStatus(b)];
+      if (diff !== 0) return diff;
       return a.customerName.localeCompare(b.customerName);
     });
 
@@ -243,17 +250,17 @@ export class ReportsService {
       const expectedAmt = (r.paymentFrequency ?? 'monthly') === 'daily'
         ? monthly * daysInMonth
         : monthly;
-      const isPaid      = getIsPaid(r);
+      const status      = getRowStatus(r);
       return {
         srNo:             idx + 1,
         clientId:         r.invoiceNumber ?? '—',
         customerName:     r.customerName,
         customerPhone:    r.customerPhone,
-        rupees:           isPaid ? paid : expectedAmt,
+        rupees:           status === 'Paid' ? paid : expectedAmt,
         paidAmount:       paid,
         monthlyAmount:    monthly,
         remaining:        Number(r.remaining),
-        status:           (isPaid ? 'Paid' : 'Pending') as 'Paid' | 'Pending',
+        status,
         paymentFrequency: (r.paymentFrequency ?? 'monthly') as 'monthly' | 'daily',
       };
     });

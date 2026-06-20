@@ -378,9 +378,10 @@ export default function ExportsPage() {
 
     const paidCount      = custRows.filter((r) => r.status === 'Paid').length;
     const pendingCount   = custRows.filter((r) => r.status === 'Pending').length;
+    const defaultedCount = custRows.filter((r) => r.status === 'Defaulted').length;
     const totalCollected = custRows.reduce((s, r) => s + r.paidAmount, 0);
-    const totalPending   = custRows
-      .filter((r) => r.status === 'Pending')
+    const totalOutstanding = custRows
+      .filter((r) => r.status !== 'Paid')
       .reduce((s, r) => s + expectedAmount(r), 0);
 
     printReport({
@@ -402,9 +403,9 @@ export default function ExportsPage() {
       summary: [
         `<strong>Month:</strong> ${monthLabel}`,
         `<strong>Total customers:</strong> ${custRows.length}`,
-        `<strong>Paid:</strong> ${paidCount}  &nbsp;|&nbsp;  <strong>Pending:</strong> ${pendingCount}`,
+        `<strong>Paid:</strong> ${paidCount}  &nbsp;|&nbsp;  <strong>Pending:</strong> ${pendingCount}  &nbsp;|&nbsp;  <strong>Defaulted:</strong> ${defaultedCount}`,
         `<strong>Total collected this month:</strong> PKR ${fmt(totalCollected)}`,
-        `<strong>Total pending this month:</strong> PKR ${fmt(totalPending)}`,
+        `<strong>Total outstanding (pending + defaulted):</strong> PKR ${fmt(totalOutstanding)}`,
       ],
     });
   }
@@ -549,10 +550,11 @@ export default function ExportsPage() {
         const daysInMonth = new Date(custYear, custMonth, 0).getDate();
         const expectedAmt = (r: typeof custRows[number]) =>
           r.paymentFrequency === 'daily' ? r.monthlyAmount * daysInMonth : r.monthlyAmount;
-        const paidRows    = custRows.filter((r) => r.status === 'Paid');
-        const pendingRows = custRows.filter((r) => r.status === 'Pending');
-        const collected   = paidRows.reduce((s, r) => s + r.paidAmount, 0);
-        const pending     = pendingRows.reduce((s, r) => s + expectedAmt(r), 0);
+        const paidRows      = custRows.filter((r) => r.status === 'Paid');
+        const pendingRows   = custRows.filter((r) => r.status === 'Pending');
+        const defaultedRows = custRows.filter((r) => r.status === 'Defaulted');
+        const collected     = paidRows.reduce((s, r) => s + r.paidAmount, 0);
+        const pending       = pendingRows.reduce((s, r) => s + expectedAmt(r), 0);
         const currentYear = new Date().getFullYear();
         const yearOptions = Array.from({ length: currentYear - 2023 }, (_, i) => currentYear - i);
 
@@ -608,12 +610,13 @@ export default function ExportsPage() {
 
             {/* Stats strip */}
             {!custMonthlyQ.isLoading && custRows.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x border-b border-gray-100">
+              <div className="grid grid-cols-2 sm:grid-cols-5 divide-x border-b border-gray-100">
                 {[
-                  { label: 'Total Customers', value: custRows.length,   color: 'text-gray-900' },
-                  { label: 'Paid',            value: paidRows.length,   color: 'text-green-700' },
-                  { label: 'Pending',         value: pendingRows.length, color: 'text-orange-600' },
-                  { label: 'Collected',       value: `PKR ${fmt(collected)}`, color: 'text-green-700' },
+                  { label: 'Total',      value: custRows.length,         color: 'text-gray-900' },
+                  { label: 'Paid',       value: paidRows.length,         color: 'text-green-700' },
+                  { label: 'Pending',    value: pendingRows.length,       color: 'text-orange-600' },
+                  { label: 'Defaulted',  value: defaultedRows.length,     color: 'text-red-600' },
+                  { label: 'Collected',  value: `PKR ${fmt(collected)}`,  color: 'text-green-700' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="px-4 py-3 bg-gray-50 text-center">
                     <p className="text-xs text-gray-500 mb-0.5">{label}</p>
@@ -653,18 +656,22 @@ export default function ExportsPage() {
                         <Td><span className="font-mono text-xs">{r.clientId}</span></Td>
                         <Td bold>{r.customerName}</Td>
                         <Td right>
-                          <span className={r.status === 'Paid' ? 'text-green-700 font-semibold' : 'text-orange-600 font-semibold'}>
+                          <span className={
+                            r.status === 'Paid'      ? 'text-green-700 font-semibold' :
+                            r.status === 'Defaulted' ? 'text-red-600 font-semibold'   :
+                                                       'text-orange-600 font-semibold'
+                          }>
                             PKR {fmt(r.status === 'Paid' ? r.paidAmount : expectedAmt(r))}
                           </span>
                         </Td>
                         <Td>{r.customerPhone}</Td>
                         <Td>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            r.status === 'Paid'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-orange-100 text-orange-700'
+                            r.status === 'Paid'      ? 'bg-green-100 text-green-700' :
+                            r.status === 'Defaulted' ? 'bg-red-100 text-red-700'     :
+                                                       'bg-orange-100 text-orange-700'
                           }`}>
-                            {r.status === 'Paid' ? '✓ Paid' : '⏳ Pending'}
+                            {r.status === 'Paid' ? '✓ Paid' : r.status === 'Defaulted' ? '✗ Defaulted' : '⏳ Pending'}
                           </span>
                         </Td>
                       </tr>
@@ -687,6 +694,9 @@ export default function ExportsPage() {
                         <span className="text-green-700">{paidRows.length} paid</span>
                         {' / '}
                         <span className="text-orange-600">{pendingRows.length} pending</span>
+                        {defaultedRows.length > 0 && (
+                          <>{' / '}<span className="text-red-600">{defaultedRows.length} defaulted</span></>
+                        )}
                       </Td>
                     </tr>
                   </tbody>
