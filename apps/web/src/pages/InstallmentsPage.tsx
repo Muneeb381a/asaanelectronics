@@ -27,15 +27,18 @@ function calcNextDueDate(inst: Installment): Date | null {
   const mon  = Number(inst.monthly);
   const tot  = Number(inst.totalAmount);
   if (mon <= 0) return null;
-  const paidAmount = (tot - down) - rem;
+  const paidAmount  = (tot - down) - rem;
   const periodsPaid = Math.max(0, Math.floor(paidAmount / mon + 0.001));
-  const d = new Date(inst.startDate);
+  const base = new Date(inst.startDate);
   if (inst.paymentFrequency === 'daily') {
-    d.setDate(d.getDate() + periodsPaid + 1);
-  } else {
-    d.setMonth(d.getMonth() + periodsPaid + 1);
+    base.setDate(base.getDate() + periodsPaid + 1);
+    return base;
   }
-  return d;
+  const dueDay  = inst.paymentDueDay ?? 10;
+  const year    = base.getFullYear();
+  const month   = base.getMonth() + periodsPaid + 1;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(dueDay, lastDay));
 }
 
 function buildCSV(rows: Installment[]) {

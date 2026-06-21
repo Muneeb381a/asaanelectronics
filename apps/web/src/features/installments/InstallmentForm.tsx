@@ -843,6 +843,16 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           </div>
         )}
       </div>
+      {/* First due date pill */}
+      {!isDaily && startDate && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 text-sm">
+          <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+          <span className="text-gray-500 text-xs">Pehli qist due:</span>
+          <span className="font-semibold text-blue-700 text-xs">
+            {fmtDate(dueDateForPeriod(new Date(startDate), 1, paymentDueDay ?? 10))}
+          </span>
+        </div>
+      )}
 
       {/* IMEI number */}
       <div>

@@ -17,6 +17,7 @@ type FormValues = {
   months:           number;
   startDate:        string;
   paymentFrequency: 'monthly' | 'daily';
+  paymentDueDay:    number;
   imeiNumber:       string;
   cashPrice:        string;
   profitMarkup:     string;
@@ -46,13 +47,14 @@ export default function EditInstallmentModal({ inst, onClose, onSaved }: Props) 
       months:           inst.months,
       startDate:        toDateInput(inst.startDate),
       paymentFrequency: inst.paymentFrequency as 'monthly' | 'daily',
+      paymentDueDay:    inst.paymentDueDay ?? 10,
       imeiNumber:       inst.imeiNumber ?? '',
       cashPrice:        inst.cashPrice   ? String(Number(inst.cashPrice))   : '',
       profitMarkup:     inst.profitMarkup ? String(Number(inst.profitMarkup)) : '',
     },
   });
 
-  const [totalAmount, downPayment, freq] = watch(['totalAmount', 'downPayment', 'paymentFrequency']);
+  const [totalAmount, downPayment, freq, paymentDueDay, startDate] = watch(['totalAmount', 'downPayment', 'paymentFrequency', 'paymentDueDay', 'startDate']);
   const newRemaining = (Number(totalAmount) || 0) - (Number(downPayment) || 0) - alreadyPaid;
 
   // Reset months preset when switching frequency
@@ -69,6 +71,7 @@ export default function EditInstallmentModal({ inst, onClose, onSaved }: Props) 
       months:           values.months,
       startDate:        values.startDate,
       paymentFrequency: values.paymentFrequency,
+      paymentDueDay:    values.paymentFrequency === 'monthly' ? values.paymentDueDay : undefined,
       imeiNumber:       values.imeiNumber || null,
       cashPrice:        values.cashPrice     ? Number(values.cashPrice)     : null,
       profitMarkup:     values.profitMarkup  ? Number(values.profitMarkup)  : null,
@@ -185,11 +188,40 @@ export default function EditInstallmentModal({ inst, onClose, onSaved }: Props) 
               )} />
             </div>
 
-            {/* Start Date */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
-              <input type="date" {...register('startDate', { required: true })} className={inp} />
+            {/* Start Date + Due Day */}
+            <div className={freq === 'monthly' ? 'grid grid-cols-2 gap-3' : ''}>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" {...register('startDate', { required: true })} className={inp} />
+              </div>
+              {freq === 'monthly' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Qist Ka Din (1–31)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    {...register('paymentDueDay', { valueAsNumber: true, min: 1, max: 31 })}
+                    className={inp}
+                  />
+                </div>
+              )}
             </div>
+            {freq === 'monthly' && startDate && (
+              <div className="text-[11px] text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
+                Agli qist due: {(() => {
+                  const base    = new Date(startDate);
+                  const dueDay  = Math.min(Math.max(paymentDueDay ?? 10, 1), 31);
+                  const alreadyPaidAmt = Number(inst.totalAmount) - Number(inst.downPayment) - Number(inst.remaining);
+                  const mon     = Number(inst.monthly);
+                  const periods = mon > 0 ? Math.max(0, Math.floor(alreadyPaidAmt / mon + 0.001)) : 0;
+                  const year    = base.getFullYear();
+                  const month   = base.getMonth() + periods + 1;
+                  const lastDay = new Date(year, month + 1, 0).getDate();
+                  return new Date(year, month, Math.min(dueDay, lastDay)).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+                })()}
+              </div>
+            )}
 
             {/* IMEI */}
             <div>
