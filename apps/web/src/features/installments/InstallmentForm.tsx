@@ -805,7 +805,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
                     <p className={`text-sm font-bold ${isDaily ? 'text-orange-700' : 'text-blue-700'}`}>
                       {fmtDate(isDaily
                         ? addDays(new Date(startDate), calcDuration)
-                        : addMonths(new Date(startDate), calcDuration)
+                        : dueDateForPeriod(new Date(startDate), calcDuration, paymentDueDay ?? 10)
                       )}
                     </p>
                   </div>
