@@ -826,7 +826,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       {/* Start date + due day */}
       <div className={!isDaily ? 'grid grid-cols-2 gap-3' : ''}>
         <div>
-          <Label>{isDaily ? 'First Payment Date' : 'First Instalment Date'}</Label>
+          <Label>{isDaily ? 'First Payment Date' : 'Installment Start Date'}</Label>
           <input type="date" {...register('startDate')} className={inp} />
         </div>
         {!isDaily && (
