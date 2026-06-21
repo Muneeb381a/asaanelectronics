@@ -2,6 +2,13 @@ import { and, asc, count, eq, gte, inArray, isNull, lt, lte, sql, sum } from 'dr
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments } from '../../db/schema.js';
 
+const _cache = new Map<string, { at: number; data: unknown }>();
+function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
+  const e = _cache.get(key);
+  if (e && (Date.now() - e.at) < ttlMs) return Promise.resolve(e.data as T);
+  return fn().then((result) => { _cache.set(key, { at: Date.now(), data: result }); return result; });
+}
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -36,6 +43,10 @@ export type MonthlyReportRow = {
 
 export class ReportsService {
   async getMonthlyReport(sellerId: string, year: number): Promise<MonthlyReportRow[]> {
+    return withCache(`monthly-report:${sellerId}:${year}`, 5 * 60_000, () => this._getMonthlyReport(sellerId, year));
+  }
+
+  private async _getMonthlyReport(sellerId: string, year: number): Promise<MonthlyReportRow[]> {
     const from = new Date(year, 0, 1);
     const to   = new Date(year + 1, 0, 1);
 
@@ -148,6 +159,10 @@ export class ReportsService {
   }
 
   async getMonthlyCustomers(sellerId: string, year: number, month: number): Promise<MonthlyCustomerRow[]> {
+    return withCache(`monthly-customers:${sellerId}:${year}:${month}`, 5 * 60_000, () => this._getMonthlyCustomers(sellerId, year, month));
+  }
+
+  private async _getMonthlyCustomers(sellerId: string, year: number, month: number): Promise<MonthlyCustomerRow[]> {
     // UTC boundaries — consistent with paidOn storage (same approach as listBySeller)
     const monthStart  = new Date(Date.UTC(year, month - 1, 1));
     const monthEnd    = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
