@@ -201,6 +201,7 @@ export default function EditInstallmentModal({ inst, onClose, onSaved }: Props) 
                     type="number"
                     min={1}
                     max={31}
+                    placeholder="10"
                     {...register('paymentDueDay', { valueAsNumber: true, min: 1, max: 31 })}
                     className={inp}
                   />

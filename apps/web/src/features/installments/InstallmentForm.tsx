@@ -836,6 +836,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
               type="number"
               min={1}
               max={31}
+              placeholder="10"
               {...register('paymentDueDay', { valueAsNumber: true })}
               className={inp}
             />
