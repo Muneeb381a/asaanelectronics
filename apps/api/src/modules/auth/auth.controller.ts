@@ -3,6 +3,7 @@ import { AuthService } from './auth.service.js';
 import { success } from '../../utils/response.js';
 import { recordFailure, recordSuccess } from '../../middleware/ipBlock.js';
 import { AppError } from '../../middleware/error.js';
+import type { AuthRequest } from '../../middleware/auth.js';
 
 const svc = new AuthService();
 
@@ -62,6 +63,11 @@ export async function resetPassword(req: Request, res: Response) {
 
 export async function refresh(req: Request, res: Response) {
   success(res, await svc.refresh((req.body as { token: string }).token, device(req)));
+}
+
+export async function changePassword(req: AuthRequest, res: Response) {
+  await svc.changePassword(req.user!.userId, (req.body as { currentPassword: string }).currentPassword, (req.body as { newPassword: string }).newPassword);
+  success(res, null);
 }
 
 export async function logout(req: Request, res: Response) {

@@ -249,6 +249,15 @@ export class AuthService {
     return issueTokens(user, carried);
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new AppError('User not found', 404);
+    if (!(await comparePassword(currentPassword, user.password))) {
+      throw new AppError('Current password is incorrect', 400);
+    }
+    await db.update(users).set({ password: await hashPassword(newPassword) }).where(eq(users.id, userId));
+  }
+
   async logout(token: string) {
     if (token) await db.delete(refreshTokens).where(eq(refreshTokens.token, token));
   }

@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck,
-  CreditCard, Calendar, Search, AlertTriangle, Clock,
+  CreditCard, Calendar, Search, AlertTriangle, Clock, KeyRound, Eye, EyeOff,
 } from 'lucide-react';
 import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan } from '../../api/owner.api.ts';
+import { authApi } from '../../api/auth.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
 import { fmtDate } from '../../utils/dateFormat.ts';
@@ -206,6 +207,91 @@ function PlanChangeModal({ shop, onClose, onSubmit, isPending }: {
   );
 }
 
+// ── change-password modal ─────────────────────────────────────────────────────
+
+function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const [current, setCurrent]     = useState('');
+  const [next, setNext]           = useState('');
+  const [confirm, setConfirm]     = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNext, setShowNext]       = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: () => authApi.changePassword({ currentPassword: current, newPassword: next }),
+    onSuccess: () => { toast.success('Password change ho gaya'); onClose(); },
+    onError:   (e) => toast.error(getErrorMessage(e, 'Password change nahi hua')),
+  });
+
+  const inp = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition';
+  const mismatch = next.length > 0 && confirm.length > 0 && next !== confirm;
+  const canSubmit = current.length > 0 && next.length >= 8 && next === confirm && !mutation.isPending;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
+            <KeyRound size={16} className="text-indigo-600" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Password Change Karo</h2>
+            <p className="text-xs text-gray-400">Naya password min 8 characters ka hona chahiye</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Purana Password</label>
+            <div className="relative">
+              <input type={showCurrent ? 'text' : 'password'} value={current}
+                onChange={(e) => setCurrent(e.target.value)} className={inp} placeholder="Current password" />
+              <button type="button" onClick={() => setShowCurrent((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Naya Password</label>
+            <div className="relative">
+              <input type={showNext ? 'text' : 'password'} value={next}
+                onChange={(e) => setNext(e.target.value)} className={inp} placeholder="Min 8 characters" />
+              <button type="button" onClick={() => setShowNext((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showNext ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+            {next.length > 0 && next.length < 8 && (
+              <p className="text-xs text-red-500 mt-1">Kam se kam 8 characters chahiye</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Naya Password Confirm Karo</label>
+            <input type="password" value={confirm}
+              onChange={(e) => setConfirm(e.target.value)} className={`${inp} ${mismatch ? 'border-red-300 focus:border-red-400 focus:ring-red-50' : ''}`}
+              placeholder="Dobara likhein" />
+            {mismatch && <p className="text-xs text-red-500 mt-1">Passwords match nahi ho rahe</p>}
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+              Cancel
+            </button>
+            <button onClick={() => mutation.mutate()} disabled={!canSubmit}
+              className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition disabled:opacity-50">
+              {mutation.isPending ? 'Saving…' : 'Change Karo'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── shop card ─────────────────────────────────────────────────────────────────
 
 function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan }: {
@@ -346,6 +432,7 @@ export default function ShopsPage() {
   const [modal, setModal]           = useState<Modal>(null);
   const [filter, setFilter]         = useState<FilterTab>('all');
   const [search, setSearch]         = useState('');
+  const [showChangePwd, setShowChangePwd] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
   const [statusConfirm, setStatusConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
 
@@ -427,10 +514,16 @@ export default function ShopsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Shops</h1>
           <p className="text-sm text-gray-400 mt-0.5">Manage all registered shops</p>
         </div>
-        <button onClick={() => setModal({ type: 'shop' })}
-          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition shadow-sm shadow-indigo-200">
-          + New shop
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowChangePwd(true)} title="Change password"
+            className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition">
+            <KeyRound size={16} />
+          </button>
+          <button onClick={() => setModal({ type: 'shop' })}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition shadow-sm shadow-indigo-200">
+            + New shop
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -590,6 +683,9 @@ export default function ShopsPage() {
         }}
         onCancel={() => setStatusConfirm({ open: false, shop: null })}
       />
+
+      {/* Change password modal */}
+      {showChangePwd && <ChangePasswordModal onClose={() => setShowChangePwd(false)} />}
     </div>
   );
 }

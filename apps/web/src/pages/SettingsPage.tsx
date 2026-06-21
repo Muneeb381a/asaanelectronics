@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Monitor, Smartphone, Tablet, AlertTriangle, Trash2, LogOut, Shield,
-  Users, TrendingUp, Package, BookOpen, Plus, CreditCard,
+  Users, TrendingUp, Package, BookOpen, Plus, CreditCard, KeyRound, Eye, EyeOff,
 } from 'lucide-react';
 import { sellersApi, type PaymentAccount, type PaymentAccountType } from '../api/sellers.api.ts';
+import { authApi } from '../api/auth.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 import { sessionsApi, type Session } from '../api/sessions.api.ts';
@@ -367,6 +368,77 @@ function PaymentAccountsSection({ isOwner }: { isOwner: boolean }) {
   );
 }
 
+// ── Change Password section ───────────────────────────────────────────────────
+function ChangePasswordSection() {
+  const [current, setCurrent]     = useState('');
+  const [next, setNext]           = useState('');
+  const [confirm, setConfirm]     = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNext, setShowNext]       = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: () => authApi.changePassword({ currentPassword: current, newPassword: next }),
+    onSuccess: () => {
+      toast.success('Password change ho gaya');
+      setCurrent(''); setNext(''); setConfirm('');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Password change nahi hua')),
+  });
+
+  const mismatch = next.length > 0 && confirm.length > 0 && next !== confirm;
+  const canSubmit = current.length > 0 && next.length >= 8 && next === confirm && !mutation.isPending;
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+        <KeyRound size={15} className="text-gray-500" />
+        Password Change Karo
+      </h2>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Purana Password</label>
+          <div className="relative">
+            <input type={showCurrent ? 'text' : 'password'} value={current}
+              onChange={(e) => setCurrent(e.target.value)} className={inp} placeholder="Current password" />
+            <button type="button" onClick={() => setShowCurrent((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Naya Password</label>
+          <div className="relative">
+            <input type={showNext ? 'text' : 'password'} value={next}
+              onChange={(e) => setNext(e.target.value)} className={inp} placeholder="Min 8 characters" />
+            <button type="button" onClick={() => setShowNext((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showNext ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+          {next.length > 0 && next.length < 8 && (
+            <p className="text-xs text-red-500 mt-1">Kam se kam 8 characters chahiye</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Naya Password Confirm</label>
+          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
+            className={`${inp} ${mismatch ? 'border-red-300 focus:border-red-400 focus:ring-red-50' : ''}`}
+            placeholder="Dobara likhein" />
+          {mismatch && <p className="text-xs text-red-500 mt-1">Passwords match nahi ho rahe</p>}
+        </div>
+
+        <button onClick={() => mutation.mutate()} disabled={!canSubmit}
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition">
+          {mutation.isPending ? 'Saving…' : 'Password Change Karo'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Sessions section ──────────────────────────────────────────────────────────
 function SessionsSection() {
   const qc = useQueryClient();
@@ -597,6 +669,9 @@ export default function SettingsPage() {
 
       {/* Payment accounts */}
       <PaymentAccountsSection isOwner={isOwner} />
+
+      {/* Change password */}
+      <ChangePasswordSection />
 
       {/* Sessions */}
       <SessionsSection />
