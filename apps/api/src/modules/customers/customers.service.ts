@@ -367,9 +367,8 @@ export class CustomersService {
       + CASE WHEN ${customers.guarantorName} IS NULL THEN 20 WHEN ${customers.guarantor2Cnic} IS NOT NULL THEN 0 WHEN ${customers.guarantorCnic} IS NOT NULL THEN 8 ELSE 14 END
       + CASE ${customers.verificationStatus} WHEN 'APPROVED' THEN 0 WHEN 'UNDER_REVIEW' THEN 8 WHEN 'PENDING' THEN 15 WHEN 'REJECTED' THEN 20 ELSE 15 END
       + CASE WHEN ${customers.occupation} IS NULL AND ${customers.employer} IS NULL THEN 10 WHEN ${customers.employer} IS NULL THEN 5 ELSE 0 END
-      + CASE WHEN (SELECT COUNT(*) FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL) >= 3 THEN 10
-             WHEN (SELECT COUNT(*) FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL) = 2  THEN 5
-             ELSE 0 END
+      + (SELECT CASE WHEN cnt >= 3 THEN 10 WHEN cnt >= 2 THEN 5 ELSE 0 END
+             FROM (SELECT COUNT(*) AS cnt FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL) _c)
     )::int)`;
 
     const rows = await db.select({

@@ -60,75 +60,78 @@ export class PortalService {
     });
     if (!customer) throw new AppError('Customer not found', 404);
 
-    const [lifecycleRows, statsRows, riskRows, seller] = await Promise.all([
-      db.execute<{ stage: string }>(sql`
-        SELECT
-          CASE
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL)
-              THEN 'DEFAULT'
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL
-              AND (CASE WHEN i.payment_frequency = 'daily'
+    // Single CTE replaces 3 separate round-trips (lifecycle + stats + risk), all derived from one pass over installments
+    const [combinedRows, seller] = await Promise.all([
+      db.execute<{
+        defaulted_count: number; active_count: number; completed_count: number;
+        active_or_pending: number; overdue_active_count: number;
+        total_paid: string; total_remaining: string; active_count_num: number; next_due: string | null;
+        guarantor_name: string | null; guarantor_cnic: string | null; guarantor2_cnic: string | null;
+      }>(sql`
+        WITH inst_agg AS (
+          SELECT
+            COUNT(*) FILTER (WHERE i.status = 'DEFAULTED' AND i.deleted_at IS NULL)           AS defaulted_count,
+            COUNT(*) FILTER (WHERE i.status = 'ACTIVE'    AND i.deleted_at IS NULL)            AS active_count,
+            COUNT(*) FILTER (WHERE i.status = 'COMPLETED' AND i.deleted_at IS NULL)            AS completed_count,
+            COUNT(*) FILTER (WHERE i.status IN ('ACTIVE','PENDING') AND i.deleted_at IS NULL)  AS active_or_pending,
+            COUNT(*) FILTER (
+              WHERE i.status = 'ACTIVE' AND i.deleted_at IS NULL
+                AND (CASE WHEN i.payment_frequency = 'daily'
+                      THEN i.start_date + (i.months || ' days')::interval
+                      ELSE i.start_date + (i.months || ' months')::interval
+                    END) < NOW()
+            )                                                                                   AS overdue_active_count,
+            COALESCE(SUM(i.total_amount - i.down_payment - i.remaining)
+              FILTER (WHERE i.deleted_at IS NULL AND i.status NOT IN ('CANCELLED','CLOSED')), 0)::numeric AS total_paid,
+            COALESCE(SUM(i.remaining)
+              FILTER (WHERE i.deleted_at IS NULL AND i.status IN ('ACTIVE','PENDING')), 0)::numeric       AS total_remaining,
+            MIN(CASE WHEN i.status = 'ACTIVE' AND i.deleted_at IS NULL
+              THEN (CASE WHEN i.payment_frequency = 'daily'
                 THEN i.start_date + (i.months || ' days')::interval
                 ELSE i.start_date + (i.months || ' months')::interval
-              END) < NOW())
-              THEN 'AT_RISK'
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL)
-             AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
-              THEN 'REPEAT'
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL)
-              THEN 'ACTIVE'
-            WHEN NOT EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status IN ('ACTIVE','PENDING') AND i.deleted_at IS NULL)
-             AND EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'COMPLETED' AND i.deleted_at IS NULL)
-              THEN 'CLOSED'
-            WHEN ${customer.verificationStatus} = 'APPROVED' THEN 'VERIFIED'
-            ELSE 'LEAD'
-          END AS stage
-      `),
-      db.execute<{ total_paid: number; total_remaining: number; active_count: number; next_due: string | null }>(sql`
-        SELECT
-          COALESCE(SUM(i.total_amount - i.down_payment - i.remaining), 0)::numeric AS total_paid,
-          COALESCE(SUM(i.remaining), 0)::numeric                                    AS total_remaining,
-          COUNT(CASE WHEN i.status = 'ACTIVE' THEN 1 END)::int                     AS active_count,
-          MIN(CASE WHEN i.status = 'ACTIVE'
-            THEN (CASE WHEN i.payment_frequency = 'daily'
-              THEN i.start_date + (i.months || ' days')::interval
-              ELSE i.start_date + (i.months || ' months')::interval
-            END)::date END)::text  AS next_due
-        FROM installments i
-        WHERE i.customer_id = ${customerId} AND i.deleted_at IS NULL
-          AND i.status IN ('ACTIVE', 'PENDING')
-      `),
-      db.execute<{ risk_score: number }>(sql`
-        SELECT LEAST(100, (
-          CASE
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL) THEN 40
-            WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (CASE WHEN i.payment_frequency = 'daily' THEN i.start_date + (i.months || ' days')::interval ELSE i.start_date + (i.months || ' months')::interval END) < NOW()) THEN 22
-            ELSE 0
-          END
-          + CASE WHEN c.guarantor_name IS NULL THEN 20 WHEN c.guarantor2_cnic IS NOT NULL THEN 0 WHEN c.guarantor_cnic IS NOT NULL THEN 8 ELSE 14 END
-          + CASE c.verification_status WHEN 'APPROVED' THEN 0 WHEN 'UNDER_REVIEW' THEN 8 WHEN 'PENDING' THEN 15 WHEN 'REJECTED' THEN 20 ELSE 15 END
-          + CASE WHEN c.occupation IS NULL AND c.employer IS NULL THEN 10 WHEN c.employer IS NULL THEN 5 ELSE 0 END
-          + CASE
-              WHEN (SELECT COUNT(*) FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL) >= 3 THEN 10
-              WHEN (SELECT COUNT(*) FROM installments i WHERE i.customer_id = ${customerId} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL) = 2 THEN 5
-              ELSE 0
-            END
-        )::int) AS risk_score
-        FROM customers c WHERE c.id = ${customerId}
+              END)::date END)::text                                                             AS next_due
+          FROM installments i
+          WHERE i.customer_id = ${customerId}
+        )
+        SELECT a.*, c.guarantor_name, c.guarantor_cnic, c.guarantor2_cnic
+        FROM inst_agg a
+        CROSS JOIN customers c
+        WHERE c.id = ${customerId}
       `),
       db.query.sellers.findFirst({ where: eq(sellers.id, customer.sellerId), columns: { shopName: true } }),
     ]);
 
-    const stats    = statsRows[0];
-    const riskScore = Number(riskRows[0]?.risk_score ?? 50);
+    const agg = combinedRows[0];
+    const defaultedCount      = Number(agg?.defaulted_count ?? 0);
+    const activeCount         = Number(agg?.active_count ?? 0);
+    const completedCount      = Number(agg?.completed_count ?? 0);
+    const activeOrPending     = Number(agg?.active_or_pending ?? 0);
+    const overdueActiveCount  = Number(agg?.overdue_active_count ?? 0);
+
+    const lifecycleStage = (() => {
+      if (defaultedCount > 0)                                   return 'DEFAULT';
+      if (overdueActiveCount > 0)                               return 'AT_RISK';
+      if (activeCount > 0 && completedCount > 0)                return 'REPEAT';
+      if (activeCount > 0)                                      return 'ACTIVE';
+      if (activeOrPending === 0 && completedCount > 0)          return 'CLOSED';
+      if (customer.verificationStatus === 'APPROVED')           return 'VERIFIED';
+      return 'LEAD';
+    })();
+
+    const verifPenalty = ({ 'APPROVED': 0, 'UNDER_REVIEW': 8, 'PENDING': 15, 'REJECTED': 20 } as Record<string, number>)[customer.verificationStatus ?? ''] ?? 15;
+    const guarantorPenalty = agg?.guarantor_name == null ? 20 : agg.guarantor2_cnic != null ? 0 : agg.guarantor_cnic != null ? 8 : 14;
+    const employPenalty = customer.occupation == null && customer.employer == null ? 10 : customer.employer == null ? 5 : 0;
+    const activeCountPenalty = activeCount >= 3 ? 10 : activeCount >= 2 ? 5 : 0;
+    const riskBase = defaultedCount > 0 ? 40 : overdueActiveCount > 0 ? 22 : 0;
+    const riskScore = Math.min(100, riskBase + guarantorPenalty + verifPenalty + employPenalty + activeCountPenalty);
 
     return {
       ...customer,
-      lifecycleStage: lifecycleRows[0]?.stage ?? 'LEAD',
-      totalPaid:      Number(stats?.total_paid ?? 0),
-      totalRemaining: Number(stats?.total_remaining ?? 0),
-      activeCount:    Number(stats?.active_count ?? 0),
-      nextDue:        stats?.next_due ?? null,
+      lifecycleStage,
+      totalPaid:      Number(agg?.total_paid ?? 0),
+      totalRemaining: Number(agg?.total_remaining ?? 0),
+      activeCount,
+      nextDue:        agg?.next_due ?? null,
       shopName:       seller?.shopName ?? '',
       creditScore:    100 - riskScore,
     };

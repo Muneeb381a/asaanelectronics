@@ -1172,7 +1172,7 @@ export default function CustomersPage() {
   const { data: lifecycleCounts = {} } = useQuery({
     queryKey: ['customers-lifecycle-counts'],
     queryFn:  customersApi.lifecycleCounts,
-    staleTime: 30_000,
+    staleTime: 30 * 60_000,
   });
 
   const { data: staffList = [] } = useQuery({

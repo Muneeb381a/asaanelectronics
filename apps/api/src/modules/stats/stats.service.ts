@@ -329,29 +329,24 @@ export class StatsService {
 
   private async _getAdvanced(sellerId: string) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+    const now = new Date();
+    const thirtyDaysLater = new Date(now.getTime() + 30 * 86_400_000);
 
-    const [cashflowRows, recoveryRows, staffRows, areaRows] = await Promise.all([
-      // Cashflow forecast: installment payment due dates in next 30 days
-      db.execute<{ due_date: string; expected: number }>(sql`
-        SELECT
-          (CASE WHEN i.payment_frequency = 'daily'
-            THEN i.start_date + (gs.n || ' days')::interval
-            ELSE i.start_date + (gs.n || ' months')::interval
-          END)::date AS due_date,
-          SUM(i.monthly)::numeric AS expected
+    const [activeInstRows, recoveryRows, staffRows, areaRows] = await Promise.all([
+      // Cashflow forecast: fetch active installments, compute due dates in JS (avoids CROSS JOIN LATERAL generate_series)
+      db.execute<{
+        start_date: string; months: number; monthly: string;
+        payment_frequency: string; payment_due_day: number;
+        remaining: string; total_amount: string; down_payment: string;
+      }>(sql`
+        SELECT i.start_date, i.months, i.monthly, i.payment_frequency, i.payment_due_day,
+               i.remaining, i.total_amount, i.down_payment
         FROM installments i
         INNER JOIN customers c ON i.customer_id = c.id
-        CROSS JOIN LATERAL generate_series(1, i.months) AS gs(n)
         WHERE c.seller_id = ${sellerId}
           AND c.deleted_at IS NULL
           AND i.status = 'ACTIVE'
           AND i.deleted_at IS NULL
-          AND (CASE WHEN i.payment_frequency = 'daily'
-            THEN i.start_date + (gs.n || ' days')::interval
-            ELSE i.start_date + (gs.n || ' months')::interval
-          END) BETWEEN NOW() AND NOW() + INTERVAL '30 days'
-        GROUP BY due_date
-        ORDER BY due_date
       `),
 
       // Recovery efficiency: overdue + defaulted installments
@@ -419,6 +414,39 @@ export class StatsService {
         LIMIT 10
       `),
     ]);
+
+    // Compute cashflow forecast in JS — avoids CROSS JOIN LATERAL generate_series(1, months) expansion
+    const cashflowMap = new Map<string, number>();
+    for (const inst of activeInstRows) {
+      const startDate  = new Date(inst.start_date);
+      const monthly    = Number(inst.monthly);
+      const remaining  = Number(inst.remaining);
+      const paidAmt    = Number(inst.total_amount) - Number(inst.down_payment) - remaining;
+      const paidPeriods = monthly > 0 ? Math.max(0, Math.floor(paidAmt / monthly + 0.001)) : 0;
+      const isDaily    = inst.payment_frequency === 'daily';
+      const dueDay     = Number(inst.payment_due_day) || 10;
+
+      for (let n = paidPeriods + 1; n <= inst.months; n++) {
+        let dueDate: Date;
+        if (isDaily) {
+          dueDate = new Date(startDate);
+          dueDate.setDate(dueDate.getDate() + n);
+        } else {
+          const yr      = startDate.getFullYear();
+          const mo      = startDate.getMonth() + n;
+          const lastDay = new Date(yr, mo + 1, 0).getDate();
+          dueDate = new Date(yr, mo, Math.min(dueDay, lastDay));
+        }
+        if (dueDate > thirtyDaysLater) break;
+        if (dueDate >= now) {
+          const key = dueDate.toISOString().slice(0, 10);
+          cashflowMap.set(key, (cashflowMap.get(key) ?? 0) + monthly);
+        }
+      }
+    }
+    const cashflowRows = Array.from(cashflowMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([due_date, expected]) => ({ due_date, expected }));
 
     const r = recoveryRows[0] ?? { total_due: 0, total_collected: 0, overdue_count: 0 };
     const totalDue       = Number(r.total_due);

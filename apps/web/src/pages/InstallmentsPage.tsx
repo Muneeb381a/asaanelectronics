@@ -97,6 +97,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
   const { data, isLoading } = useQuery({
     queryKey: ['installments-bulk-remind'],
     queryFn: () => installmentsApi.exportAll({ status: 'ACTIVE' }),
+    staleTime: 5 * 60_000,
   });
 
   const now = new Date();

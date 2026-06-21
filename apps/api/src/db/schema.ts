@@ -92,7 +92,9 @@ export const users = pgTable('users', {
   permissions: json('permissions').$type<StaffPermissions>(),
   frozenUntil: timestamp('frozen_until'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (t) => [
+  index('idx_users_seller').on(t.sellerId),
+]);
 
 export const refreshTokens = pgTable('refresh_tokens', {
   id:           text('id').primaryKey().$defaultFn(() => randomUUID()),
@@ -340,6 +342,7 @@ export const auditLogs = pgTable('audit_logs', {
   createdAt:   timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
   index('idx_audit_seller').on(t.sellerId),
+  index('idx_audit_seller_action').on(t.sellerId, t.action, t.createdAt),
   index('idx_audit_created_at').on(t.createdAt),
   index('idx_audit_user').on(t.userId),
   index('idx_audit_session').on(t.sessionId),
