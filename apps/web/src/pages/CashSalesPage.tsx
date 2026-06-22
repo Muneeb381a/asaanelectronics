@@ -137,6 +137,7 @@ export default function CashSalesPage() {
           },
         );
       }
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
       setLastSale(result);
       void openCashSaleBill({
         shop:     { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
@@ -170,6 +171,7 @@ export default function CashSalesPage() {
           return { ...cached, data: filtered, total: Math.max(0, cached.total - 1) };
         },
       );
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
       setConfirmDelete(null);
     },
   });

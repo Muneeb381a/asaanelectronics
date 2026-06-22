@@ -152,6 +152,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       );
       void qc.invalidateQueries({ queryKey: ['payments', inst.id] });
       void qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
       for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
 
@@ -243,6 +244,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       void qc.invalidateQueries({ queryKey: ['payments', inst.id] });
       // Mark list stale but don't force immediate refetch (lazy refresh on next visit)
       void qc.invalidateQueries({ queryKey: ['installments'], exact: false, refetchType: 'none' });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
       for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       setDeleteConfirmId(null);
       toast.success('Payment deleted');
@@ -275,6 +277,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       );
       void qc.invalidateQueries({ queryKey: ['installment-single', inst.id] });
       void qc.invalidateQueries({ queryKey: ['payments', inst.id] });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
       for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       setEditId(null);
       toast.success('Payment updated');

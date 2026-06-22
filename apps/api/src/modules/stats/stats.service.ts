@@ -14,6 +14,14 @@ async function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): P
   return result;
 }
 
+// Clears all stats cache entries for a seller — call after any mutation that
+// affects todayCollections / monthCollections / todayCashSales / monthCashSales.
+export function clearSellerStatsCache(sellerId: string): void {
+  for (const key of _statsCache.keys()) {
+    if (key.startsWith(`stats:${sellerId}`)) _statsCache.delete(key);
+  }
+}
+
 export class StatsService {
   async getReports(sellerId: string) {
     return withCache(`reports:${sellerId}`, 60_000, () => this._getReports(sellerId));

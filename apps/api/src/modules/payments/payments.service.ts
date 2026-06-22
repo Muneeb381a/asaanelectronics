@@ -3,6 +3,7 @@ import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 type CreateBody = {
   installmentId: string;
@@ -139,6 +140,7 @@ export class PaymentsService {
         refType:     'PAYMENT',
       });
 
+      clearSellerStatsCache(sellerId);
       return { payment, remaining: newRemaining, completed: isCleared };
     });
   }
@@ -201,6 +203,7 @@ export class PaymentsService {
           .where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'PAYMENT')));
       }
 
+      clearSellerStatsCache(sellerId);
       return { id, remaining: safeRemaining, completed: isCleared };
     });
   }
@@ -241,6 +244,7 @@ export class PaymentsService {
       );
     });
 
+    clearSellerStatsCache(sellerId);
     return pmt;
   }
 }

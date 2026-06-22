@@ -3,6 +3,7 @@ import { db } from '../../db/index.js';
 import { cashSales, ledgerEntries, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { markUnitSoldInTx } from '../productUnits/productUnits.service.js';
+import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 type CreateBody = {
   productId:     string;
@@ -120,6 +121,7 @@ export class CashSalesService {
         refType:     'MANUAL',
       });
 
+      clearSellerStatsCache(sellerId);
       return { ...sale, productName: product.name };
     });
   }
@@ -177,6 +179,7 @@ export class CashSalesService {
       );
     });
 
+    clearSellerStatsCache(sellerId);
     return existing;
   }
 }
