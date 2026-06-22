@@ -174,14 +174,23 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
       // Which period's due date does this payment cover?
       const isDaily = freshInst.paymentFrequency === 'daily';
+      // Start of range: first period covered by this payment
       const periodDueD = new Date(freshInst.startDate);
       if (isDaily) periodDueD.setDate(periodDueD.getDate() + currentMonth);
       else periodDueD.setMonth(periodDueD.getMonth() + currentMonth);
-      const periodDueDateStr = [
-        periodDueD.getFullYear(),
-        String(periodDueD.getMonth() + 1).padStart(2, '0'),
-        String(periodDueD.getDate()).padStart(2, '0'),
+      const toDateStr = (d: Date) => [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, '0'),
+        String(d.getDate()).padStart(2, '0'),
       ].join('-');
+      const periodDueDateStr = toDateStr(periodDueD);
+      // End of range: last period covered (only differs for daily multi-period payments)
+      let periodEndDateStr: string | undefined;
+      if (isDaily && paidInstallments > currentMonth) {
+        const periodEndD = new Date(freshInst.startDate);
+        periodEndD.setDate(periodEndD.getDate() + paidInstallments);
+        periodEndDateStr = toDateStr(periodEndD);
+      }
       const daysLate = Math.max(
         0,
         Math.floor((new Date(data.payment.paidOn).getTime() - periodDueD.getTime()) / 86_400_000),
@@ -206,6 +215,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         totalInstallments,
         currentMonth,
         periodDueDate: periodDueDateStr,
+        periodEndDate: periodEndDateStr,
         daysLate,
       };
 

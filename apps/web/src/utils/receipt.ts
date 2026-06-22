@@ -20,6 +20,7 @@ export interface InstallmentReceiptData {
   totalInstallments?: number;
   currentMonth?: number;
   periodDueDate?: string;
+  periodEndDate?: string; // for daily: last period covered by this payment (range end)
   daysLate?: number;
 }
 
@@ -115,8 +116,12 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
   const curMonth = d.currentMonth ?? paidInst;
   const pct = totalInst > 0 ? Math.round((paidInst / totalInst) * 100) : 0;
 
+  const isMultiPeriod = isDaily && d.periodEndDate && d.periodEndDate !== d.periodDueDate;
+  const periodRangeLabel = isMultiPeriod
+    ? `${fmtDate(d.periodDueDate!)} – ${fmtDate(d.periodEndDate!)}`
+    : d.periodDueDate ? fmtDate(d.periodDueDate) : '';
   const periodDueInfo = d.periodDueDate
-    ? `<div style="font-size:7px;color:#3b82f6;font-weight:600">Qist: ${fmtDate(d.periodDueDate)}</div>` +
+    ? `<div style="font-size:${isMultiPeriod ? '6' : '7'}px;color:#3b82f6;font-weight:600">Qist: ${periodRangeLabel}</div>` +
       (d.daysLate && d.daysLate > 0
         ? `<div style="font-size:7px;color:#dc2626;font-weight:700">${d.daysLate}d late</div>`
         : `<div style="font-size:6.5px;color:#059669;font-weight:600">✓ on time</div>`)
@@ -155,7 +160,7 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px;border-top:1px dashed #e2e8f0;padding-top:6px">
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:4px 6px">
           <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#1e40af;margin-bottom:1px">📅 Qist ki tarikh</div>
-          <div style="font-size:9px;font-weight:700;color:#1e3a8a">${fmtDate(d.periodDueDate)}</div>
+          <div style="font-size:${isMultiPeriod ? '8' : '9'}px;font-weight:700;color:#1e3a8a">${periodRangeLabel}</div>
           ${(d.daysLate ?? 0) > 0
             ? `<div style="font-size:7px;color:#dc2626;font-weight:700">⚠️ ${d.daysLate} din late</div>`
             : `<div style="font-size:7px;color:#059669;font-weight:600">✓ On time</div>`}
@@ -274,6 +279,21 @@ export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
   const hasProg = d.paidInstallments !== undefined && d.totalInstallments !== undefined;
   const pendingInst = (d.totalInstallments ?? 0) - (d.paidInstallments ?? 0);
 
+  // For daily installments a single payment may cover multiple periods (late payment)
+  const isMultiPeriod = isDaily && d.periodEndDate && d.periodEndDate !== d.periodDueDate;
+  const qistDateLabel = d.periodDueDate
+    ? isMultiPeriod
+      ? `${fmtDate(d.periodDueDate)} – ${fmtDate(d.periodEndDate!)}`
+      : fmtDate(d.periodDueDate)
+    : '';
+
+  // e.g. "18 – 21 / 30" for multi-period, "18 / 30" for single
+  const dinLabel = hasProg
+    ? isMultiPeriod
+      ? `${d.currentMonth} – ${d.paidInstallments} / ${d.totalInstallments}`
+      : `${d.currentMonth ?? d.paidInstallments} / ${d.totalInstallments}`
+    : '';
+
   // Build the late/on-time status line
   let lateStatus = '';
   if (hasProg && d.periodDueDate) {
@@ -292,13 +312,10 @@ export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
     `━━━━━━━━━━━━━━━━━━━`,
     `Amount Paid: *${pkr(d.amountPaid)}*`,
     `Method: ${mLabel(d.method)}`,
-    hasProg
-      ? `${isDaily ? 'Din' : 'Month'} #: *${d.currentMonth ?? d.paidInstallments} / ${d.totalInstallments}*`
-      : '',
+    hasProg ? `${isDaily ? 'Din' : 'Month'} #: *${dinLabel}*` : '',
     `━━━━━━━━━━━━━━━━━━━`,
-    // Both dates clearly separated
-    hasProg && d.periodDueDate
-      ? `📅 Qist ki tarikh:   ${fmtDate(d.periodDueDate)}`
+    hasProg && qistDateLabel
+      ? `📅 Qist ki tarikh:   ${qistDateLabel}`
       : '',
     `📆 Payment ki tarikh: ${fmtDate(d.paidOn)}`,
     lateStatus,
