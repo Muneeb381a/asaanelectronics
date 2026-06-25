@@ -22,6 +22,7 @@ export interface InstallmentReceiptData {
   periodDueDate?: string;
   periodEndDate?: string; // for daily: last period covered by this payment (range end)
   daysLate?: number;
+  daysAdvance?: number; // set when payment is made before the first period's due date
 }
 
 export interface CashSaleReceiptData {
@@ -120,11 +121,14 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
   const periodRangeLabel = isMultiPeriod
     ? `${fmtDate(d.periodDueDate!)} – ${fmtDate(d.periodEndDate!)}`
     : d.periodDueDate ? fmtDate(d.periodDueDate) : '';
+  const statusBadge = (d.daysLate ?? 0) > 0
+    ? `<div style="font-size:7px;color:#dc2626;font-weight:700">${d.daysLate}d late</div>`
+    : (d.daysAdvance ?? 0) > 0
+      ? `<div style="font-size:6.5px;color:#7c3aed;font-weight:700">📌 ${d.daysAdvance}d advance</div>`
+      : `<div style="font-size:6.5px;color:#059669;font-weight:600">✓ on time</div>`;
   const periodDueInfo = d.periodDueDate
     ? `<div style="font-size:${isMultiPeriod ? '6' : '7'}px;color:#3b82f6;font-weight:600">Qist: ${periodRangeLabel}</div>` +
-      (d.daysLate && d.daysLate > 0
-        ? `<div style="font-size:7px;color:#dc2626;font-weight:700">${d.daysLate}d late</div>`
-        : `<div style="font-size:6.5px;color:#059669;font-weight:600">✓ on time</div>`)
+      statusBadge
     : `<div style="font-size:7.5px;color:#3b82f6">installment</div>`;
 
   const progressSection = hasProg ? `
@@ -163,7 +167,9 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
           <div style="font-size:${isMultiPeriod ? '8' : '9'}px;font-weight:700;color:#1e3a8a">${periodRangeLabel}</div>
           ${(d.daysLate ?? 0) > 0
             ? `<div style="font-size:7px;color:#dc2626;font-weight:700">⚠️ ${d.daysLate} din late</div>`
-            : `<div style="font-size:7px;color:#059669;font-weight:600">✓ On time</div>`}
+            : (d.daysAdvance ?? 0) > 0
+              ? `<div style="font-size:7px;color:#7c3aed;font-weight:700">📌 ${d.daysAdvance} din advance</div>`
+              : `<div style="font-size:7px;color:#059669;font-weight:600">✓ On time</div>`}
         </div>
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:4px 6px">
           <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#065f46;margin-bottom:1px">📆 Payment ki tarikh</div>
@@ -294,12 +300,14 @@ export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
       : `${d.currentMonth ?? d.paidInstallments} / ${d.totalInstallments}`
     : '';
 
-  // Build the late/on-time status line
+  // Build the late / on-time / advance status line
   let lateStatus = '';
   if (hasProg && d.periodDueDate) {
     lateStatus = (d.daysLate ?? 0) > 0
       ? `⚠️ ${d.daysLate} din late`
-      : `✅ On time`;
+      : (d.daysAdvance ?? 0) > 0
+        ? `📌 ${d.daysAdvance} din advance`
+        : `✅ On time`;
   }
 
   const lines = [

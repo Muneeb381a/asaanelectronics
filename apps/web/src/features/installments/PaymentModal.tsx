@@ -191,10 +191,14 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         periodEndD.setDate(periodEndD.getDate() + paidInstallments);
         periodEndDateStr = toDateStr(periodEndD);
       }
+      const paidOnMs = new Date(data.payment.paidOn).getTime();
       const daysLate = Math.max(
         0,
-        Math.floor((new Date(data.payment.paidOn).getTime() - periodDueD.getTime()) / 86_400_000),
+        Math.floor((paidOnMs - periodDueD.getTime()) / 86_400_000),
       );
+      const daysAdvance = daysLate === 0 && paidOnMs < periodDueD.getTime()
+        ? Math.ceil((periodDueD.getTime() - paidOnMs) / 86_400_000)
+        : 0;
 
       const receiptPayload: InstallmentReceiptData = {
         shopName:          seller?.shopName ?? 'Receipt',
@@ -217,6 +221,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         periodDueDate: periodDueDateStr,
         periodEndDate: periodEndDateStr,
         daysLate,
+        daysAdvance,
       };
 
       const bd: BillData = {
