@@ -168,9 +168,17 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       const currentMonth = paidFullBefore + 1; // this payment is installment #currentMonth
       // After this payment, how many are fully paid?
       const paidAmountAfter = totalMinusDP - data.remaining;
-      const paidInstallments = data.completed
+      const cumulativePaid = data.completed
         ? totalInstallments
         : Math.floor(paidAmountAfter / monthly + 0.001);
+      // Cross-check: derive periods directly from payment amount (advance-safe).
+      // When pending + advance are paid together, the cumulative formula can land
+      // on today's day count and miss future advance days. Taking max() ensures
+      // the direct derivation wins whenever it reaches further into the future.
+      const periodsInPayment = Math.floor(Number(data.payment.amount) / monthly + 0.001);
+      const paidInstallments = data.completed
+        ? totalInstallments
+        : Math.max(cumulativePaid, paidFullBefore + periodsInPayment);
 
       // Which period's due date does this payment cover?
       const isDaily = freshInst.paymentFrequency === 'daily';
