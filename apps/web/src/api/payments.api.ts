@@ -63,4 +63,8 @@ export const paymentsApi = {
 
   listBySeller: (params?: { from?: string; to?: string }) =>
     api.get<{ data: SellerPayment[] }>('/payments', { params }).then(unwrap<SellerPayment[]>),
+
+  recordBulk: (entries: Array<{ installmentId: string; amount: number; method: PaymentMethod; note?: string }>) =>
+    api.post<{ data: { total: number; succeeded: number; failed: Array<{ installmentId: string; error: string }> } }>('/payments/bulk', { entries })
+      .then(unwrap<{ total: number; succeeded: number; failed: Array<{ installmentId: string; error: string }> }>),
 };

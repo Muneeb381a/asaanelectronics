@@ -247,4 +247,26 @@ export class PaymentsService {
     clearSellerStatsCache(sellerId);
     return pmt;
   }
+
+  async recordBulk(sellerId: string, entries: CreateBody[]) {
+    if (!entries.length) throw new AppError('No entries provided', 400);
+    if (entries.length > 100) throw new AppError('Maximum 100 payments per bulk request', 400);
+
+    const succeeded: Array<{ installmentId: string; amount: number }> = [];
+    const failed:    Array<{ installmentId: string; error: string }>  = [];
+
+    for (const entry of entries) {
+      try {
+        await this.record(sellerId, entry);
+        succeeded.push({ installmentId: entry.installmentId, amount: entry.amount });
+      } catch (err) {
+        failed.push({
+          installmentId: entry.installmentId,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    }
+
+    return { total: entries.length, succeeded: succeeded.length, failed };
+  }
 }

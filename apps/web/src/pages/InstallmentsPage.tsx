@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers } from 'lucide-react';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import EditInstallmentModal from '../components/EditInstallmentModal.tsx';
@@ -15,6 +15,7 @@ import RecoveryDrawer from '../features/installments/RecoveryDrawer.tsx';
 import PaymentModal from '../features/installments/PaymentModal.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi, type PaymentAccount } from '../api/sellers.api.ts';
+import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
 import { openBill } from '../utils/bill.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
@@ -529,6 +530,134 @@ function WaiverModal({ inst, onClose }: { inst: Installment; onClose: () => void
   );
 }
 
+const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
+
+function BulkPaymentModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [method, setMethod] = useState<PaymentMethod>('CASH');
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+
+  const { data: sheet = [], isLoading } = useQuery({
+    queryKey: ['due-sheet'],
+    queryFn:  installmentsApi.dueSheet,
+    staleTime: 30_000,
+  });
+
+  const toggle = (id: string, monthly: number) => {
+    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
+    if (!amounts[id]) setAmounts((prev) => ({ ...prev, [id]: String(monthly) }));
+  };
+
+  const selected = sheet.filter((r) => checked[r.id]);
+  const total    = selected.reduce((s, r) => s + (Number(amounts[r.id]) || r.monthly), 0);
+
+  const mutation = useMutation({
+    mutationFn: () => paymentsApi.recordBulk(
+      selected.map((r) => ({
+        installmentId: r.id,
+        amount: Number(amounts[r.id]) || r.monthly,
+        method,
+      }))
+    ),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['installments'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      if (result.failed.length > 0) {
+        toast.error(`${result.succeeded} saved, ${result.failed.length} failed`);
+      } else {
+        toast.success(`${result.succeeded} payment${result.succeeded !== 1 ? 's' : ''} recorded`);
+        onClose();
+      }
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-0 sm:px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col" style={{ maxHeight: '90vh' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Bulk Collect</h2>
+            <p className="text-xs text-gray-400">Today's overdue/due installments</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+
+        {/* Method selector */}
+        <div className="px-5 py-3 border-b border-gray-100 shrink-0">
+          <div className="flex gap-1.5 flex-wrap">
+            {METHODS.map((m) => (
+              <button key={m} onClick={() => setMethod(m)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${method === m ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* List */}
+        <div className="overflow-y-auto flex-1 px-5 py-3 space-y-2">
+          {isLoading ? (
+            <div className="space-y-2 py-4">
+              {[0, 1, 2].map((i) => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : sheet.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No overdue installments today</p>
+          ) : (
+            sheet.map((row) => (
+              <label key={row.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                checked[row.id] ? 'border-blue-300 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={!!checked[row.id]}
+                  onChange={() => toggle(row.id, row.monthly)}
+                  className="accent-blue-600 w-4 h-4 shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{row.customerName}</p>
+                  <p className="text-xs text-gray-400 truncate">{row.productName}
+                    {row.daysOverdue > 0 && <span className="ml-1 text-red-500 font-medium">{row.daysOverdue}d late</span>}
+                  </p>
+                </div>
+                {checked[row.id] ? (
+                  <input
+                    type="number"
+                    value={amounts[row.id] ?? row.monthly}
+                    onChange={(e) => setAmounts((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                    onClick={(e) => e.preventDefault()}
+                    className="w-24 border border-blue-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min={1}
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-gray-600 shrink-0">PKR {row.monthly.toLocaleString('en-PK')}</span>
+                )}
+              </label>
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-gray-400">{selected.length} selected</span>
+            <span className="text-sm font-bold text-gray-900">Total: PKR {total.toLocaleString('en-PK')}</span>
+          </div>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!selected.length || mutation.isPending}
+            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition">
+            {mutation.isPending ? <><Loader2 size={14} className="animate-spin inline mr-1" />Processing…</> : `Record ${selected.length} Payment${selected.length !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InstallmentsPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -578,6 +707,7 @@ export default function InstallmentsPage() {
   const [payInst, setPayInst] = useState<Installment | null>(null);
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
   const [waiverInst, setWaiverInst] = useState<Installment | null>(null);
+  const [showBulk, setShowBulk] = useState(false);
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
   const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
   const [editInst, setEditInst] = useState<Installment | null>(null);
@@ -750,6 +880,15 @@ export default function InstallmentsPage() {
           >
             <Printer size={14} /> Field Sheet
           </button>
+          {canPay && (
+            <button
+              onClick={() => setShowBulk(true)}
+              className="flex items-center gap-1.5 px-3 py-2 border border-blue-200 text-blue-600 hover:bg-blue-50 text-sm rounded-lg transition font-medium"
+              title="Record multiple payments at once"
+            >
+              <Layers size={14} /> Bulk Collect
+            </button>
+          )}
           {isOwner && (
             <button onClick={() => setShowImport(true)}
               className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition">
@@ -1267,6 +1406,7 @@ export default function InstallmentsPage() {
       {/* Reschedule modal */}
       {rescheduleInst && <RescheduleModal inst={rescheduleInst} onClose={() => setRescheduleInst(null)} />}
       {waiverInst && <WaiverModal inst={waiverInst} onClose={() => setWaiverInst(null)} />}
+      {showBulk && <BulkPaymentModal onClose={() => setShowBulk(false)} />}
 
       {/* Recovery drawer */}
       {recoveryInst && <RecoveryDrawer inst={recoveryInst} onClose={() => setRecoveryInst(null)} />}

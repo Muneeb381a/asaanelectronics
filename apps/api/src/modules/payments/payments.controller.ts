@@ -45,6 +45,25 @@ export async function deletePayment(req: AuthRequest, res: Response) {
   }).catch(console.error);
 }
 
+export async function recordBulkPayments(req: AuthRequest, res: Response) {
+  const { entries } = req.body as {
+    entries: Array<{ installmentId: string; amount: number; method: string; note?: string }>;
+  };
+  if (!Array.isArray(entries)) {
+    res.status(400).json({ message: 'entries must be an array' });
+    return;
+  }
+  const result = await svc.recordBulk(req.user!.sellerId!, entries as Parameters<typeof svc.recordBulk>[1]);
+  success(res, result, 200);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'PAYMENTS_BULK', entityType: 'PAYMENT', entityId: 'bulk',
+    description: `Bulk payment entry — ${result.succeeded} succeeded, ${result.failed.length} failed`,
+    meta: { total: result.total, succeeded: result.succeeded, failed: result.failed.length },
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
 export async function recordPayment(req: AuthRequest, res: Response) {
   const result = await svc.record(req.user!.sellerId!, req.body);
   success(res, result, 201);
