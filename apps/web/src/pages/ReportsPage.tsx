@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
 import { verificationsApi, type AvoStat } from '../api/verifications.api.ts';
+import { reportsApi, type AreaRow } from '../api/reports.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck, MapPin } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 function pkr(v: number) {
@@ -124,6 +125,13 @@ export default function ReportsPage() {
     queryFn:  verificationsApi.avoStats,
     staleTime: 60_000,
     enabled:  isOwner,
+  });
+
+  const { data: areaRows = [] } = useQuery<AreaRow[]>({
+    queryKey: ['area-report'],
+    queryFn:  reportsApi.getAreaReport,
+    staleTime: 2 * 60_000,
+    enabled:  canReports,
   });
 
   if (!canReports) {
@@ -424,6 +432,92 @@ export default function ReportsPage() {
                   );
                 })}
               </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Row 6: Area-wise collections */}
+      {areaRows.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-2">
+            <MapPin size={16} className="text-blue-500" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Area-wise Collections</p>
+              <p className="text-xs text-gray-400 mt-0.5">Customers and recovery grouped by delivery area</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-6 py-3 font-medium text-gray-500">Area</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-500">Customers</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-500">Active</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-500">Overdue</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500">Overdue Amt</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500">Collected</th>
+                  <th className="text-right px-6 py-3 font-medium text-gray-500">Remaining</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {areaRows.map((row) => {
+                  const overdueAmt = Number(row.overdueAmount);
+                  const collected  = Number(row.totalCollected);
+                  const remaining  = Number(row.remaining);
+                  return (
+                    <tr key={row.area} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-3 font-medium text-gray-900 flex items-center gap-1.5">
+                        <MapPin size={12} className="text-gray-300 shrink-0" />
+                        {row.area}
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-600">{row.customers}</td>
+                      <td className="px-4 py-3 text-center text-blue-600 font-semibold">{row.active}</td>
+                      <td className="px-4 py-3 text-center">
+                        {row.overdue > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500">
+                            <AlertTriangle size={11} />{row.overdue}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {overdueAmt > 0 ? (
+                          <span className="text-xs font-semibold text-red-500">{pkr(overdueAmt)}</span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right text-emerald-600 font-semibold">{pkr(collected)}</td>
+                      <td className="px-6 py-3 text-right text-orange-600 font-semibold">{pkr(remaining)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-gray-50 border-t border-gray-100">
+                <tr>
+                  <td className="px-6 py-3 text-xs font-bold text-gray-700">Total</td>
+                  <td className="px-4 py-3 text-center text-xs font-bold text-gray-700">
+                    {areaRows.reduce((s, r) => s + r.customers, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center text-xs font-bold text-blue-700">
+                    {areaRows.reduce((s, r) => s + r.active, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center text-xs font-bold text-red-600">
+                    {areaRows.reduce((s, r) => s + r.overdue, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-xs font-bold text-red-600">
+                    {pkr(areaRows.reduce((s, r) => s + Number(r.overdueAmount), 0))}
+                  </td>
+                  <td className="px-4 py-3 text-right text-xs font-bold text-emerald-700">
+                    {pkr(areaRows.reduce((s, r) => s + Number(r.totalCollected), 0))}
+                  </td>
+                  <td className="px-6 py-3 text-right text-xs font-bold text-orange-700">
+                    {pkr(areaRows.reduce((s, r) => s + Number(r.remaining), 0))}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>

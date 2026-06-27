@@ -15,6 +15,10 @@ export async function getMonthlyReport(req: AuthRequest, res: Response) {
   success(res, await svc.getMonthlyReport(sellerId, year));
 }
 
+export async function getAreaReport(req: AuthRequest, res: Response) {
+  success(res, await svc.getAreaReport(req.user!.sellerId!));
+}
+
 export async function getMonthlyCustomers(req: AuthRequest, res: Response) {
   const sellerId = req.user!.sellerId!;
   const now      = new Date();

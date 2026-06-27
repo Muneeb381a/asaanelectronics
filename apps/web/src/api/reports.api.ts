@@ -1,5 +1,15 @@
 import { api } from './client.ts';
 
+export type AreaRow = {
+  area: string;
+  customers: number;
+  active: number;
+  overdue: number;
+  overdueAmount: string;
+  totalCollected: string;
+  remaining: string;
+};
+
 export type MonthlyReportRow = {
   month: number;
   monthName: string;
@@ -33,4 +43,7 @@ export const reportsApi = {
 
   getMonthlyCustomers: (year: number, month: number): Promise<MonthlyCustomerRow[]> =>
     api.get(`/reports/monthly-customers?year=${year}&month=${month}`).then((res) => res.data.data),
+
+  getAreaReport: (): Promise<AreaRow[]> =>
+    api.get('/reports/areas').then((res) => res.data.data),
 };

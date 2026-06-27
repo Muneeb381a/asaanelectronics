@@ -282,4 +282,40 @@ export class ReportsService {
       };
     });
   }
+
+  async getAreaReport(sellerId: string) {
+    const rows = await db.execute<{
+      area: string;
+      customers: number;
+      active: number;
+      overdue: number;
+      overdueAmount: string;
+      totalCollected: string;
+      remaining: string;
+    }>(sql`
+      SELECT
+        COALESCE(NULLIF(c.area, ''), 'No Area') AS area,
+        COUNT(DISTINCT c.id)::int                AS customers,
+        COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE'    THEN i.id END)::int AS active,
+        COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE' AND (
+          CASE WHEN i.payment_frequency = 'daily'
+            THEN i.start_date + (i.months || ' days')::interval
+            ELSE i.start_date + (i.months || ' months')::interval
+          END) < NOW() THEN i.id END)::int       AS overdue,
+        COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' AND (
+          CASE WHEN i.payment_frequency = 'daily'
+            THEN i.start_date + (i.months || ' days')::interval
+            ELSE i.start_date + (i.months || ' months')::interval
+          END) < NOW() THEN i.remaining::numeric ELSE 0 END), 0)::text AS "overdueAmount",
+        COALESCE(SUM(p.amount::numeric), 0)::text AS "totalCollected",
+        COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' THEN i.remaining::numeric ELSE 0 END), 0)::text AS remaining
+      FROM customers c
+      LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
+      LEFT JOIN payments p     ON p.installment_id = i.id AND p.deleted_at IS NULL
+      WHERE c.seller_id = ${sellerId} AND c.deleted_at IS NULL
+      GROUP BY COALESCE(NULLIF(c.area, ''), 'No Area')
+      ORDER BY "totalCollected"::numeric DESC
+    `);
+    return rows;
+  }
 }
