@@ -532,6 +532,132 @@ function WaiverModal({ inst, onClose }: { inst: Installment; onClose: () => void
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 
+function BatchReminderModal({ shopName, onClose }: { shopName: string; onClose: () => void }) {
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [cursor, setCursor] = useState<number | null>(null);
+
+  const { data: sheet = [], isLoading } = useQuery({
+    queryKey: ['due-sheet'],
+    queryFn:  installmentsApi.dueSheet,
+    staleTime: 30_000,
+  });
+
+  const selected = sheet.filter((r) => checked[r.id]);
+  const started  = cursor !== null;
+  const done     = cursor !== null && cursor >= selected.length;
+
+  const sendCurrent = () => {
+    const idx = cursor ?? 0;
+    const row = selected[idx];
+    if (!row) return;
+    openWhatsApp(row.customerPhone, reminderMessage({
+      shopName,
+      customerName: row.customerName,
+      productName: row.productName,
+      monthly: row.monthly,
+      remaining: row.remaining,
+      daysOverdue: row.daysOverdue,
+    }));
+    setCursor(idx + 1);
+  };
+
+  const startOrNext = () => {
+    if (!started) setCursor(0);
+    sendCurrent();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-0 sm:px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col" style={{ maxHeight: '90vh' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Batch Reminders</h2>
+            <p className="text-xs text-gray-400">Send WhatsApp to overdue customers</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+
+        {/* List */}
+        <div className="overflow-y-auto flex-1 px-5 py-3 space-y-1.5">
+          {isLoading ? (
+            <div className="space-y-2 py-4">
+              {[0, 1, 2].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : sheet.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No overdue installments today</p>
+          ) : (
+            sheet.map((row, idx) => {
+              const isCurrent = cursor !== null && selected[cursor]?.id === row.id;
+              const isSent    = cursor !== null && selected.findIndex((r) => r.id === row.id) < cursor;
+              return (
+                <label key={row.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                  isSent    ? 'border-emerald-200 bg-emerald-50 opacity-60' :
+                  isCurrent ? 'border-blue-300 bg-blue-50' :
+                  checked[row.id] ? 'border-gray-200 bg-white' : 'border-gray-100 opacity-50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    disabled={started}
+                    checked={!!checked[row.id]}
+                    onChange={() => setChecked((p) => ({ ...p, [row.id]: !p[row.id] }))}
+                    className="accent-green-600 w-4 h-4 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{row.customerName}</p>
+                    <p className="text-xs text-gray-400">{row.customerPhone}
+                      {row.daysOverdue > 0 && <span className="ml-1 text-red-500 font-medium">{row.daysOverdue}d late</span>}
+                    </p>
+                  </div>
+                  {isSent && <span className="text-xs text-emerald-600 font-semibold shrink-0">✓ Sent</span>}
+                  {isCurrent && <span className="text-xs text-blue-600 font-semibold shrink-0">← Next</span>}
+                </label>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0">
+          {!started && (
+            <div className="flex items-center justify-between mb-3">
+              <button className="text-xs text-blue-600 hover:underline"
+                onClick={() => setChecked(Object.fromEntries(sheet.map((r) => [r.id, true])))}>
+                Select all ({sheet.length})
+              </button>
+              <span className="text-xs text-gray-400">{selected.length} selected</span>
+            </div>
+          )}
+          {started && !done && (
+            <p className="text-xs text-gray-500 mb-3 text-center">
+              Sent {cursor} of {selected.length} · WhatsApp opened
+            </p>
+          )}
+          {done && (
+            <p className="text-xs text-emerald-600 font-semibold mb-3 text-center">
+              ✓ All {selected.length} reminders sent!
+            </p>
+          )}
+          {!done ? (
+            <button
+              onClick={startOrNext}
+              disabled={!selected.length}
+              className="w-full py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2">
+              <MessageCircle size={15} />
+              {!started ? `Start Sending (${selected.length})` : `Send Next — ${selected[cursor!]?.customerName}`}
+            </button>
+          ) : (
+            <button onClick={onClose}
+              className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition">
+              Done
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BulkPaymentModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [method, setMethod] = useState<PaymentMethod>('CASH');
@@ -708,6 +834,7 @@ export default function InstallmentsPage() {
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
   const [waiverInst, setWaiverInst] = useState<Installment | null>(null);
   const [showBulk, setShowBulk] = useState(false);
+  const [showBatchReminder, setShowBatchReminder] = useState(false);
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
   const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
   const [editInst, setEditInst] = useState<Installment | null>(null);
@@ -889,6 +1016,13 @@ export default function InstallmentsPage() {
               <Layers size={14} /> Bulk Collect
             </button>
           )}
+          <button
+            onClick={() => setShowBatchReminder(true)}
+            className="flex items-center gap-1.5 px-3 py-2 border border-green-200 text-green-700 hover:bg-green-50 text-sm rounded-lg transition font-medium"
+            title="Send WhatsApp reminders to overdue customers"
+          >
+            <MessageCircle size={14} /> Reminders
+          </button>
           {isOwner && (
             <button onClick={() => setShowImport(true)}
               className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition">
@@ -1407,6 +1541,7 @@ export default function InstallmentsPage() {
       {rescheduleInst && <RescheduleModal inst={rescheduleInst} onClose={() => setRescheduleInst(null)} />}
       {waiverInst && <WaiverModal inst={waiverInst} onClose={() => setWaiverInst(null)} />}
       {showBulk && <BulkPaymentModal onClose={() => setShowBulk(false)} />}
+      {showBatchReminder && <BatchReminderModal shopName={shopData?.shopName ?? 'Our Shop'} onClose={() => setShowBatchReminder(false)} />}
 
       {/* Recovery drawer */}
       {recoveryInst && <RecoveryDrawer inst={recoveryInst} onClose={() => setRecoveryInst(null)} />}
