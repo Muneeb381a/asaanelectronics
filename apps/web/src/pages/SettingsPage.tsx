@@ -600,9 +600,10 @@ export default function SettingsPage() {
   const [phone, setPhone]       = useState('');
   const [address, setAddress]   = useState('');
 
-  const [dailyTarget,   setDailyTarget]   = useState('');
-  const [weeklyTarget,  setWeeklyTarget]  = useState('');
-  const [monthlyTarget, setMonthlyTarget] = useState('');
+  const [dailyTarget,     setDailyTarget]     = useState('');
+  const [weeklyTarget,    setWeeklyTarget]    = useState('');
+  const [monthlyTarget,   setMonthlyTarget]   = useState('');
+  const [commissionRate,  setCommissionRate]  = useState('');
 
   useEffect(() => {
     if (shop) {
@@ -612,6 +613,7 @@ export default function SettingsPage() {
       setDailyTarget(String(shop.settings?.dailyTarget ?? ''));
       setWeeklyTarget(String(shop.settings?.weeklyTarget ?? ''));
       setMonthlyTarget(String(shop.settings?.monthlyTarget ?? ''));
+      setCommissionRate(String(shop.settings?.commissionRate ?? ''));
     }
   }, [shop]);
 
@@ -629,9 +631,10 @@ export default function SettingsPage() {
   const targetMutation = useMutation({
     mutationFn: () => sellersApi.update({
       settings: {
-        dailyTarget:   dailyTarget   ? Number(dailyTarget)   : undefined,
-        weeklyTarget:  weeklyTarget  ? Number(weeklyTarget)  : undefined,
-        monthlyTarget: monthlyTarget ? Number(monthlyTarget) : undefined,
+        dailyTarget:     dailyTarget     ? Number(dailyTarget)     : undefined,
+        weeklyTarget:    weeklyTarget    ? Number(weeklyTarget)    : undefined,
+        monthlyTarget:   monthlyTarget   ? Number(monthlyTarget)   : undefined,
+        commissionRate:  commissionRate  ? Number(commissionRate)  : undefined,
       },
     }),
     onSuccess: () => {
@@ -643,9 +646,10 @@ export default function SettingsPage() {
   });
 
   const targetDirty = shop && (
-    dailyTarget   !== String(shop.settings?.dailyTarget   ?? '') ||
-    weeklyTarget  !== String(shop.settings?.weeklyTarget  ?? '') ||
-    monthlyTarget !== String(shop.settings?.monthlyTarget ?? '')
+    dailyTarget    !== String(shop.settings?.dailyTarget    ?? '') ||
+    weeklyTarget   !== String(shop.settings?.weeklyTarget   ?? '') ||
+    monthlyTarget  !== String(shop.settings?.monthlyTarget  ?? '') ||
+    commissionRate !== String(shop.settings?.commissionRate ?? '')
   );
 
   return (
@@ -706,12 +710,12 @@ export default function SettingsPage() {
           <p className="text-xs text-gray-400 mb-4">Set PKR targets — dashboard will show live progress against these goals.</p>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'Daily Target', value: dailyTarget, set: setDailyTarget, placeholder: 'e.g. 50000' },
-              { label: 'Weekly Target', value: weeklyTarget, set: setWeeklyTarget, placeholder: 'e.g. 300000' },
-              { label: 'Monthly Target', value: monthlyTarget, set: setMonthlyTarget, placeholder: 'e.g. 1200000' },
-            ].map(({ label, value, set, placeholder }) => (
+              { label: 'Daily Target', value: dailyTarget, set: setDailyTarget, placeholder: 'e.g. 50000', suffix: 'PKR' },
+              { label: 'Weekly Target', value: weeklyTarget, set: setWeeklyTarget, placeholder: 'e.g. 300000', suffix: 'PKR' },
+              { label: 'Monthly Target', value: monthlyTarget, set: setMonthlyTarget, placeholder: 'e.g. 1200000', suffix: 'PKR' },
+            ].map(({ label, value, set, placeholder, suffix }) => (
               <div key={label}>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">{label} (PKR)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">{label} ({suffix})</label>
                 <input
                   type="number"
                   value={value}
@@ -721,6 +725,26 @@ export default function SettingsPage() {
                 />
               </div>
             ))}
+          </div>
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Staff Commission Rate (%)</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                value={commissionRate}
+                onChange={(e) => setCommissionRate(e.target.value)}
+                placeholder="e.g. 0.5"
+                step="0.1"
+                min="0"
+                max="100"
+                className={`${inp} max-w-40`}
+              />
+              <p className="text-xs text-gray-400">
+                {commissionRate && Number(commissionRate) > 0
+                  ? `Staff earns ${commissionRate}% of every payment they collect`
+                  : 'No commission — staff page will hide commission column'}
+              </p>
+            </div>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <button
@@ -735,6 +759,7 @@ export default function SettingsPage() {
                   setDailyTarget(String(shop?.settings?.dailyTarget ?? ''));
                   setWeeklyTarget(String(shop?.settings?.weeklyTarget ?? ''));
                   setMonthlyTarget(String(shop?.settings?.monthlyTarget ?? ''));
+                  setCommissionRate(String(shop?.settings?.commissionRate ?? ''));
                 }}
                 className="text-sm text-gray-400 hover:text-gray-600 transition">
                 Discard

@@ -53,6 +53,7 @@ export const sellers = pgTable('sellers', {
     dailyTarget?: number;
     weeklyTarget?: number;
     monthlyTarget?: number;
+    commissionRate?: number;
   }>(),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
 });

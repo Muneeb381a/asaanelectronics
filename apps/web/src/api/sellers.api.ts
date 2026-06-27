@@ -6,6 +6,7 @@ export interface SellerSettings {
   dailyTarget?: number;
   weeklyTarget?: number;
   monthlyTarget?: number;
+  commissionRate?: number;
 }
 
 export interface Seller {

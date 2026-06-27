@@ -42,8 +42,25 @@ const PERM_LABELS: Record<keyof StaffPermissions, string> = {
 
 export { PERM_LABELS };
 
+export interface CommissionRow {
+  userId: string;
+  userName: string;
+  collected: number;
+  payments: number;
+  commission: number;
+}
+
+export interface CommissionReport {
+  month: string;
+  commissionRate: number;
+  staff: CommissionRow[];
+}
+
 export const staffApi = {
   list: () => api.get<{ data: StaffMember[] }>('/staff').then((r) => r.data.data),
+  commissions: (month?: string) =>
+    api.get<{ data: CommissionReport }>('/staff/commissions', { params: month ? { month } : {} })
+      .then((r) => r.data.data),
   create: (body: { name: string; email: string; password: string; permissions?: StaffPermissions }) =>
     api.post<{ data: StaffMember }>('/staff', body).then((r) => r.data.data),
   updatePermissions: (id: string, permissions: Partial<StaffPermissions>) =>

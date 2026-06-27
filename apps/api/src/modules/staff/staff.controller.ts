@@ -86,3 +86,11 @@ export async function unfreezeStaff(req: AuthRequest, res: Response, next: NextF
     }).catch(console.error);
   } catch (e) { next(e); }
 }
+
+export async function getCommissions(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const month = req.query['month'] as string | undefined;
+    const data  = await svc.commissions(req.user!.sellerId!, month);
+    res.json({ success: true, data });
+  } catch (e) { next(e); }
+}

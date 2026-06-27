@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -442,6 +442,75 @@ function StaffCard({ member }: { member: StaffMember }) {
   );
 }
 
+function pkr(v: number) {
+  return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+}
+
+function CommissionSection() {
+  const now = new Date();
+  const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  const { data, isLoading } = useQuery({
+    queryKey: ['staff-commissions', month],
+    queryFn: () => staffApi.commissions(month),
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-100">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <TrendingUp size={16} className="text-blue-600" />
+          <h2 className="text-sm font-semibold text-gray-900">Commission Report</h2>
+          {data?.commissionRate ? (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{data.commissionRate}% rate</span>
+          ) : (
+            <span className="text-xs text-gray-400">(set commission rate in Settings)</span>
+          )}
+        </div>
+        <input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[0, 1].map((i) => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}
+        </div>
+      ) : !data?.staff.length ? (
+        <p className="text-sm text-gray-400 text-center py-4">No payment collections recorded for this month.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left py-2 text-xs font-medium text-gray-400">Staff Member</th>
+                <th className="text-right py-2 text-xs font-medium text-gray-400">Payments</th>
+                <th className="text-right py-2 text-xs font-medium text-gray-400">Collected</th>
+                {data.commissionRate > 0 && <th className="text-right py-2 text-xs font-medium text-gray-400">Commission</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {data.staff.map((row) => (
+                <tr key={row.userId}>
+                  <td className="py-2.5 font-medium text-gray-900">{row.userName}</td>
+                  <td className="py-2.5 text-right text-gray-500">{row.payments}</td>
+                  <td className="py-2.5 text-right text-gray-900 font-medium">{pkr(row.collected)}</td>
+                  {data.commissionRate > 0 && (
+                    <td className="py-2.5 text-right text-emerald-600 font-bold">{pkr(row.commission)}</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StaffPage() {
   const { user } = useAuthStore();
   const isOwner = user?.role === 'SELLER_OWNER';
@@ -485,6 +554,8 @@ export default function StaffPage() {
           {staff.map((m) => <StaffCard key={m.id} member={m} />)}
         </div>
       )}
+
+      {isOwner && <CommissionSection />}
 
       {showAdd && <AddStaffModal onClose={() => setShowAdd(false)} />}
     </div>

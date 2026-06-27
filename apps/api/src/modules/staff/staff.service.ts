@@ -1,7 +1,7 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, gte, lt } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { db } from '../../db/index.js';
-import { users, sellers, refreshTokens, DEFAULT_STAFF_PERMISSIONS, type StaffPermissions } from '../../db/schema.js';
+import { users, sellers, refreshTokens, payments, customers, installments, DEFAULT_STAFF_PERMISSIONS, type StaffPermissions } from '../../db/schema.js';
 export type { StaffPermissions };
 import { AppError } from '../../middleware/error.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
@@ -141,5 +141,51 @@ export class StaffService {
       columns: { permissions: true },
     });
     return member?.permissions ?? DEFAULT_STAFF_PERMISSIONS;
+  }
+
+  async commissions(sellerId: string, month?: string) {
+    const seller = await db.query.sellers.findFirst({
+      where: eq(sellers.id, sellerId),
+      columns: { settings: true },
+    });
+    const rate = (seller?.settings as { commissionRate?: number } | null)?.commissionRate ?? 0;
+
+    // Default to current month if not provided
+    const ref = month ? new Date(month + '-01') : new Date();
+    const from = new Date(ref.getFullYear(), ref.getMonth(), 1);
+    const to   = new Date(ref.getFullYear(), ref.getMonth() + 1, 1);
+
+    const rows = await db.execute<{ userId: string; userName: string; total: string; count: number }>(sql`
+      SELECT
+        p.collected_by                                    AS "userId",
+        u.name                                            AS "userName",
+        COALESCE(SUM(p.amount::numeric), 0)::text        AS total,
+        COUNT(*)::int                                     AS count
+      FROM payments p
+      INNER JOIN users u        ON u.id = p.collected_by
+      INNER JOIN installments i ON i.id = p.installment_id
+      INNER JOIN customers c    ON c.id = i.customer_id
+      WHERE c.seller_id = ${sellerId}
+        AND p.deleted_at IS NULL
+        AND p.paid_on >= ${from.toISOString()}
+        AND p.paid_on <  ${to.toISOString()}
+        AND p.collected_by IS NOT NULL
+      GROUP BY p.collected_by, u.name
+      ORDER BY total::numeric DESC
+    `);
+
+    const monthLabel = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      month: monthLabel,
+      commissionRate: rate,
+      staff: rows.map((r) => ({
+        userId:     r.userId,
+        userName:   r.userName,
+        collected:  Number(r.total),
+        payments:   Number(r.count),
+        commission: rate > 0 ? Math.round(Number(r.total) * (rate / 100)) : 0,
+      })),
+    };
   }
 }
