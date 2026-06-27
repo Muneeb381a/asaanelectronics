@@ -89,4 +89,7 @@ export const installmentsApi = {
 
   dueSheet: () =>
     api.get<{ data: DueSheetItem[] }>('/installments/due-sheet').then(unwrap<DueSheetItem[]>),
+
+  waiver: (id: string, body: { amount: number; reason?: string }) =>
+    api.patch<{ data: Installment }>(`/installments/${id}/waiver`, body).then(unwrap<Installment>),
 };

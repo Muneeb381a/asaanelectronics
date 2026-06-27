@@ -158,6 +158,26 @@ export async function updateInstallment(req: AuthRequest, res: Response) {
   }).catch(console.error);
 }
 
+export async function waiverInstallment(req: AuthRequest, res: Response) {
+  const { amount, reason } = req.body as { amount: number; reason?: string };
+  if (!amount || typeof amount !== 'number' || amount <= 0) {
+    res.status(400).json({ message: 'amount must be a positive number' });
+    return;
+  }
+  const before = await svc.getOne(req.params['id']!, req.user!.sellerId!);
+  const result = await svc.waiver(req.params['id']!, req.user!.sellerId!, { amount, reason });
+  success(res, result);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'INSTALLMENT_WAIVER', entityType: 'INSTALLMENT', entityId: result.id,
+    description: `Balance waiver PKR ${amount.toLocaleString()} — ${before.customerName} · ${before.productName}${reason ? ` (${reason})` : ''}`,
+    before: { remaining: before.remaining },
+    after:  { remaining: result?.remaining },
+    reason,
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
 export async function importInstallments(req: AuthRequest, res: Response) {
   const parsed = importInstallmentsSchema.safeParse(req.body);
   if (!parsed.success) {

@@ -435,6 +435,100 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
   );
 }
 
+function WaiverModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+
+  const remaining = Number(inst.remaining);
+  const parsed    = Number(amount);
+  const isValid   = parsed > 0 && parsed <= remaining;
+  const willClear = isValid && parsed >= remaining;
+
+  const mutation = useMutation({
+    mutationFn: () => installmentsApi.waiver(inst.id, { amount: parsed, reason: reason.trim() || undefined }),
+    onSuccess: (updated) => {
+      type ListCache = { data: Installment[]; total: number; page: number; limit: number };
+      qc.setQueriesData<ListCache>({ queryKey: ['installments'], exact: false }, (cached) => {
+        if (!cached?.data) return cached;
+        return {
+          ...cached,
+          data: cached.data.map((i) =>
+            i.id === inst.id ? { ...i, remaining: updated.remaining, status: updated.status } : i
+          ),
+        };
+      });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success(willClear ? 'Balance cleared — installment completed' : `PKR ${parsed.toLocaleString()} waived`);
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Balance Waiver</h2>
+            <p className="text-xs text-gray-400">{inst.customerName} · {inst.productName}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+        </div>
+
+        <div className="bg-amber-50 rounded-xl px-4 py-3 mb-5">
+          <p className="text-xs text-amber-600 mb-0.5">Remaining balance</p>
+          <p className="font-bold text-amber-700 text-base">{pkr(remaining)}</p>
+        </div>
+
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">Waiver amount (PKR)</label>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="e.g. 500"
+            min={1}
+            max={remaining}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          {parsed > remaining && (
+            <p className="text-xs text-red-500 mt-1">Cannot exceed remaining balance</p>
+          )}
+          {willClear && (
+            <p className="text-xs text-emerald-600 font-medium mt-1">This will fully clear the balance and complete the installment.</p>
+          )}
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">Reason (optional)</label>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. goodwill discount, settlement"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!isValid || mutation.isPending}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition disabled:opacity-50">
+            {mutation.isPending ? <><Loader2 size={14} className="animate-spin inline mr-1" />Saving…</> : 'Apply Waiver'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InstallmentsPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -483,6 +577,7 @@ export default function InstallmentsPage() {
 
   const [payInst, setPayInst] = useState<Installment | null>(null);
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
+  const [waiverInst, setWaiverInst] = useState<Installment | null>(null);
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
   const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
   const [editInst, setEditInst] = useState<Installment | null>(null);
@@ -1079,6 +1174,12 @@ export default function InstallmentsPage() {
                 Reschedule
               </button>
             )}
+            {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && isOwner && (
+              <button onClick={() => { close(); setWaiverInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-amber-600 hover:bg-amber-50 transition">
+                Balance Waiver
+              </button>
+            )}
             {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && (
               <button onClick={() => { close(); setRecoveryInst(inst); }}
                 className="w-full text-left px-3 py-2 text-xs text-violet-600 hover:bg-violet-50 transition">
@@ -1165,6 +1266,7 @@ export default function InstallmentsPage() {
 
       {/* Reschedule modal */}
       {rescheduleInst && <RescheduleModal inst={rescheduleInst} onClose={() => setRescheduleInst(null)} />}
+      {waiverInst && <WaiverModal inst={waiverInst} onClose={() => setWaiverInst(null)} />}
 
       {/* Recovery drawer */}
       {recoveryInst && <RecoveryDrawer inst={recoveryInst} onClose={() => setRecoveryInst(null)} />}

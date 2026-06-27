@@ -386,6 +386,47 @@ export class InstallmentsService {
     return updated;
   }
 
+  async waiver(id: string, sellerId: string, body: { amount: number; reason?: string }) {
+    const row = await this.getOne(id, sellerId);
+    if (row.status !== 'ACTIVE' && row.status !== 'DEFAULTED') {
+      throw new AppError('Balance waiver can only be applied to active or defaulted installments', 400);
+    }
+    if (body.amount <= 0) throw new AppError('Waiver amount must be positive', 400);
+
+    const currentRemaining = Number(row.remaining);
+    if (body.amount > currentRemaining) {
+      throw new AppError(`Waiver amount (${body.amount}) exceeds remaining balance (${currentRemaining})`, 400);
+    }
+
+    const newRemaining = Number((currentRemaining - body.amount).toFixed(2));
+    const isFullyCleared = newRemaining <= 0;
+
+    return db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(installments)
+        .set({
+          remaining: String(newRemaining),
+          ...(isFullyCleared ? { status: 'COMPLETED' } : {}),
+        })
+        .where(eq(installments.id, id))
+        .returning();
+
+      await tx.insert(ledgerEntries).values({
+        sellerId,
+        type: 'CREDIT',
+        category: 'WAIVER',
+        amount: String(body.amount.toFixed(2)),
+        description: body.reason
+          ? `Balance waiver: ${body.reason}`
+          : `Balance waiver on installment ${id.slice(-8)}`,
+        referenceId: id,
+        refType: 'MANUAL',
+      });
+
+      return updated;
+    });
+  }
+
   async update(id: string, sellerId: string, body: {
     totalAmount?: number; downPayment?: number; monthly?: number; months?: number;
     startDate?: string; imeiNumber?: string | null; cashPrice?: number | null;

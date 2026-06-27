@@ -7,7 +7,7 @@ import {
   listInstallments, getInstallment, createInstallment, defaultInstallment,
   cancelInstallment, rescheduleInstallment, deleteInstallment,
   approveInstallment, closeInstallment, importInstallments, updateInstallment,
-  getDueSheet,
+  getDueSheet, waiverInstallment,
 } from './installments.controller.js';
 
 const router = Router();
@@ -25,6 +25,7 @@ router.patch('/:id/close',      requireOwner, closeInstallment);
 router.patch('/:id/default',    requireOwner, defaultInstallment);
 router.patch('/:id/cancel',     requireOwner, cancelInstallment);
 router.patch('/:id/reschedule', requireOwner, rescheduleInstallment);
+router.patch('/:id/waiver',     requireOwner, waiverInstallment);
 router.delete('/:id',           requireOwner, deleteInstallment);
 
 export default router;
