@@ -374,21 +374,31 @@ export default function ProductsPage() {
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 mt-2">
-                          <div className="bg-white rounded-lg px-2 py-1.5 text-center border border-gray-100">
-                            <p className="text-[10px] text-gray-400">Cash</p>
+                        <div className="grid grid-cols-4 gap-1.5 mt-2">
+                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center border border-gray-100">
+                            <p className="text-[9px] text-gray-400">Cash</p>
                             <p className="text-xs font-bold text-gray-900">{formatPKR(p.price)}</p>
                           </div>
-                          <div className="bg-white rounded-lg px-2 py-1.5 text-center border border-gray-100">
-                            <p className="text-[10px] text-gray-400">Install</p>
+                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center border border-gray-100">
+                            <p className="text-[9px] text-gray-400">Install</p>
                             <p className="text-xs font-bold text-blue-700">
                               {p.installmentPrice ? formatPKR(p.installmentPrice) : '—'}
                             </p>
                           </div>
-                          <div className={`rounded-lg px-2 py-1.5 text-center border ${
+                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center border border-gray-100">
+                            <p className="text-[9px] text-gray-400">Margin</p>
+                            {(() => {
+                              const cost = Number(p.purchasePrice);
+                              const sell = Number(p.price);
+                              if (!cost || !sell) return <p className="text-xs font-bold text-gray-300">—</p>;
+                              const m = Math.round(((sell - cost) / sell) * 100);
+                              return <p className={`text-xs font-bold ${m >= 20 ? 'text-emerald-600' : m >= 10 ? 'text-amber-600' : 'text-red-500'}`}>{m}%</p>;
+                            })()}
+                          </div>
+                          <div className={`rounded-lg px-1.5 py-1.5 text-center border ${
                             p.stock === 0 ? 'bg-red-50 border-red-100' : p.stock <= LOW_STOCK ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'
                           }`}>
-                            <p className="text-[10px] text-gray-400">Stock</p>
+                            <p className="text-[9px] text-gray-400">Stock</p>
                             <p className={`text-xs font-bold ${
                               p.stock === 0 ? 'text-red-600' : p.stock <= LOW_STOCK ? 'text-amber-600' : 'text-gray-900'
                             }`}>{p.stock}</p>
@@ -407,6 +417,7 @@ export default function ProductsPage() {
                           <th className="text-left px-4 py-3 font-medium text-gray-600">Serial</th>
                           <th className="text-right px-4 py-3 font-medium text-gray-600">Cash Price</th>
                           <th className="text-right px-4 py-3 font-medium text-gray-600">Install Price</th>
+                          <th className="text-right px-4 py-3 font-medium text-gray-600">Margin</th>
                           <th className="text-right px-4 py-3 font-medium text-gray-600">Stock</th>
                           <th className="px-4 py-3" />
                         </tr>
@@ -428,6 +439,16 @@ export default function ProductsPage() {
                               {p.installmentPrice
                                 ? <span className="text-blue-700 font-medium">{formatPKR(p.installmentPrice)}</span>
                                 : <span className="text-gray-300">—</span>}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {(() => {
+                                const cost = Number(p.purchasePrice);
+                                const sell = Number(p.price);
+                                if (!cost || !sell) return <span className="text-gray-300">—</span>;
+                                const margin = Math.round(((sell - cost) / sell) * 100);
+                                const cls = margin >= 20 ? 'text-emerald-600' : margin >= 10 ? 'text-amber-600' : 'text-red-500';
+                                return <span className={`font-medium text-sm ${cls}`}>{margin}%</span>;
+                              })()}
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className={`font-bold ${

@@ -40,11 +40,15 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
     defaultValues: { stock: 0, ...defaultValues },
   });
 
-  const [cashPrice, installmentPrice] = useWatch({ control, name: ['price', 'installmentPrice'] });
+  const [purchasePrice, cashPrice, installmentPrice] = useWatch({ control, name: ['purchasePrice', 'price', 'installmentPrice'] });
   const markup = cashPrice && installmentPrice && installmentPrice > cashPrice
     ? installmentPrice - cashPrice
     : null;
   const markupPct = markup && cashPrice ? ((markup / cashPrice) * 100).toFixed(1) : null;
+
+  const grossMargin = purchasePrice && cashPrice && cashPrice > purchasePrice
+    ? Math.round(((cashPrice - purchasePrice) / cashPrice) * 100)
+    : null;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -81,6 +85,11 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
           <input type="number" step="0.01" {...register('price', { valueAsNumber: true })} placeholder="0" className={inputCls} />
         </Field>
       </div>
+      {grossMargin !== null && (
+        <p className={`text-xs font-medium -mt-1 ${grossMargin >= 20 ? 'text-emerald-600' : grossMargin >= 10 ? 'text-amber-600' : 'text-red-500'}`}>
+          Gross margin: {grossMargin}% · Profit: PKR {(cashPrice! - purchasePrice!).toLocaleString('en-PK')}
+        </p>
+      )}
 
       <Field label="Installment Price (PKR)" optional error={errors.installmentPrice?.message}>
         <input type="number" step="0.01" {...register('installmentPrice', { valueAsNumber: true })} placeholder="Price when selling on installment" className={inputCls} />
