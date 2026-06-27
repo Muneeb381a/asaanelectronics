@@ -541,4 +541,88 @@ export class InstallmentsService {
 
     return { imported, customersCreated, customersLinked, productsCreated, errors };
   }
+
+  async dueSheet(sellerId: string) {
+    const rows = await db.execute<{
+      id: string; monthly: string; remaining: string; months: number;
+      payment_frequency: string; start_date: string; payment_due_day: number;
+      total_amount: string; down_payment: string;
+      customer_name: string; customer_phone: string; customer_address: string | null;
+      product_name: string;
+    }>(sql`
+      SELECT i.id, i.monthly, i.remaining, i.months, i.payment_frequency,
+             i.start_date, i.payment_due_day, i.total_amount, i.down_payment,
+             c.name AS customer_name, c.phone AS customer_phone, c.address AS customer_address,
+             p.name AS product_name
+      FROM installments i
+      INNER JOIN customers c ON i.customer_id = c.id
+      INNER JOIN products p ON i.product_id = p.id
+      WHERE c.seller_id = ${sellerId}
+        AND i.status = 'ACTIVE'
+        AND i.deleted_at IS NULL
+        AND c.deleted_at IS NULL
+      LIMIT 2000
+    `);
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const dueItems: Array<{
+      id: string; customerName: string; customerPhone: string; customerAddress: string;
+      productName: string; monthly: number; remaining: number;
+      nextDueDate: string; daysOverdue: number; area: string;
+    }> = [];
+
+    for (const inst of rows) {
+      const monthly = Number(inst.monthly);
+      if (monthly <= 0) continue;
+
+      const paidAmt = Number(inst.total_amount) - Number(inst.down_payment) - Number(inst.remaining);
+      const paidPeriods = Math.max(0, Math.floor(paidAmt / monthly + 0.001));
+      const nextPeriod = paidPeriods + 1;
+      if (nextPeriod > inst.months) continue;
+
+      const startDate = new Date(inst.start_date);
+      let nextDueDate: Date;
+
+      if (inst.payment_frequency === 'daily') {
+        nextDueDate = new Date(startDate);
+        nextDueDate.setDate(nextDueDate.getDate() + nextPeriod);
+      } else {
+        const dueDay = Number(inst.payment_due_day) || 10;
+        const mo = startDate.getMonth() + nextPeriod;
+        const lastDay = new Date(startDate.getFullYear(), mo + 1, 0).getDate();
+        nextDueDate = new Date(startDate.getFullYear(), mo, Math.min(dueDay, lastDay));
+      }
+
+      const nextDateStr = `${nextDueDate.getFullYear()}-${String(nextDueDate.getMonth() + 1).padStart(2, '0')}-${String(nextDueDate.getDate()).padStart(2, '0')}`;
+
+      if (nextDateStr <= todayStr) {
+        const nextMidnight = new Date(nextDueDate.getFullYear(), nextDueDate.getMonth(), nextDueDate.getDate());
+        const daysOverdue = Math.max(0, Math.floor(
+          (todayMidnight.getTime() - nextMidnight.getTime()) / 86_400_000,
+        ));
+        const area = inst.customer_address
+          ? inst.customer_address.split(',').pop()?.trim() || 'Unknown'
+          : 'Unknown';
+
+        dueItems.push({
+          id:              inst.id,
+          customerName:    inst.customer_name,
+          customerPhone:   inst.customer_phone,
+          customerAddress: inst.customer_address ?? '',
+          productName:     inst.product_name,
+          monthly,
+          remaining:       Number(inst.remaining),
+          nextDueDate:     nextDateStr,
+          daysOverdue,
+          area,
+        });
+      }
+    }
+
+    dueItems.sort((a, b) => a.area.localeCompare(b.area) || a.customerName.localeCompare(b.customerName));
+    return dueItems;
+  }
 }

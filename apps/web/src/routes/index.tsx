@@ -36,6 +36,7 @@ const ShopsPage             = lazy(() => import('../pages/owner/ShopsPage.tsx'))
 const PortalLoginPage       = lazy(() => import('../pages/portal/PortalLoginPage.tsx'));
 const PortalDashboardPage   = lazy(() => import('../pages/portal/PortalDashboardPage.tsx'));
 const ImeiPage              = lazy(() => import('../pages/ImeiPage.tsx'));
+const DueSheetPage          = lazy(() => import('../pages/DueSheetPage.tsx'));
 
 // ── Fallback loader ────────────────────────────────────────────────────────────
 function PageLoader() {
@@ -148,6 +149,7 @@ export const router = createBrowserRouter([
       { path: '/verifications',    element: <S><VerificationQueuePage /></S> },
     ],
   },
+  { path: '/due-sheet', element: <ProtectedRoute><S><DueSheetPage /></S></ProtectedRoute> },
   { path: '/portal',           element: <PortalGuestRoute><S><PortalLoginPage /></S></PortalGuestRoute> },
   { path: '/portal/dashboard', element: <PortalAuthRoute><S><PortalDashboardPage /></S></PortalAuthRoute> },
   { path: '*', element: <Navigate to="/" replace /> },

@@ -2,7 +2,13 @@ import type { CreateSellerInput } from '@assaan/shared';
 import { api } from './client.ts';
 import type { AuthResponse } from './auth.api.ts';
 
-interface Seller {
+export interface SellerSettings {
+  dailyTarget?: number;
+  weeklyTarget?: number;
+  monthlyTarget?: number;
+}
+
+export interface Seller {
   id: string;
   shopName: string;
   phone: string;
@@ -11,6 +17,7 @@ interface Seller {
   trialEndsAt: string | null;
   createdAt: string;
   murabahaMode: boolean;
+  settings: SellerSettings | null;
 }
 
 interface CreateSellerResponse extends AuthResponse {
@@ -39,7 +46,7 @@ export const sellersApi = {
   getMe: () =>
     api.get<{ data: Seller }>('/sellers/me').then(unwrap<Seller>),
 
-  update: (data: { shopName?: string; phone?: string; address?: string; murabahaMode?: boolean }) =>
+  update: (data: { shopName?: string; phone?: string; address?: string; murabahaMode?: boolean; settings?: SellerSettings }) =>
     api.patch<{ data: Seller }>('/sellers/me', data).then(unwrap<Seller>),
 
   listPaymentAccounts: () =>

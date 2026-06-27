@@ -49,6 +49,11 @@ export const sellers = pgTable('sellers', {
   planExpiresAt: timestamp('plan_expires_at'),
   isActive:      boolean('is_active').default(true).notNull(),
   murabahaMode:  boolean('murabaha_mode').default(false).notNull(),
+  settings:      json('settings').$type<{
+    dailyTarget?: number;
+    weeklyTarget?: number;
+    monthlyTarget?: number;
+  }>(),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
 });
 

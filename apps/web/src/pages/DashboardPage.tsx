@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, CreditCard, AlertTriangle,
   Calendar, Package, ArrowRight, BarChart3,
-  MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt, Bell,
+  MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt, Bell, Target,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
 import { recoveryApi } from '../api/recovery.api.ts';
+import { sellersApi } from '../api/sellers.api.ts';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
@@ -104,6 +105,14 @@ export default function DashboardPage() {
     enabled:  promisesDueCount > 0,
     staleTime: 60_000,
     gcTime:    5 * 60_000,
+  });
+
+  const { data: shop } = useQuery({
+    queryKey: ['shop-me'],
+    queryFn:  sellersApi.getMe,
+    staleTime: 5 * 60_000,
+    gcTime:    10 * 60_000,
+    enabled:   isOwner,
   });
 
   const data     = dashboard?.stats;
@@ -249,6 +258,45 @@ export default function DashboardPage() {
             </div>
           ))}
       </div>
+
+      {/* Daily target progress — only shown when owner has set a target */}
+      {isOwner && shop?.settings?.dailyTarget && (
+        (() => {
+          const target = shop.settings!.dailyTarget!;
+          const pct    = Math.min(Math.round((todayTotal / target) * 100), 100);
+          const over   = todayTotal > target;
+          const barCls = over ? 'bg-emerald-500' : pct >= 75 ? 'bg-blue-500' : pct >= 40 ? 'bg-amber-400' : 'bg-gray-300';
+          const txtCls = over ? 'text-emerald-600' : 'text-blue-600';
+          return (
+            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <Target size={14} className="text-blue-600" />
+                  </div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Daily Target</p>
+                </div>
+                <span className={`text-xs font-bold ${txtCls}`}>{pct}%{over ? ' ✓' : ''}</span>
+              </div>
+              <div className="flex items-baseline gap-1.5 mb-2">
+                <span className="text-2xl font-extrabold text-gray-900">{pkr(todayTotal)}</span>
+                <span className="text-xs text-gray-400">of {pkr(target)}</span>
+              </div>
+              <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${barCls}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              {over && (
+                <p className="text-[10px] text-emerald-600 font-semibold mt-1.5">
+                  +{pkr(todayTotal - target)} above target
+                </p>
+              )}
+            </div>
+          );
+        })()
+      )}
 
       {/* Collection rate + Aging + Sparkline */}
       {reports && (

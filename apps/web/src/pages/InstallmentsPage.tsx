@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer } from 'lucide-react';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import EditInstallmentModal from '../components/EditInstallmentModal.tsx';
@@ -647,6 +647,13 @@ export default function InstallmentsPage() {
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition disabled:opacity-50">
             {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             Export CSV
+          </button>
+          <button
+            onClick={() => window.open('/due-sheet', '_blank')}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition"
+            title="Print today's field collection sheet"
+          >
+            <Printer size={14} /> Field Sheet
           </button>
           {isOwner && (
             <button onClick={() => setShowImport(true)}

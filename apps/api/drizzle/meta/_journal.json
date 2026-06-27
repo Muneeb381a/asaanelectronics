@@ -43,6 +43,13 @@
       "when": 1751001600000,
       "tag": "0005_add_min_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1751088000000,
+      "tag": "0006_add_seller_settings",
+      "breakpoints": true
     }
   ]
 }

@@ -10,6 +10,7 @@ export declare const createInstallmentSchema: z.ZodObject<{
     cashPrice: z.ZodOptional<z.ZodNumber>;
     profitMarkup: z.ZodOptional<z.ZodNumber>;
     paymentFrequency: z.ZodDefault<z.ZodEnum<["monthly", "daily"]>>;
+    paymentDueDay: z.ZodOptional<z.ZodDefault<z.ZodNumber>>;
 }, "strip", z.ZodTypeAny, {
     customerId: string;
     productId: string;
@@ -21,6 +22,7 @@ export declare const createInstallmentSchema: z.ZodObject<{
     imeiNumber?: string | undefined;
     cashPrice?: number | undefined;
     profitMarkup?: number | undefined;
+    paymentDueDay?: number | undefined;
 }, {
     customerId: string;
     productId: string;
@@ -32,6 +34,7 @@ export declare const createInstallmentSchema: z.ZodObject<{
     cashPrice?: number | undefined;
     profitMarkup?: number | undefined;
     paymentFrequency?: "monthly" | "daily" | undefined;
+    paymentDueDay?: number | undefined;
 }>;
 export type CreateInstallmentInput = z.infer<typeof createInstallmentSchema>;
 export declare const importInstallmentRowSchema: z.ZodObject<{
@@ -166,6 +169,7 @@ export declare const updateInstallmentSchema: z.ZodObject<{
     cashPrice: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     profitMarkup: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     paymentFrequency: z.ZodOptional<z.ZodEnum<["monthly", "daily"]>>;
+    paymentDueDay: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     totalAmount?: number | undefined;
     downPayment?: number | undefined;
@@ -176,6 +180,7 @@ export declare const updateInstallmentSchema: z.ZodObject<{
     profitMarkup?: number | null | undefined;
     monthly?: number | undefined;
     paymentFrequency?: "monthly" | "daily" | undefined;
+    paymentDueDay?: number | undefined;
 }, {
     totalAmount?: number | undefined;
     downPayment?: number | undefined;
@@ -186,5 +191,6 @@ export declare const updateInstallmentSchema: z.ZodObject<{
     profitMarkup?: number | null | undefined;
     monthly?: number | undefined;
     paymentFrequency?: "monthly" | "daily" | undefined;
+    paymentDueDay?: number | undefined;
 }>;
 export type UpdateInstallmentInput = z.infer<typeof updateInstallmentSchema>;

@@ -12,6 +12,7 @@ export const createInstallmentSchema = z.object({
     cashPrice: z.number().positive().optional(),
     profitMarkup: z.number().min(0).optional(),
     paymentFrequency: z.enum(['monthly', 'daily']).default('monthly'),
+    paymentDueDay: z.number().int().min(1).max(31).default(10).optional(),
 });
 export const importInstallmentRowSchema = z.object({
     customerName: z.string().min(1, 'Customer name required'),
@@ -41,4 +42,5 @@ export const updateInstallmentSchema = z.object({
     cashPrice: z.number().positive().nullable().optional(),
     profitMarkup: z.number().min(0).nullable().optional(),
     paymentFrequency: z.enum(['monthly', 'daily']).optional(),
+    paymentDueDay: z.number().int().min(1).max(31).optional(),
 });

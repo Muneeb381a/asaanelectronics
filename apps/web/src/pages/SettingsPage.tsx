@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Monitor, Smartphone, Tablet, AlertTriangle, Trash2, LogOut, Shield,
-  Users, TrendingUp, Package, BookOpen, Plus, CreditCard, KeyRound, Eye, EyeOff,
+  Users, TrendingUp, Package, BookOpen, Plus, CreditCard, KeyRound, Eye, EyeOff, Target,
 } from 'lucide-react';
 import { sellersApi, type PaymentAccount, type PaymentAccountType } from '../api/sellers.api.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -600,11 +600,18 @@ export default function SettingsPage() {
   const [phone, setPhone]       = useState('');
   const [address, setAddress]   = useState('');
 
+  const [dailyTarget,   setDailyTarget]   = useState('');
+  const [weeklyTarget,  setWeeklyTarget]  = useState('');
+  const [monthlyTarget, setMonthlyTarget] = useState('');
+
   useEffect(() => {
     if (shop) {
       setShopName(shop.shopName);
       setPhone(shop.phone);
       setAddress(shop.address ?? '');
+      setDailyTarget(String(shop.settings?.dailyTarget ?? ''));
+      setWeeklyTarget(String(shop.settings?.weeklyTarget ?? ''));
+      setMonthlyTarget(String(shop.settings?.monthlyTarget ?? ''));
     }
   }, [shop]);
 
@@ -618,6 +625,28 @@ export default function SettingsPage() {
   });
 
   const dirty = shop && (shopName !== shop.shopName || phone !== shop.phone || address !== (shop.address ?? ''));
+
+  const targetMutation = useMutation({
+    mutationFn: () => sellersApi.update({
+      settings: {
+        dailyTarget:   dailyTarget   ? Number(dailyTarget)   : undefined,
+        weeklyTarget:  weeklyTarget  ? Number(weeklyTarget)  : undefined,
+        monthlyTarget: monthlyTarget ? Number(monthlyTarget) : undefined,
+      },
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shop-me'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success('Collection targets saved');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save targets')),
+  });
+
+  const targetDirty = shop && (
+    dailyTarget   !== String(shop.settings?.dailyTarget   ?? '') ||
+    weeklyTarget  !== String(shop.settings?.weeklyTarget  ?? '') ||
+    monthlyTarget !== String(shop.settings?.monthlyTarget ?? '')
+  );
 
   return (
     <div className="px-4 py-5 sm:p-6 max-w-lg">
@@ -664,6 +693,54 @@ export default function SettingsPage() {
 
           {/* Murabaha Mode toggle */}
           <MurabahaToggle murabahaMode={shop?.murabahaMode ?? false} sellerId={shop?.id} />
+        </div>
+      )}
+
+      {/* Collection Targets */}
+      {isOwner && (
+        <div className="mt-8 pt-6 border-t border-gray-100">
+          <div className="flex items-center gap-2 mb-4">
+            <Target size={16} className="text-blue-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Collection Targets</h2>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">Set PKR targets — dashboard will show live progress against these goals.</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Daily Target', value: dailyTarget, set: setDailyTarget, placeholder: 'e.g. 50000' },
+              { label: 'Weekly Target', value: weeklyTarget, set: setWeeklyTarget, placeholder: 'e.g. 300000' },
+              { label: 'Monthly Target', value: monthlyTarget, set: setMonthlyTarget, placeholder: 'e.g. 1200000' },
+            ].map(({ label, value, set, placeholder }) => (
+              <div key={label}>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">{label} (PKR)</label>
+                <input
+                  type="number"
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  placeholder={placeholder}
+                  className={inp}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={() => targetMutation.mutate()}
+              disabled={!targetDirty || targetMutation.isPending}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition">
+              {targetMutation.isPending ? 'Saving…' : 'Save Targets'}
+            </button>
+            {targetDirty && (
+              <button
+                onClick={() => {
+                  setDailyTarget(String(shop?.settings?.dailyTarget ?? ''));
+                  setWeeklyTarget(String(shop?.settings?.weeklyTarget ?? ''));
+                  setMonthlyTarget(String(shop?.settings?.monthlyTarget ?? ''));
+                }}
+                className="text-sm text-gray-400 hover:text-gray-600 transition">
+                Discard
+              </button>
+            )}
+          </div>
         </div>
       )}
 

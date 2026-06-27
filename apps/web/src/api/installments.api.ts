@@ -35,6 +35,19 @@ interface ListResponse {
   limit: number;
 }
 
+export interface DueSheetItem {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  productName: string;
+  monthly: number;
+  remaining: number;
+  nextDueDate: string;
+  daysOverdue: number;
+  area: string;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const installmentsApi = {
@@ -73,4 +86,7 @@ export const installmentsApi = {
 
   importBulk: (rows: import('@assaan/shared').ImportInstallmentRow[]) =>
     api.post<{ data: { imported: number; customersCreated: number; customersLinked: number; productsCreated: number; errors: Array<{ row: number; message: string }> } }>('/installments/import', { rows }).then((r) => r.data.data),
+
+  dueSheet: () =>
+    api.get<{ data: DueSheetItem[] }>('/installments/due-sheet').then(unwrap<DueSheetItem[]>),
 };

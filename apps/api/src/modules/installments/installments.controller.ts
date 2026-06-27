@@ -43,6 +43,10 @@ export async function getInstallment(req: AuthRequest, res: Response) {
   success(res, await svc.getOne(req.params['id']!, req.user!.sellerId!));
 }
 
+export async function getDueSheet(req: AuthRequest, res: Response) {
+  success(res, await svc.dueSheet(req.user!.sellerId!));
+}
+
 export async function createInstallment(req: AuthRequest, res: Response) {
   const result = await svc.create(req.user!.sellerId!, req.body);
   success(res, result, 201);
