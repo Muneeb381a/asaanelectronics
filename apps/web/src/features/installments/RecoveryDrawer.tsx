@@ -210,6 +210,41 @@ function AddActionForm({ installmentId, onSuccess }: { installmentId: string; on
   );
 }
 
+// ── Escalation tier ───────────────────────────────────────────────────────────
+type Tier = { label: string; bg: string; text: string; border: string; suggestion: string };
+
+function escalationTier(dpd: number): Tier {
+  if (dpd <= 0)   return { label: 'On Schedule',  bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', suggestion: '' };
+  if (dpd <= 7)   return { label: 'Level 1 — Call', bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   suggestion: 'Call the customer and remind them of the due amount.' };
+  if (dpd <= 30)  return { label: 'Level 2 — Visit', bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200',  suggestion: 'Visit the customer's address and get a promise date in writing.' };
+  if (dpd <= 90)  return { label: 'Level 3 — Written Notice', bg: 'bg-red-50',     text: 'text-red-700',     border: 'border-red-200',     suggestion: 'Send a formal written notice and record a REFUSED or PROMISE_TO_PAY action.' };
+  return           { label: 'Level 4 — Legal',  bg: 'bg-red-100',   text: 'text-red-800',     border: 'border-red-300',     suggestion: 'Escalate to legal proceedings — log a Legal Warning Sent action.' };
+}
+
+function computeDPD(inst: Installment): number {
+  if (inst.status !== 'ACTIVE') return 0;
+  const now  = new Date();
+  const start = new Date(inst.startDate);
+  const isDaily = inst.paymentFrequency === 'daily';
+  const mon  = Number(inst.monthly);
+  const tot  = Number(inst.totalAmount);
+  const down = Number(inst.downPayment);
+  const rem  = Number(inst.remaining);
+  if (mon <= 0 || !inst.isOverdue) return 0;
+  const paidPeriods = Math.round(((tot - down) - rem) / mon);
+  const nextPeriod  = paidPeriods + 1;
+  let dueDate: Date;
+  if (isDaily) {
+    dueDate = new Date(start);
+    dueDate.setDate(dueDate.getDate() + nextPeriod);
+  } else {
+    dueDate = new Date(start);
+    dueDate.setMonth(dueDate.getMonth() + nextPeriod);
+    if (inst.paymentDueDay) dueDate.setDate(inst.paymentDueDay);
+  }
+  return Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / 86_400_000));
+}
+
 // ── Main drawer ───────────────────────────────────────────────────────────────
 export default function RecoveryDrawer({ inst, onClose }: { inst: Installment; onClose: () => void }) {
   const qc = useQueryClient();
@@ -228,6 +263,8 @@ export default function RecoveryDrawer({ inst, onClose }: { inst: Installment; o
   const remaining = Number(inst.remaining);
   const totalAmount = Number(inst.totalAmount);
   const progress = Math.round(((totalAmount - remaining) / totalAmount) * 100);
+  const dpd  = computeDPD(inst);
+  const tier = escalationTier(dpd);
 
   return (
     <>
@@ -268,6 +305,16 @@ export default function RecoveryDrawer({ inst, onClose }: { inst: Installment; o
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Escalation banner */}
+          {dpd > 0 && (
+            <div className={`rounded-xl border px-4 py-3 ${tier.bg} ${tier.border}`}>
+              <div className="flex items-center justify-between mb-0.5">
+                <span className={`text-xs font-bold uppercase tracking-wide ${tier.text}`}>{tier.label}</span>
+                <span className={`text-xs font-bold ${tier.text}`}>{dpd} DPD</span>
+              </div>
+              {tier.suggestion && <p className="text-xs text-gray-600">{tier.suggestion}</p>}
+            </div>
+          )}
           {/* Add form */}
           <AddActionForm installmentId={inst.id} onSuccess={() => {}} />
 
