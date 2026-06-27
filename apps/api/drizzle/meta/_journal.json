@@ -36,6 +36,13 @@
       "when": 1781981292055,
       "tag": "0004_mean_lifeguard",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1751001600000,
+      "tag": "0005_add_min_stock",
+      "breakpoints": true
     }
   ]
 }

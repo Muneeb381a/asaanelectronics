@@ -42,6 +42,10 @@ export async function deleteRecoveryAction(req: AuthRequest, res: Response) {
   }).catch(console.error);
 }
 
+export async function listPromisesDue(req: AuthRequest, res: Response) {
+  success(res, await svc.promisesDue(req.user!.sellerId!));
+}
+
 export async function listAgentStats(req: AuthRequest, res: Response) {
   success(res, await svc.agentStats(req.user!.sellerId!));
 }

@@ -9,6 +9,7 @@ export declare const createProductSchema: z.ZodObject<{
     installmentPrice: z.ZodOptional<z.ZodNumber>;
     purchasePrice: z.ZodOptional<z.ZodNumber>;
     stock: z.ZodDefault<z.ZodNumber>;
+    minStock: z.ZodOptional<z.ZodNumber>;
     serial: z.ZodOptional<z.ZodString>;
     warrantyMonths: z.ZodOptional<z.ZodNumber>;
     description: z.ZodOptional<z.ZodString>;
@@ -22,6 +23,7 @@ export declare const createProductSchema: z.ZodObject<{
     color?: string | undefined;
     installmentPrice?: number | undefined;
     purchasePrice?: number | undefined;
+    minStock?: number | undefined;
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
     description?: string | undefined;
@@ -35,6 +37,7 @@ export declare const createProductSchema: z.ZodObject<{
     installmentPrice?: number | undefined;
     purchasePrice?: number | undefined;
     stock?: number | undefined;
+    minStock?: number | undefined;
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
     description?: string | undefined;
@@ -49,6 +52,7 @@ export declare const updateProductSchema: z.ZodObject<{
     installmentPrice: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     purchasePrice: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     stock: z.ZodOptional<z.ZodDefault<z.ZodNumber>>;
+    minStock: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     serial: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     warrantyMonths: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     description: z.ZodOptional<z.ZodOptional<z.ZodString>>;
@@ -62,6 +66,7 @@ export declare const updateProductSchema: z.ZodObject<{
     installmentPrice?: number | undefined;
     purchasePrice?: number | undefined;
     stock?: number | undefined;
+    minStock?: number | undefined;
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
     description?: string | undefined;
@@ -75,6 +80,7 @@ export declare const updateProductSchema: z.ZodObject<{
     installmentPrice?: number | undefined;
     purchasePrice?: number | undefined;
     stock?: number | undefined;
+    minStock?: number | undefined;
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
     description?: string | undefined;

@@ -13,6 +13,18 @@ export interface RecoveryAction {
   actorRole: string | null;
 }
 
+export interface PromiseDue {
+  id: string;
+  installmentId: string;
+  promiseDate: string;
+  note: string | null;
+  createdAt: string;
+  customerName: string;
+  customerPhone: string;
+  productName: string;
+  actorName: string | null;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const recoveryApi = {
@@ -24,4 +36,7 @@ export const recoveryApi = {
 
   remove: (id: string) =>
     api.delete(`/recovery/${id}`),
+
+  promisesDue: () =>
+    api.get<{ data: PromiseDue[] }>('/recovery/promises-due').then(unwrap<PromiseDue[]>),
 };

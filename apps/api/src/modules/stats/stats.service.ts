@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, isNull, lt, lte, sql, sum } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNull, lt, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { cashSales, customers, installments, payments, products, recoveryActions } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
@@ -76,10 +76,11 @@ export class StatsService {
 
       db
         .select({
-          current:   sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} >= NOW())`,
-          days1_30:  sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} < NOW() AND ${dueExpr} >= NOW() - INTERVAL '30 days')`,
-          days31_60: sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} < NOW() - INTERVAL '30 days' AND ${dueExpr} >= NOW() - INTERVAL '60 days')`,
-          days60plus:sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} < NOW() - INTERVAL '60 days')`,
+          current:    sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} >= NOW())`,
+          days0_7:    sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} < NOW() AND ${dueExpr} >= NOW() - INTERVAL '7 days')`,
+          days8_30:   sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} < NOW() - INTERVAL '7 days' AND ${dueExpr} >= NOW() - INTERVAL '30 days')`,
+          days31_90:  sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} < NOW() - INTERVAL '30 days' AND ${dueExpr} >= NOW() - INTERVAL '90 days')`,
+          days90plus: sql<number>`COUNT(*) FILTER (WHERE ${dueExpr} < NOW() - INTERVAL '90 days')`,
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -131,16 +132,17 @@ export class StatsService {
     const totalCollected = totalBilled - totalRemaining;
     const rate = totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 0;
 
-    const a = agingData[0] ?? { current: 0, days1_30: 0, days31_60: 0, days60plus: 0 };
+    const a = agingData[0] ?? { current: 0, days0_7: 0, days8_30: 0, days31_90: 0, days90plus: 0 };
 
     return {
       monthlyCollections,
       collectionRate: { totalBilled, totalCollected, rate },
       agingBuckets: {
         current:    Number(a.current),
-        days1_30:   Number(a.days1_30),
-        days31_60:  Number(a.days31_60),
-        days60plus: Number(a.days60plus),
+        days0_7:    Number(a.days0_7),
+        days8_30:   Number(a.days8_30),
+        days31_90:  Number(a.days31_90),
+        days90plus: Number(a.days90plus),
       },
       topDebtors: topDebtors.map((d) => ({
         name:      d.name,
@@ -166,8 +168,6 @@ export class StatsService {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart.getTime() + 86_400_000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const LOW_STOCK = 3;
 
     // Staff: only run their own collections/sales — shop-wide metrics (active count,
     // overdue, low stock, promises) are not meaningful per-employee and are hidden.
@@ -300,9 +300,9 @@ export class StatsService {
         .limit(5),
 
       db
-        .select({ id: products.id, name: products.name, stock: products.stock })
+        .select({ id: products.id, name: products.name, stock: products.stock, minStock: products.minStock })
         .from(products)
-        .where(and(eq(products.sellerId, sellerId), lte(products.stock, LOW_STOCK), isNull(products.deletedAt)))
+        .where(and(eq(products.sellerId, sellerId), sql`${products.stock} <= ${products.minStock}`, isNull(products.deletedAt)))
         .orderBy(asc(products.stock))
         .limit(10),
 

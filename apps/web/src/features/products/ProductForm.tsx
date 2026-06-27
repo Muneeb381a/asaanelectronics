@@ -91,9 +91,12 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
         )}
       </Field>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <Field label="Stock">
           <input type="number" {...register('stock', { valueAsNumber: true })} placeholder="0" className={inputCls} />
+        </Field>
+        <Field label="Low Stock Alert" optional>
+          <input type="number" {...register('minStock', { valueAsNumber: true })} placeholder="3" className={inputCls} />
         </Field>
         <Field label="Warranty (months)" optional>
           <input type="number" {...register('warrantyMonths', { valueAsNumber: true })} placeholder="e.g. 12" className={inputCls} />

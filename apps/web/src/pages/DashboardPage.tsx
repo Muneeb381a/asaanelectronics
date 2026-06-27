@@ -2,11 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, CreditCard, AlertTriangle,
-  Calendar, CheckCircle, Clock, Package, ArrowRight, BarChart3,
-  MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt,
+  Calendar, Package, ArrowRight, BarChart3,
+  MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt, Bell,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
+import { recoveryApi } from '../api/recovery.api.ts';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
@@ -93,6 +94,16 @@ export default function DashboardPage() {
     staleTime:       60_000,
     gcTime:          5 * 60_000,
     refetchInterval: 5 * 60_000,
+  });
+
+  const promisesDueCount = dashboard?.stats?.promisesDueCount ?? 0;
+
+  const { data: promises = [], isLoading: promisesLoading } = useQuery({
+    queryKey: ['promises-due'],
+    queryFn:  recoveryApi.promisesDue,
+    enabled:  promisesDueCount > 0,
+    staleTime: 60_000,
+    gcTime:    5 * 60_000,
   });
 
   const data     = dashboard?.stats;
@@ -258,24 +269,30 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Aging buckets */}
+          {/* Aging buckets — DPD (Days Past Due) */}
           <div className="md:col-span-2 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Installment Aging</p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Installment Aging (DPD)</p>
+            <div className="space-y-2">
               {[
-                { label: 'On Schedule', n: aging?.current ?? 0,    color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle },
-                { label: '1–30 Days',   n: aging?.days1_30 ?? 0,   color: 'bg-amber-50 text-amber-600',    icon: Clock },
-                { label: '31–60 Days',  n: aging?.days31_60 ?? 0,  color: 'bg-orange-50 text-orange-600',  icon: AlertTriangle },
-                { label: '60+ Days',    n: aging?.days60plus ?? 0, color: 'bg-red-50 text-red-600',        icon: AlertTriangle },
-              ].map(({ label, n, color, icon: Icon }) => (
-                <div key={label} className={`${color} rounded-xl p-3 flex items-center gap-2`}>
-                  <Icon size={14} className="shrink-0 opacity-70" />
-                  <div>
-                    <p className="text-xs opacity-70">{label}</p>
-                    <p className="text-lg font-extrabold leading-tight">{n}</p>
+                { label: 'On Schedule', n: aging?.current ?? 0,    dot: 'bg-emerald-500', text: 'text-emerald-700', bar: 'bg-emerald-400' },
+                { label: '1–7 days',    n: aging?.days0_7 ?? 0,    dot: 'bg-amber-400',   text: 'text-amber-700',   bar: 'bg-amber-400' },
+                { label: '8–30 days',   n: aging?.days8_30 ?? 0,   dot: 'bg-orange-500',  text: 'text-orange-700',  bar: 'bg-orange-400' },
+                { label: '31–90 days',  n: aging?.days31_90 ?? 0,  dot: 'bg-red-500',     text: 'text-red-700',     bar: 'bg-red-500' },
+                { label: '90+ days',    n: aging?.days90plus ?? 0, dot: 'bg-red-800',     text: 'text-red-800',     bar: 'bg-red-800' },
+              ].map(({ label, n, dot, text, bar }) => {
+                const total = (aging?.current ?? 0) + (aging?.days0_7 ?? 0) + (aging?.days8_30 ?? 0) + (aging?.days31_90 ?? 0) + (aging?.days90plus ?? 0);
+                const pct = total > 0 ? Math.round((n / total) * 100) : 0;
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+                    <span className="text-xs text-gray-500 w-20 shrink-0">{label}</span>
+                    <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                      <div className={`h-full rounded-full ${bar}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className={`text-xs font-bold w-6 text-right ${n > 0 ? text : 'text-gray-300'}`}>{n}</span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -330,11 +347,66 @@ export default function DashboardPage() {
               >
                 {p.name}
                 <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${p.stock === 0 ? 'bg-red-200' : 'bg-amber-200'}`}>
-                  {p.stock === 0 ? 'OUT' : p.stock}
+                  {p.stock === 0 ? 'OUT' : `${p.stock}/${p.minStock}`}
                 </span>
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Promise-to-Pay follow-up alerts */}
+      {promisesDueCount > 0 && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Bell size={16} className="text-indigo-600" />
+              <p className="text-sm font-semibold text-indigo-700">
+                {promisesDueCount} promise{promisesDueCount !== 1 ? 's' : ''} due for follow-up
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/installments')}
+              className="flex items-center gap-1 text-xs text-indigo-700 hover:underline font-medium"
+            >
+              View all <ArrowRight size={12} />
+            </button>
+          </div>
+          {promisesLoading ? (
+            <div className="space-y-2">
+              {[0, 1].map((i) => (
+                <div key={i} className="h-10 bg-indigo-100 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {promises.slice(0, 6).map((p) => {
+                const pd = new Date(p.promiseDate);
+                const todayMidnight = new Date();
+                todayMidnight.setHours(0, 0, 0, 0);
+                const isOverdue = pd < todayMidnight;
+                return (
+                  <div key={p.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 border border-indigo-100">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{p.customerName}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
+                    </div>
+                    <div className="text-right shrink-0 ml-3">
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                        isOverdue ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'
+                      }`}>
+                        {isOverdue ? 'Overdue' : 'Today'}
+                      </span>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{fmtDate(pd)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              {promises.length > 6 && (
+                <p className="text-[10px] text-indigo-400 text-center pt-1">+{promises.length - 6} more</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

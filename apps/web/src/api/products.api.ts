@@ -12,6 +12,7 @@ export interface Product {
   installmentPrice: string | null;
   purchasePrice: string | null;
   stock: number;
+  minStock: number;
   serial: string | null;
   warrantyMonths: number | null;
   description: string | null;

@@ -10,6 +10,7 @@ export const createProductSchema = z.object({
   installmentPrice: z.number().positive().optional(),
   purchasePrice:    z.number().positive().optional(),
   stock:            z.number().int().min(0).default(0),
+  minStock:         z.number().int().min(0).optional(),
   serial:           z.string().max(100).optional(),
   warrantyMonths:   z.number().int().min(0).optional(),
   description:      z.string().max(1000).optional(),
