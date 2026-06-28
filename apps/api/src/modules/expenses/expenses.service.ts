@@ -1,12 +1,12 @@
-import { and, desc, eq, gte, lte } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { expenses, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 
 type Category = 'RENT' | 'SALARY' | 'UTILITY' | 'PURCHASE' | 'MAINTENANCE' | 'TRANSPORT' | 'OTHER';
 
-type CreateBody  = { category: Category; amount: number; description?: string; date?: string };
-type UpdateBody  = { category?: Category; amount?: number; description?: string; date?: string };
+type CreateBody  = { category: Category; amount: number; description?: string; date?: string; isRecurring?: boolean; recurrenceDay?: number };
+type UpdateBody  = { category?: Category; amount?: number; description?: string; date?: string; isRecurring?: boolean; recurrenceDay?: number };
 
 export class ExpensesService {
   async list(sellerId: string, from?: string, to?: string) {
@@ -14,6 +14,37 @@ export class ExpensesService {
     if (from) conds.push(gte(expenses.date, new Date(from)));
     if (to)   conds.push(lte(expenses.date, new Date(to)));
     return db.select().from(expenses).where(and(...conds)).orderBy(desc(expenses.date));
+  }
+
+  async getRecurringSuggestions(sellerId: string) {
+    const now  = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    type SugRow = {
+      id: string; category: string; amount: string;
+      description: string | null; recurrenceDay: number; lastDate: string;
+    };
+
+    // Find recurring expense templates and check if already logged this month
+    return db.execute<SugRow>(sql`
+      SELECT
+        r.id, r.category, r.amount, r.description, r.recurrence_day AS "recurrenceDay",
+        r.date AS "lastDate"
+      FROM expenses r
+      WHERE r.seller_id = ${sellerId}
+        AND r.is_recurring = true
+        AND r.date < ${monthStart}
+        AND NOT EXISTS (
+          SELECT 1 FROM expenses e2
+          WHERE e2.seller_id = ${sellerId}
+            AND e2.category  = r.category
+            AND (e2.description IS NOT DISTINCT FROM r.description)
+            AND e2.date >= ${monthStart}
+            AND e2.date <  ${monthEnd}
+        )
+      ORDER BY r.recurrence_day ASC, r.date DESC
+    `);
   }
 
   async create(sellerId: string, body: CreateBody) {
@@ -26,6 +57,8 @@ export class ExpensesService {
         amount: String(body.amount),
         description: body.description,
         date,
+        isRecurring:   body.isRecurring   ?? false,
+        recurrenceDay: body.recurrenceDay ?? 1,
       }).returning();
 
       await tx.insert(ledgerEntries).values({
@@ -60,6 +93,8 @@ export class ExpensesService {
         ...(amount           && { amount }),
         ...(body.description !== undefined && { description: body.description }),
         ...(date             && { date }),
+        ...(body.isRecurring   !== undefined && { isRecurring: body.isRecurring }),
+        ...(body.recurrenceDay !== undefined && { recurrenceDay: body.recurrenceDay }),
       }).where(and(eq(expenses.id, id), eq(expenses.sellerId, sellerId))).returning();
 
       await tx.update(ledgerEntries).set({

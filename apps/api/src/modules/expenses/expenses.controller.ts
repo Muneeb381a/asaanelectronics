@@ -11,6 +11,10 @@ export async function listExpenses(req: AuthRequest, res: Response) {
   success(res, await svc.list(req.user!.sellerId!, req.query['from'] as string, req.query['to'] as string));
 }
 
+export async function getRecurringSuggestions(req: AuthRequest, res: Response) {
+  success(res, await svc.getRecurringSuggestions(req.user!.sellerId!));
+}
+
 export async function createExpense(req: AuthRequest, res: Response) {
   const result = await svc.create(req.user!.sellerId!, req.body);
   success(res, result, 201);

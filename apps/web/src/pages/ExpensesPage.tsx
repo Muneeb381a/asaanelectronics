@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Receipt, Plus, Trash2, Pencil, X, Loader2, ChevronLeft, ChevronRight, Search,
-  Home, Users, Zap, ShoppingCart, Wrench, Truck, MoreHorizontal,
+  Home, Users, Zap, ShoppingCart, Wrench, Truck, MoreHorizontal, RefreshCw, Bell,
 } from 'lucide-react';
-import { expensesApi, type ExpenseCategory, type Expense } from '../api/expenses.api.ts';
+import { expensesApi, type ExpenseCategory, type Expense, type RecurringSuggestion } from '../api/expenses.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
@@ -39,25 +39,28 @@ function monthBounds() {
 
 // ── Add / Edit Expense Modal ───────────────────────────────────────────────────
 
-function AddModal({ onClose, expense }: { onClose: () => void; expense?: Expense }) {
+function AddModal({ onClose, expense, prefill }: { onClose: () => void; expense?: Expense; prefill?: Partial<{ category: ExpenseCategory; amount: string; description: string }> }) {
   const qc = useQueryClient();
   const isEdit = !!expense;
-  const [category, setCategory] = useState<ExpenseCategory>(expense?.category ?? 'RENT');
-  const [amount,   setAmount]   = useState(expense ? String(Number(expense.amount)) : '');
-  const [desc,     setDesc]     = useState(expense?.description ?? '');
+  const [category, setCategory] = useState<ExpenseCategory>(expense?.category ?? prefill?.category ?? 'RENT');
+  const [amount,   setAmount]   = useState(expense ? String(Number(expense.amount)) : prefill?.amount ?? '');
+  const [desc,     setDesc]     = useState(expense?.description ?? prefill?.description ?? '');
   const [date,     setDate]     = useState(expense ? expense.date.slice(0, 10) : new Date().toISOString().slice(0, 10));
+  const [isRecurring,   setIsRecurring]   = useState(expense?.isRecurring ?? false);
+  const [recurrenceDay, setRecurrenceDay] = useState(String(expense?.recurrenceDay ?? 1));
 
   const { mutate, isPending } = useMutation({
     mutationFn: () => {
       const amt = Number(amount);
       if (!amt || amt <= 0) throw new Error('Enter a valid amount');
       return isEdit
-        ? expensesApi.update(expense.id, { category, amount: amt, description: desc || undefined, date })
-        : expensesApi.create({ category, amount: amt, description: desc || undefined, date });
+        ? expensesApi.update(expense.id, { category, amount: amt, description: desc || undefined, date, isRecurring, recurrenceDay: Number(recurrenceDay) })
+        : expensesApi.create({ category, amount: amt, description: desc || undefined, date, isRecurring, recurrenceDay: Number(recurrenceDay) });
     },
     onSuccess: () => {
       toast.success(isEdit ? 'Expense updated' : 'Expense recorded');
-      qc.invalidateQueries({ queryKey: ['expenses'] });
+      void qc.invalidateQueries({ queryKey: ['expenses'] });
+      void qc.invalidateQueries({ queryKey: ['recurring-suggestions'] });
       onClose();
     },
     onError: (e) => toast.error(getErrorMessage(e, isEdit ? 'Failed to update expense' : 'Failed to record expense')),
@@ -113,12 +116,95 @@ function AddModal({ onClose, expense }: { onClose: () => void; expense?: Expense
             <input type="text" placeholder="e.g. June rent payment" value={desc} onChange={(e) => setDesc(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
+
+          {/* Recurring toggle */}
+          <div className="flex items-start justify-between gap-3 p-3 bg-gray-50 rounded-xl">
+            <div className="flex items-start gap-2">
+              <RefreshCw size={14} className="text-gray-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-gray-700">Recurring expense</p>
+                <p className="text-[10px] text-gray-400">Auto-suggest this every month</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isRecurring}
+              onClick={() => setIsRecurring((v) => !v)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${isRecurring ? 'bg-blue-500' : 'bg-gray-200'}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ${isRecurring ? 'translate-x-4' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          {isRecurring && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Day of month</label>
+              <input
+                type="number"
+                value={recurrenceDay}
+                onChange={(e) => setRecurrenceDay(e.target.value)}
+                min="1" max="31"
+                placeholder="1"
+                className="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">Suggested on day {recurrenceDay || '1'} of each month</p>
+            </div>
+          )}
         </div>
 
         <button onClick={() => mutate()} disabled={!amount || isPending}
           className="w-full mt-5 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2">
           {isPending ? <><Loader2 size={15} className="animate-spin" /> Saving…</> : isEdit ? 'Save Changes' : 'Record Expense'}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Recurring suggestions ─────────────────────────────────────────────────────
+
+function RecurringSuggestionsCard({ onAddExpense }: { onAddExpense: (s: RecurringSuggestion) => void }) {
+  const { data: suggestions = [], isLoading } = useQuery({
+    queryKey: ['recurring-suggestions'],
+    queryFn:  expensesApi.getRecurringSuggestions,
+    staleTime: 5 * 60_000,
+  });
+
+  if (isLoading || suggestions.length === 0) return null;
+
+  const now = new Date();
+  const monthName = now.toLocaleString('en-PK', { month: 'long' });
+
+  return (
+    <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell size={14} className="text-amber-600" />
+        <p className="text-xs font-semibold text-amber-800">
+          {suggestions.length} recurring expense{suggestions.length > 1 ? 's' : ''} not logged for {monthName}
+        </p>
+      </div>
+      <div className="space-y-2">
+        {suggestions.map((s) => {
+          const m = CAT[s.category as ExpenseCategory];
+          return (
+            <div key={s.id} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5 border border-amber-100">
+              <div className={`w-7 h-7 ${m.bg} rounded-lg flex items-center justify-center shrink-0`}>
+                <m.icon size={13} className={m.color} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-gray-900">
+                  {m.label}{s.description ? ` — ${s.description}` : ''}
+                </p>
+                <p className="text-[10px] text-gray-400">PKR {Number(s.amount).toLocaleString()} · Day {s.recurrenceDay}</p>
+              </div>
+              <button
+                onClick={() => onAddExpense(s)}
+                className="shrink-0 px-2.5 py-1 text-xs font-semibold text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 transition">
+                Add
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -215,6 +301,7 @@ export default function ExpensesPage() {
   const { user } = useAuthStore();
   const isOwner  = user?.role === 'SELLER_OWNER';
   const [showAdd,        setShowAdd]        = useState(false);
+  const [addPrefill,     setAddPrefill]     = useState<Partial<{ category: ExpenseCategory; amount: string; description: string }> | undefined>();
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deleteConfirm, setDeleteConfirm]   = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [filterCat, setFilter]  = useState<ExpenseCategory | 'ALL'>('ALL');
@@ -260,6 +347,12 @@ export default function ExpensesPage() {
           <Plus size={15} /> Add Expense
         </button>
       </div>
+
+      {/* Recurring suggestions */}
+      <RecurringSuggestionsCard onAddExpense={(s) => {
+        setAddPrefill({ category: s.category as ExpenseCategory, amount: String(Number(s.amount)), description: s.description ?? '' });
+        setShowAdd(true);
+      }} />
 
       {/* Date range filter */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
@@ -412,7 +505,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {showAdd          && <AddModal onClose={() => setShowAdd(false)} />}
+      {showAdd          && <AddModal prefill={addPrefill} onClose={() => { setShowAdd(false); setAddPrefill(undefined); }} />}
       {editingExpense   && <AddModal expense={editingExpense} onClose={() => setEditingExpense(null)} />}
 
       <ConfirmDialog

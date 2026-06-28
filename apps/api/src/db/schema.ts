@@ -285,16 +285,19 @@ export const installments = pgTable('installments', {
 ]);
 
 export const expenses = pgTable('expenses', {
-  id:          text('id').primaryKey().$defaultFn(() => randomUUID()),
-  sellerId:    text('seller_id').notNull().references(() => sellers.id),
-  category:    expenseCategoryEnum('category').notNull(),
-  amount:      decimal('amount', { precision: 12, scale: 2 }).notNull(),
-  description: text('description'),
-  date:        timestamp('date').defaultNow().notNull(),
-  createdAt:   timestamp('created_at').defaultNow().notNull(),
+  id:             text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:       text('seller_id').notNull().references(() => sellers.id),
+  category:       expenseCategoryEnum('category').notNull(),
+  amount:         decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  description:    text('description'),
+  date:           timestamp('date').defaultNow().notNull(),
+  isRecurring:    boolean('is_recurring').default(false).notNull(),
+  recurrenceDay:  integer('recurrence_day').default(1).notNull(),
+  createdAt:      timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
   index('idx_expenses_seller').on(t.sellerId),
   index('idx_expenses_date').on(t.date),
+  index('idx_expenses_recurring').on(t.sellerId, t.isRecurring),
 ]);
 
 export const ledgerEntries = pgTable('ledger_entries', {
