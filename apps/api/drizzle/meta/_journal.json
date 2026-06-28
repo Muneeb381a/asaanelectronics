@@ -50,6 +50,13 @@
       "when": 1751088000000,
       "tag": "0006_add_seller_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1751068800000,
+      "tag": "0007_staff_attendance",
+      "breakpoints": true
     }
   ]
 }

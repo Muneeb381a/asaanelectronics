@@ -34,6 +34,7 @@ import productUnitsRoutes      from './modules/productUnits/productUnits.routes.
 import reportsRoutes           from './modules/reports/reports.routes.js';
 import whatsappTemplatesRoutes from './modules/whatsappTemplates/whatsappTemplates.routes.js';
 import handoversRoutes         from './modules/handovers/handovers.routes.js';
+import attendanceRoutes        from './modules/attendance/attendance.routes.js';
 
 const app = express();
 
@@ -97,6 +98,7 @@ app.use('/api/units',          productUnitsRoutes);
 app.use('/api/reports',        reportsRoutes);
 app.use('/api/whatsapp-templates', whatsappTemplatesRoutes);
 app.use('/api/handovers',          handoversRoutes);
+app.use('/api/attendance',         attendanceRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
 app.use(errorMiddleware);

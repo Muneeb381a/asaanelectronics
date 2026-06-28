@@ -611,3 +611,18 @@ export const ocrCache = pgTable('ocr_cache', {
 }, (t) => [
   uniqueIndex('ocr_cache_hash_doctype').on(t.hash, t.docType),
 ]);
+
+// ── Staff Attendance ──────────────────────────────────────────────────────────
+export const attendance = pgTable('attendance', {
+  id:       text('id').primaryKey().$defaultFn(() => randomUUID()),
+  userId:   text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sellerId: text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  date:     date('date').notNull(),
+  clockIn:  timestamp('clock_in', { withTimezone: true }).notNull().defaultNow(),
+  clockOut: timestamp('clock_out', { withTimezone: true }),
+  notes:    text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_attendance_seller_date').on(t.sellerId, t.date),
+  index('idx_attendance_user').on(t.userId),
+]);

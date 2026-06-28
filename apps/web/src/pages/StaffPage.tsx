@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
+import { attendanceApi } from '../api/attendance.api.ts';
 import { handoversApi, type Handover } from '../api/handovers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -759,6 +760,230 @@ function HandoversSection() {
   );
 }
 
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+function formatDuration(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function AttendanceSection({ isOwner }: { isOwner: boolean }) {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [year,  setYear]  = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+
+  const { data: status, refetch: refetchStatus } = useQuery({
+    queryKey: ['attendance-status'],
+    queryFn:  attendanceApi.getStatus,
+    staleTime: 30_000,
+  });
+
+  const { data: records = [] } = useQuery({
+    queryKey: ['attendance-monthly', year, month],
+    queryFn:  () => attendanceApi.getByMonth(year, month),
+    staleTime: 2 * 60_000,
+    enabled: isOwner,
+  });
+
+  const { data: summary = [] } = useQuery({
+    queryKey: ['attendance-summary', year, month],
+    queryFn:  () => attendanceApi.getSummary(year, month),
+    staleTime: 2 * 60_000,
+    enabled: isOwner,
+  });
+
+  const clockInMut = useMutation({
+    mutationFn: attendanceApi.clockIn,
+    onSuccess: () => {
+      toast.success('Clocked in!');
+      void refetchStatus();
+      void qc.invalidateQueries({ queryKey: ['attendance-monthly'] });
+      void qc.invalidateQueries({ queryKey: ['attendance-summary'] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const clockOutMut = useMutation({
+    mutationFn: () => attendanceApi.clockOut(),
+    onSuccess: () => {
+      toast.success('Clocked out!');
+      void refetchStatus();
+      void qc.invalidateQueries({ queryKey: ['attendance-monthly'] });
+      void qc.invalidateQueries({ queryKey: ['attendance-summary'] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  function prevMonth() {
+    if (month === 1) { setYear((y) => y - 1); setMonth(12); }
+    else setMonth((m) => m - 1);
+  }
+  function nextMonth() {
+    if (isCurrentMonth) return;
+    if (month === 12) { setYear((y) => y + 1); setMonth(1); }
+    else setMonth((m) => m + 1);
+  }
+
+  const isClockedIn = status?.isClockedIn ?? false;
+
+  return (
+    <div className="mt-8">
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-2">
+          <CalendarCheck size={16} className="text-teal-500" />
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Attendance</p>
+            <p className="text-xs text-gray-400">Clock in/out and track working hours</p>
+          </div>
+        </div>
+
+        {/* Clock-in/out widget */}
+        <div className="px-6 py-5 border-b border-gray-50">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[180px]">
+              <p className="text-xs text-gray-500 mb-0.5">Today's Status</p>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${isClockedIn ? 'bg-green-500' : status?.clockIn ? 'bg-gray-300' : 'bg-red-400'}`} />
+                <span className="text-sm font-semibold text-gray-800">
+                  {isClockedIn ? 'On Duty' : status?.clockIn ? 'Shifted Out' : 'Not Clocked In'}
+                </span>
+              </div>
+              {status?.clockIn && (
+                <p className="text-xs text-gray-400 mt-1">
+                  In: {formatTime(status.clockIn)}
+                  {status.clockOut && ` · Out: ${formatTime(status.clockOut)}`}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              {!isClockedIn && (
+                <button
+                  onClick={() => clockInMut.mutate()}
+                  disabled={clockInMut.isPending || (!!status?.clockOut)}
+                  className="flex items-center gap-1.5 bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <LogIn size={14} />
+                  {clockInMut.isPending ? 'Clocking In…' : 'Clock In'}
+                </button>
+              )}
+              {isClockedIn && (
+                <button
+                  onClick={() => clockOutMut.mutate()}
+                  disabled={clockOutMut.isPending}
+                  className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-600 transition disabled:opacity-40"
+                >
+                  <LogOut size={14} />
+                  {clockOutMut.isPending ? 'Clocking Out…' : 'Clock Out'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Owner: monthly summary + records */}
+        {isOwner && (
+          <div className="px-6 py-5">
+            {/* Month navigator */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold text-gray-700">Monthly Overview</p>
+              <div className="flex items-center gap-1">
+                <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-gray-400">
+                  <ChevronDown size={14} className="rotate-90" />
+                </button>
+                <span className="text-xs font-medium text-gray-600 w-24 text-center">{MONTH_NAMES[month - 1]} {year}</span>
+                <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1 rounded hover:bg-gray-100 text-gray-400 disabled:opacity-30">
+                  <ChevronUp size={14} className="rotate-90" />
+                </button>
+              </div>
+            </div>
+
+            {/* Staff summary cards */}
+            {summary.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+                {summary.map((s) => (
+                  <div key={s.userId} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <p className="text-xs font-semibold text-gray-700 mb-2 truncate">{s.userName}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${s.attendancePct >= 80 ? 'bg-teal-500' : s.attendancePct >= 60 ? 'bg-orange-400' : 'bg-red-400'}`}
+                          style={{ width: `${s.attendancePct}%` }}
+                        />
+                      </div>
+                      <span className={`text-xs font-bold ${s.attendancePct >= 80 ? 'text-teal-600' : s.attendancePct >= 60 ? 'text-orange-500' : 'text-red-500'}`}>
+                        {s.attendancePct}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-500">
+                      <span>{s.daysPresent}/{s.workingDays} days</span>
+                      <span>{s.totalHours}h {s.totalMinutes}m total</span>
+                    </div>
+                    {s.avgHoursPerDay > 0 && (
+                      <p className="text-[10px] text-gray-400 mt-0.5">Avg {s.avgHoursPerDay}h/day</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Detailed records table */}
+            {records.length > 0 && (
+              <div className="overflow-x-auto rounded-xl border border-gray-100">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left text-gray-500 font-medium">Staff</th>
+                      <th className="px-4 py-2.5 text-left text-gray-500 font-medium">Date</th>
+                      <th className="px-4 py-2.5 text-center text-gray-500 font-medium">Clock In</th>
+                      <th className="px-4 py-2.5 text-center text-gray-500 font-medium">Clock Out</th>
+                      <th className="px-4 py-2.5 text-right text-gray-500 font-medium">Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {records.map((r) => (
+                      <tr key={r.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2.5 font-medium text-gray-800">{r.userName}</td>
+                        <td className="px-4 py-2.5 text-gray-500">{r.date}</td>
+                        <td className="px-4 py-2.5 text-center text-gray-700">{formatTime(r.clockIn)}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          {r.clockOut ? (
+                            <span className="text-gray-700">{formatTime(r.clockOut)}</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-teal-600 font-semibold">
+                              <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />On duty
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          {r.durationMin !== null ? (
+                            <span className="text-gray-700">{formatDuration(r.durationMin)}</span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {records.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-6">No attendance records for this month</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CommissionSection() {
   const now = new Date();
   const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
@@ -869,6 +1094,8 @@ export default function StaffPage() {
       )}
 
       <HandoversSection />
+
+      <AttendanceSection isOwner={isOwner} />
 
       {isOwner && <CommissionSection />}
 
