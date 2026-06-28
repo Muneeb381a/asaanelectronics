@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Search, Plus, Upload, Smartphone, CheckCircle2,
-  AlertTriangle, X, ChevronDown, RotateCcw, Wrench,
+  AlertTriangle, X, ChevronDown, RotateCcw, Wrench, ShieldCheck,
 } from 'lucide-react';
 import { productUnitsApi, type ProductUnit, type UnitStatus, type PtaStatus } from '../api/productUnits.api.ts';
 import { productsApi } from '../api/products.api.ts';
@@ -278,8 +278,108 @@ function BulkAddModal({
   );
 }
 
+// ── PTA DIRBS check modal ─────────────────────────────────────────────────────
+function PtaCheckModal({ unit, onClose }: { unit: ProductUnit; onClose: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['pta-check', unit.imei],
+    queryFn: () => productUnitsApi.ptaCheck(unit.imei),
+    staleTime: 5 * 60_000,
+  });
+
+  const qc = useQueryClient();
+  const updateMutation = useMutation({
+    mutationFn: (ptaStatus: PtaStatus) => productUnitsApi.update(unit.id, { ptaStatus }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['units'] });
+      toast.success('PTA status updated');
+      onClose();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div>
+            <h2 className="font-semibold text-gray-900">PTA DIRBS Check</h2>
+            <p className="text-xs text-gray-400 font-mono mt-0.5">{unit.imei}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"><X size={16} /></button>
+        </div>
+
+        <div className="px-5 py-5">
+          {isLoading && (
+            <div className="flex items-center gap-3 text-gray-500">
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm">Checking PTA DIRBS database…</p>
+            </div>
+          )}
+
+          {data && data.status === 'UNAVAILABLE' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold text-amber-800 text-sm">PTA API Unavailable</p>
+                  <p className="text-xs text-amber-700 mt-1">{data.message ?? 'Could not reach PTA DIRBS at this time'}</p>
+                  <p className="text-xs text-amber-600 mt-2">You can still manually set the PTA status below.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {data && data.status === 'OK' && (
+            <div className={`rounded-xl p-4 border ${data.registered ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-start gap-3">
+                {data.registered
+                  ? <CheckCircle2 size={20} className="text-emerald-600 shrink-0 mt-0.5" />
+                  : <AlertTriangle size={20} className="text-red-600 shrink-0 mt-0.5" />
+                }
+                <div>
+                  <p className={`font-bold text-sm ${data.registered ? 'text-emerald-800' : 'text-red-800'}`}>
+                    {data.registered ? 'PTA Approved' : 'Not PTA Approved'}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${data.registered ? 'text-emerald-700' : 'text-red-700'}`}>
+                    DIRBS Status: <span className="font-medium">{data.statusMessage}</span>
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-2">Source: PTA DIRBS API — Pakistan Telecommunication Authority</p>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-current/10">
+                <p className="text-xs font-medium text-gray-600 mb-2">Update inventory record:</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateMutation.mutate('approved')}
+                    disabled={updateMutation.isPending || unit.ptaStatus === 'approved'}
+                    className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 transition">
+                    Mark Approved
+                  </button>
+                  <button
+                    onClick={() => updateMutation.mutate('non_pta')}
+                    disabled={updateMutation.isPending || unit.ptaStatus === 'non_pta'}
+                    className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 transition">
+                    Mark Non-PTA
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isLoading && !data && (
+            <p className="text-sm text-gray-400 text-center py-4">No result</p>
+          )}
+        </div>
+
+        <div className="px-5 pb-5">
+          <button onClick={onClose} className="w-full py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Row actions dropdown ──────────────────────────────────────────────────────
-function UnitActions({ unit, onDone }: { unit: ProductUnit; onDone: () => void }) {
+function UnitActions({ unit, onDone, onPtaCheck }: { unit: ProductUnit; onDone: () => void; onPtaCheck: () => void }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -311,6 +411,7 @@ function UnitActions({ unit, onDone }: { unit: ProductUnit; onDone: () => void }
     unit.status !== 'available' && { label: 'Mark Available', icon: CheckCircle2, cls: 'text-emerald-600', fn: () => mutation.mutate({ status: 'available' }) },
     unit.status !== 'defective' && { label: 'Mark Defective', icon: Wrench,       cls: 'text-red-600',     fn: () => mutation.mutate({ status: 'defective' }) },
     unit.status !== 'returned'  && { label: 'Mark Returned',  icon: RotateCcw,    cls: 'text-amber-600',   fn: () => mutation.mutate({ status: 'returned' }) },
+    { label: 'Check PTA DIRBS', icon: ShieldCheck, cls: 'text-blue-600', fn: () => { setOpen(false); onPtaCheck(); } },
     unit.ptaStatus !== 'approved' && { label: 'Mark PTA Approved', icon: CheckCircle2, cls: 'text-emerald-600', fn: () => mutation.mutate({ ptaStatus: 'approved' }) },
     unit.ptaStatus !== 'non_pta'  && { label: 'Mark Non-PTA',      icon: AlertTriangle, cls: 'text-red-600',    fn: () => mutation.mutate({ ptaStatus: 'non_pta' }) },
     unit.ptaStatus !== 'unknown'  && { label: 'PTA Unknown',        icon: X,             cls: 'text-gray-500',   fn: () => mutation.mutate({ ptaStatus: 'unknown' }) },
@@ -350,6 +451,7 @@ export default function ImeiPage() {
   const [showAdd,   setShowAdd]   = useState(false);
   const [showBulk,  setShowBulk]  = useState(false);
   const [lookupVal, setLookupVal] = useState('');
+  const [ptaUnit,   setPtaUnit]   = useState<ProductUnit | null>(null);
 
   const debouncedSearch = useDebounce(search, 350);
   const debouncedLookup = useDebounce(lookupVal, 400);
@@ -571,7 +673,7 @@ export default function ImeiPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{fmtDate(unit.createdAt)}</td>
                   <td className="px-4 py-3">
-                    <UnitActions unit={unit} onDone={() => void qc.invalidateQueries({ queryKey: ['units'] })} />
+                    <UnitActions unit={unit} onDone={() => void qc.invalidateQueries({ queryKey: ['units'] })} onPtaCheck={() => setPtaUnit(unit)} />
                   </td>
                 </tr>
               ))
@@ -620,7 +722,7 @@ export default function ImeiPage() {
                     </p>
                   )}
                 </div>
-                <UnitActions unit={unit} onDone={() => void qc.invalidateQueries({ queryKey: ['units'] })} />
+                <UnitActions unit={unit} onDone={() => void qc.invalidateQueries({ queryKey: ['units'] })} onPtaCheck={() => setPtaUnit(unit)} />
               </div>
             </div>
           ))
@@ -636,6 +738,7 @@ export default function ImeiPage() {
 
       {showAdd  && <AddUnitModal  onClose={() => setShowAdd(false)}  onAdded={() => setShowAdd(false)} />}
       {showBulk && <BulkAddModal  onClose={() => setShowBulk(false)} onAdded={() => setShowBulk(false)} />}
+      {ptaUnit  && <PtaCheckModal unit={ptaUnit} onClose={() => setPtaUnit(null)} />}
     </div>
   );
 }

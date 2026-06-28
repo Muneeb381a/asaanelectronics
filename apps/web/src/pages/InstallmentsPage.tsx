@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck } from 'lucide-react';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import EditInstallmentModal from '../components/EditInstallmentModal.tsx';
@@ -317,6 +317,112 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── JazzCash payment link modal ───────────────────────────────────────────────
+function JazzCashLinkModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
+  const [result, setResult] = useState<{
+    configured: boolean; redirectUrl: string | null; whatsappMsg: string; txnRefNo: string | null;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const { data: statusData } = useQuery({
+    queryKey: ['jazzcash-status'],
+    queryFn: paymentsApi.jazzCashStatus,
+    staleTime: 5 * 60_000,
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => paymentsApi.generateJazzCashLink({
+      installmentId: inst.id,
+      amount:        Number(inst.monthly),
+      customerName:  inst.customerName,
+      customerPhone: inst.customerPhone,
+    }),
+    onSuccess: (data) => setResult(data),
+    onError:   () => toast.error('Failed to generate payment link'),
+  });
+
+  function copyLink() {
+    if (result?.redirectUrl) {
+      void navigator.clipboard.writeText(result.redirectUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  function sendWhatsApp() {
+    if (!result?.whatsappMsg) return;
+    const phone = inst.customerPhone.replace(/\D/g, '');
+    const num   = phone.startsWith('92') ? phone : `92${phone.replace(/^0/, '')}`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(result.whatsappMsg)}`, '_blank');
+  }
+
+  const isConfigured = statusData?.configured ?? false;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div>
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Link2 size={16} className="text-green-600" /> JazzCash Payment Link</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{inst.customerName} · PKR {Number(inst.monthly).toLocaleString('en-PK')}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"><X size={16} /></button>
+        </div>
+
+        <div className="px-5 py-5 space-y-4">
+          {!isConfigured && !result && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+              <p className="font-semibold text-amber-800">JazzCash not configured</p>
+              <p className="text-xs text-amber-700 mt-1">Add <code className="bg-amber-100 px-1 rounded">JAZZCASH_MERCHANT_ID</code>, <code className="bg-amber-100 px-1 rounded">JAZZCASH_PASSWORD</code>, and <code className="bg-amber-100 px-1 rounded">JAZZCASH_INTEGRITY_SALT</code> to your server <code>.env</code> to enable payment links.</p>
+              <p className="text-xs text-amber-600 mt-2">You can still generate a WhatsApp payment request message.</p>
+            </div>
+          )}
+
+          {!result && (
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={mutation.isPending}
+              className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-60 flex items-center justify-center gap-2">
+              {mutation.isPending ? <><Loader2 size={15} className="animate-spin" /> Generating…</> : <><Link2 size={15} /> Generate Payment Link</>}
+            </button>
+          )}
+
+          {result && (
+            <>
+              {result.configured && result.redirectUrl ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Payment Link</p>
+                  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+                    <p className="text-xs text-gray-700 truncate flex-1 font-mono">{result.redirectUrl}</p>
+                    <button onClick={copyLink} className="shrink-0 text-gray-400 hover:text-blue-600 transition">
+                      {copied ? <CheckCheck size={14} className="text-green-600" /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-400">Customer opens this link to pay via JazzCash. Expires in 2 hours.</p>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                  JazzCash is not configured — sending a WhatsApp request message instead.
+                </div>
+              )}
+
+              <button
+                onClick={sendWhatsApp}
+                className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition">
+                <MessageCircle size={15} /> Send via WhatsApp
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="px-5 pb-5">
+          <button onClick={onClose} className="w-full py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Close</button>
+        </div>
       </div>
     </div>
   );
@@ -1027,6 +1133,7 @@ export default function InstallmentsPage() {
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
   const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
   const [editInst, setEditInst] = useState<Installment | null>(null);
+  const [jazzCashInst, setJazzCashInst] = useState<Installment | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [approveConfirm, setApproveConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -1427,6 +1534,14 @@ export default function InstallmentsPage() {
                           <MessageCircle size={15} />
                         </button>
                       )}
+                      {inst.status === 'ACTIVE' && isOwner && (
+                        <button
+                          onClick={() => setJazzCashInst(inst)}
+                          title="JazzCash payment link"
+                          className="p-2 text-gray-400 hover:text-green-600 transition rounded-xl border border-gray-100">
+                          <Link2 size={15} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -1549,6 +1664,14 @@ export default function InstallmentsPage() {
                             title="WhatsApp reminder"
                             className="p-2 text-gray-400 hover:text-green-600 transition rounded">
                             <MessageCircle size={14} />
+                          </button>
+                        )}
+                        {inst.status === 'ACTIVE' && isOwner && (
+                          <button
+                            onClick={() => setJazzCashInst(inst)}
+                            title="JazzCash payment link"
+                            className="p-2 text-gray-400 hover:text-green-600 transition rounded">
+                            <Link2 size={14} />
                           </button>
                         )}
                         <button
@@ -1729,6 +1852,9 @@ export default function InstallmentsPage() {
 
       {/* Recovery drawer */}
       {recoveryInst && <RecoveryDrawer inst={recoveryInst} onClose={() => setRecoveryInst(null)} />}
+
+      {/* JazzCash payment link modal */}
+      {jazzCashInst && <JazzCashLinkModal inst={jazzCashInst} onClose={() => setJazzCashInst(null)} />}
 
       {/* Schedule modal */}
       {scheduleInst && <ScheduleModal inst={scheduleInst} shopName={shopData?.shopName} onClose={() => setScheduleInst(null)} />}

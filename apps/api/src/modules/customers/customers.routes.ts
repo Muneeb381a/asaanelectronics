@@ -6,6 +6,7 @@ import { createCustomerSchema, updateCustomerSchema } from '@assaan/shared';
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer, assignAvo,
   getLifecycleCounts, getRiskBreakdown, lookupByCnic, getUpcomingBirthdays, getReferralLeaderboard,
+  nadraVerifyCnic, nadraStatus,
 } from './customers.controller.js';
 import { listNotes, addNote, deleteNote } from './customer-notes.controller.js';
 
@@ -14,6 +15,8 @@ const router = Router();
 router.use(authenticate, requireSeller);
 
 router.get('/lifecycle-counts',     getLifecycleCounts);
+router.get('/nadra-status',         nadraStatus);
+router.post('/nadra-verify',        requireOwner, nadraVerifyCnic);
 router.get('/upcoming-birthdays',   getUpcomingBirthdays);
 router.get('/referral-leaderboard', getReferralLeaderboard);
 router.get('/lookup',           requirePermission(['canSearchCnic', 'canAddInstallment', 'canAddCustomer', 'canRecordPayment']), lookupByCnic);

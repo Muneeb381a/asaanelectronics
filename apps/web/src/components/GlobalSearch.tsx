@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, X, User, Phone, MapPin, ShieldCheck, ShieldX, Clock,
-  CreditCard, AlertTriangle, CheckCircle2, ChevronRight, Building2, Store,
+  CreditCard, AlertTriangle, CheckCircle2, ChevronRight, Building2, Store, Loader2,
 } from 'lucide-react';
 import {
   customersApi,
@@ -317,13 +317,17 @@ function ResultView({ result, cnicDigits, onNavigate }: {
 
   if (notFound) {
     return (
-      <div className="py-10 text-center">
-        <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-          <User size={22} className="text-gray-300" />
+      <>
+        <div className="py-10 text-center">
+          <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <User size={22} className="text-gray-300" />
+          </div>
+          <p className="text-sm font-medium text-gray-600">Customer nahi mila</p>
+          <p className="text-xs text-gray-400 mt-1">Kisi bhi shop mein is CNIC ka record nahi</p>
         </div>
-        <p className="text-sm font-medium text-gray-600">Customer nahi mila</p>
-        <p className="text-xs text-gray-400 mt-1">Kisi bhi shop mein is CNIC ka record nahi</p>
-      </div>
+        <div className="border-t border-gray-100 mx-5 mb-4" />
+        <NadraVerifySection cnicDigits={cnicDigits} />
+      </>
     );
   }
 
@@ -338,6 +342,82 @@ function ResultView({ result, cnicDigits, onNavigate }: {
       }
       <div className="border-t border-gray-100 mx-5 mb-4" />
       <BureauSection bureau={bureau} />
+      <div className="border-t border-gray-100 mx-5 my-4" />
+      <NadraVerifySection cnicDigits={cnicDigits} />
+    </div>
+  );
+}
+
+// ── NADRA CNIC verification widget ───────────────────────────────────────────
+function NadraVerifySection({ cnicDigits }: { cnicDigits: string }) {
+  const { data: statusData } = useQuery({
+    queryKey: ['nadra-status'],
+    queryFn:  customersApi.nadraStatus,
+    staleTime: 5 * 60_000,
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => customersApi.nadraVerify(cnicDigits),
+  });
+
+  const r = mutation.data;
+
+  return (
+    <div className="px-5 pb-4">
+      <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+            <ShieldCheck size={11} /> NADRA Verification
+          </p>
+          {statusData && !statusData.configured && (
+            <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">API key required</span>
+          )}
+        </div>
+
+        {!r && (
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg transition disabled:opacity-60"
+          >
+            {mutation.isPending
+              ? <><Loader2 size={12} className="animate-spin" /> Verifying with NADRA…</>
+              : <><ShieldCheck size={12} /> Verify CNIC with NADRA</>
+            }
+          </button>
+        )}
+
+        {r && r.status === 'OK' && (
+          <div className="flex items-start gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${r.alive !== false ? 'bg-emerald-100' : 'bg-red-100'}`}>
+              {r.alive !== false
+                ? <CheckCircle2 size={16} className="text-emerald-600" />
+                : <ShieldX size={16} className="text-red-600" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-bold ${r.alive !== false ? 'text-emerald-700' : 'text-red-700'}`}>
+                {r.alive !== false ? 'CNIC Verified — Active' : 'CNIC Holder Deceased'}
+              </p>
+              {r.name && <p className="text-xs text-gray-600 mt-0.5">Name: <span className="font-medium">{r.name}</span></p>}
+              <p className="text-[11px] text-gray-400 mt-1">CNIC: {r.cnic?.replace(/(\d{5})(\d{7})(\d)/, '$1-$2-$3')}</p>
+            </div>
+          </div>
+        )}
+
+        {r && r.status === 'NOT_FOUND' && (
+          <div className="flex items-center gap-2 text-red-700 bg-red-50 rounded-lg px-3 py-2">
+            <AlertTriangle size={14} className="shrink-0" />
+            <p className="text-xs font-medium">CNIC not found in NADRA database</p>
+          </div>
+        )}
+
+        {r && (r.status === 'UNAVAILABLE' || r.status === 'ERROR' || r.status === 'INVALID') && (
+          <div className="flex items-start gap-2 text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+            <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+            <p className="text-xs">{r.message ?? 'NADRA verification unavailable'}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

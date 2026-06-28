@@ -24,6 +24,11 @@ export async function lookupImei(req: AuthRequest, res: Response) {
   success(res, await svc.lookupImei(imei, req.user!.sellerId!));
 }
 
+export async function ptaCheck(req: AuthRequest, res: Response) {
+  const imei = (req.params['imei'] ?? '').replace(/\D/g, '');
+  success(res, await svc.checkPta(imei));
+}
+
 export async function createUnit(req: AuthRequest, res: Response) {
   success(res, await svc.create(req.user!.sellerId!, req.body as CreateProductUnitInput), 201);
 }

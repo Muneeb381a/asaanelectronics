@@ -4,6 +4,7 @@ import { CustomersService } from './customers.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
+import { verifyCnic, isNadraConfigured } from './nadra.service.js';
 
 const svc   = new CustomersService();
 const audit = new AuditService();
@@ -102,4 +103,14 @@ export async function getUpcomingBirthdays(req: AuthRequest, res: Response) {
 
 export async function getReferralLeaderboard(req: AuthRequest, res: Response) {
   success(res, await svc.getReferralLeaderboard(req.user!.sellerId!));
+}
+
+export async function nadraVerifyCnic(req: AuthRequest, res: Response) {
+  const { cnic } = req.body as { cnic: string };
+  if (!cnic) { res.status(400).json({ success: false, error: 'cnic is required' }); return; }
+  success(res, await verifyCnic(cnic));
+}
+
+export function nadraStatus(_req: AuthRequest, res: Response) {
+  success(res, { configured: isNadraConfigured() });
 }

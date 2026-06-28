@@ -89,4 +89,9 @@ export const productUnitsApi = {
 
   remove: (id: string) =>
     api.delete(`/units/${id}`).then((r) => r.data),
+
+  ptaCheck: (imei: string) =>
+    api.get<{ data: { status: 'OK' | 'UNAVAILABLE'; registered?: boolean; statusMessage?: string; message?: string } }>(
+      `/units/pta-check/${imei}`
+    ).then((r) => r.data.data),
 };

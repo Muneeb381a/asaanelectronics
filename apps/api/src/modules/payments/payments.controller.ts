@@ -1,9 +1,13 @@
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import type { AuthRequest } from '../../middleware/auth.js';
 import { PaymentsService } from './payments.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
+import {
+  createJazzCashLink, buildPayPageHtml, getPendingLink,
+  verifyCallbackHash, isJazzCashConfigured,
+} from './jazzcash.service.js';
 const svc   = new PaymentsService();
 const audit = new AuditService();
 
@@ -74,4 +78,97 @@ export async function recordPayment(req: AuthRequest, res: Response) {
     meta: { amount: result.payment.amount, method: result.payment.method, remaining: result.remaining, completed: result.completed },
     ...auditCtx(req),
   }).catch(console.error);
+}
+
+// ── JazzCash payment links ────────────────────────────────────────────────────
+
+export async function generateJazzCashLink(req: AuthRequest, res: Response) {
+  const { installmentId, amount, customerName, customerPhone, description } = req.body as {
+    installmentId: string;
+    amount:        number;
+    customerName:  string;
+    customerPhone: string;
+    description?:  string;
+  };
+
+  if (!installmentId || !amount || !customerName) {
+    res.status(400).json({ success: false, error: 'installmentId, amount, customerName required' });
+    return;
+  }
+
+  const link = createJazzCashLink({
+    installmentId, amount, customerName,
+    customerPhone: customerPhone ?? '',
+    sellerId: req.user!.sellerId!,
+    description,
+  });
+
+  const redirectUrl = link.configured && link.txnRefNo
+    ? `${req.protocol}://${req.get('host')}/api/payments/jazzcash-pay/${link.txnRefNo}`
+    : null;
+
+  const amountFmt = Number(amount).toLocaleString('en-PK', { maximumFractionDigits: 0 });
+  const whatsappMsg = redirectUrl
+    ? `Assalamu Alaikum ${customerName},\n\nKindly pay PKR ${amountFmt} via JazzCash:\n${redirectUrl}\n\nLink expires in 2 hours.`
+    : `Assalamu Alaikum ${customerName},\n\nKindly pay PKR ${amountFmt} via JazzCash. Shukriya!`;
+
+  success(res, {
+    configured:    link.configured,
+    txnRefNo:      link.txnRefNo || null,
+    redirectUrl,
+    whatsappMsg,
+    amount,
+  });
+}
+
+export async function jazzCashPayPage(req: Request, res: Response) {
+  const { txnRefNo } = req.params as { txnRefNo: string };
+  const html = buildPayPageHtml(txnRefNo);
+  if (!html) {
+    res.status(404).send('Payment link expired or not found');
+    return;
+  }
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+}
+
+export async function jazzCashCallback(req: Request, res: Response) {
+  const params = req.body as Record<string, string>;
+
+  if (!verifyCallbackHash(params)) {
+    res.status(400).json({ error: 'Invalid signature' });
+    return;
+  }
+
+  const { pp_ResponseCode, pp_TxnRefNo, pp_Amount } = params;
+
+  if (pp_ResponseCode !== '000') {
+    // Payment failed or cancelled — nothing to record
+    res.json({ received: true, recorded: false, reason: 'non-success response code' });
+    return;
+  }
+
+  const link = getPendingLink(pp_TxnRefNo ?? '');
+  if (!link) {
+    res.json({ received: true, recorded: false, reason: 'link not found (may have expired)' });
+    return;
+  }
+
+  try {
+    const amount = pp_Amount ? Math.round(Number(pp_Amount) / 100) : link.amount;
+    await svc.record(link.sellerId, {
+      installmentId: link.installmentId,
+      amount,
+      method: 'JAZZCASH',
+      note:   `JazzCash — ref ${pp_TxnRefNo}`,
+    });
+    res.json({ received: true, recorded: true });
+  } catch (err) {
+    console.error('JazzCash callback record error:', err);
+    res.json({ received: true, recorded: false, reason: String(err) });
+  }
+}
+
+export function jazzCashStatus(_req: Request, res: Response) {
+  res.json({ configured: isJazzCashConfigured() });
 }

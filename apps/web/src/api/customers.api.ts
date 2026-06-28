@@ -154,4 +154,12 @@ export const customersApi = {
 
   getReferralLeaderboard: () =>
     api.get<{ data: { data: Array<{ id: string; name: string; phone: string; area: string | null; photoUrl: string | null; referralCount: number; activeCount: number }> } }>('/customers/referral-leaderboard').then((r) => r.data.data.data),
+
+  nadraStatus: () =>
+    api.get<{ data: { configured: boolean } }>('/customers/nadra-status').then((r) => r.data.data),
+
+  nadraVerify: (cnic: string) =>
+    api.post<{ data: { status: 'OK' | 'UNAVAILABLE' | 'NOT_FOUND' | 'INVALID' | 'ERROR'; cnic?: string; name?: string; alive?: boolean; message?: string } }>(
+      '/customers/nadra-verify', { cnic }
+    ).then((r) => r.data.data),
 };

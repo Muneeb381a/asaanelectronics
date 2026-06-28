@@ -67,4 +67,18 @@ export const paymentsApi = {
   recordBulk: (entries: Array<{ installmentId: string; amount: number; method: PaymentMethod; note?: string }>) =>
     api.post<{ data: { total: number; succeeded: number; failed: Array<{ installmentId: string; error: string }> } }>('/payments/bulk', { entries })
       .then(unwrap<{ total: number; succeeded: number; failed: Array<{ installmentId: string; error: string }> }>),
+
+  jazzCashStatus: () =>
+    api.get<{ data: { configured: boolean } }>('/payments/jazzcash-status').then((r) => r.data.data),
+
+  generateJazzCashLink: (body: {
+    installmentId: string;
+    amount:        number;
+    customerName:  string;
+    customerPhone: string;
+    description?:  string;
+  }) =>
+    api.post<{ data: { configured: boolean; txnRefNo: string | null; redirectUrl: string | null; whatsappMsg: string; amount: number } }>(
+      '/payments/jazzcash-link', body
+    ).then(unwrap<{ configured: boolean; txnRefNo: string | null; redirectUrl: string | null; whatsappMsg: string; amount: number }>),
 };

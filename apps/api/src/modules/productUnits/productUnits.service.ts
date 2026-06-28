@@ -253,4 +253,38 @@ export class ProductUnitsService {
 
     await db.update(productUnits).set({ deletedAt: new Date() }).where(eq(productUnits.id, id));
   }
+
+  async checkPta(imei: string): Promise<{
+    status: 'OK' | 'UNAVAILABLE';
+    registered?: boolean;
+    statusMessage?: string;
+    message?: string;
+  }> {
+    try {
+      const url = `https://id.pta.gov.pk/dirbs-api/api/v5/imei/?imei=${encodeURIComponent(imei)}`;
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(10_000),
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) return { status: 'UNAVAILABLE', message: `PTA API returned ${res.status}` };
+
+      const data = await res.json() as {
+        registration_status?: { status_message?: string; verified_imei?: boolean };
+        stolen_status?: unknown;
+      };
+
+      const statusMessage = data.registration_status?.status_message ?? 'Unknown';
+      const registered    = statusMessage.toLowerCase() === 'approved';
+
+      return { status: 'OK', registered, statusMessage };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      return {
+        status: 'UNAVAILABLE',
+        message: msg.includes('abort') || msg.includes('timeout')
+          ? 'PTA API timeout — try again'
+          : 'PTA DIRBS API unreachable',
+      };
+    }
+  }
 }
