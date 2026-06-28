@@ -504,4 +504,91 @@ export class ReportsService {
     `);
     return rows;
   }
+
+  async getForecast(sellerId: string) {
+    const now = new Date();
+
+    const rows = await db.execute<{
+      monthly:           string;
+      remaining:         string;
+      payment_frequency: string | null;
+    }>(sql`
+      SELECT monthly, remaining, payment_frequency
+      FROM installments
+      WHERE seller_id = ${sellerId}
+        AND status    = 'ACTIVE'
+        AND deleted_at IS NULL
+        AND remaining::numeric > 0
+        AND monthly::numeric   > 0
+    `);
+
+    type Bucket = {
+      month:            string;
+      monthName:        string;
+      year:             number;
+      monthIndex:       number;
+      expectedAmount:   number;
+      monthlyAmount:    number;
+      dailyAmount:      number;
+      installmentCount: number;
+    };
+
+    const buckets: Bucket[] = [1, 2, 3].map((offset) => {
+      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      return {
+        month:            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        monthName:        d.toLocaleString('en-PK', { month: 'long', year: 'numeric' }),
+        year:             d.getFullYear(),
+        monthIndex:       d.getMonth(),
+        expectedAmount:   0,
+        monthlyAmount:    0,
+        dailyAmount:      0,
+        installmentCount: 0,
+      };
+    });
+
+    for (const row of rows) {
+      const M = Number(row.monthly);
+      const R = Number(row.remaining);
+      if (M <= 0 || R <= 0) continue;
+
+      const isDaily = row.payment_frequency === 'daily';
+
+      if (isDaily) {
+        const daysRemaining = Math.ceil(R / M);
+        for (let bi = 0; bi < 3; bi++) {
+          const { year, monthIndex } = buckets[bi];
+          const monthStart = new Date(year, monthIndex, 1);
+          const monthEnd   = new Date(year, monthIndex + 1, 0);
+          const daysToStart = Math.max(0, Math.ceil((monthStart.getTime() - now.getTime()) / 86400000));
+          const daysToEnd   = Math.ceil((monthEnd.getTime() - now.getTime()) / 86400000);
+          const usableDays  = Math.max(0, Math.min(daysToEnd, daysRemaining) - daysToStart);
+          const contribution = usableDays * M;
+          if (contribution > 0) {
+            buckets[bi].expectedAmount   += contribution;
+            buckets[bi].dailyAmount      += contribution;
+            buckets[bi].installmentCount += 1;
+          }
+        }
+      } else {
+        for (let j = 1; j <= 3; j++) {
+          const balanceBefore = R - M * (j - 1);
+          if (balanceBefore <= 0) break;
+          const contribution = Math.min(M, balanceBefore);
+          buckets[j - 1].expectedAmount   += contribution;
+          buckets[j - 1].monthlyAmount    += contribution;
+          buckets[j - 1].installmentCount += 1;
+        }
+      }
+    }
+
+    return buckets.map(({ month, monthName, expectedAmount, monthlyAmount, dailyAmount, installmentCount }) => ({
+      month,
+      monthName,
+      expectedAmount:   Math.round(expectedAmount),
+      monthlyAmount:    Math.round(monthlyAmount),
+      dailyAmount:      Math.round(dailyAmount),
+      installmentCount,
+    }));
+  }
 }

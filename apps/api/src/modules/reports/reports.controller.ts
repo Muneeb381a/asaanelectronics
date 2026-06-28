@@ -43,6 +43,10 @@ export async function getCollectionsHeatmap(req: AuthRequest, res: Response) {
   success(res, await svc.getCollectionsHeatmap(sellerId, year, month));
 }
 
+export async function getForecastReport(req: AuthRequest, res: Response) {
+  success(res, await svc.getForecast(req.user!.sellerId!));
+}
+
 export async function getMonthlyCustomers(req: AuthRequest, res: Response) {
   const sellerId = req.user!.sellerId!;
   const now      = new Date();

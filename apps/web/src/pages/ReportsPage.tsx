@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
 import { verificationsApi, type AvoStat } from '../api/verifications.api.ts';
-import { reportsApi, type AreaRow, type AgingBucket, type HeatmapDay } from '../api/reports.api.ts';
+import { reportsApi, type AreaRow, type AgingBucket, type HeatmapDay, type ForecastMonth } from '../api/reports.api.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { sellersApi } from '../api/sellers.api.ts';
@@ -98,6 +98,57 @@ function AgingCard({
       </div>
       <p className={`text-3xl font-extrabold ${text}`}>{count}</p>
       <p className="text-xs text-gray-500">{sublabel}</p>
+    </div>
+  );
+}
+
+// ── 3-Month Forecast ──────────────────────────────────────────────────────────
+function ForecastSection({ months }: { months: ForecastMonth[] }) {
+  if (!months.length) return null;
+  const maxAmount = Math.max(...months.map((m) => m.expectedAmount), 1);
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <CalendarDays size={16} className="text-indigo-600" />
+        <h2 className="text-sm font-semibold text-gray-900">3-Month Collection Forecast</h2>
+        <span className="text-xs text-gray-400 ml-1">if all pay on time</span>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        {months.map((m, i) => {
+          const barPct  = maxAmount > 0 ? (m.expectedAmount / maxAmount) * 100 : 0;
+          const opacity = i === 0 ? 'bg-indigo-600' : i === 1 ? 'bg-indigo-400' : 'bg-indigo-200';
+          return (
+            <div key={m.month} className="flex flex-col gap-2">
+              <div className="bg-gray-50 rounded-xl p-3 flex-1">
+                <p className="text-xs font-medium text-gray-500 mb-1">{m.monthName.split(' ')[0]}</p>
+                <p className="text-lg font-bold text-gray-900">
+                  {pkr(m.expectedAmount)}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {m.installmentCount} installment{m.installmentCount !== 1 ? 's' : ''}
+                </p>
+                {m.dailyAmount > 0 && (
+                  <div className="mt-1.5 flex gap-1 text-[10px]">
+                    <span className="text-indigo-600">{pkr(m.monthlyAmount)} monthly</span>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-emerald-600">{pkr(m.dailyAmount)} daily</span>
+                  </div>
+                )}
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${opacity}`}
+                  style={{ width: `${barPct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[10px] text-gray-400 mt-3">
+        Based on {months[0]?.installmentCount ?? 0} active installments · amounts decrease as plans complete
+      </p>
     </div>
   );
 }
@@ -252,6 +303,13 @@ export default function ReportsPage() {
     enabled:  canReports,
   });
 
+  const { data: forecastMonths = [] } = useQuery<ForecastMonth[]>({
+    queryKey: ['forecast'],
+    queryFn:  reportsApi.getForecast,
+    staleTime: 10 * 60_000,
+    enabled:  canReports,
+  });
+
   if (!canReports) {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-64 text-center">
@@ -320,6 +378,9 @@ export default function ReportsPage() {
           </button>
         )}
       </div>
+
+      {/* 3-Month Forecast */}
+      {forecastMonths.length > 0 && <ForecastSection months={forecastMonths} />}
 
       {/* Row 1: Collection rate + summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
