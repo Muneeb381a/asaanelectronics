@@ -43,6 +43,8 @@ export type AgingBucket = {
   totalOutstanding: string;
 };
 
+export type HeatmapDay = { day: number; total: number; count: number };
+
 export const reportsApi = {
   getMonthly: (year: number): Promise<MonthlyReportRow[]> =>
     api.get(`/reports/monthly?year=${year}`).then((res) => res.data.data),
@@ -55,4 +57,7 @@ export const reportsApi = {
 
   getAgingReport: (): Promise<AgingBucket[]> =>
     api.get('/reports/aging').then((res) => res.data.data),
+
+  getCollectionsHeatmap: (year: number, month: number): Promise<HeatmapDay[]> =>
+    api.get(`/reports/collections-heatmap?year=${year}&month=${month}`).then((res) => res.data.data),
 };

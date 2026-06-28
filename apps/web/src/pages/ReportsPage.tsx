@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
 import { verificationsApi, type AvoStat } from '../api/verifications.api.ts';
-import { reportsApi, type AreaRow, type AgingBucket } from '../api/reports.api.ts';
+import { reportsApi, type AreaRow, type AgingBucket, type HeatmapDay } from '../api/reports.api.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck, MapPin, Activity, Gift } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck, MapPin, Activity, Gift, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 function pkr(v: number) {
@@ -107,11 +107,107 @@ function Skeleton({ className }: { className: string }) {
   return <div className={`bg-gray-100 rounded-xl animate-pulse ${className}`} />;
 }
 
+const MONTH_NAMES_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ── Collections Calendar Heatmap ──────────────────────────────────────────────
+function CollectionsHeatmap({
+  days, year, month,
+}: { days: HeatmapDay[]; year: number; month: number }) {
+  if (!days.length) return null;
+
+  const maxTotal = Math.max(...days.map((d) => d.total), 1);
+
+  // intensity: 0 = no data, 1-4 tiers
+  function intensity(total: number) {
+    if (total === 0) return 0;
+    const pct = total / maxTotal;
+    if (pct < 0.25) return 1;
+    if (pct < 0.5)  return 2;
+    if (pct < 0.75) return 3;
+    return 4;
+  }
+
+  const cellBg = ['bg-gray-100', 'bg-emerald-100', 'bg-emerald-300', 'bg-emerald-500', 'bg-emerald-700'];
+  const cellText = ['text-gray-400', 'text-emerald-700', 'text-emerald-800', 'text-white', 'text-white'];
+
+  // first weekday of month
+  const firstDow = new Date(year, month - 1, 1).getDay();
+  const cells: (HeatmapDay | null)[] = [
+    ...Array(firstDow).fill(null),
+    ...days,
+  ];
+  // pad to multiple of 7
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks: (HeatmapDay | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[340px]">
+        {/* day-of-week header */}
+        <div className="grid grid-cols-7 mb-1">
+          {DAY_LABELS.map((d) => (
+            <div key={d} className="text-[10px] text-center text-gray-400 font-medium py-1">{d}</div>
+          ))}
+        </div>
+        {/* weeks */}
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-1 mb-1">
+            {week.map((cell, di) => {
+              if (!cell) return <div key={di} />;
+              const iv = intensity(cell.total);
+              return (
+                <div
+                  key={di}
+                  title={cell.total > 0 ? `${cell.day}: ${pkr(cell.total)} (${cell.count} payments)` : `${cell.day}: no collections`}
+                  className={`aspect-square rounded-md flex flex-col items-center justify-center cursor-default transition-transform hover:scale-105 ${cellBg[iv]}`}
+                >
+                  <span className={`text-[10px] font-bold leading-none ${cellText[iv]}`}>{cell.day}</span>
+                  {cell.total > 0 && (
+                    <span className={`text-[8px] leading-none mt-0.5 ${cellText[iv]} opacity-80`}>
+                      {cell.count}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+        {/* legend */}
+        <div className="flex items-center gap-2 mt-3 justify-end">
+          <span className="text-[10px] text-gray-400">Less</span>
+          {cellBg.map((bg, i) => (
+            <div key={i} className={`w-3 h-3 rounded-sm ${bg}`} />
+          ))}
+          <span className="text-[10px] text-gray-400">More</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ReportsPage() {
   const user = useAuthStore((s) => s.user);
   const isOwner    = user?.role === 'SELLER_OWNER';
   const canReports = isOwner || !!user?.permissions?.canViewReports;
   const [remindAllConfirm, setRemindAllConfirm] = useState(false);
+
+  const now = new Date();
+  const [hmYear,  setHmYear]  = useState(now.getFullYear());
+  const [hmMonth, setHmMonth] = useState(now.getMonth() + 1);
+
+  function prevMonth() {
+    if (hmMonth === 1) { setHmYear((y) => y - 1); setHmMonth(12); }
+    else setHmMonth((m) => m - 1);
+  }
+  function nextMonth() {
+    const isCurrentMonth = hmYear === now.getFullYear() && hmMonth === now.getMonth() + 1;
+    if (isCurrentMonth) return;
+    if (hmMonth === 12) { setHmYear((y) => y + 1); setHmMonth(1); }
+    else setHmMonth((m) => m + 1);
+  }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reports'],
@@ -146,6 +242,13 @@ export default function ReportsPage() {
     queryKey: ['aging-report'],
     queryFn:  reportsApi.getAgingReport,
     staleTime: 3 * 60_000,
+    enabled:  canReports,
+  });
+
+  const { data: heatmapDays = [] } = useQuery<HeatmapDay[]>({
+    queryKey: ['collections-heatmap', hmYear, hmMonth],
+    queryFn:  () => reportsApi.getCollectionsHeatmap(hmYear, hmMonth),
+    staleTime: 5 * 60_000,
     enabled:  canReports,
   });
 
@@ -614,6 +717,75 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+
+      {/* Collections Heatmap Calendar */}
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden mt-6">
+        <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CalendarDays size={16} className="text-emerald-500" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Collections Heatmap</p>
+              <p className="text-xs text-gray-400">Daily payment activity — darker = more collected</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={prevMonth}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <span className="text-sm font-semibold text-gray-700 min-w-[110px] text-center">
+              {MONTH_NAMES_SHORT[hmMonth - 1]} {hmYear}
+            </span>
+            <button
+              onClick={nextMonth}
+              disabled={hmYear === now.getFullYear() && hmMonth === now.getMonth() + 1}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+        <div className="px-6 py-5">
+          {heatmapDays.length > 0 ? (
+            <>
+              <div className="flex flex-wrap gap-4 mb-5">
+                <div className="bg-emerald-50 rounded-xl px-4 py-3 min-w-[120px]">
+                  <p className="text-xs text-emerald-600 font-medium">Total Collected</p>
+                  <p className="text-lg font-extrabold text-emerald-700">
+                    {pkr(heatmapDays.reduce((s, d) => s + d.total, 0))}
+                  </p>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 min-w-[120px]">
+                  <p className="text-xs text-blue-600 font-medium">Payment Days</p>
+                  <p className="text-lg font-extrabold text-blue-700">
+                    {heatmapDays.filter((d) => d.count > 0).length}
+                  </p>
+                </div>
+                <div className="bg-purple-50 rounded-xl px-4 py-3 min-w-[120px]">
+                  <p className="text-xs text-purple-600 font-medium">Total Payments</p>
+                  <p className="text-lg font-extrabold text-purple-700">
+                    {heatmapDays.reduce((s, d) => s + d.count, 0)}
+                  </p>
+                </div>
+                <div className="bg-orange-50 rounded-xl px-4 py-3 min-w-[120px]">
+                  <p className="text-xs text-orange-600 font-medium">Best Day</p>
+                  <p className="text-lg font-extrabold text-orange-700">
+                    {(() => {
+                      const best = heatmapDays.reduce((a, b) => b.total > a.total ? b : a, heatmapDays[0]!);
+                      return best.total > 0 ? `${best.day} ${MONTH_NAMES_SHORT[hmMonth - 1]}` : '—';
+                    })()}
+                  </p>
+                </div>
+              </div>
+              <CollectionsHeatmap days={heatmapDays} year={hmYear} month={hmMonth} />
+            </>
+          ) : (
+            <div className="py-10 text-center text-gray-400 text-sm">No collections in this month</div>
+          )}
+        </div>
+      </div>
 
       <ConfirmDialog
         open={remindAllConfirm}

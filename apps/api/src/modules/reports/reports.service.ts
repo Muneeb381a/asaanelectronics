@@ -351,6 +351,32 @@ export class ReportsService {
     return rows;
   }
 
+  async getCollectionsHeatmap(sellerId: string, year: number, month: number) {
+    const rows = await db.execute<{ day: number; total: string; count: number }>(sql`
+      SELECT
+        EXTRACT(DAY FROM p.paid_on)::int AS day,
+        COALESCE(SUM(p.amount::numeric), 0)::text AS total,
+        COUNT(*)::int AS count
+      FROM payments p
+      JOIN installments i ON i.id = p.installment_id AND i.deleted_at IS NULL
+      JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
+      WHERE c.seller_id = ${sellerId}
+        AND p.deleted_at IS NULL
+        AND EXTRACT(YEAR FROM p.paid_on) = ${year}
+        AND EXTRACT(MONTH FROM p.paid_on) = ${month}
+      GROUP BY EXTRACT(DAY FROM p.paid_on)
+      ORDER BY day
+    `);
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const map = new Map(rows.map((r) => [r.day, { total: Number(r.total), count: r.count }]));
+
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const d = map.get(i + 1);
+      return { day: i + 1, total: d?.total ?? 0, count: d?.count ?? 0 };
+    });
+  }
+
   async getAreaReport(sellerId: string) {
     const rows = await db.execute<{
       area: string;
