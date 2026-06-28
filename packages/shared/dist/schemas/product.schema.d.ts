@@ -10,6 +10,7 @@ export declare const createProductSchema: z.ZodObject<{
     purchasePrice: z.ZodOptional<z.ZodNumber>;
     stock: z.ZodDefault<z.ZodNumber>;
     minStock: z.ZodOptional<z.ZodNumber>;
+    photoUrl: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     serial: z.ZodOptional<z.ZodString>;
     warrantyMonths: z.ZodOptional<z.ZodNumber>;
     description: z.ZodOptional<z.ZodString>;
@@ -17,6 +18,7 @@ export declare const createProductSchema: z.ZodObject<{
     name: string;
     price: number;
     stock: number;
+    photoUrl?: string | undefined;
     category?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
@@ -30,6 +32,7 @@ export declare const createProductSchema: z.ZodObject<{
 }, {
     name: string;
     price: number;
+    photoUrl?: string | undefined;
     category?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
@@ -53,11 +56,13 @@ export declare const updateProductSchema: z.ZodObject<{
     purchasePrice: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     stock: z.ZodOptional<z.ZodDefault<z.ZodNumber>>;
     minStock: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    photoUrl: z.ZodOptional<z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>>;
     serial: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     warrantyMonths: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     description: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
+    photoUrl?: string | undefined;
     category?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
@@ -72,6 +77,7 @@ export declare const updateProductSchema: z.ZodObject<{
     description?: string | undefined;
 }, {
     name?: string | undefined;
+    photoUrl?: string | undefined;
     category?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;

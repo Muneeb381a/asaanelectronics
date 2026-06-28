@@ -112,6 +112,10 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
         </Field>
       </div>
 
+      <Field label="Product Photo URL" optional>
+        <input {...register('photoUrl')} placeholder="https://…" type="url" className={inputCls} />
+      </Field>
+
       <Field label="Serial / IMEI" optional>
         <input {...register('serial')} placeholder="e.g. UA55BU8000KXZN" className={inputCls} />
       </Field>

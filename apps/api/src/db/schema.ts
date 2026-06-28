@@ -239,6 +239,7 @@ export const products = pgTable('products', {
   purchasePrice: decimal('purchase_price', { precision: 12, scale: 2 }),
   stock:    integer('stock').default(0).notNull(),
   minStock: integer('min_stock').default(3).notNull(),
+  photoUrl: text('photo_url'),
   serial: text('serial'),
   warrantyMonths: integer('warranty_months'),
   description: text('description'),

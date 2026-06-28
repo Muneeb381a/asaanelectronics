@@ -356,6 +356,7 @@ export default function ProductsPage() {
                         p.stock === 0 ? 'bg-red-50' : p.stock <= LOW_STOCK ? 'bg-amber-50' : ''
                       }`}>
                         <div className="flex items-start justify-between gap-2">
+                          {p.photoUrl && <img src={p.photoUrl} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0 mt-0.5 border border-gray-100" />}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
@@ -430,8 +431,13 @@ export default function ProductsPage() {
                             : 'hover:bg-gray-50'
                           }`}>
                             <td className="px-4 py-3">
-                              <span className="font-medium text-gray-900">{p.name}</span>
-                              <StockBadge stock={p.stock} />
+                              <div className="flex items-center gap-2">
+                                {p.photoUrl && <img src={p.photoUrl} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0 border border-gray-100" />}
+                                <div>
+                                  <span className="font-medium text-gray-900">{p.name}</span>
+                                  <StockBadge stock={p.stock} />
+                                </div>
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-gray-500">{p.serial ?? '—'}</td>
                             <td className="px-4 py-3 text-right text-gray-900">{formatPKR(p.price)}</td>
@@ -534,6 +540,7 @@ export default function ProductsPage() {
                   serial:           modal.product.serial           ?? undefined,
                   warrantyMonths:   modal.product.warrantyMonths   ?? undefined,
                   description:      modal.product.description      ?? undefined,
+                  photoUrl:         modal.product.photoUrl         ?? undefined,
                 } : undefined}
                 isPending={isPending}
                 onCancel={() => setModal(null)}

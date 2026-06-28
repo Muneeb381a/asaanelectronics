@@ -13,6 +13,7 @@ export interface Product {
   purchasePrice: string | null;
   stock: number;
   minStock: number;
+  photoUrl: string | null;
   serial: string | null;
   warrantyMonths: number | null;
   description: string | null;
