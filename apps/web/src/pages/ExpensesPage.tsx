@@ -6,6 +6,7 @@ import {
   Home, Users, Zap, ShoppingCart, Wrench, Truck, MoreHorizontal,
 } from 'lucide-react';
 import { expensesApi, type ExpenseCategory, type Expense } from '../api/expenses.api.ts';
+import { sellersApi } from '../api/sellers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -163,6 +164,50 @@ function CategoryBreakdown({ expenses }: { expenses: Expense[] }) {
   );
 }
 
+// ── Budget progress ────────────────────────────────────────────────────────────
+
+function BudgetProgress({ expenses, budgets }: { expenses: Expense[]; budgets: Partial<Record<ExpenseCategory, number>> }) {
+  const cats = (Object.keys(budgets) as ExpenseCategory[]).filter((c) => (budgets[c] ?? 0) > 0);
+  if (!cats.length) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Monthly Budget</p>
+      <div className="space-y-3">
+        {cats.map((cat) => {
+          const budget  = budgets[cat]!;
+          const spent   = expenses.filter((e) => e.category === cat).reduce((s, e) => s + Number(e.amount), 0);
+          const pct     = Math.min(Math.round((spent / budget) * 100), 100);
+          const over    = spent > budget;
+          const m       = CAT[cat];
+          const barColor = over ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-emerald-500';
+          return (
+            <div key={cat}>
+              <div className="flex items-center justify-between text-xs mb-1">
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-5 h-5 ${m.bg} rounded-md flex items-center justify-center`}>
+                    <m.icon size={11} className={m.color} />
+                  </div>
+                  <span className="font-medium text-gray-700">{m.label}</span>
+                </div>
+                <span className={`font-semibold ${over ? 'text-red-600' : 'text-gray-600'}`}>
+                  {pkr(spent)} / {pkr(budget)}
+                </span>
+              </div>
+              <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+              </div>
+              {over && (
+                <p className="text-[10px] text-red-500 mt-0.5">Over budget by {pkr(spent - budget)}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
@@ -182,6 +227,9 @@ export default function ExpensesPage() {
     queryKey: ['expenses', from, to],
     queryFn:  () => expensesApi.list(from, to),
   });
+
+  const { data: shop } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe, staleTime: 5 * 60_000 });
+  const budgets = (shop?.settings?.expenseBudgets ?? {}) as Partial<Record<ExpenseCategory, number>>;
 
   const deleteMutation = useMutation({
     mutationFn: expensesApi.remove,
@@ -270,6 +318,7 @@ export default function ExpensesPage() {
             ? <div className="h-48 bg-white rounded-2xl border border-gray-100 animate-pulse" />
             : <CategoryBreakdown expenses={expenses} />
           }
+          <BudgetProgress expenses={expenses} budgets={budgets} />
         </div>
 
         {/* Right: list */}

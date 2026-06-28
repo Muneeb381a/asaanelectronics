@@ -2,11 +2,14 @@ import type { CreateSellerInput } from '@assaan/shared';
 import { api } from './client.ts';
 import type { AuthResponse } from './auth.api.ts';
 
+export type ExpenseCategory = 'RENT' | 'SALARY' | 'UTILITY' | 'PURCHASE' | 'MAINTENANCE' | 'TRANSPORT' | 'OTHER';
+
 export interface SellerSettings {
   dailyTarget?: number;
   weeklyTarget?: number;
   monthlyTarget?: number;
   commissionRate?: number;
+  expenseBudgets?: Partial<Record<ExpenseCategory, number>>;
 }
 
 export interface Seller {

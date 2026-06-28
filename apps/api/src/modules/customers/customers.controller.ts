@@ -39,7 +39,8 @@ export async function listCustomers(req: AuthRequest, res: Response) {
     : req.user!.userId;
   const sortBy  = req.query['sortBy']  as string | undefined;
   const sortDir = req.query['sortDir'] as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, search, lifecycle, verificationStatus, staffUserId, sortBy, sortDir));
+  const tag     = req.query['tag']     as string | undefined;
+  success(res, await svc.list(req.user!.sellerId!, page, limit, search, lifecycle, verificationStatus, staffUserId, sortBy, sortDir, tag));
 }
 
 export async function getLifecycleCounts(req: AuthRequest, res: Response) {

@@ -479,6 +479,8 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   const [payInst, setPayInst] = useState<Installment | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'notes'>('history');
   const [visible, setVisible] = useState(false);
+  const [tagInput, setTagInput] = useState('');
+  const [localTags, setLocalTags] = useState<string[]>(customer.tags ?? []);
   const drawerUser = useAuthStore((s) => s.user);
   const isOwnerInDrawer = drawerUser?.role === 'SELLER_OWNER';
   const drawerPerms = drawerUser?.permissions as Record<string, boolean> | null | undefined;
@@ -518,6 +520,26 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
     queryKey: ['verif-report', customer.id],
     queryFn: () => verificationsApi.getReport(customer.id),
   });
+
+  const tagMutation = useMutation({
+    mutationFn: (tags: string[]) => customersApi.update(customer.id, { tags }),
+    onSuccess: () => qcDrawer.invalidateQueries({ queryKey: ['customers'] }),
+    onError: () => toast.error('Failed to update tags'),
+  });
+
+  function addTag(raw: string) {
+    const tag = raw.trim().toLowerCase().replace(/[^a-z0-9؀-ۿ\-_]/g, '').slice(0, 30);
+    if (!tag || localTags.includes(tag) || localTags.length >= 10) return;
+    const next = [...localTags, tag];
+    setLocalTags(next);
+    tagMutation.mutate(next);
+  }
+
+  function removeTag(tag: string) {
+    const next = localTags.filter((t) => t !== tag);
+    setLocalTags(next);
+    tagMutation.mutate(next);
+  }
 
   const installments = data?.data ?? [];
   const totalBusiness = installments.reduce((s, i) => s + Number(i.totalAmount), 0);
@@ -604,6 +626,27 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               <p className={`text-sm font-bold ${s.color}`}>{s.value}</p>
             </div>
           ))}
+        </div>
+
+        {/* Tags */}
+        <div className="px-6 py-3 border-b border-gray-50 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {localTags.map((t) => (
+              <span key={t} className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                #{t}
+                <button onClick={() => removeTag(t)} className="text-blue-400 hover:text-red-500 transition ml-0.5"><X size={10} /></button>
+              </span>
+            ))}
+            <form onSubmit={(e) => { e.preventDefault(); addTag(tagInput); setTagInput(''); }} className="flex items-center gap-1">
+              <input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                placeholder="+ add tag"
+                maxLength={30}
+                className="text-xs border-0 outline-none bg-transparent text-gray-500 placeholder:text-gray-300 w-20 focus:w-32 transition-all"
+              />
+            </form>
+          </div>
         </div>
 
         {/* Verification report */}
@@ -1133,6 +1176,7 @@ export default function CustomersPage() {
   const [search,    setSearch]    = useState('');
   const [lifecycle, setLifecycle] = useState('');
   const [verifFilter, setVerifFilter] = useState('');
+  const [tagFilter,   setTagFilter]   = useState('');
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -1152,15 +1196,16 @@ export default function CustomersPage() {
     setPage(1);
   }
 
-  useEffect(() => { setPage(1); }, [committedSearch, lifecycle, verifFilter, sortBy, sortDir]);
+  useEffect(() => { setPage(1); }, [committedSearch, lifecycle, verifFilter, tagFilter, sortBy, sortDir]);
 
   const LIMIT = 20;
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['customers', committedSearch, lifecycle, verifFilter, page, sortBy, sortDir],
+    queryKey: ['customers', committedSearch, lifecycle, verifFilter, tagFilter, page, sortBy, sortDir],
     queryFn: () => customersApi.list({
       search: committedSearch || undefined,
       lifecycle: lifecycle || undefined,
       verificationStatus: verifFilter || undefined,
+      tag: tagFilter || undefined,
       page,
       limit: LIMIT,
       sortBy,
@@ -1299,6 +1344,34 @@ export default function CustomersPage() {
         onSelect={(s) => { setLifecycle(s); }}
       />
 
+      {/* Tag filter — only show when customers have tags */}
+      {data?.data.some((c) => c.tags?.length > 0) || tagFilter ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          {tagFilter && (
+            <button
+              onClick={() => setTagFilter('')}
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white"
+            >
+              #{tagFilter} <X size={11} className="ml-0.5" />
+            </button>
+          )}
+          {!tagFilter && (
+            <span className="text-xs text-gray-400">Filter by tag:</span>
+          )}
+          {Array.from(new Set(data?.data.flatMap((c) => c.tags ?? []) ?? [])).sort().map((t) => (
+            <button
+              key={t}
+              onClick={() => setTagFilter(t === tagFilter ? '' : t)}
+              className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition ${
+                tagFilter === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              #{t}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div className="bg-white rounded-2xl border border-gray-100">
         {isLoading ? (
           <>
@@ -1355,6 +1428,13 @@ export default function CustomersPage() {
                         {c.area && <span>{c.area}</span>}
                       </p>
                       <p className="text-xs text-gray-400 font-mono mt-0.5">{c.cnicMasked}</p>
+                      {c.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {c.tags.map((t) => (
+                            <span key={t} className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-medium">#{t}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {canAssignAvo && c.verificationStatus !== 'APPROVED' && (
@@ -1441,6 +1521,12 @@ export default function CustomersPage() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <LifecycleBadge stage={c.lifecycleStage ?? 'LEAD'} />
                           <RiskBadge score={c.riskScore ?? 0} label={c.riskLabel ?? 'GOOD'} />
+                          {c.tags?.slice(0, 2).map((t) => (
+                            <span key={t} className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-medium cursor-pointer" onClick={() => setTagFilter(t)}>#{t}</span>
+                          ))}
+                          {(c.tags?.length ?? 0) > 2 && (
+                            <span className="text-[10px] text-gray-400">+{c.tags.length - 2}</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">

@@ -101,10 +101,10 @@ type CreateBody = {
   guarantor2ShopAddress?: string;
 };
 
-type UpdateBody = Partial<CreateBody>;
+type UpdateBody = Partial<CreateBody> & { tags?: string[] };
 
 export class CustomersService {
-  async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string, verificationStatus?: string, staffUserId?: string, sortBy?: string, sortDir?: string) {
+  async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string, verificationStatus?: string, staffUserId?: string, sortBy?: string, sortDir?: string, tag?: string) {
     const base = staffUserId
       ? and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), eq(customers.createdByUserId, staffUserId))
       : and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt));
@@ -128,7 +128,8 @@ export class CustomersService {
       }
       searchCond = and(base, or(...conds));
     }
-    const lifecycleCond = lifecycle ? and(searchCond, sql`${lifecycleSQL} = ${lifecycle}`) : searchCond;
+    const tagCond = tag ? and(searchCond, sql`${tag} = ANY(${customers.tags})`) : searchCond;
+    const lifecycleCond = lifecycle ? and(tagCond, sql`${lifecycleSQL} = ${lifecycle}`) : tagCond;
     const where = verificationStatus
       ? and(lifecycleCond, eq(customers.verificationStatus, verificationStatus as 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED'))
       : lifecycleCond;
@@ -229,6 +230,7 @@ export class CustomersService {
         assignedAvoId: customers.assignedAvoId,
         createdByUserId: customers.createdByUserId,
         createdAt: customers.createdAt,
+        tags: customers.tags,
         riskScore,
         lifecycleStage: lifecycleSQL,
       }).from(customers).where(where).limit(limit).offset((page - 1) * limit)
@@ -633,6 +635,7 @@ export class CustomersService {
         ...(body.guarantorShopAddress !== undefined && { guarantorShopAddress: body.guarantorShopAddress }),
         ...(body.guarantor2ShopName !== undefined && { guarantor2ShopName: body.guarantor2ShopName }),
         ...(body.guarantor2ShopAddress !== undefined && { guarantor2ShopAddress: body.guarantor2ShopAddress }),
+        ...(body.tags !== undefined && { tags: body.tags }),
       })
       .where(and(eq(customers.id, id), eq(customers.sellerId, sellerId)))
       .returning();

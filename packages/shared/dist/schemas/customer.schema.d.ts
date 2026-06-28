@@ -177,6 +177,7 @@ export declare const updateCustomerSchema: z.ZodObject<{
     chequeNo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 } & {
     cnic: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
+    tags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
     shopName?: string | undefined;
@@ -221,6 +222,7 @@ export declare const updateCustomerSchema: z.ZodObject<{
     chequeBank?: string | undefined;
     chequeAccountNo?: string | undefined;
     chequeNo?: string | undefined;
+    tags?: string[] | undefined;
 }, {
     name?: string | undefined;
     shopName?: string | undefined;
@@ -265,6 +267,7 @@ export declare const updateCustomerSchema: z.ZodObject<{
     chequeBank?: string | undefined;
     chequeAccountNo?: string | undefined;
     chequeNo?: string | undefined;
+    tags?: string[] | undefined;
 }>;
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;

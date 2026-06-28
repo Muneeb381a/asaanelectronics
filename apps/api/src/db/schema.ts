@@ -54,6 +54,7 @@ export const sellers = pgTable('sellers', {
     weeklyTarget?: number;
     monthlyTarget?: number;
     commissionRate?: number;
+    expenseBudgets?: Partial<Record<'RENT' | 'SALARY' | 'UTILITY' | 'PURCHASE' | 'MAINTENANCE' | 'TRANSPORT' | 'OTHER', number>>;
   }>(),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
 });
@@ -181,6 +182,7 @@ export const customers = pgTable(
     guarantorShopAddress: text('guarantor_shop_address'),
     guarantor2ShopName: text('guarantor2_shop_name'),
     guarantor2ShopAddress: text('guarantor2_shop_address'),
+    tags: text('tags').array().default([]).notNull(),
     createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
     assignedAvoId: text('assigned_avo_id').references(() => users.id, { onDelete: 'set null' }),
     verificationStatus: verificationStatusEnum('verification_status').default('PENDING').notNull(),

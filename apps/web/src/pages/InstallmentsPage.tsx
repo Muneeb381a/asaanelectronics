@@ -149,7 +149,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
               {isLoading ? 'Loadingâ€¦' : `${overdue.length} customers with overdue payments`}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">Ã—</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
         </div>
 
         {isLoading ? (
@@ -167,7 +167,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
                   <div key={inst.id} className={`flex items-center justify-between px-4 py-3 ${isSent ? 'opacity-50' : ''}`}>
                     <div className="min-w-0 mr-3">
                       <p className="text-sm font-medium text-gray-900 truncate">{inst.customerName}</p>
-                      <p className="text-xs text-gray-400">{inst.customerPhone} Â· {pkr(inst.monthly)}</p>
+                      <p className="text-xs text-gray-400">{inst.customerPhone} · {pkr(inst.monthly)}</p>
                       <p className="text-[11px] text-red-500 font-medium">{daysLate}d overdue</p>
                     </div>
                     <button
@@ -179,7 +179,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
                           : 'bg-green-600 text-white hover:bg-green-700'
                       }`}>
                       <MessageCircle size={12} />
-                      {isSent ? 'Sent âœ"' : 'Send'}
+                      {isSent ? 'Sent ✓' : 'Send'}
                     </button>
                   </div>
                 );
@@ -205,7 +205,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
+function ScheduleModal({ inst, shopName, onClose }: { inst: Installment; shopName?: string; onClose: () => void }) {
   const isDaily      = inst.paymentFrequency === 'daily';
   const monthly      = Number(inst.monthly);
   const remaining    = Number(inst.remaining);
@@ -242,7 +242,69 @@ function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => vo
     return { period: i + 1, dueDate, isPaid, isCurrent, isOverdue, amount };
   });
 
-  const unit = isDaily ? 'day' : 'month';
+  const unit = isDaily ? 'Day' : 'Month';
+
+  const printSchedule = () => {
+    const fmt = (d: Date) => d.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+    const rowsHtml = rows.map(r => {
+      const status = r.isPaid ? '✓ Paid' : r.isOverdue ? '⚠ Overdue' : r.isCurrent ? '→ Due Now' : 'Pending';
+      const color  = r.isPaid ? '#15803d' : r.isOverdue ? '#dc2626' : r.isCurrent ? '#1d4ed8' : '#374151';
+      const bg     = r.isPaid ? '#f0fdf4' : r.isOverdue ? '#fef2f2' : r.isCurrent ? '#eff6ff' : '#fff';
+      return `<tr style="background:${bg}">
+        <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0;color:${color};font-weight:600">${r.period}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0">${fmt(r.dueDate)}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600">PKR ${r.amount.toLocaleString('en-PK',{maximumFractionDigits:0})}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0;color:${color};font-weight:600">${status}</td>
+      </tr>`;
+    }).join('');
+    const win = window.open('', '_blank', 'width=750,height=900');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>Payment Schedule</title>
+      <style>
+        body{font-family:system-ui,sans-serif;margin:0;padding:28px;color:#111;font-size:13px}
+        .no-print{margin-bottom:16px;display:flex;gap:8px}
+        @media print{.no-print{display:none!important}}
+        h1{margin:0 0 2px;font-size:18px;font-weight:700}
+        .sub{color:#6b7280;font-size:12px;margin-bottom:16px}
+        .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px}
+        .meta-box{background:#f9fafb;border-radius:8px;padding:10px 14px;border:1px solid #e5e7eb}
+        .meta-box .label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em}
+        .meta-box .val{font-size:15px;font-weight:700;margin-top:2px}
+        table{width:100%;border-collapse:collapse}
+        th{text-align:left;padding:8px 12px;background:#f9fafb;border-bottom:2px solid #e5e7eb;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280}
+        th:nth-child(3){text-align:right}
+        .footer{margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:11px;display:flex;justify-content:space-between}
+      </style></head><body>
+      <div class="no-print">
+        <button onclick="window.print()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🖨 Print / Save PDF</button>
+        <button onclick="window.close()" style="padding:8px 18px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:13px;cursor:pointer">Close</button>
+      </div>
+      ${shopName ? `<h1>${shopName}</h1>` : '<h1>Payment Schedule</h1>'}
+      <div class="sub">${inst.customerName} · ${inst.customerPhone} · ${inst.productName}${inst.invoiceNumber ? ` · Invoice #${inst.invoiceNumber}` : ''}</div>
+      <div class="meta">
+        <div class="meta-box"><div class="label">Total Amount</div><div class="val">PKR ${Number(inst.totalAmount).toLocaleString('en-PK',{maximumFractionDigits:0})}</div></div>
+        <div class="meta-box"><div class="label">Down Payment</div><div class="val">PKR ${Number(inst.downPayment).toLocaleString('en-PK',{maximumFractionDigits:0})}</div></div>
+        <div class="meta-box" style="background:${remaining>0?'#fffbeb':'#f0fdf4'};border-color:${remaining>0?'#fde68a':'#bbf7d0'}">
+          <div class="label">Remaining</div>
+          <div class="val" style="color:${remaining>0?'#92400e':'#15803d'}">PKR ${remaining.toLocaleString('en-PK',{maximumFractionDigits:0})}</div>
+        </div>
+      </div>
+      <div class="meta" style="margin-top:-8px">
+        <div class="meta-box"><div class="label">Per ${unit}</div><div class="val">PKR ${monthly.toLocaleString('en-PK',{maximumFractionDigits:0})}</div></div>
+        <div class="meta-box" style="background:#f0fdf4;border-color:#bbf7d0"><div class="label">Periods Paid</div><div class="val" style="color:#15803d">${periodsPaid} / ${inst.months}</div></div>
+        <div class="meta-box" style="background:#eff6ff;border-color:#bfdbfe"><div class="label">Start Date</div><div class="val" style="color:#1d4ed8;font-size:13px">${new Date(inst.startDate).toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'})}</div></div>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Due Date</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="footer">
+        <span>Generated ${new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'})}</span>
+        <span>Payments: ${periodsPaid} paid · ${periodsLeft} remaining</span>
+      </div>
+    </body></html>`);
+    win.document.close();
+  };
 
   return (
     <div
@@ -253,9 +315,18 @@ function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => vo
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Payment Schedule</h2>
-            <p className="text-xs text-gray-400">{inst.customerName} Â· {inst.productName}</p>
+            <p className="text-xs text-gray-400">{inst.customerName} · {inst.productName}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">Ã—</button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={printSchedule}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition font-medium"
+              title="Print or save as PDF"
+            >
+              <Printer size={13} /> Print
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-2 mb-4">
@@ -288,7 +359,7 @@ function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => vo
                   row.isCurrent ? 'bg-blue-100 text-blue-700'   :
                                   'bg-gray-100 text-gray-500'
                 }`}>
-                  {row.isPaid ? 'âœ"' : row.period}
+                  {row.isPaid ? '✓' : row.period}
                 </span>
                 <div>
                   <p className={`${row.isPaid ? 'text-gray-400' : row.isOverdue ? 'text-red-700 font-medium' : 'text-gray-900'}`}>
@@ -296,7 +367,7 @@ function ScheduleModal({ inst, onClose }: { inst: Installment; onClose: () => vo
                     {row.isOverdue  && <span className="ml-1.5 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">Overdue</span>}
                     {row.isCurrent && !row.isOverdue && <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">Due now</span>}
                   </p>
-                  <p className="text-[11px] text-gray-400 capitalize">{unit} {row.period}</p>
+                  <p className="text-[11px] text-gray-400">{unit} {row.period}</p>
                 </div>
               </div>
               <p className={`font-medium text-sm ${row.isPaid ? 'text-green-600 line-through decoration-green-300' : 'text-gray-900'}`}>
@@ -370,15 +441,15 @@ function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => 
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Reschedule Plan</h2>
-            <p className="text-xs text-gray-400">{inst.customerName} Â· {inst.productName}</p>
+            <p className="text-xs text-gray-400">{inst.customerName} · {inst.productName}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">Ã—</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
         </div>
 
         <div className="bg-blue-50 rounded-xl px-4 py-3 mb-5 text-sm">
           <p className="text-gray-500 text-xs mb-0.5">Remaining balance</p>
           <p className="font-bold text-blue-700 text-base">{pkr(remaining)}</p>
-          <p className="text-gray-400 text-xs mt-1">Current: {pkr(Number(inst.monthly))} / {inst.paymentFrequency === 'daily' ? 'day' : 'month'} Â· {inst.months} {inst.paymentFrequency === 'daily' ? 'days' : 'months'}</p>
+          <p className="text-gray-400 text-xs mt-1">Current: {pkr(Number(inst.monthly))} / {inst.paymentFrequency === 'daily' ? 'day' : 'month'} · {inst.months} {inst.paymentFrequency === 'daily' ? 'days' : 'months'}</p>
         </div>
 
         <div className="flex gap-1 mb-4 border-b border-gray-100">
@@ -587,7 +658,7 @@ function BatchReminderModal({ shopName, onClose }: { shopName: string; onClose: 
           ) : sheet.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No overdue installments today</p>
           ) : (
-            sheet.map((row, idx) => {
+            sheet.map((row) => {
               const isCurrent = cursor !== null && selected[cursor]?.id === row.id;
               const isSent    = cursor !== null && selected.findIndex((r) => r.id === row.id) < cursor;
               return (
@@ -1547,7 +1618,7 @@ export default function InstallmentsPage() {
       {recoveryInst && <RecoveryDrawer inst={recoveryInst} onClose={() => setRecoveryInst(null)} />}
 
       {/* Schedule modal */}
-      {scheduleInst && <ScheduleModal inst={scheduleInst} onClose={() => setScheduleInst(null)} />}
+      {scheduleInst && <ScheduleModal inst={scheduleInst} shopName={shopData?.shopName} onClose={() => setScheduleInst(null)} />}
 
       {/* Bulk reminder modal */}
       {showReminders && <BulkReminderModal onClose={() => setShowReminders(false)} />}

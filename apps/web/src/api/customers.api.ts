@@ -49,6 +49,7 @@ export interface Customer {
   riskScore: number;
   riskLabel: RiskLabel;
   lifecycleStage: LifecycleStage;
+  tags: string[];
 }
 
 interface ListResponse {
@@ -118,7 +119,7 @@ export interface CustomerLookupResult {
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const customersApi = {
-  list: (params?: { page?: number; limit?: number; search?: string; lifecycle?: string; verificationStatus?: string; sortBy?: string; sortDir?: string; scope?: 'shop' }) =>
+  list: (params?: { page?: number; limit?: number; search?: string; lifecycle?: string; verificationStatus?: string; sortBy?: string; sortDir?: string; scope?: 'shop'; tag?: string }) =>
     api.get<{ data: ListResponse }>('/customers', { params }).then(unwrap<ListResponse>),
 
   lifecycleCounts: () =>
