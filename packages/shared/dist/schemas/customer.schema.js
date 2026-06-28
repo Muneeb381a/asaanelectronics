@@ -44,6 +44,7 @@ export const createCustomerSchema = z.object({
     chequeBank: z.string().max(100).optional(),
     chequeAccountNo: z.string().max(30).optional(),
     chequeNo: z.string().max(20).optional(),
+    dob: z.string().max(10).optional(),
 });
 export const updateCustomerSchema = createCustomerSchema.partial().extend({
     cnic: z.string().regex(cnicRegex, 'Format: XXXXX-XXXXXXX-X').optional().or(z.literal('')),

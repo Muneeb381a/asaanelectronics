@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, CreditCard, AlertTriangle,
   Calendar, Package, ArrowRight, BarChart3,
-  MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt, Bell, Target,
+  MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt, Bell, Target, Gift,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
 import { recoveryApi } from '../api/recovery.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
+import { customersApi } from '../api/customers.api.ts';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
@@ -134,6 +135,13 @@ export default function DashboardPage() {
   const aging = reports?.agingBuckets;
 
   const lowStock  = data?.lowStockItems ?? [];
+
+  const { data: birthdays = [] } = useQuery({
+    queryKey: ['upcoming-birthdays'],
+    queryFn:  customersApi.getUpcomingBirthdays,
+    staleTime: 60 * 60_000,
+    gcTime:    2 * 60 * 60_000,
+  });
 
   const todayTotal  = (data?.todayCollections ?? 0) + (data?.todayCashSales ?? 0);
   const monthTotal  = (data?.monthCollections ?? 0) + (data?.monthCashSales ?? 0);
@@ -455,6 +463,54 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Upcoming Birthdays */}
+      {birthdays.length > 0 && (
+        <div className="bg-pink-50 border border-pink-200 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Gift size={16} className="text-pink-600" />
+              <p className="text-sm font-semibold text-pink-700">
+                {birthdays.length} customer birthday{birthdays.length !== 1 ? 's' : ''} this week
+              </p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {birthdays.map((c) => {
+              const [, mm, dd] = c.dob.split('-');
+              const thisYear = new Date().getFullYear();
+              const bday = new Date(`${thisYear}-${mm}-${dd}`);
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              const isToday = bday.toDateString() === today.toDateString();
+              const phone = c.phone.replace(/^0/, '92');
+              const msg = encodeURIComponent(`Assalamu Alaikum ${c.name}! 🎉 Aaj aap ka birthday hai — bohat bohat mubarak ho! Duaon mein yaad rakhna.`);
+              return (
+                <div key={c.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 border border-pink-100">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    {c.photoUrl
+                      ? <img src={c.photoUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                      : <div className="w-7 h-7 rounded-full bg-pink-100 flex items-center justify-center shrink-0 text-pink-600 text-xs font-bold">{c.name[0]}</div>
+                    }
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{c.name}</p>
+                      {c.area && <p className="text-[10px] text-gray-400 truncate">{c.area}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-3">
+                    {isToday && <span className="text-[10px] font-bold bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-md">Today!</span>}
+                    <button
+                      onClick={() => window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')}
+                      className="text-[11px] font-medium text-white bg-green-500 hover:bg-green-600 px-2.5 py-1 rounded-lg transition"
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

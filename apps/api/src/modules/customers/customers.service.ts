@@ -99,6 +99,7 @@ type CreateBody = {
   guarantorShopAddress?: string;
   guarantor2ShopName?: string;
   guarantor2ShopAddress?: string;
+  dob?: string;
 };
 
 type UpdateBody = Partial<CreateBody> & { tags?: string[] };
@@ -577,6 +578,7 @@ export class CustomersService {
         guarantorShopAddress: body.guarantorShopAddress,
         guarantor2ShopName: body.guarantor2ShopName,
         guarantor2ShopAddress: body.guarantor2ShopAddress,
+        dob: body.dob,
         createdByUserId,
       })
       .returning();
@@ -636,6 +638,7 @@ export class CustomersService {
         ...(body.guarantor2ShopName !== undefined && { guarantor2ShopName: body.guarantor2ShopName }),
         ...(body.guarantor2ShopAddress !== undefined && { guarantor2ShopAddress: body.guarantor2ShopAddress }),
         ...(body.tags !== undefined && { tags: body.tags }),
+        ...(body.dob !== undefined && { dob: body.dob }),
       })
       .where(and(eq(customers.id, id), eq(customers.sellerId, sellerId)))
       .returning();
@@ -748,5 +751,44 @@ export class CustomersService {
       }
     });
     return existing;
+  }
+
+  async getUpcomingBirthdays(sellerId: string) {
+    const rows = await db.execute<{
+      id: string; name: string; phone: string; dob: string; area: string | null; photo_url: string | null;
+    }>(sql`
+      SELECT id, name, phone, dob, area, photo_url
+      FROM customers
+      WHERE seller_id = ${sellerId}
+        AND deleted_at IS NULL
+        AND dob IS NOT NULL
+        AND (
+          MAKE_DATE(
+            EXTRACT(YEAR FROM CURRENT_DATE)::int,
+            EXTRACT(MONTH FROM dob::date)::int,
+            EXTRACT(DAY   FROM dob::date)::int
+          ) BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+          OR
+          MAKE_DATE(
+            EXTRACT(YEAR FROM CURRENT_DATE)::int + 1,
+            EXTRACT(MONTH FROM dob::date)::int,
+            EXTRACT(DAY   FROM dob::date)::int
+          ) BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+        )
+      ORDER BY
+        MAKE_DATE(
+          EXTRACT(YEAR FROM CURRENT_DATE)::int,
+          EXTRACT(MONTH FROM dob::date)::int,
+          EXTRACT(DAY   FROM dob::date)::int
+        ) ASC
+    `);
+    return (rows as unknown as Array<{ id: string; name: string; phone: string; dob: string; area: string | null; photo_url: string | null }>).map((r) => ({
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      dob: r.dob,
+      area: r.area,
+      photoUrl: r.photo_url,
+    }));
   }
 }

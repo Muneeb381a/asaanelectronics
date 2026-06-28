@@ -313,6 +313,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
       address: customer.address ?? '', area: customer.area ?? '', officeAddress: customer.officeAddress ?? '',
       salary: customer.salary ? Number(customer.salary) : undefined,
       occupation: customer.occupation ?? '', employer: customer.employer ?? '',
+      dob: customer.dob ?? '',
       cnic: '',
       guarantorName: customer.guarantorName ?? '', guarantorPhone: customer.guarantorPhone ?? '',
       guarantorCnic: customer.guarantorCnic ?? '', guarantorAddress: customer.guarantorAddress ?? '',
@@ -342,6 +343,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
         officeAddress: customer.officeAddress ?? '',
         salary: customer.salary ? Number(customer.salary) : undefined,
         occupation: customer.occupation ?? '', employer: customer.employer ?? '',
+        dob: customer.dob ?? '',
         cnic: '',
         guarantorName: customer.guarantorName ?? '', guarantorPhone: customer.guarantorPhone ?? '',
         guarantorCnic: customer.guarantorCnic ?? '', guarantorAddress: customer.guarantorAddress ?? '',
@@ -496,6 +498,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
                 <input {...register('cnicExpiry')} placeholder="e.g. 15-06-2030" className={inp} />
               </Field>
             </div>
+            <Field label="Date of Birth" optional>
+              <input {...register('dob')} type="date" className={inp} />
+            </Field>
             <Field label="Phone" error={errors.phone?.message}>
               <input {...register('phone')} placeholder="03001234567" maxLength={11}
                 onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 11); e.target.value = v; register('phone').onChange(e); }}

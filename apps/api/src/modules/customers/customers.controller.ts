@@ -94,3 +94,8 @@ export async function assignAvo(req: AuthRequest, res: Response) {
   const { avoId } = req.body as { avoId: string };
   success(res, await svc.assignAvo(req.params['id']!, req.user!.sellerId!, avoId));
 }
+
+
+export async function getUpcomingBirthdays(req: AuthRequest, res: Response) {
+  success(res, await svc.getUpcomingBirthdays(req.user!.sellerId!));
+}

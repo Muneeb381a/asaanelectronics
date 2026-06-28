@@ -50,6 +50,7 @@ export interface Customer {
   riskLabel: RiskLabel;
   lifecycleStage: LifecycleStage;
   tags: string[];
+  dob: string | null;
 }
 
 interface ListResponse {
@@ -146,4 +147,7 @@ export const customersApi = {
       label: string;
       factors: Record<string, { score: number; max: number; label: string }>;
     } }>(`/customers/${id}/risk-breakdown`).then((r) => r.data.data),
+
+  getUpcomingBirthdays: () =>
+    api.get<{ data: { data: Array<{ id: string; name: string; phone: string; dob: string; area: string | null; photoUrl: string | null }> } }>('/customers/upcoming-birthdays').then((r) => r.data.data.data),
 };
