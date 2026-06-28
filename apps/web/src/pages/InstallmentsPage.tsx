@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck, AlertOctagon } from 'lucide-react';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import EditInstallmentModal from '../components/EditInstallmentModal.tsx';
@@ -16,6 +16,7 @@ import PaymentModal from '../features/installments/PaymentModal.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi, type PaymentAccount } from '../api/sellers.api.ts';
 import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
+import { repossessionsApi } from '../api/repossessions.api.ts';
 import { openBill } from '../utils/bill.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
@@ -422,6 +423,116 @@ function JazzCashLinkModal({ inst, onClose }: { inst: Installment; onClose: () =
 
         <div className="px-5 pb-5">
           <button onClick={onClose} className="w-full py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Repossess Device Modal ────────────────────────────────────────────────────
+function RepossessModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    repossessedDate: new Date().toISOString().slice(0, 10),
+    deviceName:      inst.productName,
+    imei:            inst.imeiNumber ?? '',
+    condition:       'fair',
+    reason:          '',
+    amountRecovered: '',
+    notes:           '',
+  });
+
+  const mut = useMutation({
+    mutationFn: () => repossessionsApi.create({
+      installmentId:   inst.id,
+      repossessedDate: form.repossessedDate,
+      deviceName:      form.deviceName,
+      imei:            form.imei || undefined,
+      condition:       form.condition as 'good' | 'fair' | 'poor',
+      reason:          form.reason || undefined,
+      amountRecovered: form.amountRecovered ? Number(form.amountRecovered) : undefined,
+      notes:           form.notes || undefined,
+    }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['installments'] });
+      void qc.invalidateQueries({ queryKey: ['repossessions'] });
+      void qc.invalidateQueries({ queryKey: ['repossession-stats'] });
+      toast.success('Repossession recorded — installment closed');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
+          <div className="flex items-center gap-2">
+            <AlertOctagon size={18} className="text-red-600" />
+            <h2 className="text-base font-semibold text-gray-900">Repossess Device</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <div className="px-6 py-4 bg-red-50 border-b border-red-100">
+          <p className="text-sm text-red-700 font-medium">{inst.customerName} · {inst.customerPhone}</p>
+          <p className="text-xs text-red-500 mt-0.5">This will close the installment. Action cannot be undone.</p>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Device Name *</label>
+            <input value={form.deviceName} onChange={(e) => setForm((f) => ({ ...f, deviceName: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Date *</label>
+              <input type="date" value={form.repossessedDate} onChange={(e) => setForm((f) => ({ ...f, repossessedDate: e.target.value }))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Condition</label>
+              <select value={form.condition} onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value }))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                <option value="good">Good</option>
+                <option value="fair">Fair</option>
+                <option value="poor">Poor</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">IMEI</label>
+            <input value={form.imei} onChange={(e) => setForm((f) => ({ ...f, imei: e.target.value }))}
+              placeholder="Auto-filled from installment"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Reason</label>
+            <input value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
+              placeholder="Non-payment, customer request, etc."
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Amount Recovered (PKR)</label>
+            <input type="number" value={form.amountRecovered} onChange={(e) => setForm((f) => ({ ...f, amountRecovered: e.target.value }))}
+              placeholder="0"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+            <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              rows={2} placeholder="Optional notes..."
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
+          </div>
+        </div>
+        <div className="px-6 pb-5 flex gap-2 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-xl border border-gray-200 transition">Cancel</button>
+          <button
+            onClick={() => mut.mutate()}
+            disabled={mut.isPending || !form.deviceName || !form.repossessedDate}
+            className="px-4 py-2 text-sm bg-red-600 text-white rounded-xl hover:bg-red-700 transition disabled:opacity-50"
+          >
+            {mut.isPending ? 'Recording…' : 'Repossess Device'}
+          </button>
         </div>
       </div>
     </div>
@@ -1134,6 +1245,7 @@ export default function InstallmentsPage() {
   const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
   const [editInst, setEditInst] = useState<Installment | null>(null);
   const [jazzCashInst, setJazzCashInst] = useState<Installment | null>(null);
+  const [repoInst, setRepoInst] = useState<Installment | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [approveConfirm, setApproveConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -1763,6 +1875,12 @@ export default function InstallmentsPage() {
                 Recovery
               </button>
             )}
+            {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && isOwner && (
+              <button onClick={() => { close(); setRepoInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-red-700 hover:bg-red-50 transition font-medium">
+                Repossess Device
+              </button>
+            )}
             {inst.status === 'ACTIVE' && isOwner && (
               <button onClick={() => { close(); setDefaultConfirm({ open: true, id: inst.id }); }}
                 className="w-full text-left px-3 py-2 text-xs text-orange-600 hover:bg-orange-50 transition">
@@ -1855,6 +1973,9 @@ export default function InstallmentsPage() {
 
       {/* JazzCash payment link modal */}
       {jazzCashInst && <JazzCashLinkModal inst={jazzCashInst} onClose={() => setJazzCashInst(null)} />}
+
+      {/* Repossess device modal */}
+      {repoInst && <RepossessModal inst={repoInst} onClose={() => setRepoInst(null)} />}
 
       {/* Schedule modal */}
       {scheduleInst && <ScheduleModal inst={scheduleInst} shopName={shopData?.shopName} onClose={() => setScheduleInst(null)} />}

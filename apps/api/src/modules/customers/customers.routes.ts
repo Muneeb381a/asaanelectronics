@@ -8,6 +8,7 @@ import {
   getLifecycleCounts, getRiskBreakdown, lookupByCnic, getUpcomingBirthdays, getReferralLeaderboard,
   nadraVerifyCnic, nadraStatus,
 } from './customers.controller.js';
+import { listGuarantors } from './guarantors.controller.js';
 import { listNotes, addNote, deleteNote } from './customer-notes.controller.js';
 
 const router = Router();
@@ -15,6 +16,7 @@ const router = Router();
 router.use(authenticate, requireSeller);
 
 router.get('/lifecycle-counts',     getLifecycleCounts);
+router.get('/guarantors',           requireOwner, listGuarantors);
 router.get('/nadra-status',         nadraStatus);
 router.post('/nadra-verify',        requireOwner, nadraVerifyCnic);
 router.get('/upcoming-birthdays',   getUpcomingBirthdays);

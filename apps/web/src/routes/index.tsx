@@ -38,6 +38,9 @@ const PortalDashboardPage   = lazy(() => import('../pages/portal/PortalDashboard
 const ImeiPage              = lazy(() => import('../pages/ImeiPage.tsx'));
 const DueSheetPage          = lazy(() => import('../pages/DueSheetPage.tsx'));
 const SuppliersPage         = lazy(() => import('../pages/SuppliersPage.tsx'));
+const TradeInsPage          = lazy(() => import('../pages/TradeInsPage.tsx'));
+const RepossessionsPage     = lazy(() => import('../pages/RepossessionsPage.tsx'));
+const GuarantorsPage        = lazy(() => import('../pages/GuarantorsPage.tsx'));
 
 // ── Fallback loader ────────────────────────────────────────────────────────────
 function PageLoader() {
@@ -147,7 +150,10 @@ export const router = createBrowserRouter([
       { path: '/exports',          element: <SellerOwnerGuard><S><ExportsPage /></S></SellerOwnerGuard> },
       { path: '/settings',         element: <SellerOwnerGuard><S><SettingsPage /></S></SellerOwnerGuard> },
       { path: '/imei',             element: <SellerOwnerGuard><S><ImeiPage /></S></SellerOwnerGuard> },
-      { path: '/suppliers',        element: <SellerOwnerGuard><S><SuppliersPage /></S></SellerOwnerGuard> },
+      { path: '/suppliers',         element: <SellerOwnerGuard><S><SuppliersPage /></S></SellerOwnerGuard> },
+      { path: '/trade-ins',         element: <SellerOwnerGuard><S><TradeInsPage /></S></SellerOwnerGuard> },
+      { path: '/repossessions',     element: <SellerOwnerGuard><S><RepossessionsPage /></S></SellerOwnerGuard> },
+      { path: '/guarantors',        element: <SellerOwnerGuard><S><GuarantorsPage /></S></SellerOwnerGuard> },
       { path: '/verifications',    element: <S><VerificationQueuePage /></S> },
     ],
   },

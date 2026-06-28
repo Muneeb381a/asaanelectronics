@@ -642,6 +642,58 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   index('idx_sup_inv_date').on(t.invoiceDate),
 ]);
 
+// ── Trade-Ins ─────────────────────────────────────────────────────────────────
+export const tradeIns = pgTable('trade_ins', {
+  id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:      text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  customerId:    text('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  installmentId: text('installment_id'), // FK added in migration only (avoids ordering issue)
+  cashSaleId:    text('cash_sale_id'),
+  deviceName:    text('device_name').notNull(),
+  brand:         text('brand'),
+  model:         text('model'),
+  imei:          text('imei'),
+  color:         text('color'),
+  storageGb:     integer('storage_gb'),
+  condition:     text('condition').default('fair').notNull(), // good/fair/poor
+  assessedValue: decimal('assessed_value', { precision: 12, scale: 2 }).notNull(),
+  notes:         text('notes'),
+  status:        text('status').default('in_stock').notNull(), // in_stock/sold/disposed
+  soldPrice:     decimal('sold_price', { precision: 12, scale: 2 }),
+  soldAt:        timestamp('sold_at'),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_trade_ins_seller').on(t.sellerId),
+  index('idx_trade_ins_customer').on(t.customerId),
+  index('idx_trade_ins_seller_status').on(t.sellerId, t.status),
+]);
+
+// ── Repossessions ─────────────────────────────────────────────────────────────
+export const repossessions = pgTable('repossessions', {
+  id:              text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:        text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  installmentId:   text('installment_id').notNull(), // FK in migration only
+  customerId:      text('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  repossessedDate: date('repossessed_date').notNull(),
+  deviceName:      text('device_name').notNull(),
+  imei:            text('imei'),
+  condition:       text('condition').default('fair').notNull(),
+  reason:          text('reason'),
+  amountRecovered:           decimal('amount_recovered',            { precision: 12, scale: 2 }).default('0').notNull(),
+  outstandingAtRepossession: decimal('outstanding_at_repossession', { precision: 12, scale: 2 }),
+  assessedValue:   decimal('assessed_value', { precision: 12, scale: 2 }),
+  status:          text('status').default('in_stock').notNull(), // in_stock/sold/disposed/returned
+  soldPrice:       decimal('sold_price', { precision: 12, scale: 2 }),
+  soldAt:          timestamp('sold_at'),
+  notes:           text('notes'),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_repossessions_seller').on(t.sellerId),
+  index('idx_repossessions_customer').on(t.customerId),
+  index('idx_repossessions_seller_status').on(t.sellerId, t.status),
+  index('idx_repossessions_installment').on(t.installmentId),
+]);
+
 // ── Staff Attendance ──────────────────────────────────────────────────────────
 export const attendance = pgTable('attendance', {
   id:       text('id').primaryKey().$defaultFn(() => randomUUID()),

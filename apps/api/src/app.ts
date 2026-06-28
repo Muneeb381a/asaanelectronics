@@ -37,6 +37,8 @@ import handoversRoutes         from './modules/handovers/handovers.routes.js';
 import attendanceRoutes        from './modules/attendance/attendance.routes.js';
 import exportsRoutes           from './modules/exports/exports.routes.js';
 import suppliersRoutes         from './modules/suppliers/suppliers.routes.js';
+import tradeInsRoutes          from './modules/tradeIns/tradeIns.routes.js';
+import repossessionsRoutes     from './modules/repossessions/repossessions.routes.js';
 
 const app = express();
 
@@ -103,6 +105,8 @@ app.use('/api/handovers',          handoversRoutes);
 app.use('/api/attendance',         attendanceRoutes);
 app.use('/api/exports',            exportsRoutes);
 app.use('/api/suppliers',          suppliersRoutes);
+app.use('/api/trade-ins',          tradeInsRoutes);
+app.use('/api/repossessions',      repossessionsRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
 app.use(errorMiddleware);
