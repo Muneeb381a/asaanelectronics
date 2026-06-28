@@ -56,6 +56,7 @@ export declare const updateProductUnitSchema: z.ZodObject<{
     storageGb: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     productId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     condition: z.ZodOptional<z.ZodEnum<["new", "refurbished"]>>;
+    ptaStatus: z.ZodOptional<z.ZodEnum<["approved", "non_pta", "unknown"]>>;
 }, "strip", z.ZodTypeAny, {
     status?: "available" | "sold" | "defective" | "returned" | undefined;
     productId?: string | null | undefined;
@@ -63,6 +64,7 @@ export declare const updateProductUnitSchema: z.ZodObject<{
     notes?: string | null | undefined;
     storageGb?: number | null | undefined;
     condition?: "new" | "refurbished" | undefined;
+    ptaStatus?: "unknown" | "approved" | "non_pta" | undefined;
 }, {
     status?: "available" | "sold" | "defective" | "returned" | undefined;
     productId?: string | null | undefined;
@@ -70,5 +72,6 @@ export declare const updateProductUnitSchema: z.ZodObject<{
     notes?: string | null | undefined;
     storageGb?: number | null | undefined;
     condition?: "new" | "refurbished" | undefined;
+    ptaStatus?: "unknown" | "approved" | "non_pta" | undefined;
 }>;
 export type UpdateProductUnitInput = z.infer<typeof updateProductUnitSchema>;

@@ -45,6 +45,7 @@ export const updateProductUnitSchema = z.object({
   storageGb: z.number().int().positive().nullable().optional(),
   productId: z.string().nullable().optional(),
   condition: z.enum(['new', 'refurbished']).optional(),
+  ptaStatus: z.enum(['approved', 'non_pta', 'unknown']).optional(),
 });
 
 export type UpdateProductUnitInput = z.infer<typeof updateProductUnitSchema>;

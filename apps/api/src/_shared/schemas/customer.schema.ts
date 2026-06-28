@@ -49,6 +49,7 @@ export const createCustomerSchema = z.object({
   chequeBank: z.string().optional(),
   chequeAccountNo: z.string().optional(),
   chequeNo: z.string().optional(),
+  dob: z.string().max(10).optional(),
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial().extend({

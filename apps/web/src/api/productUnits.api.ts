@@ -2,6 +2,7 @@ import { api } from './client.ts';
 
 export type UnitStatus = 'available' | 'sold' | 'defective' | 'returned';
 export type UnitCondition = 'new' | 'refurbished';
+export type PtaStatus = 'approved' | 'non_pta' | 'unknown';
 
 export interface ProductUnit {
   id:            string;
@@ -13,6 +14,7 @@ export interface ProductUnit {
   purchasePrice: string | null;
   status:        UnitStatus;
   notes:         string | null;
+  ptaStatus:     PtaStatus;
   soldAt:        string | null;
   saleType:      string | null;
   soldToName:    string | null;
@@ -62,6 +64,7 @@ export interface UpdateUnitBody {
   storageGb?: number | null;
   productId?: string | null;
   condition?: UnitCondition;
+  ptaStatus?: PtaStatus;
 }
 
 export const productUnitsApi = {

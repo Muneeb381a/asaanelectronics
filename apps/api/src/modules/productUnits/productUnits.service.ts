@@ -100,6 +100,7 @@ export class ProductUnitsService {
           purchasePrice: productUnits.purchasePrice,
           status:        productUnits.status,
           notes:         productUnits.notes,
+          ptaStatus:     productUnits.ptaStatus,
           soldAt:        productUnits.soldAt,
           saleType:      productUnits.saleType,
           soldToName:    productUnits.soldToName,
@@ -231,6 +232,7 @@ export class ProductUnitsService {
     if (body.storageGb !== undefined) patch['storageGb'] = body.storageGb;
     if (body.productId !== undefined) patch['productId'] = body.productId;
     if (body.condition !== undefined) patch['condition'] = body.condition;
+    if (body.ptaStatus !== undefined) patch['ptaStatus'] = body.ptaStatus;
 
     const [updated] = await db
       .update(productUnits)

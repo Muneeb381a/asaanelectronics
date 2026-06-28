@@ -538,6 +538,7 @@ export const paymentAccounts = pgTable('payment_accounts', {
 // Each row represents one physical phone unit identified by its IMEI.
 // status lifecycle: available → sold | defective | returned → available (re-sold)
 export const unitStatusEnum = pgEnum('unit_status', ['available', 'sold', 'defective', 'returned']);
+export const ptaStatusEnum  = pgEnum('pta_status',  ['approved', 'non_pta', 'unknown']);
 
 export const productUnits = pgTable('product_units', {
   id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
@@ -551,6 +552,7 @@ export const productUnits = pgTable('product_units', {
   purchasePrice: decimal('purchase_price', { precision: 12, scale: 2 }),
   status:        unitStatusEnum('status').default('available').notNull(),
   notes:         text('notes'),
+  ptaStatus:     ptaStatusEnum('pta_status').default('unknown').notNull(),
   soldAt:        timestamp('sold_at', { withTimezone: true }),
   saleType:      text('sale_type'),
   soldToName:    text('sold_to_name'),

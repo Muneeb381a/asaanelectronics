@@ -5,7 +5,7 @@ import {
   Search, Plus, Upload, Smartphone, CheckCircle2,
   AlertTriangle, X, ChevronDown, RotateCcw, Wrench,
 } from 'lucide-react';
-import { productUnitsApi, type ProductUnit, type UnitStatus } from '../api/productUnits.api.ts';
+import { productUnitsApi, type ProductUnit, type UnitStatus, type PtaStatus } from '../api/productUnits.api.ts';
 import { productsApi } from '../api/products.api.ts';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
@@ -33,6 +33,17 @@ const STATUS_CFG: Record<UnitStatus, { label: string; cls: string }> = {
 
 function StatusBadge({ s }: { s: UnitStatus }) {
   const cfg = STATUS_CFG[s];
+  return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
+}
+
+const PTA_CFG: Record<PtaStatus, { label: string; cls: string }> = {
+  approved: { label: 'PTA ✓',     cls: 'bg-emerald-100 text-emerald-700' },
+  non_pta:  { label: 'Non-PTA',   cls: 'bg-red-100 text-red-700' },
+  unknown:  { label: 'PTA ?',     cls: 'bg-gray-100 text-gray-500' },
+};
+
+function PtaBadge({ s }: { s: PtaStatus }) {
+  const cfg = PTA_CFG[s];
   return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>;
 }
 
@@ -300,6 +311,9 @@ function UnitActions({ unit, onDone }: { unit: ProductUnit; onDone: () => void }
     unit.status !== 'available' && { label: 'Mark Available', icon: CheckCircle2, cls: 'text-emerald-600', fn: () => mutation.mutate({ status: 'available' }) },
     unit.status !== 'defective' && { label: 'Mark Defective', icon: Wrench,       cls: 'text-red-600',     fn: () => mutation.mutate({ status: 'defective' }) },
     unit.status !== 'returned'  && { label: 'Mark Returned',  icon: RotateCcw,    cls: 'text-amber-600',   fn: () => mutation.mutate({ status: 'returned' }) },
+    unit.ptaStatus !== 'approved' && { label: 'Mark PTA Approved', icon: CheckCircle2, cls: 'text-emerald-600', fn: () => mutation.mutate({ ptaStatus: 'approved' }) },
+    unit.ptaStatus !== 'non_pta'  && { label: 'Mark Non-PTA',      icon: AlertTriangle, cls: 'text-red-600',    fn: () => mutation.mutate({ ptaStatus: 'non_pta' }) },
+    unit.ptaStatus !== 'unknown'  && { label: 'PTA Unknown',        icon: X,             cls: 'text-gray-500',   fn: () => mutation.mutate({ ptaStatus: 'unknown' }) },
     unit.status !== 'sold'      && { label: 'Delete',         icon: X,            cls: 'text-red-600',     fn: () => { if (confirm('Delete this unit?')) deleteMutation.mutate(); } },
   ].filter(Boolean) as { label: string; icon: React.ElementType; cls: string; fn: () => void }[];
 
@@ -543,6 +557,7 @@ export default function ImeiPage() {
                       {unit.color && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{unit.color}</span>}
                       {unit.storageGb && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{unit.storageGb}GB</span>}
                       {unit.condition === 'refurbished' && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Refurb</span>}
+                      <PtaBadge s={unit.ptaStatus} />
                     </div>
                   </td>
                   <td className="px-4 py-3"><StatusBadge s={unit.status} /></td>
@@ -596,6 +611,7 @@ export default function ImeiPage() {
                   <div className="flex gap-1 mt-1 flex-wrap">
                     {unit.color && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{unit.color}</span>}
                     {unit.storageGb && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{unit.storageGb}GB</span>}
+                    <PtaBadge s={unit.ptaStatus} />
                   </div>
                   {unit.soldToName && (
                     <p className="text-xs text-gray-500 mt-1">
