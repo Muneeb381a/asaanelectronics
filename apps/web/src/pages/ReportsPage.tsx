@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
 import { verificationsApi, type AvoStat } from '../api/verifications.api.ts';
 import { reportsApi, type AreaRow, type AgingBucket } from '../api/reports.api.ts';
+import { customersApi } from '../api/customers.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck, MapPin, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck, MapPin, Activity, Gift } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 function pkr(v: number) {
@@ -132,6 +133,13 @@ export default function ReportsPage() {
     queryFn:  reportsApi.getAreaReport,
     staleTime: 2 * 60_000,
     enabled:  canReports,
+  });
+
+  const { data: referralRows = [] } = useQuery({
+    queryKey: ['referral-leaderboard'],
+    queryFn: customersApi.getReferralLeaderboard,
+    staleTime: 5 * 60_000,
+    enabled: canReports,
   });
 
   const { data: agingRows = [] } = useQuery<AgingBucket[]>({
@@ -569,6 +577,41 @@ export default function ReportsPage() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {referralRows.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden mt-6">
+          <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-2">
+            <Gift size={16} className="text-pink-500" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Referral Leaderboard</p>
+              <p className="text-xs text-gray-400">Customers who brought the most new customers to the shop</p>
+            </div>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {referralRows.slice(0, 10).map((r, i) => (
+              <div key={r.id} className="flex items-center gap-3 px-6 py-3">
+                <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold shrink-0 ${
+                  i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-600' : i === 2 ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-400'
+                }`}>
+                  {i + 1}
+                </span>
+                {r.photoUrl
+                  ? <img src={r.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                  : <div className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold shrink-0">{r.name[0]}</div>
+                }
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{r.name}</p>
+                  {r.area && <p className="text-xs text-gray-400">{r.area}</p>}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-pink-600">{r.referralCount} referral{r.referralCount !== 1 ? 's' : ''}</p>
+                  {r.activeCount > 0 && <p className="text-[10px] text-emerald-600">{r.activeCount} active</p>}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

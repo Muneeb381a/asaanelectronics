@@ -51,6 +51,7 @@ export interface Customer {
   lifecycleStage: LifecycleStage;
   tags: string[];
   dob: string | null;
+  referredById: string | null;
 }
 
 interface ListResponse {
@@ -150,4 +151,7 @@ export const customersApi = {
 
   getUpcomingBirthdays: () =>
     api.get<{ data: { data: Array<{ id: string; name: string; phone: string; dob: string; area: string | null; photoUrl: string | null }> } }>('/customers/upcoming-birthdays').then((r) => r.data.data.data),
+
+  getReferralLeaderboard: () =>
+    api.get<{ data: { data: Array<{ id: string; name: string; phone: string; area: string | null; photoUrl: string | null; referralCount: number; activeCount: number }> } }>('/customers/referral-leaderboard').then((r) => r.data.data.data),
 };

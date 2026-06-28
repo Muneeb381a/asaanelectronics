@@ -50,6 +50,7 @@ export const createCustomerSchema = z.object({
   chequeAccountNo: z.string().max(30).optional(),
   chequeNo:        z.string().max(20).optional(),
   dob:             z.string().max(10).optional(),
+  referredById:    z.string().optional(),
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial().extend({

@@ -99,3 +99,7 @@ export async function assignAvo(req: AuthRequest, res: Response) {
 export async function getUpcomingBirthdays(req: AuthRequest, res: Response) {
   success(res, await svc.getUpcomingBirthdays(req.user!.sellerId!));
 }
+
+export async function getReferralLeaderboard(req: AuthRequest, res: Response) {
+  success(res, await svc.getReferralLeaderboard(req.user!.sellerId!));
+}

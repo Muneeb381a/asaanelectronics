@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   json,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { randomUUID } from 'crypto';
 
@@ -184,6 +185,7 @@ export const customers = pgTable(
     guarantor2ShopName: text('guarantor2_shop_name'),
     guarantor2ShopAddress: text('guarantor2_shop_address'),
     dob: date('dob'),
+    referredById: text('referred_by_id').references((): AnyPgColumn => customers.id, { onDelete: 'set null' }),
     tags: text('tags').array().default([]).notNull(),
     createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
     assignedAvoId: text('assigned_avo_id').references(() => users.id, { onDelete: 'set null' }),

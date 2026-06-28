@@ -100,6 +100,7 @@ type CreateBody = {
   guarantor2ShopName?: string;
   guarantor2ShopAddress?: string;
   dob?: string;
+  referredById?: string;
 };
 
 type UpdateBody = Partial<CreateBody> & { tags?: string[] };
@@ -579,6 +580,7 @@ export class CustomersService {
         guarantor2ShopName: body.guarantor2ShopName,
         guarantor2ShopAddress: body.guarantor2ShopAddress,
         dob: body.dob,
+        referredById: body.referredById ?? null,
         createdByUserId,
       })
       .returning();
@@ -639,6 +641,7 @@ export class CustomersService {
         ...(body.guarantor2ShopAddress !== undefined && { guarantor2ShopAddress: body.guarantor2ShopAddress }),
         ...(body.tags !== undefined && { tags: body.tags }),
         ...(body.dob !== undefined && { dob: body.dob }),
+        ...(body.referredById !== undefined && { referredById: body.referredById }),
       })
       .where(and(eq(customers.id, id), eq(customers.sellerId, sellerId)))
       .returning();
@@ -751,6 +754,38 @@ export class CustomersService {
       }
     });
     return existing;
+  }
+
+  async getReferralLeaderboard(sellerId: string) {
+    const rows = await db.execute<{
+      id: string; name: string; phone: string; area: string | null; photo_url: string | null;
+      referral_count: number; active_count: number;
+    }>(sql`
+      SELECT
+        r.id, r.name, r.phone, r.area, r.photo_url,
+        COUNT(c.id)::int AS referral_count,
+        COUNT(c.id) FILTER (
+          WHERE EXISTS (
+            SELECT 1 FROM installments i
+            WHERE i.customer_id = c.id AND i.status = 'ACTIVE' AND i.deleted_at IS NULL
+          )
+        )::int AS active_count
+      FROM customers r
+      JOIN customers c ON c.referred_by_id = r.id AND c.deleted_at IS NULL
+      WHERE r.seller_id = ${sellerId} AND r.deleted_at IS NULL
+      GROUP BY r.id, r.name, r.phone, r.area, r.photo_url
+      ORDER BY referral_count DESC, active_count DESC
+      LIMIT 20
+    `);
+    return (rows as unknown as Array<{ id: string; name: string; phone: string; area: string | null; photo_url: string | null; referral_count: number; active_count: number }>).map((r) => ({
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      area: r.area,
+      photoUrl: r.photo_url,
+      referralCount: r.referral_count,
+      activeCount: r.active_count,
+    }));
   }
 
   async getUpcomingBirthdays(sellerId: string) {

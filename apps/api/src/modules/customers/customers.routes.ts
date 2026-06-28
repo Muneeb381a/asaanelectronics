@@ -5,7 +5,7 @@ import { validate } from '../../middleware/validate.js';
 import { createCustomerSchema, updateCustomerSchema } from '@assaan/shared';
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer, assignAvo,
-  getLifecycleCounts, getRiskBreakdown, lookupByCnic, getUpcomingBirthdays,
+  getLifecycleCounts, getRiskBreakdown, lookupByCnic, getUpcomingBirthdays, getReferralLeaderboard,
 } from './customers.controller.js';
 import { listNotes, addNote, deleteNote } from './customer-notes.controller.js';
 
@@ -13,8 +13,9 @@ const router = Router();
 
 router.use(authenticate, requireSeller);
 
-router.get('/lifecycle-counts',   getLifecycleCounts);
-router.get('/upcoming-birthdays', getUpcomingBirthdays);
+router.get('/lifecycle-counts',     getLifecycleCounts);
+router.get('/upcoming-birthdays',   getUpcomingBirthdays);
+router.get('/referral-leaderboard', getReferralLeaderboard);
 router.get('/lookup',           requirePermission(['canSearchCnic', 'canAddInstallment', 'canAddCustomer', 'canRecordPayment']), lookupByCnic);
 router.get('/',                 listCustomers);
 router.get('/:id',              getCustomer);

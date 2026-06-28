@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -44,6 +44,63 @@ const STEPS = [
 ];
 
 const RELATIONS = ['Brother', 'Sister', 'Father', 'Mother', 'Wife', 'Friend', 'Colleague', 'Neighbor', 'Other'];
+
+function ReferredByPicker({
+  value, onChange, excludeId,
+}: { value: string | null; onChange: (id: string | null, name: string) => void; excludeId?: string }) {
+  const [query, setQuery]       = useState('');
+  const [results, setResults]   = useState<Array<{ id: string; name: string; phone: string }>>([]);
+  const [open, setOpen]         = useState(false);
+  const [selected, setSelected] = useState<string>('');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const search = useCallback(async (q: string) => {
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    try {
+      const r = await api.get<{ data: { data: { data: Array<{ id: string; name: string; phone: string }> } } }>(
+        '/customers', { params: { search: q, limit: 8 } }
+      );
+      setResults(r.data.data.data.data.filter((c) => c.id !== excludeId));
+      setOpen(true);
+    } catch { setResults([]); }
+  }, [excludeId]);
+
+  return (
+    <div className="relative">
+      <input
+        value={selected || query}
+        onChange={(e) => {
+          setSelected('');
+          setQuery(e.target.value);
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(() => void search(e.target.value), 350);
+        }}
+        onFocus={() => { if (results.length) setOpen(true); }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Customer ka naam ya phone type karo…"
+        className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition ${value ? 'border-blue-300' : ''}`}
+      />
+      {value && (
+        <button type="button" onClick={() => { onChange(null, ''); setSelected(''); setQuery(''); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <X size={13} />
+        </button>
+      )}
+      {open && results.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-48 overflow-y-auto">
+          {results.map((c) => (
+            <button key={c.id} type="button"
+              onMouseDown={() => { onChange(c.id, c.name); setSelected(c.name); setQuery(''); setOpen(false); }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-50 text-left">
+              <span className="font-medium text-gray-800">{c.name}</span>
+              <span className="text-gray-400 text-xs">{c.phone}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Field({ label, optional, error, children }: {
   label: string; optional?: boolean; error?: string; children: React.ReactNode;
@@ -301,6 +358,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
   const [cnicBackHash,    setCnicBackHash]     = useState<string | null>(null);
   const [blankChequeHash, setBlankChequeHash]  = useState<string | null>(null);
   const [autoFillHint,    setAutoFillHint]     = useState<string | null>(null);
+  const [referredById,    setReferredById]     = useState<string | null>(customer?.referredById ?? null);
 
   const schema = isEdit ? editSchema : createCustomerSchema;
 
@@ -381,6 +439,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
       ...(cnicFrontHash   && { cnicFrontHash }),
       ...(cnicBackHash    && { cnicBackHash }),
       ...(blankChequeHash && { blankChequeHash }),
+      ...(referredById    && { referredById }),
     });
   }
 
@@ -500,6 +559,13 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
             </div>
             <Field label="Date of Birth" optional>
               <input {...register('dob')} type="date" className={inp} />
+            </Field>
+            <Field label="Referred By" optional>
+              <ReferredByPicker
+                value={referredById}
+                excludeId={customer?.id}
+                onChange={(id, name) => { setReferredById(id); if (!id) void name; }}
+              />
             </Field>
             <Field label="Phone" error={errors.phone?.message}>
               <input {...register('phone')} placeholder="03001234567" maxLength={11}
