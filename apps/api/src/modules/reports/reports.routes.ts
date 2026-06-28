@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, requireSeller } from '../../middleware/auth.js';
-import { getMonthlyReport, getMonthlyCustomers, getAreaReport } from './reports.controller.js';
+import { getMonthlyReport, getMonthlyCustomers, getAreaReport, getAgingReport } from './reports.controller.js';
 
 const router = Router();
 
@@ -8,5 +8,6 @@ router.use(authenticate, requireSeller);
 router.get('/monthly',           getMonthlyReport);
 router.get('/monthly-customers', getMonthlyCustomers);
 router.get('/areas',             getAreaReport);
+router.get('/aging',             getAgingReport);
 
 export default router;

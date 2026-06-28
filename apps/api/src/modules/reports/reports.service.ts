@@ -283,6 +283,74 @@ export class ReportsService {
     });
   }
 
+  async getAgingReport(sellerId: string) {
+    type AgingRow = {
+      bucket: string;
+      count: number;
+      totalOutstanding: string;
+    };
+
+    const rows = await db.execute<AgingRow>(sql`
+      WITH installment_dpd AS (
+        SELECT
+          i.id,
+          i.remaining::numeric AS outstanding,
+          GREATEST(0,
+            CASE
+              WHEN i.payment_frequency = 'daily' THEN
+                GREATEST(0,
+                  EXTRACT(DAY FROM (NOW() - i.start_date))::int
+                  - FLOOR(COALESCE(paid.total, 0) / NULLIF(i.monthly::numeric, 0))::int
+                )
+              ELSE
+                GREATEST(0,
+                  (EXTRACT(YEAR FROM AGE(NOW(), i.start_date)) * 12
+                   + EXTRACT(MONTH FROM AGE(NOW(), i.start_date)))::int
+                  - FLOOR(COALESCE(paid.total, 0) / NULLIF(i.monthly::numeric, 0))::int
+                ) * 30
+            END
+          ) AS dpd
+        FROM installments i
+        JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
+        LEFT JOIN (
+          SELECT installment_id, SUM(amount::numeric) AS total
+          FROM payments
+          WHERE deleted_at IS NULL
+          GROUP BY installment_id
+        ) paid ON paid.installment_id = i.id
+        WHERE c.seller_id = ${sellerId}
+          AND i.status = 'ACTIVE'
+          AND i.deleted_at IS NULL
+      )
+      SELECT
+        bucket,
+        COUNT(*)::int   AS count,
+        COALESCE(SUM(outstanding), 0)::text AS "totalOutstanding"
+      FROM (
+        SELECT
+          outstanding,
+          CASE
+            WHEN dpd = 0             THEN 'current'
+            WHEN dpd BETWEEN 1 AND 7 THEN '1-7'
+            WHEN dpd BETWEEN 8 AND 30 THEN '8-30'
+            WHEN dpd BETWEEN 31 AND 90 THEN '31-90'
+            ELSE '90+'
+          END AS bucket
+        FROM installment_dpd
+      ) bucketed
+      GROUP BY bucket
+      ORDER BY
+        CASE bucket
+          WHEN 'current' THEN 0
+          WHEN '1-7'     THEN 1
+          WHEN '8-30'    THEN 2
+          WHEN '31-90'   THEN 3
+          ELSE 4
+        END
+    `);
+    return rows;
+  }
+
   async getAreaReport(sellerId: string) {
     const rows = await db.execute<{
       area: string;

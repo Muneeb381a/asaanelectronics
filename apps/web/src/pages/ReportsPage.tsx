@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
 import { verificationsApi, type AvoStat } from '../api/verifications.api.ts';
-import { reportsApi, type AreaRow } from '../api/reports.api.ts';
+import { reportsApi, type AreaRow, type AgingBucket } from '../api/reports.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck, MapPin } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle, BarChart3, Send, UserCheck, MapPin, Activity } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 function pkr(v: number) {
@@ -131,6 +131,13 @@ export default function ReportsPage() {
     queryKey: ['area-report'],
     queryFn:  reportsApi.getAreaReport,
     staleTime: 2 * 60_000,
+    enabled:  canReports,
+  });
+
+  const { data: agingRows = [] } = useQuery<AgingBucket[]>({
+    queryKey: ['aging-report'],
+    queryFn:  reportsApi.getAgingReport,
+    staleTime: 3 * 60_000,
     enabled:  canReports,
   });
 
@@ -520,6 +527,48 @@ export default function ReportsPage() {
               </tfoot>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Overdue Aging Analysis */}
+      {agingRows.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden mt-6">
+          <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-2">
+            <Activity size={16} className="text-red-500" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Overdue Aging Analysis (DPD)</p>
+              <p className="text-xs text-gray-400">Days Past Due — active installments grouped by how overdue they are</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+            {(['current', '1-7', '8-30', '31-90', '90+'] as const).map((bucket) => {
+              const row = agingRows.find((r) => r.bucket === bucket);
+              const count = row?.count ?? 0;
+              const amt   = Number(row?.totalOutstanding ?? 0);
+              const isCurrent  = bucket === 'current';
+              const isVeryLate = bucket === '90+';
+              const textColor  = isCurrent ? 'text-green-600' : isVeryLate ? 'text-red-600' : 'text-orange-500';
+              const labelColor = isCurrent ? 'text-green-700' : isVeryLate ? 'text-red-700' : 'text-orange-600';
+              const bgColor    = isCurrent ? 'bg-green-50'   : isVeryLate ? 'bg-red-50'    : 'bg-orange-50';
+              const label = isCurrent ? 'Current' : `${bucket} days`;
+              return (
+                <div key={bucket} className={`px-5 py-4 text-center ${bgColor}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${labelColor}`}>{label}</p>
+                  <p className={`text-xl font-extrabold ${textColor}`}>{count}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 font-medium">{pkr(amt)}</p>
+                  <p className="text-[10px] text-gray-400">installments</p>
+                </div>
+              );
+            })}
+          </div>
+          {agingRows.some((r) => r.bucket !== 'current' && r.count > 0) && (
+            <div className="px-6 py-3 bg-red-50 border-t border-red-100">
+              <p className="text-xs text-red-600 font-medium">
+                ⚠ {agingRows.filter((r) => r.bucket !== 'current').reduce((s, r) => s + r.count, 0)} overdue installments —&nbsp;
+                {pkr(agingRows.filter((r) => r.bucket !== 'current').reduce((s, r) => s + Number(r.totalOutstanding), 0))} outstanding
+              </p>
+            </div>
+          )}
         </div>
       )}
 

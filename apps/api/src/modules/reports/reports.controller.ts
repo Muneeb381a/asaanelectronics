@@ -19,6 +19,10 @@ export async function getAreaReport(req: AuthRequest, res: Response) {
   success(res, await svc.getAreaReport(req.user!.sellerId!));
 }
 
+export async function getAgingReport(req: AuthRequest, res: Response) {
+  success(res, await svc.getAgingReport(req.user!.sellerId!));
+}
+
 export async function getMonthlyCustomers(req: AuthRequest, res: Response) {
   const sellerId = req.user!.sellerId!;
   const now      = new Date();

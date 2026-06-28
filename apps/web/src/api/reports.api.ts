@@ -37,6 +37,12 @@ export type MonthlyCustomerRow = {
   paymentFrequency: 'monthly' | 'daily';
 };
 
+export type AgingBucket = {
+  bucket: 'current' | '1-7' | '8-30' | '31-90' | '90+';
+  count: number;
+  totalOutstanding: string;
+};
+
 export const reportsApi = {
   getMonthly: (year: number): Promise<MonthlyReportRow[]> =>
     api.get(`/reports/monthly?year=${year}`).then((res) => res.data.data),
@@ -46,4 +52,7 @@ export const reportsApi = {
 
   getAreaReport: (): Promise<AreaRow[]> =>
     api.get('/reports/areas').then((res) => res.data.data),
+
+  getAgingReport: (): Promise<AgingBucket[]> =>
+    api.get('/reports/aging').then((res) => res.data.data),
 };
