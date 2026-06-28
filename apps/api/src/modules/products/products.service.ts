@@ -27,6 +27,7 @@ export class ProductsService {
         price: String(body.price),
         installmentPrice: body.installmentPrice !== undefined ? String(body.installmentPrice) : undefined,
         purchasePrice: body.purchasePrice !== undefined ? String(body.purchasePrice) : undefined,
+        supplierId: body.supplierId ?? null,
         sellerId,
       })
       .returning();
@@ -39,7 +40,7 @@ export class ProductsService {
     });
     if (!existing) throw new AppError('Product not found', 404);
 
-    const { price, installmentPrice, purchasePrice, ...rest } = body;
+    const { price, installmentPrice, purchasePrice, supplierId, ...rest } = body;
     const [updated] = await db
       .update(products)
       .set({
@@ -47,6 +48,7 @@ export class ProductsService {
         ...(price !== undefined && { price: String(price) }),
         ...(installmentPrice !== undefined && { installmentPrice: String(installmentPrice) }),
         ...(purchasePrice !== undefined && { purchasePrice: String(purchasePrice) }),
+        ...(supplierId !== undefined && { supplierId: supplierId || null }),
       })
       .where(and(eq(products.id, id), eq(products.sellerId, sellerId)))
       .returning();

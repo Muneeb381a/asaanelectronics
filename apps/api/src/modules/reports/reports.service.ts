@@ -1,6 +1,6 @@
 import { and, asc, count, eq, gte, inArray, isNull, lt, lte, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { cashSales, customers, expenses, installments, payments } from '../../db/schema.js';
+import { cashSales, customers, expenses, installments, payments, products, supplierInvoices } from '../../db/schema.js';
 
 const _cache = new Map<string, { at: number; data: unknown }>();
 function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
@@ -375,6 +375,98 @@ export class ReportsService {
       const d = map.get(i + 1);
       return { day: i + 1, total: d?.total ?? 0, count: d?.count ?? 0 };
     });
+  }
+
+  async getPnL(sellerId: string, year: number, month?: number) {
+    const from = month ? new Date(year, month - 1, 1) : new Date(year, 0, 1);
+    const to   = month ? new Date(year, month,     1) : new Date(year + 1, 0, 1);
+
+    const [payRow, cashRow, expRow, instCogs, cashCogs, suppRow] = await Promise.all([
+      // Revenue: installment payments collected
+      db.select({ total: sum(payments.amount) })
+        .from(payments)
+        .innerJoin(installments, eq(payments.installmentId, installments.id))
+        .innerJoin(customers, eq(installments.customerId, customers.id))
+        .where(and(
+          eq(customers.sellerId, sellerId),
+          isNull(payments.deletedAt),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
+          gte(payments.paidOn, from),
+          lt(payments.paidOn, to),
+        )),
+
+      // Revenue: cash sales
+      db.select({ total: sum(cashSales.amount) })
+        .from(cashSales)
+        .where(and(eq(cashSales.sellerId, sellerId), gte(cashSales.createdAt, from), lt(cashSales.createdAt, to))),
+
+      // Expenses
+      db.select({ total: sum(expenses.amount) })
+        .from(expenses)
+        .where(and(eq(expenses.sellerId, sellerId), gte(expenses.date, from), lt(expenses.date, to))),
+
+      // COGS: purchase price of products sold via installments
+      db.execute<{ cogs: string }>(sql`
+        SELECT COALESCE(SUM(p.purchase_price::numeric), 0)::text AS cogs
+        FROM installments i
+        JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
+        JOIN products p  ON p.id = i.product_id
+        WHERE c.seller_id = ${sellerId}
+          AND i.deleted_at IS NULL
+          AND i.created_at >= ${from.toISOString()}
+          AND i.created_at <  ${to.toISOString()}
+          AND p.purchase_price IS NOT NULL
+      `),
+
+      // COGS: purchase price of products sold via cash sales
+      db.execute<{ cogs: string }>(sql`
+        SELECT COALESCE(SUM(p.purchase_price::numeric * cs.quantity), 0)::text AS cogs
+        FROM cash_sales cs
+        JOIN products p ON p.id = cs.product_id
+        WHERE cs.seller_id = ${sellerId}
+          AND cs.created_at >= ${from.toISOString()}
+          AND cs.created_at <  ${to.toISOString()}
+          AND p.purchase_price IS NOT NULL
+      `),
+
+      // Supplier invoices issued in period (alternative COGS view)
+      db.select({ total: sum(supplierInvoices.totalAmount), paid: sum(supplierInvoices.paidAmount) })
+        .from(supplierInvoices)
+        .where(and(
+          eq(supplierInvoices.sellerId, sellerId),
+          gte(supplierInvoices.invoiceDate, from.toISOString().slice(0, 10)),
+          lt(supplierInvoices.invoiceDate,  to.toISOString().slice(0, 10)),
+        )),
+    ]);
+
+    const installmentRevenue = Number(payRow[0]?.total ?? 0);
+    const cashRevenue        = Number(cashRow[0]?.total ?? 0);
+    const totalRevenue       = installmentRevenue + cashRevenue;
+    const totalExpenses      = Number(expRow[0]?.total ?? 0);
+    const cogsSales          = Number(instCogs[0]?.cogs ?? 0) + Number(cashCogs[0]?.cogs ?? 0);
+    const supplierPurchases  = Number(suppRow[0]?.total ?? 0);
+    const supplierPaid       = Number(suppRow[0]?.paid  ?? 0);
+    const grossProfit        = totalRevenue - cogsSales;
+    const netProfit          = grossProfit - totalExpenses;
+
+    return {
+      period: month
+        ? `${year}-${String(month).padStart(2, '0')}`
+        : String(year),
+      installmentRevenue,
+      cashRevenue,
+      totalRevenue,
+      cogsSales,
+      grossProfit,
+      grossMarginPct: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0,
+      totalExpenses,
+      netProfit,
+      netMarginPct: totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0,
+      supplierPurchases,
+      supplierPaid,
+      supplierOutstanding: supplierPurchases - supplierPaid,
+    };
   }
 
   async getAreaReport(sellerId: string) {

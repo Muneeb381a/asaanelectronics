@@ -1,7 +1,9 @@
 import { useForm, useWatch } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createProductSchema, type CreateProductInput } from '@assaan/shared';
 import type { Product } from '../../api/products.api.ts';
+import { suppliersApi } from '../../api/suppliers.api.ts';
 
 interface Props {
   defaultValues?: Partial<CreateProductInput>;
@@ -41,6 +43,7 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
   });
 
   const [purchasePrice, cashPrice, installmentPrice] = useWatch({ control, name: ['purchasePrice', 'price', 'installmentPrice'] });
+  const { data: suppliers = [] } = useQuery({ queryKey: ['suppliers'], queryFn: suppliersApi.list, staleTime: 5 * 60_000 });
   const markup = cashPrice && installmentPrice && installmentPrice > cashPrice
     ? installmentPrice - cashPrice
     : null;
@@ -119,6 +122,15 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
       <Field label="Serial / IMEI" optional>
         <input {...register('serial')} placeholder="e.g. UA55BU8000KXZN" className={inputCls} />
       </Field>
+
+      {suppliers.length > 0 && (
+        <Field label="Supplier / Vendor" optional>
+          <select {...register('supplierId')} className={inputCls}>
+            <option value="">No supplier linked</option>
+            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
+      )}
 
       <Field label="Description / Notes" optional>
         <textarea {...register('description')} rows={2} placeholder="Any extra details…" className={`${inputCls} resize-none`} />

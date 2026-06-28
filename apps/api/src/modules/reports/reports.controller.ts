@@ -23,6 +23,14 @@ export async function getAgingReport(req: AuthRequest, res: Response) {
   success(res, await svc.getAgingReport(req.user!.sellerId!));
 }
 
+export async function getPnL(req: AuthRequest, res: Response) {
+  const sellerId = req.user!.sellerId!;
+  const now   = new Date();
+  const year  = parseInt(req.query['year']  as string) || now.getFullYear();
+  const month = req.query['month'] ? parseInt(req.query['month'] as string) : undefined;
+  success(res, await svc.getPnL(sellerId, year, month));
+}
+
 export async function getCollectionsHeatmap(req: AuthRequest, res: Response) {
   const sellerId = req.user!.sellerId!;
   const now   = new Date();

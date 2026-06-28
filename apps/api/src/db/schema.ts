@@ -246,7 +246,8 @@ export const products = pgTable('products', {
   photoUrl: text('photo_url'),
   serial: text('serial'),
   warrantyMonths: integer('warranty_months'),
-  description: text('description'),
+  description:   text('description'),
+  supplierId:    text('supplier_id'),
   deletedAt: timestamp('deleted_at'),
   deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [
@@ -610,6 +611,35 @@ export const ocrCache = pgTable('ocr_cache', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
   uniqueIndex('ocr_cache_hash_doctype').on(t.hash, t.docType),
+]);
+
+// ── Suppliers & Purchase Invoices ─────────────────────────────────────────────
+export const suppliers = pgTable('suppliers', {
+  id:        text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:  text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  name:      text('name').notNull(),
+  phone:     text('phone'),
+  address:   text('address'),
+  iban:      text('iban'),
+  notes:     text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_suppliers_seller').on(t.sellerId),
+]);
+
+export const supplierInvoices = pgTable('supplier_invoices', {
+  id:           text('id').primaryKey().$defaultFn(() => randomUUID()),
+  supplierId:   text('supplier_id').notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
+  sellerId:     text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  totalAmount:  decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+  paidAmount:   decimal('paid_amount',  { precision: 12, scale: 2 }).default('0').notNull(),
+  description:  text('description').notNull(),
+  invoiceDate:  date('invoice_date').notNull(),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_sup_inv_supplier').on(t.supplierId),
+  index('idx_sup_inv_seller').on(t.sellerId),
+  index('idx_sup_inv_date').on(t.invoiceDate),
 ]);
 
 // ── Staff Attendance ──────────────────────────────────────────────────────────

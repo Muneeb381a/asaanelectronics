@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
-  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, TrendingUp, ShoppingCart, FileDown, Smartphone,
+  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, TrendingUp, ShoppingCart, FileDown, Smartphone, Building2,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -22,6 +22,7 @@ const allNavItems = [
   { to: '/expenses',    label: 'Expenses',    icon: Receipt,         end: undefined as boolean | undefined, perm: 'canRecordExpense' as string | string[] },
   { to: '/returns',     label: 'Returns',     icon: RotateCcw,       end: undefined as boolean | undefined, perm: 'canManageReturns' as string | string[] },
   { to: '/imei',        label: 'IMEI',        icon: Smartphone,      end: undefined as boolean | undefined, perm: '__owner__' as string | string[] },
+  { to: '/suppliers',   label: 'Suppliers',   icon: Building2,       end: undefined as boolean | undefined, perm: '__owner__' as string | string[] },
 ];
 
 export default function DashboardLayout() {

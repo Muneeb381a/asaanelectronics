@@ -13,6 +13,7 @@ export const createProductSchema = z.object({
   serial: z.string().optional(),
   warrantyMonths: z.number().int().min(0).optional(),
   description: z.string().optional(),
+  supplierId:  z.string().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

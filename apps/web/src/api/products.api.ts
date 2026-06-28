@@ -18,6 +18,7 @@ export interface Product {
   warrantyMonths: number | null;
   description: string | null;
   sellerId: string;
+  supplierId: string | null;
 }
 
 interface ListResponse {
