@@ -557,6 +557,29 @@ export const productUnits = pgTable('product_units', {
   index('idx_product_units_product').on(t.productId),
 ]);
 
+// ── Cash Handover tracking ────────────────────────────────────────────────────
+export const handoverStatusEnum = pgEnum('handover_status', ['PENDING', 'CONFIRMED', 'DISPUTED']);
+
+export const staffHandovers = pgTable('staff_handovers', {
+  id:              text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:        text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  staffId:         text('staff_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  handedAmount:    decimal('handed_amount',    { precision: 14, scale: 2 }).notNull(),
+  confirmedAmount: decimal('confirmed_amount', { precision: 14, scale: 2 }),
+  note:            text('note'),
+  ownerNote:       text('owner_note'),
+  status:          handoverStatusEnum('status').default('PENDING').notNull(),
+  handoverDate:    timestamp('handover_date').notNull(),
+  confirmedAt:     timestamp('confirmed_at'),
+  confirmedById:   text('confirmed_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_handovers_seller').on(t.sellerId),
+  index('idx_handovers_staff').on(t.staffId),
+  index('idx_handovers_date').on(t.handoverDate),
+  index('idx_handovers_status').on(t.status),
+]);
+
 export const whatsappTemplates = pgTable('whatsapp_templates', {
   id:        text('id').primaryKey().$defaultFn(() => randomUUID()),
   sellerId:  text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),

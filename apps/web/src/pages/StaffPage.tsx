@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
+import { handoversApi, type Handover } from '../api/handovers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
-import { CardSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
+import { CardSkeleton, EmptyState, RowSkeleton } from '../components/ui/Skeleton.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 type StaffType = 'ACCOUNT' | 'AVO' | 'MANAGER' | 'CASHIER' | 'CUSTOM';
@@ -446,6 +447,318 @@ function pkr(v: number) {
   return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
+const STATUS_BADGE: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
+  PENDING:   { label: 'Pending',   cls: 'bg-amber-100 text-amber-700',  icon: <Clock size={10} /> },
+  CONFIRMED: { label: 'Confirmed', cls: 'bg-green-100 text-green-700',  icon: <CheckCircle size={10} /> },
+  DISPUTED:  { label: 'Disputed',  cls: 'bg-red-100 text-red-700',      icon: <AlertTriangle size={10} /> },
+};
+
+// ── Submit Handover Modal (staff use) ─────────────────────────────────────────
+function SubmitHandoverModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [amount, setAmount]   = useState('');
+  const [note, setNote]       = useState('');
+
+  const { data: todayData } = useQuery({
+    queryKey: ['handover-collected-today'],
+    queryFn: () => handoversApi.collectedToday(),
+    staleTime: 30_000,
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => handoversApi.create({ handedAmount: Number(amount), note: note || undefined }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['handovers'] });
+      toast.success('Handover submitted!');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Submit failed')),
+  });
+
+  const collected = todayData?.collected ?? 0;
+  const diff      = Number(amount) - collected;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">Cash Handover</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+        </div>
+
+        {collected > 0 && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm">
+            <p className="text-xs text-gray-500 mb-0.5">Today's cash collected (system)</p>
+            <p className="text-lg font-bold text-blue-700">{pkr(collected)}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount Handing Over (PKR) <span className="text-red-500">*</span></label>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="e.g. 15000"
+            min="1"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition"
+          />
+          {amount && collected > 0 && (
+            <p className={`text-xs mt-1 font-medium ${Math.abs(diff) < 1 ? 'text-green-600' : diff < 0 ? 'text-red-500' : 'text-amber-600'}`}>
+              {Math.abs(diff) < 1
+                ? '✓ Matches system total'
+                : diff < 0
+                ? `PKR ${Math.abs(diff).toLocaleString()} short of system total`
+                : `PKR ${diff.toLocaleString()} over system total`}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Note (optional)</label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="e.g. 2 payments by card, rest cash"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition resize-none"
+          />
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!amount || Number(amount) <= 0 || mutation.isPending}
+            className="flex-1 py-2.5 text-sm font-semibold bg-green-600 text-white rounded-xl hover:bg-green-700 transition disabled:opacity-50">
+            {mutation.isPending ? 'Submitting…' : 'Submit Handover'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Confirm Handover Modal (owner use) ────────────────────────────────────────
+function ConfirmHandoverModal({ handover, onClose }: { handover: Handover; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [confirmedAmount, setConfirmedAmount] = useState(handover.handedAmount);
+  const [ownerNote, setOwnerNote]             = useState('');
+
+  const confirmMutation = useMutation({
+    mutationFn: () => handoversApi.confirm(handover.id, {
+      confirmedAmount: Number(confirmedAmount),
+      ownerNote: ownerNote || undefined,
+    }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['handovers'] });
+      toast.success('Handover confirmed');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed')),
+  });
+
+  const disputeMutation = useMutation({
+    mutationFn: () => handoversApi.dispute(handover.id, ownerNote || undefined),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['handovers'] });
+      toast.success('Marked as disputed');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed')),
+  });
+
+  const diff = Number(confirmedAmount) - Number(handover.handedAmount);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">Confirm Handover</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+        </div>
+
+        <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm">
+          <p className="text-xs text-gray-400 mb-0.5">Staff submitted</p>
+          <p className="font-bold text-gray-900 text-lg">{pkr(Number(handover.handedAmount))}</p>
+          {handover.note && <p className="text-xs text-gray-500 mt-1 italic">"{handover.note}"</p>}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Counted Amount (PKR) <span className="text-red-500">*</span></label>
+          <input
+            type="number"
+            value={confirmedAmount}
+            onChange={(e) => setConfirmedAmount(e.target.value)}
+            min="0"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition"
+          />
+          {Math.abs(diff) >= 1 && (
+            <p className={`text-xs mt-1 font-medium ${diff < 0 ? 'text-red-500' : 'text-amber-600'}`}>
+              {diff < 0
+                ? `PKR ${Math.abs(diff).toLocaleString()} short — consider disputing`
+                : `PKR ${diff.toLocaleString()} more than submitted`}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Note (optional)</label>
+          <textarea
+            value={ownerNote}
+            onChange={(e) => setOwnerNote(e.target.value)}
+            rows={2}
+            placeholder="Any discrepancy notes"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition resize-none"
+          />
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={() => disputeMutation.mutate()}
+            disabled={disputeMutation.isPending || confirmMutation.isPending}
+            className="flex-1 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50">
+            Dispute
+          </button>
+          <button
+            onClick={() => confirmMutation.mutate()}
+            disabled={!confirmedAmount || Number(confirmedAmount) < 0 || confirmMutation.isPending || disputeMutation.isPending}
+            className="flex-1 py-2.5 text-sm font-semibold bg-green-600 text-white rounded-xl hover:bg-green-700 transition disabled:opacity-50">
+            {confirmMutation.isPending ? 'Confirming…' : 'Confirm Receipt'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Handovers section (both staff + owner views) ──────────────────────────────
+function HandoversSection() {
+  const { user } = useAuthStore();
+  const isOwner = user?.role === 'SELLER_OWNER';
+  const isStaff = user?.role === 'SELLER_STAFF';
+  const [showSubmit, setShowSubmit]   = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<Handover | null>(null);
+  const [expanded, setExpanded]       = useState(false);
+
+  const { data: handovers = [], isLoading } = useQuery({
+    queryKey: ['handovers'],
+    queryFn: () => handoversApi.list(),
+    staleTime: 30_000,
+  });
+
+  const { data: todayData } = useQuery({
+    queryKey: ['handover-collected-today'],
+    queryFn: () => handoversApi.collectedToday(),
+    staleTime: 30_000,
+    enabled: isStaff,
+  });
+
+  const pending   = handovers.filter((h) => h.status === 'PENDING');
+  const displayed = expanded ? handovers : handovers.slice(0, 5);
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-100">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Wallet size={16} className="text-green-600" />
+          <h2 className="text-sm font-semibold text-gray-900">Cash Handovers</h2>
+          {pending.length > 0 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+              {pending.length} pending
+            </span>
+          )}
+        </div>
+        {isStaff && (
+          <button
+            onClick={() => setShowSubmit(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition">
+            <Wallet size={12} /> Submit Handover
+          </button>
+        )}
+      </div>
+
+      {isStaff && todayData && todayData.collected > 0 && (
+        <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-500">Today's cash collected</p>
+          <p className="text-base font-bold text-blue-700">{pkr(todayData.collected)}</p>
+        </div>
+      )}
+
+      {isLoading ? (
+        <RowSkeleton rows={3} />
+      ) : handovers.length === 0 ? (
+        <div className="text-center py-6 border border-dashed border-gray-200 rounded-xl text-gray-400">
+          <Wallet size={22} className="mx-auto mb-1.5 opacity-30" />
+          <p className="text-xs">No handovers yet</p>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {displayed.map((h) => {
+              const badge = STATUS_BADGE[h.status] ?? STATUS_BADGE.PENDING;
+              const shortfall = h.confirmedAmount != null
+                ? Number(h.confirmedAmount) - Number(h.handedAmount)
+                : null;
+              return (
+                <div key={h.id} className="border border-gray-100 rounded-xl p-3 bg-white">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {isOwner && <p className="text-sm font-semibold text-gray-900">{h.staffName}</p>}
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                          {badge.icon} {badge.label}
+                        </span>
+                        <p className="text-xs text-gray-400">
+                          {new Date(h.handoverDate).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-sm font-bold text-gray-900">{pkr(Number(h.handedAmount))}</span>
+                        {h.confirmedAmount && (
+                          <span className={`text-xs ${shortfall && shortfall < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                            → confirmed {pkr(Number(h.confirmedAmount))}
+                            {shortfall != null && Math.abs(shortfall) >= 1 && (
+                              <span className="ml-1">({shortfall < 0 ? '-' : '+'}{pkr(Math.abs(shortfall))})</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      {h.note && <p className="text-xs text-gray-400 mt-0.5 italic truncate">"{h.note}"</p>}
+                      {h.ownerNote && <p className="text-xs text-blue-500 mt-0.5 italic truncate">Owner: "{h.ownerNote}"</p>}
+                    </div>
+                    {isOwner && h.status === 'PENDING' && (
+                      <button
+                        onClick={() => setConfirmTarget(h)}
+                        className="shrink-0 px-2.5 py-1 text-xs font-semibold text-green-700 border border-green-200 rounded-lg hover:bg-green-50 transition">
+                        Review
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {handovers.length > 5 && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition">
+              {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              {expanded ? 'Show less' : `Show ${handovers.length - 5} more`}
+            </button>
+          )}
+        </>
+      )}
+
+      {showSubmit && <SubmitHandoverModal onClose={() => setShowSubmit(false)} />}
+      {confirmTarget && <ConfirmHandoverModal handover={confirmTarget} onClose={() => setConfirmTarget(null)} />}
+    </div>
+  );
+}
+
 function CommissionSection() {
   const now = new Date();
   const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
@@ -554,6 +867,8 @@ export default function StaffPage() {
           {staff.map((m) => <StaffCard key={m.id} member={m} />)}
         </div>
       )}
+
+      <HandoversSection />
 
       {isOwner && <CommissionSection />}
 
