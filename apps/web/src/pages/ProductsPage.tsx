@@ -11,7 +11,7 @@ import { useDebounce } from '../hooks/useDebounce.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import {
   Package, Pencil, Trash2, TrendingUp, TrendingDown, Minus,
-  AlertTriangle, Zap, BarChart3, ShoppingCart, Brain, X,
+  AlertTriangle, Zap, BarChart3, ShoppingCart, Brain, X, DollarSign,
 } from 'lucide-react';
 import { TableSkeleton, EmptyState, BlockSkeleton } from '../components/ui/Skeleton.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
@@ -251,6 +251,12 @@ export default function ProductsPage() {
     staleTime: 120_000,
   });
 
+  const { data: valuation } = useQuery({
+    queryKey: ['products-valuation'],
+    queryFn:  productsApi.getValuation,
+    staleTime: 5 * 60_000,
+  });
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['products'] });
 
   const createMutation = useMutation({
@@ -318,6 +324,26 @@ export default function ProductsPage() {
         <IntelligenceView data={intelligence} isLoading={intelligenceLoading} />
       ) : (
         <>
+          {/* Inventory Valuation summary */}
+          {valuation && valuation.totalStockValue > 0 && (
+            <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Stock Cost',       value: pkr(valuation.totalStockValue),  icon: DollarSign, color: 'text-blue-600',    bg: 'bg-blue-50' },
+                { label: 'Sale Value',        value: pkr(valuation.totalSaleValue),   icon: TrendingUp,  color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                { label: 'Potential Profit',  value: pkr(valuation.potentialProfit),  icon: BarChart3,   color: 'text-purple-600',  bg: 'bg-purple-50' },
+                { label: 'Total Units',       value: `${valuation.totalUnits} units`, icon: Package,     color: 'text-amber-600',   bg: 'bg-amber-50' },
+              ].map(({ label, value, icon: Icon, color, bg }) => (
+                <div key={label} className={`${bg} rounded-xl px-4 py-3 flex items-center gap-3`}>
+                  <Icon size={16} className={color} />
+                  <div>
+                    <p className="text-[10px] text-gray-500 font-medium">{label}</p>
+                    <p className={`text-sm font-bold ${color}`}>{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Low stock banner */}
           {lowStockItems.length > 0 && (
             <div className="mb-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">

@@ -144,4 +144,33 @@ export class ProductsService {
 
     return { fastMoving, slowMoving, demandForecast, reorderSuggestions };
   }
+
+  async getValuation(sellerId: string) {
+    const [row] = await db.execute<{
+      total_stock_value: string;
+      total_sale_value: string;
+      products_with_cost: number;
+      total_products: number;
+      total_units: number;
+    }>(sql`
+      SELECT
+        COALESCE(SUM(stock * purchase_price::numeric), 0)      AS total_stock_value,
+        COALESCE(SUM(stock * price::numeric), 0)               AS total_sale_value,
+        COUNT(*) FILTER (WHERE purchase_price IS NOT NULL)::int AS products_with_cost,
+        COUNT(*)::int                                           AS total_products,
+        COALESCE(SUM(stock), 0)::int                           AS total_units
+      FROM products
+      WHERE seller_id = ${sellerId} AND deleted_at IS NULL AND stock > 0
+    `);
+    const r = row!;
+    return {
+      totalStockValue:   Number(r.total_stock_value),
+      totalSaleValue:    Number(r.total_sale_value),
+      potentialProfit:   Number(r.total_sale_value) - Number(r.total_stock_value),
+      productsWithCost:  r.products_with_cost,
+      totalProducts:     r.total_products,
+      totalUnits:        r.total_units,
+    };
+  }
+
 }

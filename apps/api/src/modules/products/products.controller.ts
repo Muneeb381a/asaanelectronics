@@ -55,3 +55,8 @@ export async function deleteProduct(req: AuthRequest, res: Response) {
     ...auditCtx(req),
   }).catch(console.error);
 }
+
+
+export async function getValuation(req: AuthRequest, res: Response) {
+  success(res, await svc.getValuation(req.user!.sellerId!));
+}

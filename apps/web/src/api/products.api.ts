@@ -56,4 +56,7 @@ export const productsApi = {
 
   getIntelligence: () =>
     api.get<{ data: InventoryIntelligence }>('/products/intelligence').then(unwrap<InventoryIntelligence>),
+
+  getValuation: () =>
+    api.get<{ data: { totalStockValue: number; totalSaleValue: number; potentialProfit: number; productsWithCost: number; totalProducts: number; totalUnits: number } }>('/products/valuation').then((r) => r.data.data),
 };

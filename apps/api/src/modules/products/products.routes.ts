@@ -3,14 +3,15 @@ import { authenticate, requireSeller, requireOwner } from '../../middleware/auth
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
 import { createProductSchema, updateProductSchema } from '@assaan/shared';
-import { listProducts, createProduct, updateProduct, deleteProduct, getInventoryIntelligence } from './products.controller.js';
+import { listProducts, createProduct, updateProduct, deleteProduct, getInventoryIntelligence, getValuation } from './products.controller.js';
 
 const router = Router();
 
 router.use(authenticate, requireSeller);
 
 router.get('/intelligence', getInventoryIntelligence);
-router.get('/',             listProducts);
+router.get('/valuation',   getValuation);
+router.get('/',            listProducts);
 router.post('/',      requirePermission('canManageProducts'), validate(createProductSchema), createProduct);
 router.patch('/:id',  requirePermission('canManageProducts'), validate(updateProductSchema), updateProduct);
 router.delete('/:id', requireOwner, deleteProduct);
