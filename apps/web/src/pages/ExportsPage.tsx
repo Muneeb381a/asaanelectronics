@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt, BarChart3, Users } from 'lucide-react';
+import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt, BarChart3, Users, Database, Loader2 } from 'lucide-react';
 import { installmentsApi } from '../api/installments.api.ts';
 import { paymentsApi } from '../api/payments.api.ts';
 import { cashSalesApi } from '../api/cashSales.api.ts';
@@ -9,9 +9,11 @@ import { expensesApi } from '../api/expenses.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { reportsApi } from '../api/reports.api.ts';
 import { printReport } from '../utils/exportPdf.ts';
+import { toCsv, downloadCsv } from '../utils/exportCsv.ts';
+import { exportsApi } from '../api/exports.api.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 
-type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses' | 'monthly' | 'monthly-customers';
+type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses' | 'monthly' | 'monthly-customers' | 'backup';
 
 const METHOD_LABELS: Record<string, string> = {
   CASH: 'Cash', BANK: 'Bank', JAZZCASH: 'JazzCash', EASYPAISA: 'EasyPaisa', OTHER: 'Other',
@@ -332,14 +334,15 @@ export default function ExportsPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: typeof FileDown }[] = [
-    { id: 'monthly',           label: 'Monthly Summary',  icon: BarChart3 },
-    { id: 'monthly-customers', label: 'Monthly Customers', icon: Users },
-    { id: 'overdue',           label: 'Overdue',           icon: AlertTriangle },
-    { id: 'defaulters', label: 'Defaulters',        icon: ShieldX },
-    { id: 'today',      label: "Today's Payments",  icon: CalendarCheck },
-    { id: 'cashsales',  label: 'Cash Sales',        icon: ShoppingCart },
-    { id: 'returns',    label: 'Returns',           icon: Undo2 },
-    { id: 'expenses',   label: 'Expenses',          icon: Receipt },
+    { id: 'backup',            label: 'Full Backup',        icon: Database },
+    { id: 'monthly',           label: 'Monthly Summary',    icon: BarChart3 },
+    { id: 'monthly-customers', label: 'Monthly Customers',  icon: Users },
+    { id: 'overdue',           label: 'Overdue',            icon: AlertTriangle },
+    { id: 'defaulters',        label: 'Defaulters',         icon: ShieldX },
+    { id: 'today',             label: "Today's Payments",   icon: CalendarCheck },
+    { id: 'cashsales',         label: 'Cash Sales',         icon: ShoppingCart },
+    { id: 'returns',           label: 'Returns',            icon: Undo2 },
+    { id: 'expenses',          label: 'Expenses',           icon: Receipt },
   ];
 
   const isLoading =
@@ -543,6 +546,9 @@ export default function ExportsPage() {
           </button>
         ))}
       </div>
+
+      {/* Full Backup tab */}
+      {tab === 'backup' && <BackupTab shopName={shopName} />}
 
       {/* Monthly Customers tab */}
       {tab === 'monthly-customers' && (() => {
@@ -1240,3 +1246,120 @@ function Td({ children, right, bold, red, green }: {
   else            cls += ' text-gray-600';
   return <td className={cls}>{children}</td>;
 }
+
+// ── Full Backup Tab ───────────────────────────────────────────────────────────
+function BackupTab({ shopName }: { shopName: string }) {
+  const [loading, setLoading] = useState(false);
+  const [done,    setDone]    = useState(false);
+  const [error,   setError]   = useState('');
+
+  async function handleDownload() {
+    setLoading(true);
+    setDone(false);
+    setError('');
+    try {
+      const backup = await exportsApi.getBackup();
+      const date   = new Date().toISOString().slice(0, 10);
+      const prefix = `${shopName.replace(/\s+/g, '_')}_${date}`;
+
+      // Customers
+      downloadCsv(`${prefix}_customers.csv`, toCsv(
+        ['ID', 'Name', 'Phone', 'Area', 'CNIC (Masked)', 'Address', 'Tags', 'DOB', 'Created'],
+        backup.customers.map((c) => [
+          c['id'], c['name'], c['phone'], c['area'] ?? '', c['cnicMasked'] ?? '',
+          c['address'] ?? '', (c['tags'] as string[] | null)?.join(';') ?? '',
+          c['dob'] ?? '', c['createdAt'],
+        ]),
+      ));
+
+      await delay(300);
+
+      // Installments
+      downloadCsv(`${prefix}_installments.csv`, toCsv(
+        ['ID', 'Invoice', 'Customer ID', 'Product ID', 'Total', 'Down', 'Monthly', 'Months', 'Remaining', 'Status', 'Start Date', 'Frequency', 'Created'],
+        backup.installments.map((i) => [
+          i['id'], i['invoiceNumber'] ?? '', i['customerId'], i['productId'] ?? '',
+          i['totalAmount'], i['downPayment'] ?? 0, i['monthly'], i['months'],
+          i['remaining'], i['status'], i['startDate'] ?? '', i['paymentFrequency'] ?? 'monthly',
+          i['createdAt'],
+        ]),
+      ));
+
+      await delay(300);
+
+      // Products
+      downloadCsv(`${prefix}_products.csv`, toCsv(
+        ['ID', 'Name', 'Category', 'Brand', 'Model', 'Price', 'Installment Price', 'Purchase Price', 'Stock', 'Min Stock', 'Serial', 'Warranty Months'],
+        backup.products.map((p) => [
+          p['id'], p['name'], p['category'] ?? '', p['brand'] ?? '', p['model'] ?? '',
+          p['price'], p['installmentPrice'] ?? '', p['purchasePrice'] ?? '',
+          p['stock'], p['minStock'] ?? 3, p['serial'] ?? '', p['warrantyMonths'] ?? '',
+        ]),
+      ));
+
+      await delay(300);
+
+      // Expenses
+      downloadCsv(`${prefix}_expenses.csv`, toCsv(
+        ['ID', 'Category', 'Amount', 'Description', 'Date', 'Created'],
+        backup.expenses.map((e) => [
+          e['id'], e['category'], e['amount'], e['description'] ?? '',
+          e['date'] ?? '', e['createdAt'],
+        ]),
+      ));
+
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-8 flex flex-col items-center text-center gap-6">
+      <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
+        <Database size={28} className="text-blue-500" />
+      </div>
+      <div>
+        <h2 className="text-base font-semibold text-gray-900 mb-1">Full Data Backup</h2>
+        <p className="text-sm text-gray-500 max-w-md">
+          Downloads 4 CSV files: customers, installments, products, and expenses.
+          All records, no filters applied.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-3 justify-center text-sm">
+        {['Customers', 'Installments', 'Products', 'Expenses'].map((label) => (
+          <span key={label} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600">
+            <FileDown size={13} className="text-blue-400" />
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">{error}</p>
+      )}
+
+      {done && !loading && (
+        <p className="text-sm text-green-600 bg-green-50 px-4 py-2 rounded-lg font-medium">
+          4 CSV files downloaded
+        </p>
+      )}
+
+      <button
+        onClick={() => void handleDownload()}
+        disabled={loading}
+        className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+      >
+        {loading ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />}
+        {loading ? 'Preparing Download…' : 'Download All CSVs'}
+      </button>
+
+      <p className="text-xs text-gray-400">Files open in Excel or Google Sheets</p>
+    </div>
+  );
+}
+
+function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
