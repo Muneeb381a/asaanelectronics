@@ -47,4 +47,5 @@ export const createCustomerSchema = z.object({
 });
 export const updateCustomerSchema = createCustomerSchema.partial().extend({
     cnic: z.string().regex(cnicRegex, 'Format: XXXXX-XXXXXXX-X').optional().or(z.literal('')),
+    tags: z.array(z.string().max(50)).max(20).optional(),
 });

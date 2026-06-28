@@ -557,6 +557,16 @@ export const productUnits = pgTable('product_units', {
   index('idx_product_units_product').on(t.productId),
 ]);
 
+export const whatsappTemplates = pgTable('whatsapp_templates', {
+  id:        text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:  text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  name:      text('name').notNull(),
+  body:      text('body').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_wa_templates_seller').on(t.sellerId),
+]);
+
 // OCR result cache — keyed by SHA-256 hash of the raw image bytes.
 // Prevents duplicate Groq API calls for the same image (re-uploads, same
 // guarantor used across multiple customers, testing, form re-submissions).

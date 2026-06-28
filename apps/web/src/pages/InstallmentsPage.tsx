@@ -20,6 +20,7 @@ import { openBill } from '../utils/bill.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
+import { whatsappTemplatesApi, applyTemplate } from '../api/whatsappTemplates.api.ts';
 
 function calcNextDueDate(inst: Installment): Date | null {
   if (inst.status !== 'ACTIVE') return null;
@@ -90,6 +91,122 @@ function Badge({ status }: { status: InstallmentStatus }) {
     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[status]}`}>
       {status.charAt(0) + status.slice(1).toLowerCase()}
     </span>
+  );
+}
+
+// ── WhatsApp Template Picker ──────────────────────────────────────────────────
+function TemplatePickerModal({ inst, shopName, onClose }: {
+  inst: Installment;
+  shopName: string;
+  onClose: () => void;
+}) {
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['whatsapp-templates'],
+    queryFn: whatsappTemplatesApi.list,
+    staleTime: 60_000,
+  });
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const vars = {
+    customer_name:     inst.customerName,
+    shop_name:         shopName,
+    product_name:      inst.productName,
+    amount_due:        inst.monthly,
+    remaining_balance: inst.remaining,
+    phone:             inst.customerPhone,
+  };
+
+  function sendDefault() {
+    openWhatsApp(inst.customerPhone, reminderMessage({
+      shopName, customerName: inst.customerName,
+      productName: inst.productName, monthly: inst.monthly,
+      remaining: inst.remaining, paymentFrequency: inst.paymentFrequency,
+    }));
+    onClose();
+  }
+
+  function sendTemplate() {
+    const t = templates.find((t) => t.id === selected);
+    if (!t) return;
+    openWhatsApp(inst.customerPhone, applyTemplate(t.body, vars));
+    onClose();
+  }
+
+  if (!isLoading && templates.length === 0) {
+    sendDefault();
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-4 sm:pb-0"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-md">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">WhatsApp Reminder</h2>
+            <p className="text-xs text-gray-400">{inst.customerName} · {inst.customerPhone}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-4 max-h-80 overflow-y-auto space-y-2">
+          {isLoading ? (
+            <div className="flex items-center gap-2 py-4 text-gray-400 text-xs justify-center">
+              <Loader2 size={14} className="animate-spin" /> Loading templates…
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => setSelected(null)}
+                className={`w-full text-left p-3 rounded-xl border transition ${
+                  selected === null ? 'border-green-400 bg-green-50' : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <p className="text-xs font-semibold text-gray-700 mb-1">Default Message</p>
+                <p className="text-xs text-gray-500 line-clamp-2">
+                  {reminderMessage({
+                    shopName, customerName: inst.customerName,
+                    productName: inst.productName, monthly: inst.monthly,
+                    remaining: inst.remaining, paymentFrequency: inst.paymentFrequency,
+                  })}
+                </p>
+              </button>
+              {templates.map((t) => {
+                const preview = applyTemplate(t.body, vars);
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelected(t.id)}
+                    className={`w-full text-left p-3 rounded-xl border transition ${
+                      selected === t.id ? 'border-green-400 bg-green-50' : 'border-gray-100 hover:border-gray-200'
+                    }`}
+                  >
+                    <p className="text-xs font-semibold text-gray-700 mb-1">{t.name}</p>
+                    <p className="text-xs text-gray-500 line-clamp-2 whitespace-pre-wrap">{preview}</p>
+                  </button>
+                );
+              })}
+            </>
+          )}
+        </div>
+
+        <div className="px-4 pb-4 pt-2 flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button
+            onClick={selected ? sendTemplate : sendDefault}
+            className="flex-1 py-2.5 text-sm font-semibold bg-green-600 text-white rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-1.5">
+            <MessageCircle size={13} /> Send
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -906,6 +1023,7 @@ export default function InstallmentsPage() {
   const [waiverInst, setWaiverInst] = useState<Installment | null>(null);
   const [showBulk, setShowBulk] = useState(false);
   const [showBatchReminder, setShowBatchReminder] = useState(false);
+  const [waPickerInst, setWaPickerInst] = useState<Installment | null>(null);
   const [recoveryInst, setRecoveryInst] = useState<Installment | null>(null);
   const [scheduleInst, setScheduleInst] = useState<Installment | null>(null);
   const [editInst, setEditInst] = useState<Installment | null>(null);
@@ -1304,11 +1422,7 @@ export default function InstallmentsPage() {
                       </button>
                       {inst.status === 'ACTIVE' && shopData && (
                         <button
-                          onClick={() => openWhatsApp(inst.customerPhone, reminderMessage({
-                            shopName: shopData.shopName, customerName: inst.customerName,
-                            productName: inst.productName, monthly: inst.monthly,
-                            remaining: inst.remaining, paymentFrequency: inst.paymentFrequency,
-                          }))}
+                          onClick={() => setWaPickerInst(inst)}
                           className="p-2 text-gray-400 hover:text-green-600 transition rounded-xl border border-gray-100">
                           <MessageCircle size={15} />
                         </button>
@@ -1431,11 +1545,7 @@ export default function InstallmentsPage() {
                         </button>
                         {inst.status === 'ACTIVE' && shopData && (
                           <button
-                            onClick={() => openWhatsApp(inst.customerPhone, reminderMessage({
-                              shopName: shopData.shopName, customerName: inst.customerName,
-                              productName: inst.productName, monthly: inst.monthly,
-                              remaining: inst.remaining, paymentFrequency: inst.paymentFrequency,
-                            }))}
+                            onClick={() => setWaPickerInst(inst)}
                             title="WhatsApp reminder"
                             className="p-2 text-gray-400 hover:text-green-600 transition rounded">
                             <MessageCircle size={14} />
@@ -1613,6 +1723,9 @@ export default function InstallmentsPage() {
       {waiverInst && <WaiverModal inst={waiverInst} onClose={() => setWaiverInst(null)} />}
       {showBulk && <BulkPaymentModal onClose={() => setShowBulk(false)} />}
       {showBatchReminder && <BatchReminderModal shopName={shopData?.shopName ?? 'Our Shop'} onClose={() => setShowBatchReminder(false)} />}
+      {waPickerInst && shopData && (
+        <TemplatePickerModal inst={waPickerInst} shopName={shopData.shopName} onClose={() => setWaPickerInst(null)} />
+      )}
 
       {/* Recovery drawer */}
       {recoveryInst && <RecoveryDrawer inst={recoveryInst} onClose={() => setRecoveryInst(null)} />}

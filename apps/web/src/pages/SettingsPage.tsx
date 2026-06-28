@@ -4,8 +4,10 @@ import toast from 'react-hot-toast';
 import {
   Monitor, Smartphone, Tablet, AlertTriangle, Trash2, LogOut, Shield,
   Users, TrendingUp, Package, BookOpen, Plus, CreditCard, KeyRound, Eye, EyeOff, Target,
+  MessageSquare, Pencil, Check, X,
 } from 'lucide-react';
 import { sellersApi, type PaymentAccount, type PaymentAccountType } from '../api/sellers.api.ts';
+import { whatsappTemplatesApi, type WhatsappTemplate, TEMPLATE_VARS } from '../api/whatsappTemplates.api.ts';
 import { authApi } from '../api/auth.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
@@ -363,6 +365,201 @@ function PaymentAccountsSection({ isOwner }: { isOwner: boolean }) {
         isPending={removeMutation.isPending}
         onConfirm={() => { if (removeAccountConfirm.id) removeMutation.mutate(removeAccountConfirm.id); setRemoveAccountConfirm({ open: false, id: null }); }}
         onCancel={() => setRemoveAccountConfirm({ open: false, id: null })}
+      />
+    </div>
+  );
+}
+
+// ── WhatsApp Templates section ────────────────────────────────────────────────
+function WhatsappTemplatesSection() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm]         = useState(false);
+  const [editId, setEditId]             = useState<string | null>(null);
+  const [name, setName]                 = useState('');
+  const [body, setBody]                 = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['whatsapp-templates'],
+    queryFn: whatsappTemplatesApi.list,
+    staleTime: 60_000,
+  });
+
+  function insertVar(v: string) {
+    setBody((b) => b + v);
+  }
+
+  function startEdit(t: WhatsappTemplate) {
+    setEditId(t.id);
+    setName(t.name);
+    setBody(t.body);
+    setShowForm(false);
+  }
+
+  function cancelForm() {
+    setShowForm(false);
+    setEditId(null);
+    setName('');
+    setBody('');
+  }
+
+  const createMutation = useMutation({
+    mutationFn: () => whatsappTemplatesApi.create({ name: name.trim(), body: body.trim() }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['whatsapp-templates'] });
+      toast.success('Template saved');
+      cancelForm();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save')),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () => whatsappTemplatesApi.update(editId!, { name: name.trim(), body: body.trim() }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['whatsapp-templates'] });
+      toast.success('Template updated');
+      cancelForm();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to update')),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => whatsappTemplatesApi.remove(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['whatsapp-templates'] });
+      toast.success('Template deleted');
+    },
+    onError: () => toast.error('Failed to delete'),
+  });
+
+  const canSubmit = name.trim().length > 0 && body.trim().length > 0;
+  const isEditing = editId !== null;
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-100">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <MessageSquare size={15} className="text-green-600" />
+          WhatsApp Templates
+        </h2>
+        {!showForm && !isEditing && (
+          <button
+            onClick={() => { cancelForm(); setShowForm(true); }}
+            className="flex items-center gap-1 text-xs text-green-700 hover:text-green-900 border border-green-200 hover:bg-green-50 px-2.5 py-1.5 rounded-lg transition">
+            <Plus size={12} /> Add Template
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-gray-400 mb-3">
+        Save message templates with variables like <code className="bg-gray-100 px-1 py-0.5 rounded text-[10px]">{'{{customer_name}}'}</code>.
+        These appear as quick options when sending WhatsApp reminders.
+      </p>
+
+      {/* Form */}
+      {(showForm || isEditing) && (
+        <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Template Name <span className="text-red-500">*</span></label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Overdue Reminder"
+              className={inp}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Message Body <span className="text-red-500">*</span></label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={4}
+              placeholder="Assalam o Alaikum {{customer_name}}! Aapka {{amount_due}} installment due hai..."
+              className={`${inp} resize-none font-mono text-xs`}
+            />
+            <div className="flex flex-wrap gap-1 mt-2">
+              <span className="text-[10px] text-gray-400 w-full mb-0.5">Insert variable:</span>
+              {TEMPLATE_VARS.map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  onClick={() => insertVar(v.key)}
+                  className="px-2 py-0.5 text-[10px] bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 transition font-mono">
+                  {v.key}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={cancelForm}
+              className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 transition">
+              <X size={13} /> Cancel
+            </button>
+            <button
+              onClick={() => isEditing ? updateMutation.mutate() : createMutation.mutate()}
+              disabled={!canSubmit || createMutation.isPending || updateMutation.isPending}
+              className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 transition disabled:opacity-50">
+              <Check size={13} />
+              {(createMutation.isPending || updateMutation.isPending) ? 'Saving…' : isEditing ? 'Update' : 'Save Template'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* List */}
+      {isLoading ? (
+        <RowSkeleton rows={2} />
+      ) : templates.length === 0 && !showForm ? (
+        <div className="text-center py-6 text-gray-400 border border-dashed border-gray-200 rounded-xl">
+          <MessageSquare size={22} className="mx-auto mb-1.5 opacity-30" />
+          <p className="text-xs">Koi template nahi — Add Template dabao</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {templates.map((t: WhatsappTemplate) => (
+            <div
+              key={t.id}
+              className={`p-3 border rounded-xl transition-colors ${editId === t.id ? 'border-green-300 bg-green-50' : 'border-gray-100 bg-white'}`}
+            >
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap break-words font-mono leading-relaxed line-clamp-3">
+                    {t.body}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    onClick={() => startEdit(t)}
+                    title="Edit"
+                    className="p-1.5 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition">
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm({ open: true, id: t.id })}
+                    title="Delete"
+                    disabled={deleteMutation.isPending}
+                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        title="Template Delete Karo?"
+        description="Ye WhatsApp template permanently delete ho jaega."
+        confirmLabel="Delete"
+        variant="danger"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteConfirm.id) deleteMutation.mutate(deleteConfirm.id);
+          setDeleteConfirm({ open: false, id: null });
+        }}
+        onCancel={() => setDeleteConfirm({ open: false, id: null })}
       />
     </div>
   );
@@ -806,6 +1003,9 @@ export default function SettingsPage() {
 
       {/* Payment accounts */}
       <PaymentAccountsSection isOwner={isOwner} />
+
+      {/* WhatsApp templates — owner only */}
+      {isOwner && <WhatsappTemplatesSection />}
 
       {/* Change password */}
       <ChangePasswordSection />
