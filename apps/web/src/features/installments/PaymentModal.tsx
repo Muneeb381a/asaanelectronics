@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck } from 'lucide-react';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { installmentsApi, type Installment } from '../../api/installments.api.ts';
@@ -19,6 +19,56 @@ import {
 } from '../../utils/receipt.ts';
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
+
+function SettleTab({ installmentId, remaining, status }: { installmentId: string; remaining: number; status: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['settlement', installmentId],
+    queryFn: () => installmentsApi.getSettlement(installmentId),
+    staleTime: 30_000,
+  });
+
+  if (status !== 'ACTIVE') {
+    return (
+      <div className="text-center py-8 text-sm text-gray-400">
+        Settlement is only available for active installments.
+      </div>
+    );
+  }
+
+  if (isLoading) return <div className="py-8 flex justify-center"><Loader2 size={20} className="animate-spin text-gray-400" /></div>;
+  if (error || !data) return <div className="py-8 text-center text-sm text-red-500">Could not load settlement details.</div>;
+
+  return (
+    <div className="space-y-4 py-2">
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <BadgeCheck size={18} className="text-emerald-600" />
+          <span className="text-sm font-semibold text-emerald-800">Early Settlement Amount</span>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between text-gray-600">
+            <span>Remaining Balance</span>
+            <span className="font-medium">PKR {data.remaining.toLocaleString()}</span>
+          </div>
+          {data.discountPercent > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span>Early Settlement Discount ({data.discountPercent}%)</span>
+              <span>- PKR {data.discountAmount.toLocaleString()}</span>
+            </div>
+          )}
+          <div className="border-t border-emerald-200 pt-2 flex justify-between font-bold text-emerald-800 text-base">
+            <span>Pay Today</span>
+            <span>PKR {data.settlementAmount.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+      <p className="text-xs text-gray-400 text-center">
+        Record this amount as a payment to close the installment fully.
+        Customer must pay the full settlement amount in one payment.
+      </p>
+    </div>
+  );
+}
 
 function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
@@ -41,7 +91,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [collectedBy, setCollectedBy] = useState('');
   const [proofImageUrl, setProofImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [tab, setTab] = useState<'pay' | 'history'>('pay');
+  const [tab, setTab] = useState<'pay' | 'history' | 'settle'>('pay');
   const [receiptData, setReceiptData] = useState<InstallmentReceiptData | null>(null);
   const [billPayload, setBillPayload] = useState<BillData | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -368,12 +418,12 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
         {/* Tabs */}
         <div className="flex gap-1 px-4 border-b border-gray-100 shrink-0">
-          {(['pay', 'history'] as const).map((t) => (
+          {(['pay', 'history', 'settle'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-2 text-sm capitalize transition border-b-2 -mb-px ${
                 tab === t ? 'border-blue-600 text-blue-600 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}>
-              {t === 'pay' ? 'Record Payment' : 'History'}
+              {t === 'pay' ? 'Record Payment' : t === 'history' ? 'History' : 'Settle Now'}
             </button>
           ))}
         </div>
@@ -598,6 +648,8 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                 </button>
               </div>
             </div>
+          ) : tab === 'settle' ? (
+            <SettleTab installmentId={freshInst.id} remaining={Number(freshInst.remaining)} status={freshInst.status} />
           ) : (
             <div>
               {histLoading ? (
@@ -679,6 +731,9 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                             {p.method} · {fmtDate(p.paidOn)}
                             {p.note && ` · ${p.note}`}
                           </p>
+                          {p.receiptNumber && (
+                            <p className="text-[10px] text-indigo-500 font-mono">{p.receiptNumber}</p>
+                          )}
                           {p.periodDue && (
                             <p className="text-[10px] text-gray-400">
                               Due: {fmtDate(p.periodDue)}

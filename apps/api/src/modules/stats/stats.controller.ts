@@ -23,6 +23,10 @@ export async function getAdvanced(req: AuthRequest, res: Response) {
   success(res, await svc.getAdvanced(req.user!.sellerId!));
 }
 
+export async function getDailyBriefing(req: AuthRequest, res: Response) {
+  success(res, await svc.getDailyBriefing(req.user!.sellerId!));
+}
+
 export async function getDashboard(req: AuthRequest, res: Response) {
   const user = req.user!;
   const sellerId = user.sellerId!;

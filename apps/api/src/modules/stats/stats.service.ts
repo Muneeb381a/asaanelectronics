@@ -485,4 +485,74 @@ export class StatsService {
       })),
     };
   }
+
+  async getDailyBriefing(sellerId: string) {
+    const rows = await db.execute<{
+      due_today: number;
+      overdue_total: number;
+      promises_today: number;
+      collected_today: string;
+      defaulted_count: number;
+    }>(sql`
+      WITH today AS (SELECT CURRENT_DATE AS d),
+      overdue_expr AS (
+        SELECT i.id,
+          CASE WHEN i.payment_frequency = 'daily'
+            THEN i.start_date + (
+              (GREATEST(0, FLOOR(
+                (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                / NULLIF(i.monthly::numeric, 0)
+              )) + 1) || ' days'
+            )::interval
+            ELSE DATE_TRUNC('month', i.start_date + (
+              (GREATEST(0, FLOOR(
+                (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                / NULLIF(i.monthly::numeric, 0)
+              )) + 1) || ' months'
+            )::interval)::date + (i.payment_due_day - 1)
+          END AS next_due
+        FROM installments i
+        INNER JOIN customers c ON c.id = i.customer_id
+        WHERE c.seller_id = ${sellerId}
+          AND i.status = 'ACTIVE'
+          AND i.deleted_at IS NULL
+          AND c.deleted_at IS NULL
+      )
+      SELECT
+        COUNT(*) FILTER (WHERE DATE(oe.next_due) = (SELECT d FROM today))::int             AS due_today,
+        COUNT(*) FILTER (WHERE oe.next_due < NOW())::int                                   AS overdue_total,
+        (
+          SELECT COUNT(*)::int FROM recovery_actions ra
+          WHERE ra.seller_id = ${sellerId}
+            AND ra.type = 'PROMISE_TO_PAY'
+            AND DATE(ra.promise_date) = (SELECT d FROM today)
+        )                                                                                   AS promises_today,
+        (
+          SELECT COALESCE(SUM(p.amount::numeric), 0)::text
+          FROM payments p
+          INNER JOIN installments i2 ON p.installment_id = i2.id
+          INNER JOIN customers c2    ON c2.id = i2.customer_id
+          WHERE c2.seller_id = ${sellerId}
+            AND DATE(p.paid_on) = (SELECT d FROM today)
+            AND p.deleted_at IS NULL
+        )                                                                                   AS collected_today,
+        (
+          SELECT COUNT(*)::int FROM installments i3
+          INNER JOIN customers c3 ON c3.id = i3.customer_id
+          WHERE c3.seller_id = ${sellerId}
+            AND i3.status = 'DEFAULTED'
+            AND i3.deleted_at IS NULL
+        )                                                                                   AS defaulted_count
+      FROM overdue_expr oe
+    `);
+
+    const r = rows[0] ?? { due_today: 0, overdue_total: 0, promises_today: 0, collected_today: '0', defaulted_count: 0 };
+    return {
+      dueToday:       Number(r.due_today),
+      overdueTotal:   Number(r.overdue_total),
+      promisesToday:  Number(r.promises_today),
+      collectedToday: Number(r.collected_today),
+      defaultedCount: Number(r.defaulted_count),
+    };
+  }
 }

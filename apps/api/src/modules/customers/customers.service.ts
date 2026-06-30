@@ -233,6 +233,8 @@ export class CustomersService {
         createdByUserId: customers.createdByUserId,
         createdAt: customers.createdAt,
         tags: customers.tags,
+        isBlacklisted:   customers.isBlacklisted,
+        blacklistReason: customers.blacklistReason,
         riskScore,
         lifecycleStage: lifecycleSQL,
       }).from(customers).where(where).limit(limit).offset((page - 1) * limit)
@@ -484,7 +486,49 @@ export class CustomersService {
       where: and(eq(customers.id, id), eq(customers.sellerId, sellerId), isNull(customers.deletedAt)),
     });
     if (!customer) throw new AppError('Customer not found', 404);
-    return customer;
+
+    // Compute payment grade from installment history
+    const [gradeRow] = await db.execute<{
+      total_inst: number; defaulted: number; overdue_count: number; completed: number;
+    }>(sql`
+      SELECT
+        COUNT(*)::int                                                       AS total_inst,
+        COUNT(*) FILTER (WHERE status = 'DEFAULTED')::int                  AS defaulted,
+        COUNT(*) FILTER (WHERE status = 'ACTIVE' AND deleted_at IS NULL AND (
+          CASE WHEN payment_frequency = 'daily'
+            THEN start_date + (months || ' days')::interval
+            ELSE start_date + (months || ' months')::interval
+          END) < NOW())::int                                               AS overdue_count,
+        COUNT(*) FILTER (WHERE status = 'COMPLETED')::int                  AS completed
+      FROM installments
+      WHERE customer_id = ${id} AND deleted_at IS NULL
+    `);
+
+    const g = gradeRow ?? { total_inst: 0, defaulted: 0, overdue_count: 0, completed: 0 };
+    let paymentGrade: 'A' | 'B' | 'C' | 'D' = 'A';
+    if (Number(g.defaulted) > 0)       paymentGrade = 'D';
+    else if (Number(g.overdue_count) > 1) paymentGrade = 'C';
+    else if (Number(g.overdue_count) > 0) paymentGrade = 'B';
+    else if (Number(g.completed) > 0)  paymentGrade = 'A';
+
+    const paymentGradeLabel: Record<string, string> = {
+      A: 'Excellent — always on time',
+      B: 'Good — minor delays',
+      C: 'Fair — frequent delays',
+      D: 'Poor — defaulted',
+    };
+
+    return {
+      ...customer,
+      paymentGrade,
+      paymentGradeLabel: paymentGradeLabel[paymentGrade]!,
+      installmentSummary: {
+        total:     Number(g.total_inst),
+        defaulted: Number(g.defaulted),
+        overdue:   Number(g.overdue_count),
+        completed: Number(g.completed),
+      },
+    };
   }
 
   async create(sellerId: string, body: CreateBody, createdByUserId?: string) {
@@ -825,5 +869,39 @@ export class CustomersService {
       area: r.area,
       photoUrl: r.photo_url,
     }));
+  }
+
+  async blacklist(customerId: string, sellerId: string, reason: string, blacklistedBy: string) {
+    const [cust] = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(and(eq(customers.id, customerId), eq(customers.sellerId, sellerId), isNull(customers.deletedAt)));
+    if (!cust) throw new AppError('Customer not found', 404);
+
+    await db.update(customers).set({
+      isBlacklisted:   true,
+      blacklistReason: reason,
+      blacklistedAt:   new Date(),
+      blacklistedBy,
+    }).where(eq(customers.id, customerId));
+
+    return { id: customerId, isBlacklisted: true, blacklistReason: reason };
+  }
+
+  async removeBlacklist(customerId: string, sellerId: string) {
+    const [cust] = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(and(eq(customers.id, customerId), eq(customers.sellerId, sellerId), isNull(customers.deletedAt)));
+    if (!cust) throw new AppError('Customer not found', 404);
+
+    await db.update(customers).set({
+      isBlacklisted:   false,
+      blacklistReason: null,
+      blacklistedAt:   null,
+      blacklistedBy:   null,
+    }).where(eq(customers.id, customerId));
+
+    return { id: customerId, isBlacklisted: false };
   }
 }

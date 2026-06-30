@@ -4,6 +4,7 @@ import {
   TrendingUp, TrendingDown, CreditCard, AlertTriangle,
   Calendar, Package, ArrowRight, BarChart3,
   MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt, Bell, Target, Gift,
+  ClipboardList, Clock, PhoneCall, Banknote, XOctagon,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
@@ -143,6 +144,14 @@ export default function DashboardPage() {
     gcTime:    2 * 60 * 60_000,
   });
 
+  const { data: briefing } = useQuery({
+    queryKey:  ['daily-briefing'],
+    queryFn:   statsApi.getDailyBriefing,
+    staleTime: 60_000,
+    gcTime:    5 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
   const todayTotal  = (data?.todayCollections ?? 0) + (data?.todayCashSales ?? 0);
   const monthTotal  = (data?.monthCollections ?? 0) + (data?.monthCashSales ?? 0);
 
@@ -266,6 +275,70 @@ export default function DashboardPage() {
             </div>
           ))}
       </div>
+
+      {/* Daily Briefing — today's priority numbers */}
+      {briefing && (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-gray-50">
+            <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
+              <ClipboardList size={13} className="text-indigo-600" />
+            </div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Today's Briefing</p>
+          </div>
+          <div className="grid grid-cols-5 divide-x divide-gray-100">
+            {[
+              {
+                label: 'Due Today',
+                value: briefing.dueToday,
+                icon: Clock,
+                bg: 'bg-blue-50',
+                color: 'text-blue-600',
+                urgent: briefing.dueToday > 0,
+              },
+              {
+                label: 'Overdue',
+                value: briefing.overdueTotal,
+                icon: AlertTriangle,
+                bg: briefing.overdueTotal > 0 ? 'bg-red-50'   : 'bg-gray-50',
+                color: briefing.overdueTotal > 0 ? 'text-red-500' : 'text-gray-400',
+                urgent: briefing.overdueTotal > 0,
+              },
+              {
+                label: 'Promises',
+                value: briefing.promisesToday,
+                icon: PhoneCall,
+                bg: briefing.promisesToday > 0 ? 'bg-amber-50' : 'bg-gray-50',
+                color: briefing.promisesToday > 0 ? 'text-amber-600' : 'text-gray-400',
+                urgent: false,
+              },
+              {
+                label: 'Collected',
+                value: `PKR ${briefing.collectedToday.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`,
+                icon: Banknote,
+                bg: 'bg-emerald-50',
+                color: 'text-emerald-600',
+                urgent: false,
+              },
+              {
+                label: 'Defaulted',
+                value: briefing.defaultedCount,
+                icon: XOctagon,
+                bg: briefing.defaultedCount > 0 ? 'bg-red-50'   : 'bg-gray-50',
+                color: briefing.defaultedCount > 0 ? 'text-red-500' : 'text-gray-400',
+                urgent: false,
+              },
+            ].map(({ label, value, icon: Icon, bg, color }) => (
+              <div key={label} className="flex flex-col items-center gap-1 py-3 px-2 text-center">
+                <div className={`w-7 h-7 ${bg} rounded-lg flex items-center justify-center`}>
+                  <Icon size={14} className={color} />
+                </div>
+                <p className={`text-base font-extrabold ${color} leading-none`}>{value}</p>
+                <p className="text-[10px] text-gray-400 leading-tight">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Daily target progress — only shown when owner has set a target */}
       {isOwner && shop?.settings?.dailyTarget && (

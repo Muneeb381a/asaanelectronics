@@ -52,6 +52,16 @@ export interface Customer {
   tags: string[];
   dob: string | null;
   referredById: string | null;
+  isBlacklisted: boolean;
+  blacklistReason: string | null;
+  paymentGrade?: 'A' | 'B' | 'C' | 'D';
+  paymentGradeLabel?: string;
+  installmentSummary?: {
+    total: number;
+    defaulted: number;
+    overdue: number;
+    completed: number;
+  };
 }
 
 interface ListResponse {
@@ -138,6 +148,12 @@ export const customersApi = {
 
   remove: (id: string) =>
     api.delete(`/customers/${id}`),
+
+  blacklist: (id: string, reason: string) =>
+    api.patch(`/customers/${id}/blacklist`, { reason }).then((r) => r.data.data),
+
+  removeBlacklist: (id: string) =>
+    api.delete(`/customers/${id}/blacklist`).then((r) => r.data.data),
 
   lookup: (cnic: string) =>
     api.get<{ data: LookupResponse }>('/customers/lookup', { params: { cnic } }).then(unwrap<LookupResponse>),

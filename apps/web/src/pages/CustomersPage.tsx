@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
-import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon } from 'lucide-react';
 import { customersApi, type Customer, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import type { CreateCustomerInput } from '@assaan/shared';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
@@ -486,6 +486,9 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   const drawerPerms = drawerUser?.permissions as Record<string, boolean> | null | undefined;
   const canAddInstallmentInDrawer  = isOwnerInDrawer || !!drawerPerms?.canAddInstallment;
   const canRecordPaymentInDrawer   = isOwnerInDrawer || !!drawerPerms?.canRecordPayment;
+  const [showBlacklistModal, setShowBlacklistModal] = useState(false);
+  const [blacklistReason, setBlacklistReason] = useState('');
+  const [isBlacklisted, setIsBlacklisted] = useState(customer.isBlacklisted ?? false);
 
   useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
 
@@ -505,6 +508,28 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
     queryFn: () => installmentsApi.list({ customerId: customer.id, limit: 100 }),
   });
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
+
+  const blacklistMutation = useMutation({
+    mutationFn: () => customersApi.blacklist(customer.id, blacklistReason),
+    onSuccess: () => {
+      setIsBlacklisted(true);
+      setShowBlacklistModal(false);
+      setBlacklistReason('');
+      qcDrawer.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Customer blacklisted');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const removeBlacklistMutation = useMutation({
+    mutationFn: () => customersApi.removeBlacklist(customer.id),
+    onSuccess: () => {
+      setIsBlacklisted(false);
+      qcDrawer.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Blacklist removed');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
 
   const createInstallmentMutation = useMutation({
     mutationFn: installmentsApi.create,
@@ -564,13 +589,18 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                 {customer.customerType === 'dukaan-dar' && (
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">Dukaan-Dar</span>
                 )}
+                {isBlacklisted && (
+                  <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                    <AlertOctagon size={9} /> DO NOT SELL
+                  </span>
+                )}
                 <LifecycleBadge stage={customer.lifecycleStage ?? 'LEAD'} />
                 <RiskBadge score={customer.riskScore ?? 0} label={customer.riskLabel ?? 'GOOD'} />
               </div>
               <p className="text-xs text-gray-400">{customer.phone} · {customer.cnicMasked}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <button
               onClick={() => setShowStatement(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition"
@@ -586,10 +616,62 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               <Printer size={13} />
               Agreement
             </button>
+            {isOwnerInDrawer && (
+              isBlacklisted ? (
+                <button
+                  onClick={() => removeBlacklistMutation.mutate()}
+                  disabled={removeBlacklistMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-300 text-xs text-green-700 hover:bg-green-50 transition disabled:opacity-50"
+                >
+                  <AlertOctagon size={13} />
+                  Remove Blacklist
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowBlacklistModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-xs text-red-600 hover:bg-red-50 transition"
+                >
+                  <AlertOctagon size={13} />
+                  Blacklist
+                </button>
+              )
+            )}
             <button onClick={handleClose} className="p-1.5 text-gray-400 hover:text-gray-700 transition rounded-lg hover:bg-gray-100">
               <X size={18} />
             </button>
           </div>
+
+          {/* Blacklist reason modal */}
+          {showBlacklistModal && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+                <h3 className="font-semibold text-gray-800 mb-1">Blacklist Customer</h3>
+                <p className="text-xs text-gray-500 mb-4">This customer will be blocked from new installments. Reason is required.</p>
+                <textarea
+                  value={blacklistReason}
+                  onChange={(e) => setBlacklistReason(e.target.value)}
+                  placeholder="Reason for blacklisting (e.g. Defaulted PKR 50,000 — absconding)"
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300 mb-4"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowBlacklistModal(false); setBlacklistReason(''); }}
+                    className="flex-1 border border-gray-200 rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => blacklistMutation.mutate()}
+                    disabled={!blacklistReason.trim() || blacklistMutation.isPending}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl py-2 text-sm font-medium transition disabled:opacity-50"
+                  >
+                    {blacklistMutation.isPending ? 'Saving…' : 'Blacklist Customer'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tabs */}

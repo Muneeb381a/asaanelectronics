@@ -6,7 +6,7 @@ import { createCustomerSchema, updateCustomerSchema } from '@assaan/shared';
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer, assignAvo,
   getLifecycleCounts, getRiskBreakdown, lookupByCnic, getUpcomingBirthdays, getReferralLeaderboard,
-  nadraVerifyCnic, nadraStatus,
+  nadraVerifyCnic, nadraStatus, blacklistCustomer, unblacklistCustomer,
 } from './customers.controller.js';
 import { listGuarantors } from './guarantors.controller.js';
 import { listNotes, addNote, deleteNote } from './customer-notes.controller.js';
@@ -29,6 +29,8 @@ router.post('/',      requirePermission('canAddCustomer'),  validate(createCusto
 router.patch('/:id',  requirePermission('canEditCustomer'), validate(updateCustomerSchema), updateCustomer);
 router.patch('/:id/assign-avo', requirePermission('canVerifyCustomers'), assignAvo);
 router.delete('/:id', requireOwner, deleteCustomer);
+router.patch('/:id/blacklist',   requireOwner, blacklistCustomer);
+router.delete('/:id/blacklist',  requireOwner, unblacklistCustomer);
 
 router.get('/:customerId/notes',            listNotes);
 router.post('/:customerId/notes',           requirePermission('canAddCustomer'), addNote);

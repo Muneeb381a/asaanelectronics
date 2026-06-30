@@ -60,6 +60,15 @@ export const installmentsApi = {
   getOne: (id: string) =>
     api.get<{ data: Installment }>(`/installments/${id}`).then(unwrap<Installment>),
 
+  getSettlement: (id: string) =>
+    api.get<{ data: {
+      installmentId: string; customerName: string; productName: string;
+      remaining: number; discountPercent: number; discountAmount: number; settlementAmount: number; status: string;
+    } }>(`/installments/${id}/settlement`).then(unwrap<{
+      installmentId: string; customerName: string; productName: string;
+      remaining: number; discountPercent: number; discountAmount: number; settlementAmount: number; status: string;
+    }>),
+
   create: (data: CreateInstallmentInput) =>
     api.post<{ data: Installment }>('/installments', data).then(unwrap<Installment>),
 

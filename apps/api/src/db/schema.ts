@@ -190,6 +190,10 @@ export const customers = pgTable(
     createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
     assignedAvoId: text('assigned_avo_id').references(() => users.id, { onDelete: 'set null' }),
     verificationStatus: verificationStatusEnum('verification_status').default('PENDING').notNull(),
+    isBlacklisted:   boolean('is_blacklisted').default(false).notNull(),
+    blacklistReason: text('blacklist_reason'),
+    blacklistedAt:   timestamp('blacklisted_at'),
+    blacklistedBy:   text('blacklisted_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),
     deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
@@ -377,6 +381,7 @@ export const payments = pgTable('payments', {
   note: text('note'),
   collectedBy:   text('collected_by').references(() => users.id, { onDelete: 'set null' }),
   proofImageUrl: text('proof_image_url'),
+  receiptNumber: text('receipt_number'),
   deletedAt: timestamp('deleted_at'),
   deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [

@@ -184,11 +184,35 @@ export class InstallmentsService {
     // Quick pre-check (not race-safe, but gives fast error for obvious OOS)
     if (product.stock < 1) throw new AppError('Product is out of stock', 400);
 
+    // Manual "Do Not Sell" blacklist check
+    if (customer.isBlacklisted) {
+      throw new AppError(
+        `Customer is blacklisted${customer.blacklistReason ? ': ' + customer.blacklistReason : ''}`,
+        403,
+      );
+    }
+
+    // Auto-blacklist: customer has a prior defaulted installment
     const blacklisted = await db.query.installments.findFirst({
       where: and(eq(installments.customerId, body.customerId), eq(installments.status, 'DEFAULTED'), isNull(installments.deletedAt)),
       columns: { id: true },
     });
     if (blacklisted) throw new AppError('Customer is blacklisted due to a defaulted installment', 403);
+
+    // IMEI duplicate hard block — prevent same IMEI on two active installments
+    if (body.imeiNumber) {
+      const dupeImei = await db.query.installments.findFirst({
+        where: and(
+          eq(installments.imeiNumber, body.imeiNumber),
+          inArray(installments.status, ['ACTIVE', 'PENDING']),
+          isNull(installments.deletedAt),
+        ),
+        columns: { id: true, imeiNumber: true },
+      });
+      if (dupeImei) {
+        throw new AppError(`IMEI ${body.imeiNumber} is already linked to an active installment`, 409);
+      }
+    }
 
     const remaining = body.totalAmount - body.downPayment;
     const freq = body.paymentFrequency ?? 'monthly';

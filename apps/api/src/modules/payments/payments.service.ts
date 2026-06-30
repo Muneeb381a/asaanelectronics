@@ -36,6 +36,7 @@ export class PaymentsService {
           paidOn:        payments.paidOn,
           method:        payments.method,
           note:          payments.note,
+          receiptNumber: payments.receiptNumber,
           deletedAt:     payments.deletedAt,
           collectedBy:   payments.collectedBy,
           proofImageUrl: payments.proofImageUrl,
@@ -115,6 +116,20 @@ export class PaymentsService {
         .innerJoin(products,  eq(installments.productId,  products.id))
         .where(eq(installments.id, body.installmentId));
 
+      // Generate sequential receipt number per seller per year
+      const year = new Date().getFullYear();
+      const [{ nextRcp }] = await tx.execute<{ nextRcp: number }>(sql`
+        SELECT COALESCE(
+          MAX(CAST(SPLIT_PART(p.receipt_number, '-', 3) AS INTEGER)), 0
+        ) + 1 AS "nextRcp"
+        FROM payments p
+        INNER JOIN installments i ON p.installment_id = i.id
+        INNER JOIN customers c    ON i.customer_id    = c.id
+        WHERE c.seller_id = ${sellerId}
+          AND p.receipt_number LIKE ${'RCP-' + year + '-%'}
+      `);
+      const receiptNumber = `RCP-${year}-${String(nextRcp).padStart(5, '0')}`;
+
       const [[payment]] = await Promise.all([
         tx.insert(payments).values({
           installmentId: body.installmentId,
@@ -123,6 +138,7 @@ export class PaymentsService {
           note:          body.note,
           collectedBy:   body.collectedBy ?? null,
           proofImageUrl: body.proofImageUrl ?? null,
+          receiptNumber,
         }).returning(),
         tx.update(installments).set({
           remaining: String(newRemaining),

@@ -114,3 +114,18 @@ export async function nadraVerifyCnic(req: AuthRequest, res: Response) {
 export function nadraStatus(_req: AuthRequest, res: Response) {
   success(res, { configured: isNadraConfigured() });
 }
+
+export async function blacklistCustomer(req: AuthRequest, res: Response) {
+  const { reason } = req.body as { reason?: string };
+  if (!reason?.trim()) {
+    res.status(400).json({ success: false, error: 'reason is required' });
+    return;
+  }
+  const result = await svc.blacklist(req.params['id']!, req.user!.sellerId!, reason.trim(), req.user!.userId);
+  success(res, result);
+}
+
+export async function unblacklistCustomer(req: AuthRequest, res: Response) {
+  const result = await svc.removeBlacklist(req.params['id']!, req.user!.sellerId!);
+  success(res, result);
+}

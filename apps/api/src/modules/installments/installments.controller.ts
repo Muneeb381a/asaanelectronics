@@ -178,6 +178,28 @@ export async function waiverInstallment(req: AuthRequest, res: Response) {
   }).catch(console.error);
 }
 
+export async function getSettlement(req: AuthRequest, res: Response) {
+  const inst = await svc.getOne(req.params['id']!, req.user!.sellerId!);
+  const remaining = Number(inst.remaining);
+
+  // Owner can configure early-settlement discount % via seller settings (future)
+  // For now: flat 0% discount (full remaining). Endpoint exists so frontend + future discount are wired.
+  const discountPercent = 0;
+  const discountAmount  = Math.round(remaining * discountPercent / 100);
+  const settlementAmount = remaining - discountAmount;
+
+  success(res, {
+    installmentId:   inst.id,
+    customerName:    inst.customerName,
+    productName:     inst.productName,
+    remaining,
+    discountPercent,
+    discountAmount,
+    settlementAmount,
+    status:          inst.status,
+  });
+}
+
 export async function importInstallments(req: AuthRequest, res: Response) {
   const parsed = importInstallmentsSchema.safeParse(req.body);
   if (!parsed.success) {

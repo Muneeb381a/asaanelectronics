@@ -8,6 +8,7 @@ export interface Payment {
   amount: string;
   method: PaymentMethod;
   note: string | null;
+  receiptNumber: string | null;
   paidOn: string;
   deletedAt: string | null;
   collectedBy: string | null;

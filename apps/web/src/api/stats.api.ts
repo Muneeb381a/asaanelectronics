@@ -44,8 +44,17 @@ export interface DashboardData {
   advanced: Advanced | null;
 }
 
+export interface DailyBriefing {
+  dueToday:       number;
+  overdueTotal:   number;
+  promisesToday:  number;
+  collectedToday: number;
+  defaultedCount: number;
+}
+
 export const statsApi = {
-  getDashboard: () => api.get<{ data: DashboardData }>('/stats/dashboard').then((r) => r.data.data),
+  getDashboard:     () => api.get<{ data: DashboardData }>('/stats/dashboard').then((r) => r.data.data),
+  getDailyBriefing: () => api.get<{ data: DailyBriefing }>('/stats/daily-briefing').then((r) => r.data.data),
   // Individual endpoints kept for any page that needs just one piece
   get:         () => api.get<{ data: Stats }>('/stats').then((r) => r.data.data),
   getReports:  () => api.get<{ data: Reports }>('/stats/reports').then((r) => r.data.data),

@@ -7,7 +7,7 @@ import {
   listInstallments, getInstallment, createInstallment, defaultInstallment,
   cancelInstallment, rescheduleInstallment, deleteInstallment,
   approveInstallment, closeInstallment, importInstallments, updateInstallment,
-  getDueSheet, waiverInstallment,
+  getDueSheet, waiverInstallment, getSettlement,
 } from './installments.controller.js';
 
 const router = Router();
@@ -16,7 +16,8 @@ router.use(authenticate, requireSeller);
 
 router.get('/due-sheet',  getDueSheet);
 router.get('/',           listInstallments);
-router.get('/:id',        getInstallment);
+router.get('/:id',            getInstallment);
+router.get('/:id/settlement', getSettlement);
 router.post('/',          requirePermission('canAddInstallment'), validate(createInstallmentSchema), createInstallment);
 router.post('/import',    requireOwner, importInstallments);
 router.patch('/:id',      requireOwner, updateInstallment);
