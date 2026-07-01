@@ -339,6 +339,66 @@ export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
   return `https://wa.me/?text=${encodeURIComponent(lines)}`;
 }
 
+export interface SinglePaymentReceiptData {
+  shopName: string;
+  shopPhone?: string | null;
+  customerName: string;
+  customerPhone?: string | null;
+  productName: string;
+  invoiceNumber?: string | null;
+  receiptNumber?: string | null;
+  amountPaid: number;
+  method: string;
+  paidOn: string;
+  note?: string | null;
+  collectorName?: string | null;
+  periodNum?: number;
+  paymentFrequency?: string | null;
+  periodDueDate?: Date | null;
+  daysLate?: number;
+  monthly?: number;
+}
+
+export function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
+  const freq = d.paymentFrequency === 'daily' ? 'Din' : 'Maah';
+  const paidOnDate = new Date(d.paidOn);
+  const dateStr = paidOnDate.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = paidOnDate.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const rows = [
+    d.receiptNumber ? `<div class="row"><span class="lbl">Receipt #</span><span class="val" style="font-family:monospace;letter-spacing:-.3px">${d.receiptNumber}</span></div>` : '',
+    `<div class="row"><span class="lbl">Date</span><span class="val">${dateStr}</span></div>`,
+    `<div class="row"><span class="lbl">Time</span><span class="val">${timeStr}</span></div>`,
+    `<hr/>`,
+    `<div class="row"><span class="lbl">Customer</span><span class="val">${d.customerName}</span></div>`,
+    d.customerPhone ? `<div class="row"><span class="lbl">Phone</span><span class="val">${d.customerPhone}</span></div>` : '',
+    `<div class="row"><span class="lbl">Product</span><span class="val">${d.productName}</span></div>`,
+    d.invoiceNumber ? `<div class="row"><span class="lbl">Invoice</span><span class="val" style="font-family:monospace">${d.invoiceNumber}</span></div>` : '',
+    d.periodNum !== undefined ? `<div class="row"><span class="lbl">${freq} #</span><span class="val">${d.periodNum}</span></div>` : '',
+    d.periodDueDate ? `<div class="row"><span class="lbl">Due Date</span><span class="val">${fmtDate(d.periodDueDate)}</span></div>` : '',
+    `<hr/>`,
+    `<div class="row big"><span class="lbl">Amount Paid</span><span class="val">PKR ${Number(d.amountPaid).toLocaleString('en-PK', { maximumFractionDigits: 0 })}</span></div>`,
+    `<div class="row"><span class="lbl">Method</span><span class="val">${mLabel(d.method)}</span></div>`,
+    (d.daysLate ?? 0) > 0 ? `<div class="row" style="color:#dc2626"><span class="lbl">Late by</span><span class="val">${d.daysLate} days ⚠️</span></div>` : '',
+    d.monthly ? `<div class="row"><span class="lbl">${d.paymentFrequency === 'daily' ? 'Daily' : 'Monthly'} Qist</span><span class="val">PKR ${Number(d.monthly).toLocaleString('en-PK', { maximumFractionDigits: 0 })}</span></div>` : '',
+    d.note ? `<div class="row"><span class="lbl">Note</span><span class="val">${d.note}</span></div>` : '',
+    d.collectorName ? `<div class="row"><span class="lbl">Collected by</span><span class="val">${d.collectorName}</span></div>` : '',
+  ].filter(Boolean).join('\n');
+
+  const body = `
+    <div class="shop">${d.shopName}</div>
+    ${d.shopPhone ? `<div class="sub">${d.shopPhone}</div>` : ''}
+    <div class="sub">Payment Receipt · قبض ادائیگی</div>
+    <hr/>
+    ${rows}
+    <hr/>
+    <div class="foot">شکریہ · Thank You</div>
+    <div class="foot" style="font-size:9px;margin-top:2px">${d.shopName}</div>
+  `;
+  const content = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment Receipt</title><style>${THERMAL_CSS}</style></head><body>${body}</body></html>`;
+  openPrint(content, 400, 620);
+}
+
 export function cashSaleWhatsappUrl(d: CashSaleReceiptData): string {
   const lines = [
     `*Cash Sale — ${d.shopName}*`,

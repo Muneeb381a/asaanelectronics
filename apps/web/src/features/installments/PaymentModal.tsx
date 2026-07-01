@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck, Receipt } from 'lucide-react';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { installmentsApi, type Installment } from '../../api/installments.api.ts';
@@ -15,6 +15,7 @@ import { getErrorMessage } from '../../utils/error.ts';
 import { openBill, type BillData } from '../../utils/bill.ts';
 import {
   installmentWhatsappUrl,
+  openSinglePaymentReceipt,
   type InstallmentReceiptData,
 } from '../../utils/receipt.ts';
 
@@ -750,8 +751,32 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                         <div className="flex items-center gap-1.5 shrink-0">
                           {p.proofImageUrl && (
                             <a href={p.proofImageUrl} target="_blank" rel="noreferrer"
-                              className="text-[11px] text-blue-500 hover:underline mr-1">Receipt</a>
+                              className="text-[11px] text-blue-500 hover:underline mr-1">Proof</a>
                           )}
+                          <button
+                            onClick={() => openSinglePaymentReceipt({
+                              shopName:       seller?.shopName ?? 'Receipt',
+                              shopPhone:      seller?.phone,
+                              customerName:   freshInst.customerName,
+                              customerPhone:  freshInst.customerPhone,
+                              productName:    freshInst.productName,
+                              invoiceNumber:  freshInst.invoiceNumber,
+                              receiptNumber:  p.receiptNumber,
+                              amountPaid:     Number(p.amount),
+                              method:         p.method,
+                              paidOn:         p.paidOn,
+                              note:           p.note,
+                              collectorName:  p.collectorName,
+                              periodNum:      p.periodNum,
+                              paymentFrequency: freshInst.paymentFrequency,
+                              periodDueDate:  p.periodDue ?? null,
+                              daysLate:       p.late,
+                              monthly:        Number(freshInst.monthly),
+                            })}
+                            title="Print receipt"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded transition">
+                            <Receipt size={12} />
+                          </button>
                           {isOwner && (
                             <>
                               <button
