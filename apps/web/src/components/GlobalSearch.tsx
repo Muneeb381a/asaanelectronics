@@ -129,7 +129,7 @@ export default function GlobalSearch({ open, onClose }: Props) {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-gray-800 truncate">{c.name}</span>
                           {c.isBlacklisted && (
-                            <AlertOctagon className="w-3.5 h-3.5 text-red-500 shrink-0" title="Blacklisted" />
+                            <AlertOctagon className="w-3.5 h-3.5 text-red-500 shrink-0" aria-label="Blacklisted" />
                           )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">

@@ -2,7 +2,6 @@ import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck, Receipt } from 'lucide-react';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { installmentsApi, type Installment } from '../../api/installments.api.ts';
 import { paymentsApi, type PaymentMethod } from '../../api/payments.api.ts';
@@ -21,7 +20,7 @@ import {
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 
-function SettleTab({ installmentId, remaining, status }: { installmentId: string; remaining: number; status: string }) {
+function SettleTab({ installmentId, status }: { installmentId: string; remaining: number; status: string }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['settlement', installmentId],
     queryFn: () => installmentsApi.getSettlement(installmentId),
@@ -106,7 +105,6 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   // Reversal state
   const [reversalId, setReversalId] = useState<string | null>(null);
   const [reversalReason, setReversalReason] = useState('');
-  const deleteConfirmId = reversalId; // kept for compat
   const setDeleteConfirmId = (id: string | null) => { setReversalId(id); if (!id) setReversalReason(''); };
 
   const { data: seller } = useQuery({

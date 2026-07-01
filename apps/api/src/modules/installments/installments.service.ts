@@ -721,4 +721,64 @@ export class InstallmentsService {
       .returning();
     return updated;
   }
+
+  async overdueWithStage(sellerId: string, search?: string) {
+    const searchFilter = search
+      ? sql`AND (c.name ILIKE ${`%${search}%`} OR c.phone ILIKE ${`%${search}%`})`
+      : sql``;
+
+    const DUE_DATE_EXPR = sql`
+      CASE WHEN i.payment_frequency = 'daily' THEN
+        i.start_date + ((GREATEST(0, FLOOR(
+          (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+          / NULLIF(i.monthly::numeric, 0)
+        )) + 1) || ' days')::interval
+      ELSE
+        DATE_TRUNC('month', i.start_date + ((GREATEST(0, FLOOR(
+          (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+          / NULLIF(i.monthly::numeric, 0)
+        )) + 1) || ' months')::interval)::date + (i.payment_due_day - 1)
+      END
+    `;
+
+    return db.execute<{
+      id: string; customer_id: string; product_id: string;
+      total_amount: string; down_payment: string; remaining: string; monthly: string; months: number;
+      start_date: string; invoice_number: string | null; payment_frequency: string; payment_due_day: number;
+      status: string; created_at: string; imei_number: string | null;
+      customer_name: string; customer_phone: string; customer_area: string | null; product_name: string;
+      days_overdue: number;
+      last_action_type: string | null; last_action_date: string | null; last_promise_date: string | null;
+    }>(sql`
+      SELECT
+        i.id, i.customer_id, i.product_id,
+        i.total_amount, i.down_payment, i.remaining, i.monthly, i.months,
+        i.start_date, i.invoice_number, i.payment_frequency, i.payment_due_day,
+        i.status, i.created_at, i.imei_number,
+        c.name AS customer_name, c.phone AS customer_phone,
+        c.area AS customer_area, p.name AS product_name,
+        GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - (${DUE_DATE_EXPR}))) / 86400))::int AS days_overdue,
+        la.type AS last_action_type,
+        la.created_at AS last_action_date,
+        la.promise_date AS last_promise_date
+      FROM installments i
+      INNER JOIN customers c ON i.customer_id = c.id
+      INNER JOIN products p ON i.product_id = p.id
+      LEFT JOIN LATERAL (
+        SELECT type, created_at, promise_date
+        FROM recovery_actions
+        WHERE installment_id = i.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) la ON TRUE
+      WHERE c.seller_id = ${sellerId}
+        AND i.status = 'ACTIVE'
+        AND i.deleted_at IS NULL
+        AND c.deleted_at IS NULL
+        ${searchFilter}
+        AND (${DUE_DATE_EXPR}) < NOW()
+      ORDER BY days_overdue DESC, i.remaining::numeric DESC
+      LIMIT 500
+    `);
+  }
 }

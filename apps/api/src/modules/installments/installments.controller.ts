@@ -240,3 +240,9 @@ export async function importInstallments(req: AuthRequest, res: Response) {
     ...auditCtx(req),
   }).catch(console.error);
 }
+
+export async function listOverdueWithStage(req: AuthRequest, res: Response) {
+  const search = req.query['search'] as string | undefined;
+  const rows = await svc.overdueWithStage(req.user!.sellerId!, search?.trim() || undefined);
+  success(res, rows);
+}

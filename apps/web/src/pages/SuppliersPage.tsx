@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Plus, Phone, MapPin, CreditCard, FileText, ChevronDown, ChevronUp, Trash2, Pencil, X, Check, TrendingUp, TrendingDown, Wallet, AlertCircle } from 'lucide-react';
+import { Building2, Plus, Phone, MapPin, CreditCard, ChevronDown, ChevronUp, Trash2, Pencil, X, Check, TrendingUp, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { suppliersApi, type Supplier, type SupplierInvoice, type PnLData } from '../api/suppliers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';

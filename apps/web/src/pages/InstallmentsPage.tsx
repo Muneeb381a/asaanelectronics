@@ -2011,7 +2011,8 @@ export default function InstallmentsPage() {
             )}
             {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && isOwner && (() => {
               const dueDate  = calcNextDueDate(inst);
-              const daysLate = dueDate ? Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / 86_400_000)) : (inst.status === 'DEFAULTED' ? 30 : 0);
+              const _now     = new Date();
+              const daysLate = dueDate ? Math.max(0, Math.floor((_now.getTime() - dueDate.getTime()) / 86_400_000)) : (inst.status === 'DEFAULTED' ? 30 : 0);
               if (daysLate < 30 && inst.status !== 'DEFAULTED') return null;
               return (
                 <button

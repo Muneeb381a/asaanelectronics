@@ -354,7 +354,7 @@ export default function ReportsPage() {
   const thisMonth  = monthlyCollections[monthlyCollections.length - 1]?.total ?? 0;
   const lastMonth  = monthlyCollections[monthlyCollections.length - 2]?.total ?? 0;
   const momChange  = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null;
-  const totalOverdue = agingBuckets.days1_30 + agingBuckets.days31_60 + agingBuckets.days60plus;
+  const totalOverdue = agingBuckets.days8_30 + agingBuckets.days31_90 + agingBuckets.days90plus;
 
   return (
     <div className="px-4 py-5 sm:p-6 max-w-7xl mx-auto space-y-6">
@@ -466,17 +466,17 @@ export default function ReportsPage() {
               bg="bg-emerald-50" text="text-emerald-600" icon={CheckCircle}
             />
             <AgingCard
-              label="1–30 Days Late" count={agingBuckets.days1_30}
+              label="1–30 Days Late" count={agingBuckets.days8_30}
               sublabel="Early overdue"
               bg="bg-amber-50" text="text-amber-600" icon={Clock}
             />
             <AgingCard
-              label="31–60 Days Late" count={agingBuckets.days31_60}
+              label="31–90 Days Late" count={agingBuckets.days31_90}
               sublabel="Action needed"
               bg="bg-orange-50" text="text-orange-600" icon={AlertTriangle}
             />
             <AgingCard
-              label="60+ Days Late" count={agingBuckets.days60plus}
+              label="90+ Days Late" count={agingBuckets.days90plus}
               sublabel="Critical overdue"
               bg="bg-red-50" text="text-red-600" icon={AlertTriangle}
             />

@@ -109,4 +109,33 @@ export const installmentsApi = {
 
   unpause: (id: string) =>
     api.delete<{ data: Installment }>(`/installments/${id}/pause`).then(unwrap<Installment>),
+
+  overdueWithStage: (search?: string) =>
+    api.get<{ data: OverdueWithStageItem[] }>('/installments/overdue-stage', { params: search ? { search } : undefined }).then(unwrap<OverdueWithStageItem[]>),
 };
+
+export interface OverdueWithStageItem {
+  id: string;
+  customer_id: string;
+  product_id: string;
+  total_amount: string;
+  down_payment: string;
+  remaining: string;
+  monthly: string;
+  months: number;
+  start_date: string;
+  invoice_number: string | null;
+  payment_frequency: string;
+  payment_due_day: number;
+  status: string;
+  created_at: string;
+  imei_number: string | null;
+  customer_name: string;
+  customer_phone: string;
+  customer_area: string | null;
+  product_name: string;
+  days_overdue: number;
+  last_action_type: string | null;
+  last_action_date: string | null;
+  last_promise_date: string | null;
+}

@@ -216,7 +216,7 @@ type Tier = { label: string; bg: string; text: string; border: string; suggestio
 function escalationTier(dpd: number): Tier {
   if (dpd <= 0)   return { label: 'On Schedule',  bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', suggestion: '' };
   if (dpd <= 7)   return { label: 'Level 1 — Call', bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   suggestion: 'Call the customer and remind them of the due amount.' };
-  if (dpd <= 30)  return { label: 'Level 2 — Visit', bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200',  suggestion: 'Visit the customer's address and get a promise date in writing.' };
+  if (dpd <= 30)  return { label: 'Level 2 — Visit', bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200',  suggestion: "Visit the customer's address and get a promise date in writing." };
   if (dpd <= 90)  return { label: 'Level 3 — Written Notice', bg: 'bg-red-50',     text: 'text-red-700',     border: 'border-red-200',     suggestion: 'Send a formal written notice and record a REFUSED or PROMISE_TO_PAY action.' };
   return           { label: 'Level 4 — Legal',  bg: 'bg-red-100',   text: 'text-red-800',     border: 'border-red-300',     suggestion: 'Escalate to legal proceedings — log a Legal Warning Sent action.' };
 }

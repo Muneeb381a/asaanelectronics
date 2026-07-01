@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Clock, LayoutList, Map as MapIcon,
   CalendarClock, AlertTriangle, CalendarCheck,
 } from 'lucide-react';
-import { installmentsApi, type Installment } from '../api/installments.api.ts';
+import { installmentsApi, type Installment, type OverdueWithStageItem } from '../api/installments.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { recoveryApi, type RecoveryActionType, type RecoveryAction, type PromiseDue } from '../api/recovery.api.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
@@ -32,6 +32,49 @@ const ACTION_META: Record<RecoveryActionType, ActionMeta> = {
   LEGAL_WARNING:   { label: 'Legal Warning',   icon: AlertOctagon,  color: 'text-orange-600', bg: 'bg-orange-50' },
 };
 const ACTION_TYPES = Object.keys(ACTION_META) as RecoveryActionType[];
+
+// ── Collection Stage ───────────────────────────────────────────────────────────
+
+type CollectionStage =
+  | 'soft_overdue' | 'overdue' | 'critical'
+  | 'called' | 'visited' | 'promised' | 'broken_promise' | 'refused' | 'legal';
+
+const STAGE_META: Record<CollectionStage, { label: string; color: string; bg: string; dot: string }> = {
+  soft_overdue:   { label: '1–7d',           color: 'text-yellow-700', bg: 'bg-yellow-50',  dot: 'bg-yellow-400' },
+  overdue:        { label: '8–30d',          color: 'text-orange-700', bg: 'bg-orange-50',  dot: 'bg-orange-500' },
+  critical:       { label: '30d+',           color: 'text-red-700',    bg: 'bg-red-100',    dot: 'bg-red-600'    },
+  called:         { label: 'Called',         color: 'text-blue-700',   bg: 'bg-blue-50',    dot: 'bg-blue-400'   },
+  visited:        { label: 'Visited',        color: 'text-violet-700', bg: 'bg-violet-50',  dot: 'bg-violet-400' },
+  promised:       { label: 'Promised',       color: 'text-emerald-700',bg: 'bg-emerald-50', dot: 'bg-emerald-400'},
+  broken_promise: { label: 'Broken Promise', color: 'text-rose-700',   bg: 'bg-rose-50',    dot: 'bg-rose-600'   },
+  refused:        { label: 'Refused',        color: 'text-red-700',    bg: 'bg-red-50',     dot: 'bg-red-400'    },
+  legal:          { label: 'Legal Warning',  color: 'text-gray-700',   bg: 'bg-gray-100',   dot: 'bg-gray-500'   },
+};
+
+function getStage(item: OverdueWithStageItem): CollectionStage {
+  const { last_action_type, days_overdue, last_promise_date } = item;
+  if (last_action_type === 'LEGAL_WARNING') return 'legal';
+  if (last_action_type === 'REFUSED')       return 'refused';
+  if (last_action_type === 'VISITED')       return 'visited';
+  if (last_action_type === 'CALLED')        return 'called';
+  if (last_action_type === 'PROMISE_TO_PAY') {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const pDate = last_promise_date ? new Date(last_promise_date) : null;
+    return (pDate && pDate < today) ? 'broken_promise' : 'promised';
+  }
+  if (days_overdue <= 7)  return 'soft_overdue';
+  if (days_overdue <= 30) return 'overdue';
+  return 'critical';
+}
+
+function CollectionStageBadge({ stage }: { stage: CollectionStage }) {
+  const m = STAGE_META[stage];
+  return (
+    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${m.bg} ${m.color}`}>
+      {m.label}
+    </span>
+  );
+}
 
 // ── Log Action Modal ───────────────────────────────────────────────────────────
 
@@ -240,9 +283,14 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
 // ── Installment Row ────────────────────────────────────────────────────────────
 
 function InstallmentRow({
-  inst, selectedId, onSelect,
-}: { inst: Installment; selectedId: string | null; onSelect: (i: Installment) => void }) {
+  inst, selectedId, onSelect, stageData,
+}: { inst: Installment; selectedId: string | null; onSelect: (i: Installment) => void; stageData?: OverdueWithStageItem }) {
   const overdue = inst.isOverdue;
+  const stage   = stageData ? getStage(stageData) : null;
+  const dotColor = overdue
+    ? (stage ? STAGE_META[stage].dot : 'bg-red-500')
+    : 'bg-emerald-400';
+
   return (
     <button
       onClick={() => onSelect(inst)}
@@ -252,14 +300,18 @@ function InstallmentRow({
           : 'hover:bg-gray-50 border border-transparent'
       }`}
     >
-      <div className={`w-2 h-2 rounded-full shrink-0 ${overdue ? 'bg-red-500' : 'bg-emerald-400'}`} />
+      <div className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-900 truncate">{inst.customerName}</p>
         <p className="text-xs text-gray-400 truncate">{inst.productName} · {inst.customerPhone}</p>
+        {stage && <div className="mt-0.5"><CollectionStageBadge stage={stage} /></div>}
       </div>
       <div className="text-right shrink-0">
         <p className="text-xs font-semibold text-gray-700">{pkr(inst.remaining)}</p>
-        {overdue && <p className="text-[10px] text-red-500 font-medium">Overdue</p>}
+        {overdue && stageData && (
+          <p className="text-[10px] text-red-400 font-medium">{stageData.days_overdue}d overdue</p>
+        )}
+        {overdue && !stageData && <p className="text-[10px] text-red-500 font-medium">Overdue</p>}
       </div>
       <ChevronRight size={14} className="text-gray-300 shrink-0" />
     </button>
@@ -437,6 +489,13 @@ export default function RecoveryPage() {
     staleTime: 60_000,
   });
 
+  const { data: stageItems = [] } = useQuery({
+    queryKey: ['overdue-stage', debouncedSearch],
+    queryFn: () => installmentsApi.overdueWithStage(debouncedSearch || undefined),
+    staleTime: 60_000,
+  });
+  const stageMap = new Map(stageItems.map((s) => [s.id, s]));
+
   const installments = data?.data  ?? [];
   const totalOnServer = data?.total ?? 0;
   const isTruncated  = totalOnServer > installments.length;
@@ -569,7 +628,7 @@ export default function RecoveryPage() {
                         )}
                       </div>
                       {items.map((i) => (
-                        <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} />
+                        <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} stageData={stageMap.get(i.id)} />
                       ))}
                     </div>
                   );
@@ -584,7 +643,7 @@ export default function RecoveryPage() {
                       Overdue ({overdueList.length})
                     </p>
                     {overdueList.map((i) => (
-                      <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} />
+                      <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} stageData={stageMap.get(i.id)} />
                     ))}
                     {currentList.length > 0 && (
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 pt-3">
@@ -594,7 +653,7 @@ export default function RecoveryPage() {
                   </>
                 )}
                 {currentList.map((i) => (
-                  <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} />
+                  <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} stageData={stageMap.get(i.id)} />
                 ))}
               </>
             )}
