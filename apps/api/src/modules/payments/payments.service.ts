@@ -224,19 +224,23 @@ export class PaymentsService {
     });
   }
 
-  async remove(id: string, sellerId: string, deletedBy: string) {
+  async remove(id: string, sellerId: string, deletedBy: string, reason?: string) {
     const [pmt] = await db
       .select({
         id:            payments.id,
         amount:        payments.amount,
         method:        payments.method,
         installmentId: payments.installmentId,
+        receiptNumber: payments.receiptNumber,
         instRemaining: installments.remaining,
         instStatus:    installments.status,
+        customerName:  customers.name,
+        productName:   products.name,
       })
       .from(payments)
       .innerJoin(installments, eq(payments.installmentId, installments.id))
       .innerJoin(customers,    eq(installments.customerId, customers.id))
+      .innerJoin(products,     eq(installments.productId,  products.id))
       .where(and(eq(payments.id, id), eq(customers.sellerId, sellerId), isNull(payments.deletedAt)));
 
     if (!pmt) throw new AppError('Payment not found', 404);
@@ -248,16 +252,26 @@ export class PaymentsService {
 
     await db.transaction(async (tx) => {
       await tx.update(payments)
-        .set({ deletedAt: new Date(), deletedBy })
+        .set({ deletedAt: new Date(), deletedBy, deletedReason: reason ?? null })
         .where(eq(payments.id, id));
 
       await tx.update(installments)
         .set({ remaining: String(restoredRemaining.toFixed(2)), ...statusRevert })
         .where(eq(installments.id, pmt.installmentId));
 
+      // Replace original ledger entry with a reversal (negative debit) for audit trail
       await tx.delete(ledgerEntries).where(
         and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'PAYMENT')),
       );
+      await tx.insert(ledgerEntries).values({
+        sellerId,
+        type:        'DEBIT',
+        category:    'REVERSAL',
+        amount:      pmt.amount,
+        description: `Payment reversal${reason ? ': ' + reason : ''} — ${pmt.customerName} · ${pmt.productName}${pmt.receiptNumber ? ' (' + pmt.receiptNumber + ')' : ''}`,
+        referenceId: id,
+        refType:     'MANUAL',
+      });
     });
 
     clearSellerStatsCache(sellerId);

@@ -38,12 +38,14 @@ export async function patchPayment(req: AuthRequest, res: Response) {
 }
 
 export async function deletePayment(req: AuthRequest, res: Response) {
-  const removed = await svc.remove(req.params['id']!, req.user!.sellerId!, req.user!.userId);
+  const reason = (req.body?.reason as string | undefined) ?? undefined;
+  const removed = await svc.remove(req.params['id']!, req.user!.sellerId!, req.user!.userId, reason);
   success(res, null);
   void audit.log({
     sellerId: req.user!.sellerId!, userId: req.user!.userId,
-    action: 'PAYMENT_DELETED', entityType: 'PAYMENT', entityId: removed.id,
-    description: `Soft-deleted payment PKR ${Number(removed.amount).toLocaleString()} via ${removed.method}`,
+    action: 'PAYMENT_REVERSED', entityType: 'PAYMENT', entityId: removed.id,
+    description: `Payment reversed PKR ${Number(removed.amount).toLocaleString()}${reason ? ' — ' + reason : ''}`,
+    reason,
     meta: { amount: removed.amount, method: removed.method },
     ...auditCtx(req),
   }).catch(console.error);

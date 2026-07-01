@@ -59,8 +59,8 @@ export const paymentsApi = {
     api.patch<{ data: { remaining: number; completed: boolean } }>(`/payments/${id}`, data)
       .then(unwrap<{ remaining: number; completed: boolean }>),
 
-  remove: (id: string) =>
-    api.delete(`/payments/${id}`),
+  remove: (id: string, reason?: string) =>
+    api.delete(`/payments/${id}`, { data: reason ? { reason } : undefined }),
 
   listBySeller: (params?: { from?: string; to?: string }) =>
     api.get<{ data: SellerPayment[] }>('/payments', { params }).then(unwrap<SellerPayment[]>),

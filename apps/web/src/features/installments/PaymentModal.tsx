@@ -102,8 +102,11 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [editMethod, setEditMethod] = useState<PaymentMethod>('CASH');
   const [editNote, setEditNote] = useState('');
 
-  // Delete confirmation state
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Reversal state
+  const [reversalId, setReversalId] = useState<string | null>(null);
+  const [reversalReason, setReversalReason] = useState('');
+  const deleteConfirmId = reversalId; // kept for compat
+  const setDeleteConfirmId = (id: string | null) => { setReversalId(id); if (!id) setReversalReason(''); };
 
   const { data: seller } = useQuery({
     queryKey: ['seller-me'],
@@ -310,7 +313,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => paymentsApi.remove(id),
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => paymentsApi.remove(id, reason),
     onSuccess: () => {
       // Refresh single installment (gets corrected remaining) + payments list
       void qc.invalidateQueries({ queryKey: ['installment-single', inst.id] });
@@ -320,9 +323,9 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       void qc.invalidateQueries({ queryKey: ['dashboard'] });
       for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       setDeleteConfirmId(null);
-      toast.success('Payment deleted');
+      toast.success('Payment reversed');
     },
-    onError: (e) => toast.error(getErrorMessage(e, 'Failed to delete')),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to reverse')),
   });
 
   const editMutation = useMutation({
@@ -776,16 +779,45 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                 </div>
               )}
 
-              <ConfirmDialog
-                open={deleteConfirmId !== null}
-                title="Payment Delete Karo?"
-                description="Ye payment hamesha ke liye delete ho jaegi aur remaining balance wapas ho jaega."
-                confirmLabel="Delete Karo"
-                variant="danger"
-                isPending={deleteMutation.isPending}
-                onConfirm={() => { if (deleteConfirmId) deleteMutation.mutate(deleteConfirmId); }}
-                onCancel={() => setDeleteConfirmId(null)}
-              />
+              {reversalId !== null && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+                    <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+                      <h2 className="text-base font-semibold text-gray-900">Reverse Payment</h2>
+                      <button onClick={() => setDeleteConfirmId(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+                    </div>
+                    <div className="px-5 py-4 space-y-3">
+                      <p className="text-xs text-gray-500">
+                        Payment reverse ho jaegi aur remaining balance wapas add ho jaega. Ledger mein reversal entry bhi record hogi.
+                      </p>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                          Reason <span className="text-gray-400 font-normal">(recommended)</span>
+                        </label>
+                        <input
+                          value={reversalReason}
+                          onChange={(e) => setReversalReason(e.target.value)}
+                          placeholder="e.g. Wrong customer, duplicate entry, error correction"
+                          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="px-5 pb-5 flex gap-2">
+                      <button onClick={() => setDeleteConfirmId(null)} className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => deleteMutation.mutate({ id: reversalId, reason: reversalReason.trim() || undefined })}
+                        disabled={deleteMutation.isPending}
+                        className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition disabled:opacity-60"
+                      >
+                        {deleteMutation.isPending ? 'Reversing…' : 'Reverse Payment'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>}

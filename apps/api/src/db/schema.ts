@@ -385,8 +385,9 @@ export const payments = pgTable('payments', {
   collectedBy:   text('collected_by').references(() => users.id, { onDelete: 'set null' }),
   proofImageUrl: text('proof_image_url'),
   receiptNumber: text('receipt_number'),
-  deletedAt: timestamp('deleted_at'),
-  deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+  deletedAt:     timestamp('deleted_at'),
+  deletedBy:     text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+  deletedReason: text('deleted_reason'),
 }, (t) => [
   index('idx_payments_installment').on(t.installmentId),
   index('idx_payments_paid_on').on(t.paidOn),
