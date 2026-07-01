@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck, Receipt } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck, Receipt, ArrowRightLeft } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { installmentsApi, type Installment } from '../../api/installments.api.ts';
 import { paymentsApi, type PaymentMethod } from '../../api/payments.api.ts';
@@ -17,6 +17,7 @@ import {
   openSinglePaymentReceipt,
   type InstallmentReceiptData,
 } from '../../utils/receipt.ts';
+import TransferModal from './TransferModal.tsx';
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 
@@ -92,6 +93,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [proofImageUrl, setProofImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [tab, setTab] = useState<'pay' | 'history' | 'settle'>('pay');
+  const [showTransfer, setShowTransfer] = useState(false);
   const [receiptData, setReceiptData] = useState<InstallmentReceiptData | null>(null);
   const [billPayload, setBillPayload] = useState<BillData | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -400,6 +402,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   }, [history, freshInst.monthly, freshInst.paymentFrequency, freshInst.startDate]);
 
   return (
+    <>
     <div
       className="fixed inset-0 z-70 flex flex-col sm:items-center sm:justify-center bg-black/50 backdrop-blur-sm sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -413,9 +416,19 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
               {freshInst.productName} · Remaining: <span className="font-medium text-orange-500">{pkr(freshInst.remaining)}</span>
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition shrink-0">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {isOwner && freshInst.status === 'ACTIVE' && (
+              <button
+                onClick={() => setShowTransfer(true)}
+                title="Installment Transfer Karo"
+                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition">
+                <ArrowRightLeft size={15} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -846,5 +859,13 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         </div>}
       </div>
     </div>
+
+    {showTransfer && (
+      <TransferModal
+        installment={freshInst}
+        onClose={() => { setShowTransfer(false); onClose(); }}
+      />
+    )}
+    </>
   );
 }

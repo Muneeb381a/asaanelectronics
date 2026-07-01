@@ -8,7 +8,7 @@ import {
   cancelInstallment, rescheduleInstallment, deleteInstallment,
   approveInstallment, closeInstallment, importInstallments, updateInstallment,
   getDueSheet, waiverInstallment, getSettlement, pauseInstallment, unpauseInstallment,
-  listOverdueWithStage,
+  listOverdueWithStage, transferInstallment,
 } from './installments.controller.js';
 
 const router = Router();
@@ -30,6 +30,7 @@ router.patch('/:id/cancel',     requireOwner, cancelInstallment);
 router.patch('/:id/reschedule', requireOwner, rescheduleInstallment);
 router.patch('/:id/waiver',     requireOwner, waiverInstallment);
 router.patch('/:id/pause',      requireOwner, pauseInstallment);
+router.patch('/:id/transfer',   requireOwner, transferInstallment);
 router.delete('/:id/pause',     requireOwner, unpauseInstallment);
 router.delete('/:id',           requireOwner, deleteInstallment);
 

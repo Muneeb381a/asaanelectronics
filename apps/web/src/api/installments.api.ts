@@ -112,7 +112,18 @@ export const installmentsApi = {
 
   overdueWithStage: (search?: string) =>
     api.get<{ data: OverdueWithStageItem[] }>('/installments/overdue-stage', { params: search ? { search } : undefined }).then(unwrap<OverdueWithStageItem[]>),
+
+  transfer: (id: string, body: { newCustomerId: string; reason?: string }) =>
+    api.patch<{ data: TransferResult }>(`/installments/${id}/transfer`, body).then(unwrap<TransferResult>),
 };
+
+export interface TransferResult {
+  oldId: string;
+  newInstallment: Installment & { customerName: string; productName: string };
+  oldCustomerName: string;
+  newCustomerName: string;
+  reason: string | null;
+}
 
 export interface OverdueWithStageItem {
   id: string;

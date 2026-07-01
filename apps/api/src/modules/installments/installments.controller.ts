@@ -246,3 +246,15 @@ export async function listOverdueWithStage(req: AuthRequest, res: Response) {
   const rows = await svc.overdueWithStage(req.user!.sellerId!, search?.trim() || undefined);
   success(res, rows);
 }
+
+export async function transferInstallment(req: AuthRequest, res: Response) {
+  const result = await svc.transfer(req.params['id']!, req.user!.sellerId!, req.user!.userId, req.body);
+  success(res, result, 201);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'INSTALLMENT_TRANSFERRED', entityType: 'INSTALLMENT', entityId: req.params['id']!,
+    description: `Installment ${req.params['id']!} transferred from ${result.oldCustomerName} to ${result.newCustomerName}${result.reason ? ` — ${result.reason}` : ''}. New installment: ${result.newInstallment.id}`,
+    meta: { oldId: result.oldId, newId: result.newInstallment.id, newCustomerName: result.newCustomerName, reason: result.reason },
+    ...auditCtx(req),
+  }).catch(console.error);
+}

@@ -722,6 +722,73 @@ export class InstallmentsService {
     return updated;
   }
 
+  async transfer(id: string, sellerId: string, ownerId: string, body: { newCustomerId: string; reason?: string }) {
+    const old = await this.getOne(id, sellerId);
+    if (old.status !== 'ACTIVE') throw new AppError('Only active installments can be transferred', 400);
+    if (old.customerId === body.newCustomerId) throw new AppError('Cannot transfer to the same customer', 400);
+
+    const [newCust] = await db
+      .select({ id: customers.id, name: customers.name })
+      .from(customers)
+      .where(and(eq(customers.id, body.newCustomerId), eq(customers.sellerId, sellerId), isNull(customers.deletedAt)));
+    if (!newCust) throw new AppError('Customer not found', 404);
+
+    const monthly    = Number(old.monthly);
+    const remaining  = Number(old.remaining);
+    const paidAmount = Number(old.totalAmount) - Number(old.downPayment) - remaining;
+    const paidPeriods     = Math.max(0, Math.floor(paidAmount / (monthly || 1) + 0.001));
+    const remainingPeriods = Math.max(1, old.months - paidPeriods);
+
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sellerId}))`);
+
+      // Cancel old installment
+      await tx.update(installments).set({ status: 'CANCELLED' }).where(eq(installments.id, id));
+
+      // Generate new invoice number
+      const year = new Date().getFullYear();
+      const [{ nextSeq }] = await tx.execute<{ nextSeq: number }>(sql`
+        SELECT COALESCE(
+          MAX(CAST(SPLIT_PART(i.invoice_number, '-', 3) AS INTEGER)), 0
+        ) + 1 AS "nextSeq"
+        FROM installments i
+        INNER JOIN customers c ON i.customer_id = c.id
+        WHERE c.seller_id = ${sellerId}
+          AND i.invoice_number LIKE ${'INV-' + year + '-%'}
+      `);
+      const invoiceNumber = `INV-${year}-${String(nextSeq).padStart(4, '0')}`;
+
+      const [newInst] = await tx
+        .insert(installments)
+        .values({
+          customerId:       body.newCustomerId,
+          productId:        old.productId,
+          totalAmount:      String(remaining),
+          downPayment:      '0',
+          remaining:        String(remaining),
+          monthly:          String(monthly.toFixed(2)),
+          months:           remainingPeriods,
+          startDate:        new Date(),
+          invoiceNumber,
+          imeiNumber:       old.imeiNumber,
+          cashPrice:        old.cashPrice,
+          profitMarkup:     old.profitMarkup,
+          paymentFrequency: old.paymentFrequency as 'monthly' | 'daily',
+          paymentDueDay:    old.paymentDueDay,
+          status:           'ACTIVE',
+        })
+        .returning();
+
+      return {
+        oldId:          id,
+        newInstallment: { ...newInst, customerName: newCust.name, productName: old.productName },
+        oldCustomerName: old.customerName,
+        newCustomerName: newCust.name,
+        reason:          body.reason ?? null,
+      };
+    });
+  }
+
   async overdueWithStage(sellerId: string, search?: string) {
     const searchFilter = search
       ? sql`AND (c.name ILIKE ${`%${search}%`} OR c.phone ILIKE ${`%${search}%`})`
