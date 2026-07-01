@@ -17,7 +17,7 @@ import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi, type PaymentAccount } from '../api/sellers.api.ts';
 import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
 import { repossessionsApi } from '../api/repossessions.api.ts';
-import { openBill } from '../utils/bill.ts';
+import { openBill, openLegalNotice } from '../utils/bill.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
@@ -2009,6 +2009,34 @@ export default function InstallmentsPage() {
                 Repossess Device
               </button>
             )}
+            {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && isOwner && (() => {
+              const dueDate  = calcNextDueDate(inst);
+              const daysLate = dueDate ? Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / 86_400_000)) : (inst.status === 'DEFAULTED' ? 30 : 0);
+              if (daysLate < 30 && inst.status !== 'DEFAULTED') return null;
+              return (
+                <button
+                  onClick={() => {
+                    close();
+                    if (!shopData) return;
+                    openLegalNotice({
+                      shop: { shopName: shopData.shopName, phone: shopData.phone, address: shopData.address },
+                      customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
+                      product: inst.productName,
+                      imeiNumber: inst.imeiNumber,
+                      totalAmount: inst.totalAmount,
+                      downPayment: inst.downPayment,
+                      remaining: inst.remaining,
+                      invoiceNumber: inst.invoiceNumber,
+                      startDate: inst.startDate,
+                      daysOverdue: daysLate,
+                    });
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition font-medium"
+                >
+                  Legal Notice (Print)
+                </button>
+              );
+            })()}
             {inst.status === 'ACTIVE' && isOwner && (
               <button onClick={() => { close(); setDefaultConfirm({ open: true, id: inst.id }); }}
                 className="w-full text-left px-3 py-2 text-xs text-orange-600 hover:bg-orange-50 transition">

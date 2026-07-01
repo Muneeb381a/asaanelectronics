@@ -332,6 +332,118 @@ export async function openBill(data: BillData) {
   w.document.close();
 }
 
+export interface LegalNoticeData {
+  shop: { shopName: string; phone: string; address?: string | null };
+  customer: { name: string; phone: string; cnic?: string | null; address?: string | null; area?: string | null };
+  product: string;
+  imeiNumber?: string | null;
+  totalAmount: string | number;
+  downPayment: string | number;
+  remaining: string | number;
+  invoiceNumber?: string | null;
+  startDate: string;
+  daysOverdue: number;
+  issuedBy?: string | null;
+}
+
+export function openLegalNotice(data: LegalNoticeData) {
+  const today     = fmtDate(new Date());
+  const deadline  = fmtDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const invoiceNo = data.invoiceNumber ?? 'N/A';
+  const outstandingAmt = pkr(data.remaining);
+  const totalAmt       = pkr(data.totalAmount);
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Legal Notice — ${data.customer.name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Times New Roman',serif;background:#fff;padding:30px;color:#111;font-size:12px;line-height:1.7;max-width:720px;margin:auto}
+  .header{text-align:center;border-bottom:3px solid #111;padding-bottom:12px;margin-bottom:18px}
+  .shop-name{font-size:20px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  .shop-sub{font-size:11px;color:#333;margin-top:2px}
+  .notice-title{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin:14px 0 4px;text-align:center;text-decoration:underline}
+  .notice-title-ur{font-family:'Noto Nastaliq Urdu',serif;font-size:17px;direction:rtl;text-align:center;color:#333;margin-bottom:14px}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:16px;padding:10px 12px;background:#f9f9f9;border:1px solid #ddd;border-radius:3px}
+  .ml{font-size:10px;color:#555;font-weight:700;text-transform:uppercase}
+  .mv{font-size:11.5px;font-weight:600;color:#111}
+  p{margin-bottom:10px;text-align:justify}
+  .amount{font-weight:700;font-size:13px}
+  .deadline{font-weight:700;color:#b91c1c;font-size:13px}
+  .ur-para{font-family:'Noto Nastaliq Urdu',serif;font-size:14px;direction:rtl;text-align:right;background:#fafafa;padding:8px 12px;border-right:3px solid #111;margin-bottom:10px;line-height:2}
+  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px}
+  .sig-line{border-top:1px solid #333;padding-top:4px;font-size:10px;color:#444;text-align:center}
+  .footer{margin-top:16px;font-size:9.5px;color:#666;text-align:center;border-top:1px solid #ddd;padding-top:8px}
+  @media print{
+    @page{size:A4 portrait;margin:15mm 18mm}
+    body{padding:0;max-width:100%}
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="shop-name">${data.shop.shopName}</div>
+    <div class="shop-sub">${data.shop.phone}${data.shop.address ? ' · ' + data.shop.address : ''}</div>
+  </div>
+
+  <div class="notice-title">Legal Notice / قانونی نوٹس</div>
+  <div class="notice-title-ur">بذریعہ اطلاع قانونی تقاضا</div>
+
+  <div class="meta-grid">
+    <div><div class="ml">Date Issued</div><div class="mv">${today}</div></div>
+    <div><div class="ml">Response Deadline</div><div class="mv deadline">${deadline}</div></div>
+    <div><div class="ml">Invoice No.</div><div class="mv">${invoiceNo}</div></div>
+    <div><div class="ml">Days Overdue</div><div class="mv" style="color:#b91c1c">${data.daysOverdue} days</div></div>
+    <div><div class="ml">To (Defaulter)</div><div class="mv">${data.customer.name}</div></div>
+    <div><div class="ml">Phone</div><div class="mv">${data.customer.phone}</div></div>
+    ${data.customer.cnic ? `<div><div class="ml">CNIC</div><div class="mv">${data.customer.cnic}</div></div>` : ''}
+    ${data.customer.address || data.customer.area ? `<div><div class="ml">Address</div><div class="mv">${data.customer.address ?? data.customer.area}</div></div>` : ''}
+    <div><div class="ml">Product</div><div class="mv">${data.product}</div></div>
+    ${data.imeiNumber ? `<div><div class="ml">IMEI</div><div class="mv" style="font-family:monospace">${data.imeiNumber}</div></div>` : ''}
+    <div><div class="ml">Total Amount</div><div class="mv">${totalAmt}</div></div>
+    <div><div class="ml">Outstanding Balance</div><div class="mv" style="color:#b91c1c">${outstandingAmt}</div></div>
+  </div>
+
+  <p>This legal notice is being served upon you, <strong>${data.customer.name}</strong>, residing at ${data.customer.address ?? data.customer.area ?? 'the address known to us'}, regarding your failure to fulfill the installment payment obligations under the agreement dated <strong>${fmtDate(new Date(data.startDate))}</strong> (Invoice: ${invoiceNo}).</p>
+
+  <p>Under the said agreement, you had agreed to purchase <strong>${data.product}</strong>${data.imeiNumber ? ` (IMEI: ${data.imeiNumber})` : ''} on installment basis for a total amount of <span class="amount">${totalAmt}</span>. As of today, <strong>${today}</strong>, you have failed to make payment for <strong>${data.daysOverdue} days</strong> and an outstanding balance of <span class="amount">${outstandingAmt}</span> remains unpaid.</p>
+
+  <p>You are hereby formally demanded and required to pay the outstanding amount of <span class="amount deadline">${outstandingAmt}</span> within <strong>7 (seven) days</strong> from the date of this notice — on or before <span class="deadline">${deadline}</span>.</p>
+
+  <p>Failure to comply within the stipulated time will compel us to initiate legal proceedings against you under applicable laws, including recovery of the full outstanding amount plus legal costs. Additionally, the device (${data.product}) may be repossessed as per the agreement terms.</p>
+
+  <div class="ur-para">
+    مطلع کیا جاتا ہے کہ آپ نے اقساطی معاہدہ بمطابق انوائس نمبر ${invoiceNo} کے تحت ادائیگی میں ${data.daysOverdue} دن کی تاخیر کی ہے۔ واجب الادا رقم ${outstandingAmt} ہے۔ آپ کو ہدایت دی جاتی ہے کہ اس نوٹس کی تاریخ سے 7 دن کے اندر اندر یعنی ${deadline} تک مکمل رقم ادا کریں۔ بصورت دیگر قانونی کارروائی کی جائے گی اور سامان واپس لیا جا سکتا ہے۔
+  </div>
+
+  <p style="font-size:10.5px;color:#555">This notice is being issued without prejudice to all other rights and remedies available to ${data.shop.shopName} under law and the agreement.${data.issuedBy ? ` Issued by: ${data.issuedBy}.` : ''}</p>
+
+  <div class="sig-grid">
+    <div class="sig-line">
+      Authorized Signatory · ${data.shop.shopName}<br/>
+      <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px">مجاز نمائندہ دستخط</span>
+    </div>
+    <div class="sig-line">
+      Stamp / مہر
+    </div>
+  </div>
+
+  <div class="footer">
+    ${data.shop.shopName} · ${data.shop.phone}${data.shop.address ? ' · ' + data.shop.address : ''} · Issued: ${today}
+  </div>
+<script>window.onload=()=>window.print();</script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank', 'width=840,height=1000');
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+}
+
 export async function openCashSaleBill(data: CashSaleBillData) {
   const invoiceNo = `CS-${data.saleId.slice(0, 6).toUpperCase()}`;
   const saleDate  = fmtDate(data.soldAt);
