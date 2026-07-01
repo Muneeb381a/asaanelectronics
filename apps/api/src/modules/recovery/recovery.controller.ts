@@ -46,6 +46,10 @@ export async function listPromisesDue(req: AuthRequest, res: Response) {
   success(res, await svc.promisesDue(req.user!.sellerId!));
 }
 
+export async function listAllPromises(req: AuthRequest, res: Response) {
+  success(res, await svc.allPromises(req.user!.sellerId!));
+}
+
 export async function listAgentStats(req: AuthRequest, res: Response) {
   success(res, await svc.agentStats(req.user!.sellerId!));
 }

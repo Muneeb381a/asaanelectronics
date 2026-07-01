@@ -23,6 +23,7 @@ export interface PromiseDue {
   customerPhone: string;
   productName: string;
   actorName: string | null;
+  remaining?: string;
 }
 
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
@@ -39,4 +40,7 @@ export const recoveryApi = {
 
   promisesDue: () =>
     api.get<{ data: PromiseDue[] }>('/recovery/promises-due').then(unwrap<PromiseDue[]>),
+
+  allPromises: () =>
+    api.get<{ data: PromiseDue[] }>('/recovery/promises-all').then(unwrap<PromiseDue[]>),
 };

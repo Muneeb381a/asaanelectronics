@@ -4,10 +4,11 @@ import toast from 'react-hot-toast';
 import {
   PhoneCall, MapPin, HandCoins, XCircle, AlertOctagon,
   Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Clock, LayoutList, Map as MapIcon,
+  CalendarClock, AlertTriangle, CalendarCheck,
 } from 'lucide-react';
 import { installmentsApi, type Installment } from '../api/installments.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
-import { recoveryApi, type RecoveryActionType, type RecoveryAction } from '../api/recovery.api.ts';
+import { recoveryApi, type RecoveryActionType, type RecoveryAction, type PromiseDue } from '../api/recovery.api.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
@@ -265,6 +266,113 @@ function InstallmentRow({
   );
 }
 
+// ── Promise Tracker ─────────────────────────────────────────────────────────────
+
+function PromiseRow({ p, onOpenInstallment }: { p: PromiseDue; onOpenInstallment: (id: string) => void }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const pd = new Date(p.promiseDate);
+  pd.setHours(0, 0, 0, 0);
+  const diff = Math.round((pd.getTime() - today.getTime()) / 86_400_000);
+  const isBroken  = diff < 0;
+  const isToday   = diff === 0;
+
+  const diffLabel = isBroken
+    ? `${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''} ago`
+    : isToday
+    ? 'Today'
+    : `in ${diff} day${diff !== 1 ? 's' : ''}`;
+
+  return (
+    <button
+      onClick={() => onOpenInstallment(p.installmentId)}
+      className="w-full flex items-start gap-3 px-4 py-3 rounded-xl text-left transition hover:bg-gray-50 border border-transparent"
+    >
+      <div className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${isBroken ? 'bg-red-500' : isToday ? 'bg-orange-400' : 'bg-blue-400'}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{p.customerName}</p>
+        <p className="text-xs text-gray-400 truncate">{p.productName} · {p.customerPhone}</p>
+        {p.note && <p className="text-[11px] text-gray-500 truncate mt-0.5">"{p.note}"</p>}
+        {p.actorName && <p className="text-[11px] text-violet-500 mt-0.5">by {p.actorName}</p>}
+      </div>
+      <div className="text-right shrink-0">
+        <p className={`text-xs font-bold ${isBroken ? 'text-red-600' : isToday ? 'text-orange-600' : 'text-blue-600'}`}>{diffLabel}</p>
+        <p className="text-[11px] text-gray-400">{fmtDate(p.promiseDate)}</p>
+        {p.remaining && <p className="text-[11px] text-gray-500 mt-0.5">PKR {Number(p.remaining).toLocaleString('en-PK', { maximumFractionDigits: 0 })}</p>}
+      </div>
+    </button>
+  );
+}
+
+function PromiseTracker({ onOpenInstallment }: { onOpenInstallment: (id: string) => void }) {
+  const { data: promises = [], isLoading } = useQuery({
+    queryKey: ['promises-all'],
+    queryFn: recoveryApi.allPromises,
+    staleTime: 2 * 60_000,
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const broken   = promises.filter((p) => new Date(p.promiseDate) < today);
+  const dueToday = promises.filter((p) => {
+    const d = new Date(p.promiseDate);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() === today.getTime();
+  });
+  const upcoming = promises.filter((p) => new Date(p.promiseDate) > today);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32 text-gray-400">
+        <Loader2 size={18} className="animate-spin" />
+      </div>
+    );
+  }
+
+  if (promises.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+        <CalendarCheck size={32} className="opacity-30" />
+        <p className="text-sm">No promises logged</p>
+        <p className="text-xs text-gray-300">Log a Promise-to-Pay action to track here</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 space-y-1">
+      {broken.length > 0 && (
+        <>
+          <div className="flex items-center gap-1.5 px-2 py-1.5 mt-1">
+            <AlertTriangle size={11} className="text-red-500 shrink-0" />
+            <p className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Broken Promises ({broken.length})</p>
+          </div>
+          {broken.map((p) => <PromiseRow key={p.id} p={p} onOpenInstallment={onOpenInstallment} />)}
+        </>
+      )}
+      {dueToday.length > 0 && (
+        <>
+          <div className="flex items-center gap-1.5 px-2 py-1.5 mt-2">
+            <Clock size={11} className="text-orange-500 shrink-0" />
+            <p className="text-[11px] font-bold text-orange-600 uppercase tracking-wider">Due Today ({dueToday.length})</p>
+          </div>
+          {dueToday.map((p) => <PromiseRow key={p.id} p={p} onOpenInstallment={onOpenInstallment} />)}
+        </>
+      )}
+      {upcoming.length > 0 && (
+        <>
+          <div className="flex items-center gap-1.5 px-2 py-1.5 mt-2">
+            <CalendarClock size={11} className="text-blue-500 shrink-0" />
+            <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Upcoming 7 Days ({upcoming.length})</p>
+          </div>
+          {upcoming.map((p) => <PromiseRow key={p.id} p={p} onOpenInstallment={onOpenInstallment} />)}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 type SortKey = 'default' | 'remaining_desc' | 'remaining_asc' | 'name_asc';
@@ -306,6 +414,17 @@ export default function RecoveryPage() {
   const [sortBy,        setSortBy]     = useState<SortKey>('default');
   const [groupMode,     setGroupMode]  = useState<'status' | 'area'>('status');
   const [selected,      setSelected]   = useState<Installment | null>(null);
+  const [leftTab,       setLeftTab]    = useState<'list' | 'promises'>('list');
+
+  const { data: promisesData = [] } = useQuery({
+    queryKey: ['promises-all'],
+    queryFn: recoveryApi.allPromises,
+    staleTime: 2 * 60_000,
+  });
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const brokenCount = promisesData.filter((p) => new Date(p.promiseDate) < today).length;
+  const todayCount  = promisesData.filter((p) => { const d = new Date(p.promiseDate); d.setHours(0,0,0,0); return d.getTime() === today.getTime(); }).length;
+  const promiseBadge = brokenCount + todayCount;
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 300);
@@ -328,6 +447,16 @@ export default function RecoveryPage() {
 
   const totalOverdueRemaining = overdueList.reduce((s, i) => s + Number(i.remaining), 0);
   const totalActiveRemaining  = currentList.reduce((s, i) => s + Number(i.remaining), 0);
+
+  async function openInstallmentById(id: string) {
+    const found = installments.find((i) => i.id === id);
+    if (found) { setSelected(found); setLeftTab('list'); return; }
+    try {
+      const inst = await installmentsApi.getOne(id);
+      setSelected(inst);
+      setLeftTab('list');
+    } catch { /* installment not in current view — ignore */ }
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -361,6 +490,27 @@ export default function RecoveryPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left — installment list (hidden on mobile when an item is selected) */}
         <aside className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-gray-100 bg-white flex-col shrink-0`}>
+          {/* Tab bar */}
+          <div className="flex border-b border-gray-100 shrink-0">
+            <button
+              onClick={() => setLeftTab('list')}
+              className={`flex-1 py-2.5 text-xs font-semibold transition ${leftTab === 'list' ? 'text-blue-600 border-b-2 border-blue-600 -mb-px' : 'text-gray-400 hover:text-gray-600'}`}>
+              Installments
+            </button>
+            <button
+              onClick={() => setLeftTab('promises')}
+              className={`flex-1 py-2.5 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${leftTab === 'promises' ? 'text-orange-600 border-b-2 border-orange-500 -mb-px' : 'text-gray-400 hover:text-gray-600'}`}>
+              Promises
+              {promiseBadge > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">{promiseBadge}</span>
+              )}
+            </button>
+          </div>
+
+          {leftTab === 'promises' ? (
+            <PromiseTracker onOpenInstallment={openInstallmentById} />
+          ) : (
+          <>
           <div className="p-4 border-b border-gray-100 space-y-2">
             <input
               type="text"
@@ -469,6 +619,8 @@ export default function RecoveryPage() {
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">Current</p>
             </div>
           </div>
+          </>
+          )}
         </aside>
 
         {/* Right — recovery panel (full screen on mobile when selected) */}

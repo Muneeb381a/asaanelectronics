@@ -206,4 +206,39 @@ export class RecoveryService {
       .orderBy(asc(recoveryActions.promiseDate))
       .limit(20);
   }
+
+  async allPromises(sellerId: string) {
+    const sevenDaysAhead = new Date();
+    sevenDaysAhead.setDate(sevenDaysAhead.getDate() + 7);
+
+    return db
+      .select({
+        id:            recoveryActions.id,
+        installmentId: recoveryActions.installmentId,
+        promiseDate:   recoveryActions.promiseDate,
+        note:          recoveryActions.note,
+        createdAt:     recoveryActions.createdAt,
+        customerName:  customers.name,
+        customerPhone: customers.phone,
+        productName:   products.name,
+        remaining:     installments.remaining,
+        actorName:     users.name,
+      })
+      .from(recoveryActions)
+      .innerJoin(installments, eq(recoveryActions.installmentId, installments.id))
+      .innerJoin(customers,    eq(installments.customerId, customers.id))
+      .innerJoin(products,     eq(installments.productId,  products.id))
+      .leftJoin(users,         eq(recoveryActions.userId,  users.id))
+      .where(and(
+        eq(recoveryActions.sellerId, sellerId),
+        eq(recoveryActions.type, 'PROMISE_TO_PAY'),
+        sql`${recoveryActions.promiseDate} IS NOT NULL`,
+        sql`${recoveryActions.promiseDate}::date <= ${sevenDaysAhead}`,
+        eq(installments.status, 'ACTIVE'),
+        isNull(installments.deletedAt),
+        isNull(customers.deletedAt),
+      ))
+      .orderBy(asc(recoveryActions.promiseDate))
+      .limit(150);
+  }
 }
