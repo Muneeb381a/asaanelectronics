@@ -21,6 +21,7 @@ export interface Stats {
   recentInstallments: RecentInstallment[];
   lowStockItems: Array<{ id: string; name: string; stock: number; minStock: number }>;
   promisesDueCount: number;
+  guarantorRiskCount: number;
 }
 
 export interface Reports {

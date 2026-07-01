@@ -56,10 +56,11 @@ export default function DashboardLayout() {
     enabled: isOwner || !!perms?.canViewReports,
   });
 
-  const overdueCount  = stats?.overdueCount ?? 0;
-  const lowStockItems = stats?.lowStockItems ?? [];
-  const promisesDue   = stats?.promisesDueCount ?? 0;
-  const totalAlerts   = overdueCount + lowStockItems.length + promisesDue;
+  const overdueCount       = stats?.overdueCount       ?? 0;
+  const lowStockItems      = stats?.lowStockItems       ?? [];
+  const promisesDue        = stats?.promisesDueCount    ?? 0;
+  const guarantorRiskCount = stats?.guarantorRiskCount  ?? 0;
+  const totalAlerts        = overdueCount + lowStockItems.length + promisesDue + guarantorRiskCount;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -154,6 +155,18 @@ export default function DashboardLayout() {
           <div>
             <p className="text-sm font-medium text-gray-900">{promisesDue} promise{promisesDue !== 1 ? 's' : ''} due</p>
             <p className="text-xs text-gray-400">Customers promised to pay today</p>
+          </div>
+        </button>
+      )}
+      {guarantorRiskCount > 0 && (
+        <button
+          onClick={() => { navigate('/guarantors'); setShowBell(false); }}
+          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-rose-50 transition text-left border-b border-gray-50"
+        >
+          <Shield size={14} className="text-rose-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{guarantorRiskCount} risky guarantor{guarantorRiskCount !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400">Guarantor ka apna installment overdue hai</p>
           </div>
         </button>
       )}

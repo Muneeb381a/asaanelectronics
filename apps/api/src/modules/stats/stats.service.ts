@@ -197,10 +197,11 @@ export class StatsService {
         recentInstallments: [],
         lowStockItems:     [],
         promisesDueCount:  0,
+        guarantorRiskCount: 0,
       };
     }
 
-    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData] = await Promise.all([
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -315,6 +316,40 @@ export class StatsService {
           sql`${recoveryActions.promiseDate} IS NOT NULL`,
           sql`${recoveryActions.promiseDate}::date <= NOW()::date`,
         )),
+
+      // Guarantors whose OWN installment is overdue (SA3)
+      db.execute<{ total: string }>(sql`
+        SELECT COUNT(DISTINCT g.id)::text AS total
+        FROM customers g
+        INNER JOIN installments gi
+          ON gi.customer_id = g.id
+          AND gi.status = 'ACTIVE'
+          AND gi.deleted_at IS NULL
+        INNER JOIN customers borrower
+          ON (borrower.guarantor_phone = g.phone OR borrower.guarantor2_phone = g.phone)
+          AND borrower.seller_id = ${sellerId}
+          AND borrower.deleted_at IS NULL
+        INNER JOIN installments bi
+          ON bi.customer_id = borrower.id
+          AND bi.status = 'ACTIVE'
+          AND bi.deleted_at IS NULL
+        WHERE g.seller_id = ${sellerId}
+          AND g.deleted_at IS NULL
+          AND g.phone IS NOT NULL
+          AND (
+            CASE WHEN gi.payment_frequency = 'daily' THEN
+              gi.start_date + ((GREATEST(0, FLOOR(
+                (gi.total_amount::numeric - gi.down_payment::numeric - gi.remaining::numeric)
+                / NULLIF(gi.monthly::numeric, 0)
+              )) + 1) || ' days')::interval
+            ELSE
+              DATE_TRUNC('month', gi.start_date + ((GREATEST(0, FLOOR(
+                (gi.total_amount::numeric - gi.down_payment::numeric - gi.remaining::numeric)
+                / NULLIF(gi.monthly::numeric, 0)
+              )) + 1) || ' months')::interval)::date + (gi.payment_due_day - 1)
+            END
+          ) < NOW()
+      `),
     ]);
 
     return {
@@ -327,7 +362,8 @@ export class StatsService {
       overdueAmount: Number(overdueCount[0]?.amount ?? 0),
       recentInstallments: recent,
       lowStockItems,
-      promisesDueCount: Number(promisesData[0]?.total ?? 0),
+      promisesDueCount:    Number(promisesData[0]?.total ?? 0),
+      guarantorRiskCount:  Number((guarantorRisk[0] as { total: string } | undefined)?.total ?? 0),
     };
   }
 
