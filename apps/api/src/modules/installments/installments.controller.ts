@@ -200,6 +200,30 @@ export async function getSettlement(req: AuthRequest, res: Response) {
   });
 }
 
+export async function pauseInstallment(req: AuthRequest, res: Response) {
+  const months = Number(req.body.months);
+  const reason = req.body.reason as string | undefined;
+  const result = await svc.pause(req.params['id']!, req.user!.sellerId!, req.user!.userId, { months, reason });
+  success(res, result);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'INSTALLMENT_PAUSED', entityType: 'INSTALLMENT', entityId: result.id,
+    description: `Installment paused for ${months} month${months !== 1 ? 's' : ''}${reason ? ` — ${reason}` : ''}`,
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
+export async function unpauseInstallment(req: AuthRequest, res: Response) {
+  const result = await svc.unpause(req.params['id']!, req.user!.sellerId!);
+  success(res, result);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'INSTALLMENT_UNPAUSED', entityType: 'INSTALLMENT', entityId: result.id,
+    description: 'Installment pause removed',
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
 export async function importInstallments(req: AuthRequest, res: Response) {
   const parsed = importInstallmentsSchema.safeParse(req.body);
   if (!parsed.success) {

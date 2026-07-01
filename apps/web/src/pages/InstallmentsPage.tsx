@@ -87,10 +87,17 @@ function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
-function Badge({ status }: { status: InstallmentStatus }) {
+function Badge({ status, paused }: { status: InstallmentStatus; paused?: boolean }) {
   return (
-    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[status]}`}>
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+    <span className="inline-flex items-center gap-1">
+      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[status]}`}>
+        {status.charAt(0) + status.slice(1).toLowerCase()}
+      </span>
+      {paused && (
+        <span className="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-600">
+          Paused
+        </span>
+      )}
     </span>
   );
 }
@@ -935,6 +942,120 @@ function WaiverModal({ inst, onClose }: { inst: Installment; onClose: () => void
   );
 }
 
+function PauseModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [months, setMonths] = useState(1);
+  const [reason, setReason] = useState('');
+  const isPaused = !!inst.pausedUntil;
+
+  const pauseMutation = useMutation({
+    mutationFn: () => installmentsApi.pause(inst.id, { months, reason: reason.trim() || undefined }),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: ['installments'] });
+      qc.setQueryData(['installment-single', inst.id], updated);
+      toast.success(`Installment paused until ${fmtDate(new Date(updated.pausedUntil!))}`);
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to pause')),
+  });
+
+  const unpauseMutation = useMutation({
+    mutationFn: () => installmentsApi.unpause(inst.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['installments'] });
+      toast.success('Installment pause removed');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to remove pause')),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">
+            {isPaused ? 'Installment Paused' : 'Pause Installment'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {isPaused ? (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 space-y-1">
+              <p className="text-sm font-semibold text-amber-800">Currently Paused</p>
+              <p className="text-xs text-amber-700">
+                Paused until <span className="font-semibold">{fmtDate(new Date(inst.pausedUntil!))}</span>
+              </p>
+              {inst.pauseReason && (
+                <p className="text-xs text-amber-600">Reason: {inst.pauseReason}</p>
+              )}
+              <p className="text-xs text-amber-500 mt-2">
+                Remove the pause to resume normal collection.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">Pause duration</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[1, 2, 3, 6].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setMonths(m)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                        months === m
+                          ? 'bg-amber-500 text-white border-amber-500'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-amber-300'
+                      }`}
+                    >
+                      {m} month{m !== 1 ? 's' : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Reason <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. Customer hospitalized, travelling abroad"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <p className="text-xs text-gray-400">
+                Due dates will shift forward by {months} month{months !== 1 ? 's' : ''}. No payments expected during pause.
+              </p>
+            </>
+          )}
+        </div>
+
+        <div className="px-5 pb-5 flex gap-2">
+          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          {isPaused ? (
+            <button
+              onClick={() => unpauseMutation.mutate()}
+              disabled={unpauseMutation.isPending}
+              className="flex-1 px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition disabled:opacity-60"
+            >
+              {unpauseMutation.isPending ? 'Removing…' : 'Remove Pause'}
+            </button>
+          ) : (
+            <button
+              onClick={() => pauseMutation.mutate()}
+              disabled={pauseMutation.isPending}
+              className="flex-1 px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition disabled:opacity-60"
+            >
+              {pauseMutation.isPending ? 'Pausing…' : `Pause ${months} Month${months !== 1 ? 's' : ''}`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 
 function BatchReminderModal({ shopName, onClose }: { shopName: string; onClose: () => void }) {
@@ -1238,6 +1359,7 @@ export default function InstallmentsPage() {
   const [payInst, setPayInst] = useState<Installment | null>(null);
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
   const [waiverInst, setWaiverInst] = useState<Installment | null>(null);
+  const [pauseInst, setPauseInst] = useState<Installment | null>(null);
   const [showBulk, setShowBulk] = useState(false);
   const [showBatchReminder, setShowBatchReminder] = useState(false);
   const [waPickerInst, setWaPickerInst] = useState<Installment | null>(null);
@@ -1549,7 +1671,7 @@ export default function InstallmentsPage() {
                       <div className="flex-1 min-w-0 mr-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="font-semibold text-gray-900 text-sm leading-snug">{inst.customerName}</p>
-                          <Badge status={inst.status} />
+                          <Badge status={inst.status} paused={!!inst.pausedUntil} />
                           {isDaily && (
                             <span className="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700">Daily</span>
                           )}
@@ -1735,7 +1857,7 @@ export default function InstallmentsPage() {
                       })()}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Badge status={inst.status} />
+                      <Badge status={inst.status} paused={!!inst.pausedUntil} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
@@ -1869,6 +1991,12 @@ export default function InstallmentsPage() {
                 Balance Waiver
               </button>
             )}
+            {inst.status === 'ACTIVE' && isOwner && (
+              <button onClick={() => { close(); setPauseInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-orange-600 hover:bg-orange-50 transition">
+                {inst.pausedUntil ? 'Manage Pause' : 'Pause Installment'}
+              </button>
+            )}
             {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && (
               <button onClick={() => { close(); setRecoveryInst(inst); }}
                 className="w-full text-left px-3 py-2 text-xs text-violet-600 hover:bg-violet-50 transition">
@@ -1962,6 +2090,7 @@ export default function InstallmentsPage() {
       {/* Reschedule modal */}
       {rescheduleInst && <RescheduleModal inst={rescheduleInst} onClose={() => setRescheduleInst(null)} />}
       {waiverInst && <WaiverModal inst={waiverInst} onClose={() => setWaiverInst(null)} />}
+      {pauseInst && <PauseModal inst={pauseInst} onClose={() => setPauseInst(null)} />}
       {showBulk && <BulkPaymentModal onClose={() => setShowBulk(false)} />}
       {showBatchReminder && <BatchReminderModal shopName={shopData?.shopName ?? 'Our Shop'} onClose={() => setShowBatchReminder(false)} />}
       {waPickerInst && shopData && (

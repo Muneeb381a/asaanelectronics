@@ -284,6 +284,9 @@ export const installments = pgTable('installments', {
   createdAt:        timestamp('created_at').defaultNow().notNull(),
   deletedAt:    timestamp('deleted_at'),
   deletedBy:    text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+  pausedUntil:  timestamp('paused_until'),
+  pauseReason:  text('pause_reason'),
+  pausedBy:     text('paused_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [
   index('idx_installments_customer').on(t.customerId),
   index('idx_installments_status').on(t.status),

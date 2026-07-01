@@ -26,6 +26,8 @@ export interface Installment {
   paymentFrequency: string | null;
   paymentDueDay:    number;
   customerArea:     string | null;
+  pausedUntil:      string | null;
+  pauseReason:      string | null;
 }
 
 interface ListResponse {
@@ -101,4 +103,10 @@ export const installmentsApi = {
 
   waiver: (id: string, body: { amount: number; reason?: string }) =>
     api.patch<{ data: Installment }>(`/installments/${id}/waiver`, body).then(unwrap<Installment>),
+
+  pause: (id: string, body: { months: number; reason?: string }) =>
+    api.patch<{ data: Installment }>(`/installments/${id}/pause`, body).then(unwrap<Installment>),
+
+  unpause: (id: string) =>
+    api.delete<{ data: Installment }>(`/installments/${id}/pause`).then(unwrap<Installment>),
 };

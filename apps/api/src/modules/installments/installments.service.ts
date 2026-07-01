@@ -154,6 +154,8 @@ export class InstallmentsService {
         paymentFrequency:  installments.paymentFrequency,
         paymentDueDay:     installments.paymentDueDay,
         customerArea:      customers.area,
+        pausedUntil:       installments.pausedUntil,
+        pauseReason:       installments.pauseReason,
         isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
           CASE WHEN ${installments.paymentFrequency} = 'daily'
             THEN (${installments.startDate} + (${installments.months} || ' days')::interval) < now()
@@ -689,5 +691,34 @@ export class InstallmentsService {
 
     dueItems.sort((a, b) => a.area.localeCompare(b.area) || a.customerName.localeCompare(b.customerName));
     return dueItems;
+  }
+
+  async pause(id: string, sellerId: string, pausedBy: string, body: { months: number; reason?: string }) {
+    const row = await this.getOne(id, sellerId);
+    if (row.status !== 'ACTIVE') throw new AppError('Only active installments can be paused', 400);
+    if (body.months < 1 || body.months > 6) throw new AppError('Pause duration must be 1–6 months', 400);
+
+    const now = new Date();
+    const pausedUntil = new Date(now);
+    pausedUntil.setMonth(pausedUntil.getMonth() + body.months);
+
+    const [updated] = await db
+      .update(installments)
+      .set({ pausedUntil, pauseReason: body.reason ?? null, pausedBy })
+      .where(eq(installments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async unpause(id: string, sellerId: string) {
+    const row = await this.getOne(id, sellerId);
+    if (!row.pausedUntil) throw new AppError('Installment is not paused', 400);
+
+    const [updated] = await db
+      .update(installments)
+      .set({ pausedUntil: null, pauseReason: null, pausedBy: null })
+      .where(eq(installments.id, id))
+      .returning();
+    return updated;
   }
 }
