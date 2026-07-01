@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+/* iOS safe area — bottom padding for home indicator */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* iOS scroll lock — overflow:hidden alone doesn't work on Safari */
+body.mobile-menu-open {
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
+}

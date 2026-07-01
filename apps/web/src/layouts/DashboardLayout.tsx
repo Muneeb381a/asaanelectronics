@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
-  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, TrendingUp, ShoppingCart, FileDown, Smartphone, Building2,
+  Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart, FileDown, Smartphone, Building2,
   ArrowLeftRight, AlertOctagon, Shield,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -89,8 +89,12 @@ export default function DashboardLayout() {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    if (mobileOpen) {
+      document.body.classList.add('mobile-menu-open');
+    } else {
+      document.body.classList.remove('mobile-menu-open');
+    }
+    return () => document.body.classList.remove('mobile-menu-open');
   }, [mobileOpen]);
 
   const { mutate: logout } = useMutation({
@@ -202,19 +206,27 @@ export default function DashboardLayout() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile backdrop */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      <div
+        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300 ${mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
 
       {/* Sidebar — fixed overlay on mobile, static on desktop */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-60 bg-white border-r border-gray-100 flex flex-col shadow-sm transition-transform duration-300 ease-in-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         {/* Brand */}
-        <div className="px-5 py-5 border-b border-gray-100">
-          <p className="font-bold text-gray-900 tracking-tight">Assaan Electronics</p>
-          <p className="text-xs text-gray-400 mt-0.5">Installment Manager</p>
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="font-bold text-gray-900 tracking-tight">Assaan Electronics</p>
+            <p className="text-xs text-gray-400 mt-0.5">Installment Manager</p>
+          </div>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden p-2 -mr-1 rounded-xl hover:bg-gray-100 active:bg-gray-200 transition"
+            aria-label="Close menu"
+          >
+            <X size={18} className="text-gray-500" />
+          </button>
         </div>
 
         {/* Nav */}
@@ -283,7 +295,7 @@ export default function DashboardLayout() {
         </div>
 
         {/* User section */}
-        <div className="p-3 border-t border-gray-100 space-y-1">
+        <div className="p-3 border-t border-gray-100 space-y-1" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <button onClick={() => { setShowProfile(true); setMobileOpen(false); }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition group text-left">
             <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
@@ -306,7 +318,7 @@ export default function DashboardLayout() {
       {/* Content wrapper */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile top bar */}
-        <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm flex items-center gap-3 px-4 h-14 shrink-0">
+        <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm flex items-center gap-3 px-4 shrink-0" style={{ minHeight: '3.5rem', paddingTop: 'env(safe-area-inset-top)' }}>
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 rounded-xl hover:bg-gray-100 transition"
