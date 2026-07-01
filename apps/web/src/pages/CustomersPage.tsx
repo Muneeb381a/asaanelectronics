@@ -522,7 +522,7 @@ function DocsTab({ customer, canEdit, isOwner }: { customer: Customer; canEdit: 
   const addMutation = useMutation({
     mutationFn: () => customersApi.addDoc(customer.id, {
       docType:  addType,
-      label:    addLabel.trim() || DOC_TYPES.find((d) => d.type === addType)?.label ?? addType,
+      label:    addLabel.trim() || (DOC_TYPES.find((d) => d.type === addType)?.label ?? addType),
       status:   addStatus,
       notes:    addNotes.trim() || undefined,
     }),
