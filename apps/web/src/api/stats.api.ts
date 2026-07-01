@@ -22,6 +22,7 @@ export interface Stats {
   lowStockItems: Array<{ id: string; name: string; stock: number; minStock: number }>;
   promisesDueCount: number;
   guarantorRiskCount: number;
+  budgetAlertsCount: number;
 }
 
 export interface Reports {

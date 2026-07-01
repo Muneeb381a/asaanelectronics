@@ -10,6 +10,7 @@ import {
 } from './customers.controller.js';
 import { listGuarantors } from './guarantors.controller.js';
 import { listNotes, addNote, deleteNote } from './customer-notes.controller.js';
+import { listCustomerDocs, addCustomerDoc, updateCustomerDoc, deleteCustomerDoc } from './customer-documents.controller.js';
 
 const router = Router();
 
@@ -35,5 +36,10 @@ router.delete('/:id/blacklist',  requireOwner, unblacklistCustomer);
 router.get('/:customerId/notes',            listNotes);
 router.post('/:customerId/notes',           requirePermission('canAddCustomer'), addNote);
 router.delete('/:customerId/notes/:noteId', requireOwner, deleteNote);
+
+router.get('/:customerId/documents',              listCustomerDocs);
+router.post('/:customerId/documents',             requirePermission('canEditCustomer'), addCustomerDoc);
+router.patch('/:customerId/documents/:docId',     requirePermission('canEditCustomer'), updateCustomerDoc);
+router.delete('/:customerId/documents/:docId',    requireOwner, deleteCustomerDoc);
 
 export default router;

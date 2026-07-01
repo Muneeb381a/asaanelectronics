@@ -23,6 +23,16 @@ export interface RecurringSuggestion {
   lastDate: string;
 }
 
+export interface FinancialPeriod {
+  id: string;
+  sellerId: string;
+  year: number;
+  month: number;
+  lockedAt: string;
+  lockedByUserId: string | null;
+  notes: string | null;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const expensesApi = {
@@ -40,4 +50,13 @@ export const expensesApi = {
 
   getRecurringSuggestions: (): Promise<RecurringSuggestion[]> =>
     api.get('/expenses/recurring-suggestions').then(unwrap<RecurringSuggestion[]>),
+
+  listPeriods: () =>
+    api.get<{ data: FinancialPeriod[] }>('/expenses/periods').then(unwrap<FinancialPeriod[]>),
+
+  lockPeriod: (year: number, month: number, notes?: string) =>
+    api.post<{ data: FinancialPeriod }>(`/expenses/periods/${year}/${month}`, { notes }).then(unwrap<FinancialPeriod>),
+
+  unlockPeriod: (year: number, month: number) =>
+    api.delete(`/expenses/periods/${year}/${month}`),
 };

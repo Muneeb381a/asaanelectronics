@@ -60,7 +60,8 @@ export default function DashboardLayout() {
   const lowStockItems      = stats?.lowStockItems       ?? [];
   const promisesDue        = stats?.promisesDueCount    ?? 0;
   const guarantorRiskCount = stats?.guarantorRiskCount  ?? 0;
-  const totalAlerts        = overdueCount + lowStockItems.length + promisesDue + guarantorRiskCount;
+  const budgetAlertsCount  = stats?.budgetAlertsCount   ?? 0;
+  const totalAlerts        = overdueCount + lowStockItems.length + promisesDue + guarantorRiskCount + budgetAlertsCount;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -167,6 +168,18 @@ export default function DashboardLayout() {
           <div>
             <p className="text-sm font-medium text-gray-900">{guarantorRiskCount} risky guarantor{guarantorRiskCount !== 1 ? 's' : ''}</p>
             <p className="text-xs text-gray-400">Guarantor ka apna installment overdue hai</p>
+          </div>
+        </button>
+      )}
+      {budgetAlertsCount > 0 && (
+        <button
+          onClick={() => { navigate('/expenses'); setShowBell(false); }}
+          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-orange-50 transition text-left border-b border-gray-50"
+        >
+          <Wallet size={14} className="text-orange-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{budgetAlertsCount} budget {budgetAlertsCount !== 1 ? 'categories' : 'category'} exceeded</p>
+            <p className="text-xs text-gray-400">Monthly expense limit reach ho gaya</p>
           </div>
         </button>
       )}

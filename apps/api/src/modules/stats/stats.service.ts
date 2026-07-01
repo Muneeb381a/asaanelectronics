@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, isNull, lt, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { cashSales, customers, installments, payments, products, recoveryActions } from '../../db/schema.js';
+import { cashSales, customers, expenses, installments, payments, products, recoveryActions, sellers } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
 
 // ── In-memory TTL cache (per-process, survives request boundaries) ─────────────
@@ -191,17 +191,18 @@ export class StatsService {
         monthCollections: Number(monthCollections[0]?.total ?? 0),
         todayCashSales:   Number(todayCashSales[0]?.total   ?? 0),
         monthCashSales:   Number(monthCashSales[0]?.total   ?? 0),
-        activeCount:       0,
-        overdueCount:      0,
-        overdueAmount:     0,
+        activeCount:        0,
+        overdueCount:       0,
+        overdueAmount:      0,
         recentInstallments: [],
-        lowStockItems:     [],
-        promisesDueCount:  0,
+        lowStockItems:      [],
+        promisesDueCount:   0,
         guarantorRiskCount: 0,
+        budgetAlertsCount:  0,
       };
     }
 
-    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk] = await Promise.all([
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -350,7 +351,30 @@ export class StatsService {
             END
           ) < NOW()
       `),
+
+      // Budget check: seller settings
+      db.query.sellers.findFirst({
+        where: eq(sellers.id, sellerId),
+        columns: { settings: true },
+      }),
+
+      // Budget check: current month expenses by category
+      db
+        .select({ category: expenses.category, total: sum(expenses.amount) })
+        .from(expenses)
+        .where(and(
+          eq(expenses.sellerId, sellerId),
+          gte(expenses.date, monthStart as unknown as Date),
+        ))
+        .groupBy(expenses.category),
     ]);
+
+    const budgetLimits = (sellerRow?.settings?.expenseBudgets ?? {}) as Partial<Record<string, number>>;
+    const spentByCat: Record<string, number> = {};
+    for (const row of monthExpenses) { spentByCat[row.category] = Number(row.total ?? 0); }
+    const budgetAlertsCount = Object.entries(budgetLimits).filter(([cat, limit]) =>
+      limit && limit > 0 && (spentByCat[cat] ?? 0) >= limit,
+    ).length;
 
     return {
       todayCollections: Number(todayCollections[0]?.total ?? 0),
@@ -364,6 +388,7 @@ export class StatsService {
       lowStockItems,
       promisesDueCount:    Number(promisesData[0]?.total ?? 0),
       guarantorRiskCount:  Number((guarantorRisk[0] as { total: string } | undefined)?.total ?? 0),
+      budgetAlertsCount,
     };
   }
 

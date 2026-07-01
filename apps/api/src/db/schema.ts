@@ -703,6 +703,36 @@ export const repossessions = pgTable('repossessions', {
   index('idx_repossessions_installment').on(t.installmentId),
 ]);
 
+// ── Customer Document Checklist ───────────────────────────────────────────────
+export const customerDocuments = pgTable('customer_documents', {
+  id:         text('id').primaryKey().$defaultFn(() => randomUUID()),
+  customerId: text('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  sellerId:   text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  docType:    text('doc_type').notNull(), // SALARY_SLIP | UTILITY_BILL | EMPLOYMENT_LETTER | INCOME_TAX | OTHER
+  label:      text('label').notNull(),
+  status:     text('status').notNull().default('RECEIVED'), // PENDING | RECEIVED | VERIFIED
+  notes:      text('notes'),
+  addedBy:    text('added_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_customer_docs_customer').on(t.customerId),
+  index('idx_customer_docs_seller').on(t.sellerId),
+]);
+
+// ── Financial Period Locks ────────────────────────────────────────────────────
+export const financialPeriods = pgTable('financial_periods', {
+  id:             text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:       text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  year:           integer('year').notNull(),
+  month:          integer('month').notNull(),
+  lockedAt:       timestamp('locked_at').defaultNow().notNull(),
+  lockedByUserId: text('locked_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  notes:          text('notes'),
+}, (t) => [
+  uniqueIndex('uidx_financial_periods_seller_ym').on(t.sellerId, t.year, t.month),
+  index('idx_financial_periods_seller').on(t.sellerId),
+]);
+
 // ── Staff Attendance ──────────────────────────────────────────────────────────
 export const attendance = pgTable('attendance', {
   id:       text('id').primaryKey().$defaultFn(() => randomUUID()),

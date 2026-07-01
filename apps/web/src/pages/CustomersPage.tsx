@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
 import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon } from 'lucide-react';
-import { customersApi, type Customer, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
+import { customersApi, type Customer, type CustomerDoc, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import type { CreateCustomerInput } from '@assaan/shared';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
 import { staffApi, type StaffMember } from '../api/staff.api.ts';
@@ -20,6 +20,7 @@ import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import CustomerAgreementPrint from '../components/CustomerAgreementPrint.tsx';
 import CustomerStatementPrint from '../components/CustomerStatementPrint.tsx';
+import { openCustomerHistoryReport } from '../utils/receipt.ts';
 import { TableSkeleton, CardSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
@@ -471,13 +472,243 @@ function OwnerDirectVerifyModal({ customer, onClose }: { customer: Customer; onC
   );
 }
 
+// ── Standard document definitions (derived from Customer URL fields) ───────────
+
+type UrlKey = keyof Pick<Customer,
+  'cnicFrontUrl' | 'cnicBackUrl' | 'photoUrl' | 'blankChequeUrl' |
+  'guarantorCnicFrontUrl' | 'guarantorCnicBackUrl' |
+  'guarantor2CnicFrontUrl' | 'guarantor2CnicBackUrl'
+>;
+
+const STANDARD_DOCS: { key: UrlKey; label: string; alwaysShow?: boolean }[] = [
+  { key: 'cnicFrontUrl',           label: 'CNIC Front',             alwaysShow: true },
+  { key: 'cnicBackUrl',            label: 'CNIC Back',              alwaysShow: true },
+  { key: 'photoUrl',               label: 'Customer Photo',         alwaysShow: true },
+  { key: 'blankChequeUrl',         label: 'Blank Cheque',           alwaysShow: true },
+  { key: 'guarantorCnicFrontUrl',  label: 'Guarantor 1 CNIC Front' },
+  { key: 'guarantorCnicBackUrl',   label: 'Guarantor 1 CNIC Back'  },
+  { key: 'guarantor2CnicFrontUrl', label: 'Guarantor 2 CNIC Front' },
+  { key: 'guarantor2CnicBackUrl',  label: 'Guarantor 2 CNIC Back'  },
+];
+
+const DOC_TYPES = [
+  { type: 'SALARY_SLIP',          label: 'Salary Slip' },
+  { type: 'UTILITY_BILL',         label: 'Utility Bill' },
+  { type: 'EMPLOYMENT_LETTER',    label: 'Employment Letter' },
+  { type: 'INCOME_TAX',           label: 'Income Tax Return' },
+  { type: 'OTHER',                label: 'Other' },
+] as const;
+
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+  PENDING:  { label: 'Pending',  cls: 'bg-amber-100 text-amber-700' },
+  RECEIVED: { label: 'Received', cls: 'bg-blue-100 text-blue-700'   },
+  VERIFIED: { label: 'Verified', cls: 'bg-green-100 text-green-700' },
+};
+
+function DocsTab({ customer, canEdit, isOwner }: { customer: Customer; canEdit: boolean; isOwner: boolean }) {
+  const qc = useQueryClient();
+  const [showAdd, setShowAdd] = useState(false);
+  const [addType, setAddType] = useState<string>('SALARY_SLIP');
+  const [addLabel, setAddLabel] = useState('');
+  const [addStatus, setAddStatus] = useState<string>('RECEIVED');
+  const [addNotes, setAddNotes] = useState('');
+
+  const { data: physicalDocs = [], isLoading } = useQuery({
+    queryKey: ['customer-docs', customer.id],
+    queryFn: () => customersApi.listDocs(customer.id),
+    staleTime: 60_000,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: () => customersApi.addDoc(customer.id, {
+      docType:  addType,
+      label:    addLabel.trim() || DOC_TYPES.find((d) => d.type === addType)?.label ?? addType,
+      status:   addStatus,
+      notes:    addNotes.trim() || undefined,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customer-docs', customer.id] });
+      toast.success('Document added');
+      setShowAdd(false);
+      setAddLabel('');
+      setAddNotes('');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to add')),
+  });
+
+  const patchMutation = useMutation({
+    mutationFn: ({ docId, status }: { docId: string; status: string }) =>
+      customersApi.updateDoc(customer.id, docId, { status: status as CustomerDoc['status'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customer-docs', customer.id] }),
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (docId: string) => customersApi.removeDoc(customer.id, docId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer-docs', customer.id] }); toast.success('Removed'); },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  // Standard docs: check if URL exists on customer object
+  const stdDocs = STANDARD_DOCS.filter((d) => {
+    if (d.alwaysShow) return true;
+    // Only show guarantor docs if that guarantor's name is set
+    if (d.key.startsWith('guarantor2')) return !!customer.guarantor2Name;
+    if (d.key.startsWith('guarantor'))  return !!customer.guarantorName;
+    return true;
+  });
+  const stdPresent  = stdDocs.filter((d) => !!customer[d.key]).length;
+  const physPresent = physicalDocs.filter((d) => d.status !== 'PENDING').length;
+  const totalDone   = stdPresent + physPresent;
+  const totalAll    = stdDocs.length + physicalDocs.length;
+  const pct         = totalAll > 0 ? Math.round((totalDone / totalAll) * 100) : 100;
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+      {/* Progress summary */}
+      <div className="bg-gray-50 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-gray-600">Document Completeness</p>
+          <span className={`text-xs font-bold ${pct === 100 ? 'text-green-600' : pct >= 70 ? 'text-amber-600' : 'text-red-600'}`}>{totalDone}/{totalAll} · {pct}%</span>
+        </div>
+        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-green-500' : pct >= 70 ? 'bg-amber-500' : 'bg-red-500'}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Standard docs */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Standard Documents</p>
+        <div className="space-y-1.5">
+          {stdDocs.map((d) => {
+            const url = customer[d.key];
+            return (
+              <div key={d.key} className="flex items-center gap-3 px-3 py-2.5 bg-white border border-gray-100 rounded-xl">
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold shrink-0 ${url ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-400'}`}>
+                  {url ? '✓' : '✗'}
+                </span>
+                <span className="flex-1 text-sm text-gray-700">{d.label}</span>
+                {url ? (
+                  <a href={url} target="_blank" rel="noreferrer"
+                    className="text-xs text-blue-500 hover:underline shrink-0">View</a>
+                ) : (
+                  <span className="text-xs text-gray-300 shrink-0">Missing</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Physical docs */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Physical Documents</p>
+          {canEdit && (
+            <button
+              onClick={() => setShowAdd((v) => !v)}
+              className="text-xs text-blue-600 hover:underline font-semibold"
+            >
+              {showAdd ? 'Cancel' : '+ Add'}
+            </button>
+          )}
+        </div>
+
+        {showAdd && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-3 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Type</label>
+                <select value={addType} onChange={(e) => setAddType(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  {DOC_TYPES.map((t) => <option key={t.type} value={t.type}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</label>
+                <select value={addStatus} onChange={(e) => setAddStatus(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="RECEIVED">Received</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="VERIFIED">Verified</option>
+                </select>
+              </div>
+            </div>
+            {addType === 'OTHER' && (
+              <input type="text" value={addLabel} onChange={(e) => setAddLabel(e.target.value)}
+                placeholder="Custom document name"
+                className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            )}
+            <input type="text" value={addNotes} onChange={(e) => setAddNotes(e.target.value)}
+              placeholder="Notes (optional)"
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <button
+              onClick={() => addMutation.mutate()}
+              disabled={addMutation.isPending || (addType === 'OTHER' && !addLabel.trim())}
+              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-40"
+            >
+              {addMutation.isPending ? 'Adding…' : 'Add Document'}
+            </button>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="space-y-2">{[1,2].map((i) => <div key={i} className="h-10 bg-gray-50 rounded-xl animate-pulse" />)}</div>
+        ) : physicalDocs.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">Koi physical document track nahi hai</p>
+        ) : (
+          <div className="space-y-1.5">
+            {physicalDocs.map((doc) => {
+              const sm = STATUS_META[doc.status] ?? STATUS_META['RECEIVED']!;
+              return (
+                <div key={doc.id} className="flex items-start gap-3 px-3 py-2.5 bg-white border border-gray-100 rounded-xl">
+                  <span className={`mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${sm.cls}`}>{sm.label}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-800 truncate">{doc.label}</p>
+                    {doc.notes && <p className="text-[10px] text-gray-400 truncate">{doc.notes}</p>}
+                  </div>
+                  {canEdit && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {doc.status !== 'VERIFIED' && (
+                        <button
+                          onClick={() => patchMutation.mutate({ docId: doc.id, status: doc.status === 'PENDING' ? 'RECEIVED' : 'VERIFIED' })}
+                          title={doc.status === 'PENDING' ? 'Mark Received' : 'Mark Verified'}
+                          className="p-1 text-gray-300 hover:text-green-500 hover:bg-green-50 rounded-lg transition"
+                        >
+                          <ShieldCheck size={12} />
+                        </button>
+                      )}
+                      {isOwner && (
+                        <button
+                          onClick={() => removeMutation.mutate(doc.id)}
+                          disabled={removeMutation.isPending}
+                          className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onClose: () => void }) {
   const [showPrint, setShowPrint] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
   const [showNewInstallment, setShowNewInstallment] = useState(false);
   const [showDirectVerifyDrawer, setShowDirectVerifyDrawer] = useState(false);
   const [payInst, setPayInst] = useState<Installment | null>(null);
-  const [activeTab, setActiveTab] = useState<'history' | 'notes'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'docs'>('history');
   const [visible, setVisible] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [localTags, setLocalTags] = useState<string[]>(customer.tags ?? []);
@@ -609,6 +840,47 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               Statement
             </button>
             <button
+              onClick={() => openCustomerHistoryReport({
+                shopName: shopData?.shopName ?? 'Our Shop',
+                shopPhone: shopData?.phone,
+                customer: {
+                  name: customer.name,
+                  phone: customer.phone,
+                  cnicMasked: customer.cnicMasked,
+                  address: customer.address,
+                  area: customer.area,
+                  occupation: customer.occupation,
+                  employer: customer.employer,
+                  guarantorName: customer.guarantorName,
+                  guarantorPhone: customer.guarantorPhone,
+                  guarantorRelation: customer.guarantorRelation,
+                  guarantor2Name: customer.guarantor2Name,
+                  guarantor2Phone: customer.guarantor2Phone,
+                  createdAt: customer.createdAt,
+                },
+                installments: installments.map((i) => ({
+                  invoiceNumber: i.invoiceNumber,
+                  productName: i.productName,
+                  imeiNumber: i.imeiNumber,
+                  totalAmount: i.totalAmount,
+                  downPayment: i.downPayment,
+                  remaining: i.remaining,
+                  monthly: i.monthly,
+                  months: i.months,
+                  startDate: i.startDate,
+                  status: i.status,
+                  paymentFrequency: i.paymentFrequency,
+                })),
+                printedAt: new Date().toISOString(),
+              })}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 text-xs text-indigo-600 hover:bg-indigo-50 transition disabled:opacity-40"
+              title="Print Full History Report"
+            >
+              <Printer size={13} />
+              History
+            </button>
+            <button
               onClick={() => setShowPrint(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition"
               title="Print Agreement"
@@ -678,7 +950,8 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
         <div className="flex border-b border-gray-100 px-6 shrink-0">
           {([
             { key: 'history', label: 'History' },
-            { key: 'notes',   label: 'Internal Notes' },
+            { key: 'notes',   label: 'Notes' },
+            { key: 'docs',    label: 'Documents' },
           ] as const).map(({ key, label }) => (
             <button key={key} onClick={() => setActiveTab(key)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition -mb-px ${
@@ -694,6 +967,12 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
 
         {activeTab === 'notes' ? (
           <NotesPanel customer={customer} />
+        ) : activeTab === 'docs' ? (
+          <DocsTab
+            customer={customer}
+            canEdit={isOwnerInDrawer || !!drawerPerms?.canEditCustomer}
+            isOwner={isOwnerInDrawer}
+          />
         ) : (<>
 
         {/* Summary cards */}

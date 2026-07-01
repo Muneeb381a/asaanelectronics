@@ -4,8 +4,9 @@ import toast from 'react-hot-toast';
 import {
   Receipt, Plus, Trash2, Pencil, X, Loader2, ChevronLeft, ChevronRight, Search,
   Home, Users, Zap, ShoppingCart, Wrench, Truck, MoreHorizontal, RefreshCw, Bell,
+  Lock, Unlock, AlertTriangle,
 } from 'lucide-react';
-import { expensesApi, type ExpenseCategory, type Expense, type RecurringSuggestion } from '../api/expenses.api.ts';
+import { expensesApi, type ExpenseCategory, type Expense, type RecurringSuggestion, type FinancialPeriod } from '../api/expenses.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
@@ -294,6 +295,76 @@ function BudgetProgress({ expenses, budgets }: { expenses: Expense[]; budgets: P
   );
 }
 
+// ── Period Lock Panel ──────────────────────────────────────────────────────────
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function PeriodLockPanel({
+  periods,
+  viewedYear,
+  viewedMonth,
+  isOwner,
+  onLock,
+  onUnlock,
+  isLocking,
+  isUnlocking,
+}: {
+  periods: FinancialPeriod[];
+  viewedYear: number;
+  viewedMonth: number;
+  isOwner: boolean;
+  onLock: () => void;
+  onUnlock: (year: number, month: number) => void;
+  isLocking: boolean;
+  isUnlocking: boolean;
+}) {
+  const isCurrentLocked = periods.some((p) => p.year === viewedYear && p.month === viewedMonth);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Period Locks</p>
+        {isOwner && !isCurrentLocked && (
+          <button
+            onClick={onLock}
+            disabled={isLocking}
+            className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 border border-amber-300 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg transition disabled:opacity-40"
+          >
+            {isLocking ? <Loader2 size={11} className="animate-spin" /> : <Lock size={11} />}
+            Lock {MONTH_NAMES[viewedMonth - 1]}
+          </button>
+        )}
+      </div>
+
+      {periods.length === 0 ? (
+        <p className="text-xs text-gray-400">Koi period lock nahi hai.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {periods.map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl">
+              <div className="flex items-center gap-2">
+                <Lock size={11} className="text-amber-600 shrink-0" />
+                <span className="text-xs font-semibold text-amber-900">
+                  {MONTH_NAMES[p.month - 1]} {p.year}
+                </span>
+              </div>
+              {isOwner && (
+                <button
+                  onClick={() => onUnlock(p.year, p.month)}
+                  disabled={isUnlocking}
+                  className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 transition disabled:opacity-40"
+                >
+                  <Unlock size={10} /> Unlock
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
@@ -310,9 +381,38 @@ export default function ExpensesPage() {
   const [from, setFrom] = useState(bounds.from);
   const [to,   setTo]   = useState(bounds.to);
 
+  const viewedYear  = parseInt(from.slice(0, 4));
+  const viewedMonth = parseInt(from.slice(5, 7));
+
   const { data: expenses = [], isLoading, isError } = useQuery({
     queryKey: ['expenses', from, to],
     queryFn:  () => expensesApi.list(from, to),
+  });
+
+  const { data: lockedPeriods = [] } = useQuery({
+    queryKey: ['financial-periods'],
+    queryFn:  expensesApi.listPeriods,
+    enabled:  isOwner,
+    staleTime: 60_000,
+  });
+
+  const isViewedMonthLocked = lockedPeriods.some((p) => p.year === viewedYear && p.month === viewedMonth);
+
+  function isExpenseLocked(expense: Expense) {
+    const d = new Date(expense.date);
+    return lockedPeriods.some((p) => p.year === d.getFullYear() && p.month === d.getMonth() + 1);
+  }
+
+  const lockMutation = useMutation({
+    mutationFn: () => expensesApi.lockPeriod(viewedYear, viewedMonth),
+    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['financial-periods'] }); toast.success(`${MONTH_NAMES[viewedMonth - 1]} ${viewedYear} lock ho gaya`); },
+    onError:    () => toast.error('Lock nahi ho saka'),
+  });
+
+  const unlockMutation = useMutation({
+    mutationFn: ({ year, month }: { year: number; month: number }) => expensesApi.unlockPeriod(year, month),
+    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['financial-periods'] }); toast.success('Period unlock ho gaya'); },
+    onError:    () => toast.error('Unlock nahi ho saka'),
   });
 
   const { data: shop } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe, staleTime: 5 * 60_000 });
@@ -321,7 +421,7 @@ export default function ExpensesPage() {
   const deleteMutation = useMutation({
     mutationFn: expensesApi.remove,
     onSuccess:  () => { qc.invalidateQueries({ queryKey: ['expenses'] }); toast.success('Expense removed'); },
-    onError:    () => toast.error('Failed to remove expense'),
+    onError:    (e) => toast.error(getErrorMessage(e, 'Failed to remove expense')),
   });
 
   const byCat    = filterCat === 'ALL' ? expenses : expenses.filter((e) => e.category === filterCat);
@@ -342,11 +442,35 @@ export default function ExpensesPage() {
           <h1 className="text-xl font-bold text-gray-900">Expenses</h1>
           <p className="text-sm text-gray-400 mt-0.5">Track business costs and outflows</p>
         </div>
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition">
+        <button
+          onClick={() => setShowAdd(true)}
+          disabled={isViewedMonthLocked}
+          title={isViewedMonthLocked ? 'Ye period lock hai — add nahi ho sakta' : undefined}
+          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition"
+        >
           <Plus size={15} /> Add Expense
         </button>
       </div>
+
+      {/* Lock banner */}
+      {isViewedMonthLocked && (
+        <div className="mb-5 flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-2xl text-sm text-amber-800">
+          <Lock size={15} className="text-amber-600 shrink-0" />
+          <span>
+            <strong>{MONTH_NAMES[viewedMonth - 1]} {viewedYear}</strong> period lock hai — is mahine mein koi changes nahi ho sakte.
+            {isOwner && (
+              <button
+                onClick={() => unlockMutation.mutate({ year: viewedYear, month: viewedMonth })}
+                disabled={unlockMutation.isPending}
+                className="ml-2 underline font-semibold hover:text-amber-900 transition"
+              >
+                {unlockMutation.isPending ? 'Unlocking…' : 'Unlock karo'}
+              </button>
+            )}
+          </span>
+          <AlertTriangle size={14} className="text-amber-500 ml-auto shrink-0" />
+        </div>
+      )}
 
       {/* Recurring suggestions */}
       <RecurringSuggestionsCard onAddExpense={(s) => {
@@ -412,6 +536,18 @@ export default function ExpensesPage() {
             : <CategoryBreakdown expenses={expenses} />
           }
           <BudgetProgress expenses={expenses} budgets={budgets} />
+          {isOwner && (
+            <PeriodLockPanel
+              periods={lockedPeriods}
+              viewedYear={viewedYear}
+              viewedMonth={viewedMonth}
+              isOwner={isOwner}
+              onLock={() => lockMutation.mutate()}
+              onUnlock={(y, m) => unlockMutation.mutate({ year: y, month: m })}
+              isLocking={lockMutation.isPending}
+              isUnlocking={unlockMutation.isPending}
+            />
+          )}
         </div>
 
         {/* Right: list */}
@@ -469,6 +605,7 @@ export default function ExpensesPage() {
               <div className="divide-y divide-gray-50">
                 {filtered.map((e) => {
                   const m = CAT[e.category];
+                  const locked = isExpenseLocked(e);
                   return (
                     <div key={e.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
                       <div className={`w-8 h-8 ${m.bg} rounded-xl flex items-center justify-center shrink-0`}>
@@ -478,20 +615,26 @@ export default function ExpensesPage() {
                         <p className="text-sm font-medium text-gray-800 truncate">
                           {e.description ?? m.label}
                         </p>
-                        <p className="text-xs text-gray-400">{fmtDate(e.date)} · {m.label}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                          <span>{fmtDate(e.date)} · {m.label}</span>
+                          {locked && <Lock size={9} className="text-amber-500" />}
+                        </div>
                       </div>
                       <p className="text-sm font-bold text-red-600 shrink-0">{pkr(Number(e.amount))}</p>
                       {isOwner && (
                         <>
                           <button
                             onClick={() => setEditingExpense(e)}
-                            className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition shrink-0">
+                            disabled={locked}
+                            title={locked ? 'Period lock hai' : undefined}
+                            className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0">
                             <Pencil size={13} />
                           </button>
                           <button
                             onClick={() => setDeleteConfirm({ open: true, id: e.id })}
-                            disabled={deleteMutation.isPending}
-                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40 shrink-0">
+                            disabled={deleteMutation.isPending || locked}
+                            title={locked ? 'Period lock hai' : undefined}
+                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0">
                             <Trash2 size={13} />
                           </button>
                         </>

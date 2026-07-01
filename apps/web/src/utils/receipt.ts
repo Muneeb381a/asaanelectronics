@@ -399,6 +399,215 @@ export function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
   openPrint(content, 400, 620);
 }
 
+// A4 CSS for full-page reports
+const A4_CSS = `
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a202c;padding:24px}
+.page{max-width:860px;margin:0 auto}
+.hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:12px;border-bottom:3px solid #1e3a5f;margin-bottom:16px}
+.shop-name{font-size:22px;font-weight:900;color:#1e3a5f;line-height:1}
+.shop-sub{font-size:10px;color:#64748b;margin-top:3px}
+.rpt-title{text-align:right}
+.rpt-title h1{font-size:15px;font-weight:700;color:#1e3a5f}
+.rpt-title p{font-size:9px;color:#94a3b8;margin-top:3px}
+.sec-title{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:7px;padding-bottom:3px;border-bottom:1px solid #e2e8f0}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.info-row{display:flex;gap:8px;padding:3px 0;border-bottom:1px solid #f8fafc}
+.info-lbl{font-size:9px;color:#94a3b8;min-width:92px;flex-shrink:0}
+.info-val{font-size:10px;font-weight:600;color:#1a202c;word-break:break-word}
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.sc{border-radius:7px;padding:9px 11px;text-align:center;border:1px solid #e2e8f0;background:#f8fafc}
+.sc.blue{background:#dbeafe;border-color:#93c5fd}
+.sc.green{background:#d1fae5;border-color:#6ee7b7}
+.sc.amber{background:#fef3c7;border-color:#fcd34d}
+.sc.red{background:#fee2e2;border-color:#fca5a5}
+.sl{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:3px}
+.sc.blue .sl{color:#1e40af}.sc.green .sl{color:#065f46}.sc.amber .sl{color:#92400e}.sc.red .sl{color:#991b1b}
+.sv{font-size:17px;font-weight:900;color:#1e3a5f}
+.sc.blue .sv{color:#1d4ed8}.sc.green .sv{color:#059669}.sc.amber .sv{color:#b45309}.sc.red .sv{color:#dc2626}
+.ss{font-size:8.5px;color:#94a3b8;margin-top:1px}
+table{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:16px}
+thead{background:#1e3a5f}
+thead th{color:#fff;padding:5px 8px;text-align:left;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+thead th.r{text-align:right}
+tbody tr{border-bottom:1px solid #f1f5f9}
+tbody tr:nth-child(even){background:#f8fafc}
+td{padding:5px 8px;vertical-align:middle}
+td.r{text-align:right}
+.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:7.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.st-ACTIVE{background:#dbeafe;color:#1d4ed8}
+.st-COMPLETED{background:#d1fae5;color:#065f46}
+.st-DEFAULTED{background:#fee2e2;color:#991b1b}
+.st-CANCELLED{background:#f1f5f9;color:#64748b}
+.st-PENDING{background:#fef3c7;color:#92400e}
+.st-CLOSED{background:#e0e7ff;color:#3730a3}
+.foot{margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:9px;color:#94a3b8}
+@media print{
+  @page{size:A4 portrait;margin:10mm 12mm}
+  body{padding:0}
+}
+`;
+
+export interface CustomerHistoryReportData {
+  shopName: string;
+  shopPhone?: string | null;
+  customer: {
+    name: string;
+    phone: string;
+    cnicMasked?: string | null;
+    address?: string | null;
+    area?: string | null;
+    occupation?: string | null;
+    employer?: string | null;
+    guarantorName?: string | null;
+    guarantorPhone?: string | null;
+    guarantorRelation?: string | null;
+    guarantor2Name?: string | null;
+    guarantor2Phone?: string | null;
+    createdAt: string;
+  };
+  installments: Array<{
+    invoiceNumber?: string | null;
+    productName: string;
+    imeiNumber?: string | null;
+    totalAmount: string | number;
+    downPayment: string | number;
+    remaining: string | number;
+    monthly: string | number;
+    months: number;
+    startDate: string;
+    status: string;
+    paymentFrequency?: string | null;
+  }>;
+  printedAt: string;
+}
+
+export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
+  const insts = d.installments;
+  const totalBusiness = insts.reduce((s, i) => s + Number(i.totalAmount), 0);
+  const totalPaid     = insts.reduce((s, i) => s + (Number(i.totalAmount) - Number(i.downPayment) - Number(i.remaining)), 0);
+  const totalRemaining = insts.reduce((s, i) => s + Number(i.remaining), 0);
+  const activeCount    = insts.filter((i) => i.status === 'ACTIVE').length;
+  const completedCount = insts.filter((i) => i.status === 'COMPLETED' || i.status === 'CLOSED').length;
+  const defaultedCount = insts.filter((i) => i.status === 'DEFAULTED').length;
+
+  const profileLeft = [
+    { l: 'Name', v: d.customer.name },
+    { l: 'Phone', v: d.customer.phone },
+    { l: 'CNIC', v: d.customer.cnicMasked ?? '—' },
+    { l: 'Address', v: [d.customer.address, d.customer.area].filter(Boolean).join(', ') || '—' },
+  ];
+  const profileRight = [
+    { l: 'Occupation', v: d.customer.occupation ?? '—' },
+    { l: 'Employer', v: d.customer.employer ?? '—' },
+    { l: 'Guarantor', v: d.customer.guarantorName ? `${d.customer.guarantorName}${d.customer.guarantorRelation ? ` (${d.customer.guarantorRelation})` : ''}` : '—' },
+    { l: 'Guar. Phone', v: d.customer.guarantorPhone ?? '—' },
+    { l: 'Member Since', v: fmtDate(d.customer.createdAt) },
+  ];
+
+  function infoRows(rows: { l: string; v: string }[]) {
+    return rows.map((r) => `<div class="info-row"><span class="info-lbl">${r.l}</span><span class="info-val">${r.v}</span></div>`).join('');
+  }
+
+  const tableRows = insts.length === 0
+    ? `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:18px">Koi installment nahi mila</td></tr>`
+    : insts.map((i, idx) => {
+        const paid = Number(i.totalAmount) - Number(i.downPayment) - Number(i.remaining);
+        const freq = i.paymentFrequency === 'daily' ? 'Daily' : 'Monthly';
+        return `<tr>
+          <td style="color:#94a3b8;text-align:center">${idx + 1}</td>
+          <td style="font-family:monospace;font-size:8.5px;color:#64748b">${i.invoiceNumber ?? '—'}</td>
+          <td style="font-weight:600">${i.productName}${i.imeiNumber ? `<br><span style="font-size:8px;color:#94a3b8;font-family:monospace">${i.imeiNumber}</span>` : ''}</td>
+          <td style="color:#64748b">${fmtDate(i.startDate)}<br><span style="font-size:8px">${freq} · ${i.months} mo</span></td>
+          <td class="r">${pkr(Number(i.totalAmount))}</td>
+          <td class="r" style="color:#059669">${pkr(paid)}</td>
+          <td class="r" style="color:${Number(i.remaining) > 0 ? '#b45309' : '#059669'}">${pkr(Number(i.remaining))}</td>
+          <td><span class="badge st-${i.status}">${i.status}</span></td>
+        </tr>`;
+      }).join('');
+
+  const printedDate = new Date(d.printedAt).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><title>Customer History — ${d.customer.name}</title><style>${A4_CSS}</style></head>
+<body>
+<div class="page">
+  <!-- HEADER -->
+  <div class="hdr">
+    <div>
+      <div class="shop-name">${d.shopName}</div>
+      ${d.shopPhone ? `<div class="shop-sub">${d.shopPhone}</div>` : ''}
+    </div>
+    <div class="rpt-title">
+      <h1>Customer Full History Report</h1>
+      <p>Printed: ${printedDate}</p>
+    </div>
+  </div>
+
+  <!-- CUSTOMER PROFILE -->
+  <div class="sec-title">Customer Profile · گاہک کی تفصیل</div>
+  <div class="profile-grid" style="margin-bottom:16px">
+    <div>${infoRows(profileLeft)}</div>
+    <div>${infoRows(profileRight)}</div>
+  </div>
+
+  <!-- SUMMARY STATS -->
+  <div class="sec-title">Account Summary · حساب کتاب</div>
+  <div class="stats-bar" style="margin-bottom:16px">
+    <div class="sc blue">
+      <div class="sl">Total Business</div>
+      <div class="sv">${pkr(totalBusiness)}</div>
+      <div class="ss">${insts.length} installment${insts.length !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="sc green">
+      <div class="sl">Total Paid</div>
+      <div class="sv">${pkr(totalPaid)}</div>
+      <div class="ss">${completedCount} completed</div>
+    </div>
+    <div class="sc amber">
+      <div class="sl">Outstanding</div>
+      <div class="sv">${pkr(totalRemaining)}</div>
+      <div class="ss">${activeCount} active</div>
+    </div>
+    <div class="sc ${defaultedCount > 0 ? 'red' : 'green'}">
+      <div class="sl">Defaulted</div>
+      <div class="sv">${defaultedCount}</div>
+      <div class="ss">${defaultedCount > 0 ? 'high risk' : 'clean record'}</div>
+    </div>
+  </div>
+
+  <!-- INSTALLMENTS TABLE -->
+  <div class="sec-title">Installment History · قسطوں کی تاریخ</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:28px">#</th>
+        <th>Invoice</th>
+        <th>Product / IMEI</th>
+        <th>Start Date</th>
+        <th class="r">Total</th>
+        <th class="r">Paid</th>
+        <th class="r">Remaining</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+
+  <!-- FOOTER -->
+  <div class="foot">
+    <span>${d.shopName}${d.shopPhone ? ` · ${d.shopPhone}` : ''}</span>
+    <span>Confidential · ${printedDate}</span>
+  </div>
+</div>
+<script>window.onload = () => window.print();</script>
+</body>
+</html>`;
+
+  openPrint(html, 1000, 900);
+}
+
 export function cashSaleWhatsappUrl(d: CashSaleReceiptData): string {
   const lines = [
     `*Cash Sale — ${d.shopName}*`,

@@ -2,6 +2,9 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { expenses, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { FinancialPeriodsService } from './financial-periods.service.js';
+
+const periodsSvc = new FinancialPeriodsService();
 
 type Category = 'RENT' | 'SALARY' | 'UTILITY' | 'PURCHASE' | 'MAINTENANCE' | 'TRANSPORT' | 'OTHER';
 
@@ -50,6 +53,11 @@ export class ExpensesService {
   async create(sellerId: string, body: CreateBody) {
     const date = body.date ? new Date(body.date) : new Date();
 
+    if (await periodsSvc.isLocked(sellerId, date)) {
+      const y = date.getFullYear(), m = date.getMonth() + 1;
+      throw new AppError(`${m}/${y} period lock hai — owner se unlock karwain.`, 403);
+    }
+
     return db.transaction(async (tx) => {
       const [expense] = await tx.insert(expenses).values({
         sellerId,
@@ -82,6 +90,17 @@ export class ExpensesService {
     });
     if (!existing) throw new AppError('Expense not found', 404);
 
+    if (await periodsSvc.isLocked(sellerId, new Date(existing.date as unknown as string))) {
+      throw new AppError('Purana period lock hai — owner se unlock karwain.', 403);
+    }
+    if (body.date) {
+      const newDate = new Date(body.date);
+      if (await periodsSvc.isLocked(sellerId, newDate)) {
+        const y = newDate.getFullYear(), m = newDate.getMonth() + 1;
+        throw new AppError(`${m}/${y} period lock hai — owner se unlock karwain.`, 403);
+      }
+    }
+
     const date        = body.date ? new Date(body.date) : undefined;
     const amount      = body.amount != null ? String(body.amount) : undefined;
     const category    = body.category ?? existing.category;
@@ -113,6 +132,10 @@ export class ExpensesService {
       where: and(eq(expenses.id, id), eq(expenses.sellerId, sellerId)),
     });
     if (!existing) throw new AppError('Expense not found', 404);
+
+    if (await periodsSvc.isLocked(sellerId, new Date(existing.date as unknown as string))) {
+      throw new AppError('Locked period ki expense delete nahi ho sakti — owner se unlock karwain.', 403);
+    }
 
     await db.transaction(async (tx) => {
       await tx.delete(expenses).where(and(eq(expenses.id, id), eq(expenses.sellerId, sellerId)));

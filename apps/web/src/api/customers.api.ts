@@ -128,6 +128,18 @@ export interface CustomerLookupResult {
   installments: CustomerLookupInstallment[];
 }
 
+export interface CustomerDoc {
+  id: string;
+  customerId: string;
+  sellerId: string;
+  docType: string;
+  label: string;
+  status: 'PENDING' | 'RECEIVED' | 'VERIFIED';
+  notes: string | null;
+  addedBy: string | null;
+  createdAt: string;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const customersApi = {
@@ -178,4 +190,16 @@ export const customersApi = {
     api.post<{ data: { status: 'OK' | 'UNAVAILABLE' | 'NOT_FOUND' | 'INVALID' | 'ERROR'; cnic?: string; name?: string; alive?: boolean; message?: string } }>(
       '/customers/nadra-verify', { cnic }
     ).then((r) => r.data.data),
+
+  listDocs: (customerId: string) =>
+    api.get<{ data: CustomerDoc[] }>(`/customers/${customerId}/documents`).then(unwrap<CustomerDoc[]>),
+
+  addDoc: (customerId: string, body: { docType: string; label: string; status?: string; notes?: string }) =>
+    api.post<{ data: CustomerDoc }>(`/customers/${customerId}/documents`, body).then(unwrap<CustomerDoc>),
+
+  updateDoc: (customerId: string, docId: string, body: { status?: string; notes?: string; label?: string }) =>
+    api.patch<{ data: CustomerDoc }>(`/customers/${customerId}/documents/${docId}`, body).then(unwrap<CustomerDoc>),
+
+  removeDoc: (customerId: string, docId: string) =>
+    api.delete(`/customers/${customerId}/documents/${docId}`),
 };
