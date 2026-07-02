@@ -7,6 +7,7 @@ import {
   listPaymentLogs, addPaymentLog, deletePaymentLog,
   addShopNote, deleteShopNote,
   listAdminAuditLogs,
+  getShopSessions, killSession, killAllShopSessions,
 } from './owner.controller.js';
 
 const router = Router();
@@ -36,5 +37,10 @@ router.delete('/shops/:id/notes/:noteId', deleteShopNote);
 
 // ── A10: Super-admin audit log ────────────────────────────────────────────────
 router.get('/admin-audit-logs',       listAdminAuditLogs);
+
+// ── Session management ────────────────────────────────────────────────────────
+router.get('/shops/:id/sessions',              getShopSessions);
+router.delete('/shops/:id/sessions',           killAllShopSessions);
+router.delete('/shops/:id/sessions/:sessionId', killSession);
 
 export default router;

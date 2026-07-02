@@ -5,9 +5,10 @@ import {
   Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck,
   CreditCard, Calendar, Search, AlertTriangle, Clock, KeyRound, Eye, EyeOff,
   TrendingUp, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
-  Activity, FileText, Plus, Package,
+  Activity, FileText, Plus, Package, Monitor, Smartphone, Tablet2,
+  ShieldAlert, LogOut, Wifi,
 } from 'lucide-react';
-import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog } from '../../api/owner.api.ts';
+import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
@@ -563,8 +564,29 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
 
 const PAYMENT_METHODS = ['BANK', 'JAZZCASH', 'EASYPAISA', 'CASH', 'OTHER'];
 
+type DetailTab = 'overview' | 'sessions';
+
+function timeAgo(dateStr: string | null) {
+  if (!dateStr) return 'Never';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days  = Math.floor(diff / 86_400_000);
+  if (mins < 1)   return 'Just now';
+  if (mins < 60)  return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
+function DeviceIcon({ type }: { type: string | null }) {
+  if (type === 'mobile')  return <Smartphone size={14} className="text-indigo-500" />;
+  if (type === 'tablet')  return <Tablet2    size={14} className="text-purple-500"  />;
+  return                         <Monitor    size={14} className="text-gray-500"    />;
+}
+
 function ShopDetailPanel({ shopId, onClose }: { shopId: string; onClose: () => void }) {
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('BANK');
   const [payRef, setPayRef]       = useState('');
@@ -572,12 +594,39 @@ function ShopDetailPanel({ shopId, onClose }: { shopId: string; onClose: () => v
   const [payNote, setPayNote]     = useState('');
   const [showPayForm, setShowPayForm] = useState(false);
   const [noteText, setNoteText]   = useState('');
+  const [killAllPending, setKillAllPending] = useState(false);
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ['owner-shop-detail', shopId],
     queryFn: () => ownerApi.getShopUsage(shopId),
     staleTime: 30_000,
   });
+
+  const { data: sessionsData, isLoading: sessionsLoading, refetch: refetchSessions } = useQuery({
+    queryKey: ['owner-shop-sessions', shopId],
+    queryFn: () => ownerApi.getShopSessions(shopId),
+    staleTime: 15_000,
+    enabled: activeTab === 'sessions',
+  });
+
+  const killSessionMutation = useMutation({
+    mutationFn: (sessionId: string) => ownerApi.killSession(shopId, sessionId),
+    onSuccess: () => { void refetchSessions(); toast.success('Session terminated'); },
+    onError:   (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const killAllMutation = useMutation({
+    mutationFn: () => ownerApi.killAllSessions(shopId),
+    onSuccess: (data) => {
+      setKillAllPending(false);
+      void refetchSessions();
+      toast.success(`${data.killed} session${data.killed !== 1 ? 's' : ''} terminated`);
+    },
+    onError: (e) => { setKillAllPending(false); toast.error(getErrorMessage(e)); },
+  });
+
+  const sessions = sessionsData?.sessions ?? [];
+  const suspiciousCount = sessions.filter((s: ShopSession) => s.isSuspicious).length;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['owner-shop-detail', shopId] });
 
@@ -640,15 +689,43 @@ function ShopDetailPanel({ shopId, onClose }: { shopId: string; onClose: () => v
           </button>
         </div>
 
+        {/* Tab bar */}
+        <div className="flex border-b border-gray-100 shrink-0 px-5">
+          {([
+            { key: 'overview' as const,  label: 'Overview',  icon: <BarChart3 size={13} /> },
+            { key: 'sessions' as const,  label: 'Sessions',  icon: <Wifi size={13} />,
+              badge: suspiciousCount > 0 ? suspiciousCount : sessions.length || undefined },
+          ]).map((t) => (
+            <button key={t.key} onClick={() => setActiveTab(t.key)}
+              className={`flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 transition -mb-px ${
+                activeTab === t.key
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}>
+              {t.icon}
+              {t.label}
+              {t.badge !== undefined && (
+                <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  suspiciousCount > 0 && t.key === 'sessions'
+                    ? 'bg-red-100 text-red-600'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>{t.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {isLoading ? (
+          {/* Overview tab */}
+          {activeTab === 'overview' && isLoading && (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : detail ? (
+          )}
+          {activeTab === 'overview' && !isLoading && detail ? (
             <>
               {/* Plan + status badges */}
               <div className="flex items-center gap-2 flex-wrap">
@@ -815,8 +892,136 @@ function ShopDetailPanel({ shopId, onClose }: { shopId: string; onClose: () => v
                 )}
               </div>
             </>
-          ) : (
+          ) : activeTab === 'overview' && !isLoading ? (
             <div className="text-center text-sm text-red-500 py-8">Failed to load shop details.</div>
+          ) : null}
+
+          {/* Sessions tab */}
+          {activeTab === 'sessions' && (
+            <div className="space-y-4">
+              {/* Kill all banner */}
+              <div className={`rounded-xl p-3 flex items-center justify-between gap-3 border ${
+                suspiciousCount > 0
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-gray-50 border-gray-100'
+              }`}>
+                <div>
+                  <p className="text-xs font-semibold text-gray-800">
+                    {sessions.length} active session{sessions.length !== 1 ? 's' : ''}
+                    {suspiciousCount > 0 && (
+                      <span className="ml-2 text-red-600">
+                        <ShieldAlert size={11} className="inline mr-1" />
+                        {suspiciousCount} suspicious
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Last refreshed {timeAgo(new Date().toISOString())}</p>
+                </div>
+                {sessions.length > 0 && (
+                  killAllPending ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Sure?</span>
+                      <button onClick={() => killAllMutation.mutate()}
+                        disabled={killAllMutation.isPending}
+                        className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition disabled:opacity-50">
+                        {killAllMutation.isPending ? '…' : 'Yes, Kill All'}
+                      </button>
+                      <button onClick={() => setKillAllPending(false)}
+                        className="px-3 py-1.5 border border-gray-200 text-xs text-gray-600 rounded-lg hover:bg-gray-50 transition">
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setKillAllPending(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100 transition">
+                      <LogOut size={12} /> Kill All
+                    </button>
+                  )
+                )}
+              </div>
+
+              {/* Session cards */}
+              {sessionsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+                </div>
+              ) : sessions.length === 0 ? (
+                <div className="text-center py-10">
+                  <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                    <Wifi size={20} className="text-gray-300" />
+                  </div>
+                  <p className="text-sm text-gray-400">No active sessions</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sessions.map((s: ShopSession) => (
+                    <div key={s.sessionId}
+                      className={`border rounded-xl p-3 transition ${
+                        s.isSuspicious
+                          ? 'border-red-200 bg-red-50/60'
+                          : 'border-gray-100 bg-white'
+                      }`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          {/* Device icon */}
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                            s.isSuspicious ? 'bg-red-100' : 'bg-gray-100'
+                          }`}>
+                            <DeviceIcon type={s.deviceType} />
+                          </div>
+                          <div className="min-w-0">
+                            {/* User name + role */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-gray-900 truncate">
+                                {s.userName ?? 'Unknown'}
+                              </span>
+                              <span className={`inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${
+                                s.userRole === 'SELLER_OWNER'
+                                  ? 'bg-amber-50 text-amber-600 border-amber-200'
+                                  : 'bg-gray-50 text-gray-500 border-gray-200'
+                              }`}>
+                                {s.userRole === 'SELLER_OWNER' ? 'Owner' : 'Staff'}
+                              </span>
+                              {s.isSuspicious && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-600 border border-red-200">
+                                  <ShieldAlert size={9} /> Suspicious
+                                </span>
+                              )}
+                            </div>
+                            {/* Device name */}
+                            <p className="text-xs text-gray-500 mt-0.5 truncate">
+                              {s.deviceName ?? 'Unknown device'}
+                            </p>
+                            {/* IP + times */}
+                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                              {s.ip && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 font-mono bg-gray-100 px-2 py-0.5 rounded-lg">
+                                  {s.ip}
+                                </span>
+                              )}
+                              <span className="text-[11px] text-gray-400">
+                                Active {timeAgo(s.lastActiveAt)}
+                              </span>
+                              <span className="text-[11px] text-gray-300">
+                                Login {fmtDate(s.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Kill button */}
+                        <button
+                          onClick={() => killSessionMutation.mutate(s.sessionId)}
+                          disabled={killSessionMutation.isPending}
+                          title="Terminate this session"
+                          className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition shrink-0 mt-0.5">
+                          <LogOut size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

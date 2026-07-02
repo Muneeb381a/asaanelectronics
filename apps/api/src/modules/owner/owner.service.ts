@@ -1,9 +1,10 @@
-import { eq, and, inArray, sql, desc } from 'drizzle-orm';
+import { eq, and, inArray, sql, desc, gt } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import {
   sellers, users, customers, products, installments, payments,
   verifications, recoveryActions, expenses, ledgerEntries, cashSales,
   auditLogs, returns, adminPaymentLogs, adminShopNotes, superAdminAuditLogs,
+  refreshTokens,
 } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { hashPassword } from '../../utils/hash.js';
@@ -396,6 +397,123 @@ export class OwnerService {
       void this.logAdmin(actorId, 'NOTE_DELETED', existing.sellerId, null, 'Deleted internal note');
     }
     return { deleted: true };
+  }
+
+  // ── Session management ─────────────────────────────────────────────────────
+
+  async getShopSessions(sellerId: string) {
+    // Verify shop exists
+    const shop = await db.query.sellers.findFirst({
+      where: eq(sellers.id, sellerId),
+      columns: { id: true, shopName: true },
+    });
+    if (!shop) throw new AppError('Shop not found', 404);
+
+    const now = new Date();
+
+    // All active (non-expired) sessions for any user belonging to this shop
+    const rows = await db
+      .select({
+        sessionId:    refreshTokens.id,
+        userId:       refreshTokens.userId,
+        ip:           refreshTokens.ip,
+        deviceName:   refreshTokens.deviceName,
+        deviceType:   refreshTokens.deviceType,
+        lastActiveAt: refreshTokens.lastActiveAt,
+        isSuspicious: refreshTokens.isSuspicious,
+        createdAt:    refreshTokens.createdAt,
+        expiresAt:    refreshTokens.expiresAt,
+        userName:     users.name,
+        userEmail:    users.email,
+        userRole:     users.role,
+      })
+      .from(refreshTokens)
+      .innerJoin(users, eq(users.id, refreshTokens.userId))
+      .where(
+        and(
+          eq(users.sellerId, sellerId),
+          gt(refreshTokens.expiresAt, now),
+        ),
+      )
+      .orderBy(desc(refreshTokens.lastActiveAt));
+
+    return { shopName: shop.shopName, sessions: rows };
+  }
+
+  async killSession(sessionId: string, actorId: string, actorSessionId?: string) {
+    if (sessionId === actorSessionId) {
+      throw new AppError('Cannot kill your own active session', 400);
+    }
+
+    // Fetch to verify it exists and log shopName
+    const session = await db.query.refreshTokens.findFirst({
+      where: eq(refreshTokens.id, sessionId),
+      columns: { id: true, userId: true },
+    });
+    if (!session) throw new AppError('Session not found', 404);
+
+    // Get user → shop info for the audit log
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.userId),
+      columns: { name: true, email: true, sellerId: true },
+    });
+
+    const shop = user?.sellerId
+      ? await db.query.sellers.findFirst({ where: eq(sellers.id, user.sellerId), columns: { shopName: true } })
+      : null;
+
+    await db.delete(refreshTokens).where(eq(refreshTokens.id, sessionId));
+
+    void this.logAdmin(
+      actorId,
+      'SESSION_KILLED',
+      user?.sellerId ?? null,
+      shop?.shopName ?? null,
+      `Killed session of ${user?.name ?? 'unknown'} (${user?.email ?? ''})`,
+      { sessionId, userId: session.userId },
+    );
+  }
+
+  async killAllShopSessions(sellerId: string, actorId: string, actorSessionId?: string) {
+    const shop = await db.query.sellers.findFirst({
+      where: eq(sellers.id, sellerId),
+      columns: { id: true, shopName: true },
+    });
+    if (!shop) throw new AppError('Shop not found', 404);
+
+    // Collect all user IDs for this shop
+    const shopUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.sellerId, sellerId));
+
+    const userIds = shopUsers.map((u) => u.id);
+    if (userIds.length === 0) return { killed: 0 };
+
+    // Delete all sessions for these users, except the admin's own session
+    const deleted = await db
+      .delete(refreshTokens)
+      .where(
+        and(
+          inArray(refreshTokens.userId, userIds),
+          // Safety: never delete the admin's own session
+          actorSessionId ? sql`${refreshTokens.id} != ${actorSessionId}` : undefined,
+        ),
+      )
+      .returning({ id: refreshTokens.id });
+
+    const killed = deleted.length;
+
+    void this.logAdmin(
+      actorId,
+      'ALL_SESSIONS_KILLED',
+      sellerId,
+      shop.shopName,
+      `Force-logged out all ${killed} session(s) for "${shop.shopName}"`,
+      { userCount: userIds.length, sessionsKilled: killed },
+    );
+
+    return { killed };
   }
 
   // ── A10: List admin audit logs ─────────────────────────────────────────────

@@ -106,6 +106,26 @@ export interface SuperAdminAuditLog {
   actorEmail: string | null;
 }
 
+export interface ShopSession {
+  sessionId: string;
+  userId: string;
+  ip: string | null;
+  deviceName: string | null;
+  deviceType: string | null;      // 'mobile' | 'tablet' | 'desktop'
+  lastActiveAt: string | null;
+  isSuspicious: boolean;
+  createdAt: string;
+  expiresAt: string;
+  userName: string | null;
+  userEmail: string | null;
+  userRole: string | null;
+}
+
+export interface ShopSessionsResult {
+  shopName: string;
+  sessions: ShopSession[];
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const ownerApi = {
@@ -157,4 +177,14 @@ export const ownerApi = {
     api.get<{ data: SuperAdminAuditLog[] }>('/owner/admin-audit-logs', {
       params: { ...(sellerId ? { sellerId } : {}), limit },
     }).then(unwrap<SuperAdminAuditLog[]>),
+
+  // Session management
+  getShopSessions: (shopId: string) =>
+    api.get<{ data: ShopSessionsResult }>(`/owner/shops/${shopId}/sessions`).then(unwrap<ShopSessionsResult>),
+
+  killSession: (shopId: string, sessionId: string) =>
+    api.delete(`/owner/shops/${shopId}/sessions/${sessionId}`),
+
+  killAllSessions: (shopId: string) =>
+    api.delete<{ data: { killed: number } }>(`/owner/shops/${shopId}/sessions`).then(unwrap<{ killed: number }>),
 };

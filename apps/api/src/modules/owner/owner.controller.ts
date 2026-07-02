@@ -70,3 +70,26 @@ export async function listAdminAuditLogs(req: AuthRequest, res: Response) {
   const limit    = Math.min(200, Number(req.query['limit'] ?? 100));
   success(res, await svc.listAdminAuditLogs(sellerId, limit));
 }
+
+// ── Session management ────────────────────────────────────────────────────────
+export async function getShopSessions(req: AuthRequest, res: Response) {
+  success(res, await svc.getShopSessions(req.params['id'] as string));
+}
+
+export async function killSession(req: AuthRequest, res: Response) {
+  await svc.killSession(
+    req.params['sessionId'] as string,
+    req.user!.userId,
+    req.user!.sessionId,
+  );
+  success(res, { killed: true });
+}
+
+export async function killAllShopSessions(req: AuthRequest, res: Response) {
+  const result = await svc.killAllShopSessions(
+    req.params['id'] as string,
+    req.user!.userId,
+    req.user!.sessionId,
+  );
+  success(res, result);
+}
