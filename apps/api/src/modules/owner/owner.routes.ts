@@ -8,6 +8,7 @@ import {
   addShopNote, deleteShopNote,
   listAdminAuditLogs,
   listChurnScores,
+  sendRenewalReminder,
   getShopSessions, killSession, killAllShopSessions,
 } from './owner.controller.js';
 
@@ -41,6 +42,9 @@ router.get('/admin-audit-logs',       listAdminAuditLogs);
 
 // ── B1: Churn Risk Score ──────────────────────────────────────────────────────
 router.get('/churn-scores',           listChurnScores);
+
+// ── B2: Renewal reminder email ────────────────────────────────────────────────
+router.post('/shops/:id/send-reminder', sendRenewalReminder);
 
 // ── Session management ────────────────────────────────────────────────────────
 router.get('/shops/:id/sessions',              getShopSessions);

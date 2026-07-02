@@ -9,6 +9,7 @@ import {
 import { AppError } from '../../middleware/error.js';
 import { hashPassword } from '../../utils/hash.js';
 import { PLAN_LIMITS } from '../../config/plans.js';
+import { sendRenewalReminderEmail } from '../../utils/email.js';
 
 export class OwnerService {
   // ── A10: Admin audit log helper ───────────────────────────────────────────
@@ -694,5 +695,49 @@ export class OwnerService {
       .limit(limit);
 
     return rows;
+  }
+
+  // ── B2: Send renewal reminder email ──────────────────────────────────────────
+
+  async sendRenewalReminder(shopId: string, actorId: string) {
+    const shop = await db.query.sellers.findFirst({
+      where: eq(sellers.id, shopId),
+    });
+    if (!shop) throw new AppError('Shop not found', 404);
+
+    const owner = await db.query.users.findFirst({
+      where: and(eq(users.sellerId, shopId), eq(users.role, 'SELLER_OWNER')),
+      columns: { name: true, email: true },
+    });
+    if (!owner?.email) throw new AppError('Shop owner email not found. Add an owner first.', 422);
+
+    const now = new Date();
+    const isTrial = shop.plan === 'TRIAL';
+    const expiresAt = isTrial ? shop.trialEndsAt : shop.planExpiresAt;
+
+    const isExpired = expiresAt != null && new Date(expiresAt) < now;
+    const daysLeft = expiresAt
+      ? Math.ceil((new Date(expiresAt).getTime() - now.getTime()) / 86_400_000)
+      : 999;
+
+    await sendRenewalReminderEmail({
+      to:        owner.email,
+      ownerName: owner.name,
+      shopName:  shop.shopName,
+      plan:      shop.plan,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      isExpired,
+      daysLeft,
+    });
+
+    await this.logAdmin(
+      actorId,
+      'RENEWAL_REMINDER_SENT',
+      shopId,
+      shop.shopName,
+      `Reminder sent to ${owner.email} (plan=${shop.plan}, isExpired=${isExpired}, daysLeft=${daysLeft})`,
+    );
+
+    return { sent: true, sentTo: owner.email };
   }
 }

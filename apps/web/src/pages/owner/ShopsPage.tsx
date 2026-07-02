@@ -6,7 +6,7 @@ import {
   CreditCard, Calendar, Search, AlertTriangle, Clock, KeyRound, Eye, EyeOff,
   TrendingUp, TrendingDown, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
   Activity, FileText, Plus, Package, Monitor, Smartphone, Tablet2,
-  ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle,
+  ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle, Mail,
 } from 'lucide-react';
 import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
@@ -433,7 +433,11 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
 
 // ── platform dashboard (A1) ──────────────────────────────────────────────────
 
-function PlatformDashboard({ stats }: { stats: PlatformStats }) {
+function PlatformDashboard({ stats, onSendReminder, sendingId }: {
+  stats: PlatformStats;
+  onSendReminder?: (shopId: string) => void;
+  sendingId?: string | null;
+}) {
   const fmtPKR = (n: number) =>
     n >= 1_000_000
       ? `PKR ${(n / 1_000_000).toFixed(2)}M`
@@ -515,19 +519,39 @@ function PlatformDashboard({ stats }: { stats: PlatformStats }) {
           </p>
           <div className="space-y-2">
             {stats.trialExpiring7.map((s) => (
-              <div key={s.id} className="flex items-center justify-between text-xs">
+              <div key={s.id} className="flex items-center justify-between text-xs gap-2 flex-wrap">
                 <span className="font-medium text-gray-800">{s.shopName}</span>
-                <span className="text-amber-700 font-semibold bg-amber-100 px-2 py-0.5 rounded-lg">
-                  Trial ends {fmtDate(s.trialEndsAt!)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-700 font-semibold bg-amber-100 px-2 py-0.5 rounded-lg">
+                    Trial ends {fmtDate(s.trialEndsAt!)}
+                  </span>
+                  {onSendReminder && (
+                    <button
+                      onClick={() => onSendReminder(s.id)}
+                      disabled={sendingId === s.id}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-100 transition disabled:opacity-50">
+                      {sendingId === s.id ? '…' : <><Mail size={10} /> Remind</>}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             {stats.planExpiring7.map((s) => (
-              <div key={s.id} className="flex items-center justify-between text-xs">
+              <div key={s.id} className="flex items-center justify-between text-xs gap-2 flex-wrap">
                 <span className="font-medium text-gray-800">{s.shopName}</span>
-                <span className="text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded-lg">
-                  Plan ends {fmtDate(s.planExpiresAt!)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded-lg">
+                    Plan ends {fmtDate(s.planExpiresAt!)}
+                  </span>
+                  {onSendReminder && (
+                    <button
+                      onClick={() => onSendReminder(s.id)}
+                      disabled={sendingId === s.id}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-100 transition disabled:opacity-50">
+                      {sendingId === s.id ? '…' : <><Mail size={10} /> Remind</>}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -584,7 +608,12 @@ function DeviceIcon({ type }: { type: string | null }) {
   return                         <Monitor    size={14} className="text-gray-500"    />;
 }
 
-function ShopDetailPanel({ shopId, onClose }: { shopId: string; onClose: () => void }) {
+function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId }: {
+  shopId: string;
+  onClose: () => void;
+  onSendReminder?: (shopId: string) => void;
+  sendingId?: string | null;
+}) {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const [payAmount, setPayAmount] = useState('');
@@ -741,6 +770,17 @@ function ShopDetailPanel({ shopId, onClose }: { shopId: string; onClose: () => v
                   <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-xl">
                     Suspended
                   </span>
+                )}
+                {onSendReminder && (
+                  <button
+                    onClick={() => onSendReminder(shopId)}
+                    disabled={sendingId === shopId}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100 transition disabled:opacity-50 ml-auto">
+                    {sendingId === shopId
+                      ? <><span className="animate-spin">⟳</span> Sending…</>
+                      : <><Mail size={11} /> Send Reminder</>
+                    }
+                  </button>
                 )}
               </div>
 
@@ -1040,8 +1080,9 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   PLAN_CHANGED:        { label: 'Plan Changed',        color: 'text-purple-600 bg-purple-50 border-purple-200'   },
   PAYMENT_LOG_ADDED:   { label: 'Payment Logged',      color: 'text-blue-600   bg-blue-50   border-blue-200'     },
   PAYMENT_LOG_DELETED: { label: 'Payment Log Deleted', color: 'text-gray-600   bg-gray-50   border-gray-200'     },
-  NOTE_ADDED:          { label: 'Note Added',          color: 'text-amber-700  bg-amber-50  border-amber-200'    },
-  NOTE_DELETED:        { label: 'Note Deleted',        color: 'text-gray-600   bg-gray-50   border-gray-200'     },
+  NOTE_ADDED:              { label: 'Note Added',          color: 'text-amber-700  bg-amber-50  border-amber-200'    },
+  NOTE_DELETED:            { label: 'Note Deleted',        color: 'text-gray-600   bg-gray-50   border-gray-200'     },
+  RENEWAL_REMINDER_SENT:   { label: 'Reminder Sent',       color: 'text-indigo-600 bg-indigo-50 border-indigo-200'   },
 };
 
 function AdminAuditPanel({ onClose, filterShopId }: { onClose: () => void; filterShopId?: string | null }) {
@@ -1367,6 +1408,7 @@ export default function ShopsPage() {
   const [detailShopId, setDetailShopId] = useState<string | null>(null);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showChurnPanel, setShowChurnPanel] = useState(false);
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   const { data: shops = [], isLoading, isError } = useQuery({
     queryKey: ['owner-shops'],
@@ -1416,6 +1458,16 @@ export default function ShopsPage() {
       ownerApi.changePlan(id, plan, expiresAt),
     onSuccess: () => { invalidate(); setModal(null); toast.success('Plan updated'); },
     onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const sendReminderMutation = useMutation({
+    mutationFn: (shopId: string) => ownerApi.sendRenewalReminder(shopId),
+    onMutate: (shopId) => setSendingReminderId(shopId),
+    onSuccess: (data) => {
+      setSendingReminderId(null);
+      toast.success(`Reminder email bhej diya — ${data.sentTo}`);
+    },
+    onError: (e) => { setSendingReminderId(null); toast.error(getErrorMessage(e, 'Email send nahi hua')); },
   });
 
   // counts per filter
@@ -1473,7 +1525,13 @@ export default function ShopsPage() {
       </div>
 
       {/* A1: Platform dashboard */}
-      {platformStats && <PlatformDashboard stats={platformStats} />}
+      {platformStats && (
+        <PlatformDashboard
+          stats={platformStats}
+          onSendReminder={(id) => sendReminderMutation.mutate(id)}
+          sendingId={sendingReminderId}
+        />
+      )}
 
       {/* Quick filter stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
@@ -1642,6 +1700,8 @@ export default function ShopsPage() {
         <ShopDetailPanel
           shopId={detailShopId}
           onClose={() => setDetailShopId(null)}
+          onSendReminder={(id) => sendReminderMutation.mutate(id)}
+          sendingId={sendingReminderId}
         />
       )}
 

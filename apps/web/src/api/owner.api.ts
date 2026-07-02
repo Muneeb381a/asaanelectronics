@@ -218,4 +218,8 @@ export const ownerApi = {
   // B1: Churn Risk Score
   getChurnScores: () =>
     api.get<{ data: ShopChurnScore[] }>('/owner/churn-scores').then(unwrap<ShopChurnScore[]>),
+
+  // B2: Send renewal reminder
+  sendRenewalReminder: (shopId: string) =>
+    api.post<{ data: { sent: boolean; sentTo: string } }>(`/owner/shops/${shopId}/send-reminder`).then(unwrap<{ sent: boolean; sentTo: string }>),
 };

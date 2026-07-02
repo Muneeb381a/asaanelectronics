@@ -76,6 +76,11 @@ export async function listChurnScores(_req: AuthRequest, res: Response) {
   success(res, await svc.getChurnScores());
 }
 
+// ── B2: Renewal reminder email ────────────────────────────────────────────────
+export async function sendRenewalReminder(req: AuthRequest, res: Response) {
+  success(res, await svc.sendRenewalReminder(req.params['id'] as string, req.user!.userId));
+}
+
 // ── Session management ────────────────────────────────────────────────────────
 export async function getShopSessions(req: AuthRequest, res: Response) {
   success(res, await svc.getShopSessions(req.params['id'] as string));
