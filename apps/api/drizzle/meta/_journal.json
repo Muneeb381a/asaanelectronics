@@ -120,6 +120,13 @@
       "when": 1751846400000,
       "tag": "0016_super_admin_audit_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1751932800000,
+      "tag": "0017_admin_broadcasts",
+      "breakpoints": true
     }
   ]
 }

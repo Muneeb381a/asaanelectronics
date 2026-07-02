@@ -126,6 +126,17 @@ export interface ShopSessionsResult {
   sessions: ShopSession[];
 }
 
+export interface AdminBroadcast {
+  id: string;
+  title: string;
+  body: string;
+  targetPlan: string;
+  type: string;
+  isActive: boolean;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
 export type ChurnRisk = 'healthy' | 'at-risk' | 'churning';
 export type ChurnSeverity = 'positive' | 'low' | 'medium' | 'high';
 
@@ -222,4 +233,17 @@ export const ownerApi = {
   // B2: Send renewal reminder
   sendRenewalReminder: (shopId: string) =>
     api.post<{ data: { sent: boolean; sentTo: string } }>(`/owner/shops/${shopId}/send-reminder`).then(unwrap<{ sent: boolean; sentTo: string }>),
+
+  // B3: Broadcast announcements (admin)
+  listBroadcasts: () =>
+    api.get<{ data: AdminBroadcast[] }>('/owner/broadcasts').then(unwrap<AdminBroadcast[]>),
+
+  createBroadcast: (data: { title: string; message: string; targetPlan: string; type: string; expiresAt?: string }) =>
+    api.post<{ data: AdminBroadcast }>('/owner/broadcasts', data).then(unwrap<AdminBroadcast>),
+
+  updateBroadcast: (id: string, patch: { isActive?: boolean; title?: string; message?: string; expiresAt?: string | null }) =>
+    api.patch<{ data: AdminBroadcast }>(`/owner/broadcasts/${id}`, patch).then(unwrap<AdminBroadcast>),
+
+  deleteBroadcast: (id: string) =>
+    api.delete(`/owner/broadcasts/${id}`),
 };

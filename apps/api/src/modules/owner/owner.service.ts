@@ -1,10 +1,10 @@
-import { eq, and, inArray, sql, desc, gt } from 'drizzle-orm';
+import { eq, and, inArray, sql, desc, gt, or, isNull } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import {
   sellers, users, customers, products, installments, payments,
   verifications, recoveryActions, expenses, ledgerEntries, cashSales,
   auditLogs, returns, adminPaymentLogs, adminShopNotes, superAdminAuditLogs,
-  refreshTokens,
+  refreshTokens, adminBroadcasts,
 } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { hashPassword } from '../../utils/hash.js';
@@ -739,5 +739,82 @@ export class OwnerService {
     );
 
     return { sent: true, sentTo: owner.email };
+  }
+
+  // ── B3: Broadcast announcements ───────────────────────────────────────────────
+
+  async listBroadcasts() {
+    return db.select().from(adminBroadcasts).orderBy(desc(adminBroadcasts.createdAt));
+  }
+
+  async createBroadcast(
+    body: { title: string; message: string; targetPlan: string; type: string; expiresAt?: string },
+    actorId: string,
+  ) {
+    const [row] = await db.insert(adminBroadcasts).values({
+      title:      body.title,
+      body:       body.message,
+      targetPlan: body.targetPlan ?? 'ALL',
+      type:       body.type ?? 'info',
+      isActive:   true,
+      expiresAt:  body.expiresAt ? new Date(body.expiresAt) : null,
+      createdBy:  actorId,
+    }).returning();
+    await this.logAdmin(actorId, 'BROADCAST_CREATED', null, null,
+      `"${body.title}" → ${body.targetPlan}`);
+    return row;
+  }
+
+  async updateBroadcast(
+    id: string,
+    patch: { isActive?: boolean; title?: string; message?: string; expiresAt?: string | null },
+    actorId: string,
+  ) {
+    const updates: Record<string, unknown> = {};
+    if (patch.isActive !== undefined) updates['isActive']  = patch.isActive;
+    if (patch.title    !== undefined) updates['title']     = patch.title;
+    if (patch.message  !== undefined) updates['body']      = patch.message;
+    if ('expiresAt' in patch)        updates['expiresAt'] = patch.expiresAt ? new Date(patch.expiresAt) : null;
+
+    const [row] = await db.update(adminBroadcasts)
+      .set(updates)
+      .where(eq(adminBroadcasts.id, id))
+      .returning();
+    if (!row) throw new AppError('Broadcast not found', 404);
+
+    if (patch.isActive !== undefined) {
+      await this.logAdmin(actorId,
+        patch.isActive ? 'BROADCAST_ACTIVATED' : 'BROADCAST_DEACTIVATED',
+        null, null, row.title);
+    }
+    return row;
+  }
+
+  async deleteBroadcast(id: string, actorId: string) {
+    const [row] = await db.delete(adminBroadcasts)
+      .where(eq(adminBroadcasts.id, id))
+      .returning({ title: adminBroadcasts.title });
+    if (!row) throw new AppError('Broadcast not found', 404);
+    await this.logAdmin(actorId, 'BROADCAST_DELETED', null, null, row.title);
+  }
+
+  async getActiveBroadcasts(sellerId: string | null) {
+    const now = new Date();
+    let plan = 'ALL';
+    if (sellerId) {
+      const seller = await db.query.sellers.findFirst({
+        where: eq(sellers.id, sellerId),
+        columns: { plan: true },
+      });
+      plan = seller?.plan ?? 'TRIAL';
+    }
+
+    return db.select().from(adminBroadcasts).where(
+      and(
+        eq(adminBroadcasts.isActive, true),
+        or(isNull(adminBroadcasts.expiresAt), gt(adminBroadcasts.expiresAt, now)),
+        or(eq(adminBroadcasts.targetPlan, 'ALL'), eq(adminBroadcasts.targetPlan, plan)),
+      ),
+    ).orderBy(desc(adminBroadcasts.createdAt));
   }
 }

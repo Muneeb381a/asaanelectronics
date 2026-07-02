@@ -6,9 +6,9 @@ import {
   CreditCard, Calendar, Search, AlertTriangle, Clock, KeyRound, Eye, EyeOff,
   TrendingUp, TrendingDown, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
   Activity, FileText, Plus, Package, Monitor, Smartphone, Tablet2,
-  ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle, Mail,
+  ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle, Mail, Megaphone, ToggleLeft, ToggleRight,
 } from 'lucide-react';
-import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk } from '../../api/owner.api.ts';
+import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk, type AdminBroadcast } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
@@ -1083,6 +1083,10 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   NOTE_ADDED:              { label: 'Note Added',          color: 'text-amber-700  bg-amber-50  border-amber-200'    },
   NOTE_DELETED:            { label: 'Note Deleted',        color: 'text-gray-600   bg-gray-50   border-gray-200'     },
   RENEWAL_REMINDER_SENT:   { label: 'Reminder Sent',       color: 'text-indigo-600 bg-indigo-50 border-indigo-200'   },
+  BROADCAST_CREATED:       { label: 'Broadcast Created',   color: 'text-indigo-600 bg-indigo-50 border-indigo-200'   },
+  BROADCAST_ACTIVATED:     { label: 'Broadcast On',        color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+  BROADCAST_DEACTIVATED:   { label: 'Broadcast Off',       color: 'text-gray-600   bg-gray-50   border-gray-200'    },
+  BROADCAST_DELETED:       { label: 'Broadcast Deleted',   color: 'text-red-600    bg-red-50    border-red-200'      },
 };
 
 function AdminAuditPanel({ onClose, filterShopId }: { onClose: () => void; filterShopId?: string | null }) {
@@ -1157,6 +1161,280 @@ function AdminAuditPanel({ onClose, filterShopId }: { onClose: () => void; filte
                 );
               })}
             </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── B3: Broadcast Panel (admin) ───────────────────────────────────────────────
+
+const BROADCAST_TYPE_META: Record<string, { label: string; cls: string; dot: string }> = {
+  info:        { label: 'Info',        cls: 'text-indigo-700 bg-indigo-50 border-indigo-200', dot: 'bg-indigo-500' },
+  warning:     { label: 'Warning',     cls: 'text-amber-700  bg-amber-50  border-amber-200',  dot: 'bg-amber-500'  },
+  maintenance: { label: 'Maintenance', cls: 'text-red-600    bg-red-50    border-red-200',    dot: 'bg-red-500'    },
+  success:     { label: 'Update',      cls: 'text-emerald-700 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' },
+};
+
+const BROADCAST_TARGETS = [
+  { value: 'ALL',        label: 'All shops'   },
+  { value: 'TRIAL',      label: 'Trial only'  },
+  { value: 'BASIC',      label: 'Basic only'  },
+  { value: 'PRO',        label: 'Pro only'    },
+  { value: 'ENTERPRISE', label: 'Enterprise only' },
+];
+
+function BroadcastPanel({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [title,      setTitle]      = useState('');
+  const [message,    setMessage]    = useState('');
+  const [targetPlan, setTargetPlan] = useState('ALL');
+  const [type,       setType]       = useState('info');
+  const [expiresAt,  setExpiresAt]  = useState('');
+  const [showForm,   setShowForm]   = useState(false);
+
+  const { data: broadcasts = [], isLoading } = useQuery({
+    queryKey: ['owner-broadcasts'],
+    queryFn: ownerApi.listBroadcasts,
+    staleTime: 30_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['owner-broadcasts'] });
+
+  const createMutation = useMutation({
+    mutationFn: () => ownerApi.createBroadcast({ title, message, targetPlan, type, expiresAt: expiresAt || undefined }),
+    onSuccess: () => {
+      invalidate();
+      setTitle(''); setMessage(''); setTargetPlan('ALL'); setType('info'); setExpiresAt('');
+      setShowForm(false);
+      toast.success('Announcement create ho gaya');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      ownerApi.updateBroadcast(id, { isActive }),
+    onSuccess: () => { invalidate(); },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => ownerApi.deleteBroadcast(id),
+    onSuccess: () => { invalidate(); toast.success('Announcement delete ho gaya'); },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const activeBroadcasts   = broadcasts.filter((b: AdminBroadcast) => b.isActive);
+  const inactiveBroadcasts = broadcasts.filter((b: AdminBroadcast) => !b.isActive);
+
+  const now = new Date();
+  const isExpired = (b: AdminBroadcast) => !!b.expiresAt && new Date(b.expiresAt) < now;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
+            <Megaphone size={16} className="text-indigo-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-gray-900">Broadcast Announcements</p>
+            <p className="text-xs text-gray-400">
+              {activeBroadcasts.length} active • {broadcasts.length} total
+            </p>
+          </div>
+          <button onClick={() => setShowForm((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition">
+            <Plus size={13} /> New
+          </button>
+          <button onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Create form */}
+          {showForm && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-indigo-800 flex items-center gap-1.5">
+                <Megaphone size={13} /> Naya Announcement
+              </p>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+                <input value={title} onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. System maintenance notice"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Message *</label>
+                <textarea value={message} onChange={(e) => setMessage(e.target.value)}
+                  rows={3} placeholder="Announcement ka message likhein…"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Target</label>
+                  <select value={targetPlan} onChange={(e) => setTargetPlan(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                    {BROADCAST_TARGETS.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                  <select value={type} onChange={(e) => setType(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                    <option value="info">Info (blue)</option>
+                    <option value="warning">Warning (amber)</option>
+                    <option value="maintenance">Maintenance (red)</option>
+                    <option value="success">Update (green)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Expiry (optional)</label>
+                <input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                <p className="text-[10px] text-gray-400 mt-0.5">Blank = banner tab tak dikhe jab tak manually band na karo</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => { setShowForm(false); }}
+                  className="flex-1 py-2 text-sm border border-gray-200 text-gray-600 rounded-xl hover:bg-white transition">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => createMutation.mutate()}
+                  disabled={!title.trim() || !message.trim() || createMutation.isPending}
+                  className="flex-1 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50">
+                  {createMutation.isPending ? 'Publishing…' : 'Publish'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Active broadcasts */}
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1,2,3].map((i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : (
+            <>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Active ({activeBroadcasts.length})
+                </p>
+                {activeBroadcasts.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-6 bg-gray-50 rounded-xl">
+                    Koi active announcement nahi
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {activeBroadcasts.map((b: AdminBroadcast) => {
+                      const meta = BROADCAST_TYPE_META[b.type] ?? BROADCAST_TYPE_META['info'];
+                      const expired = isExpired(b);
+                      return (
+                        <div key={b.id} className={`border rounded-xl p-3 ${expired ? 'opacity-60 bg-gray-50 border-gray-200' : 'bg-white border-gray-100'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${meta.dot}`} />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-semibold text-gray-900 truncate">{b.title}</span>
+                                  <span className={`inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${meta.cls}`}>
+                                    {meta.label}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">
+                                    {b.targetPlan === 'ALL' ? 'All shops' : b.targetPlan}
+                                  </span>
+                                  {expired && (
+                                    <span className="text-[10px] text-red-500 font-semibold">Expired</span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed line-clamp-2">{b.body}</p>
+                                {b.expiresAt && !expired && (
+                                  <p className="text-[10px] text-gray-400 mt-1">
+                                    Expires {fmtDate(b.expiresAt)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => toggleMutation.mutate({ id: b.id, isActive: false })}
+                                disabled={toggleMutation.isPending}
+                                title="Deactivate"
+                                className="p-1.5 text-emerald-500 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition">
+                                <ToggleRight size={16} />
+                              </button>
+                              <button
+                                onClick={() => deleteMutation.mutate(b.id)}
+                                disabled={deleteMutation.isPending}
+                                className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {inactiveBroadcasts.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    Inactive ({inactiveBroadcasts.length})
+                  </p>
+                  <div className="space-y-2">
+                    {inactiveBroadcasts.map((b: AdminBroadcast) => {
+                      const meta = BROADCAST_TYPE_META[b.type] ?? BROADCAST_TYPE_META['info'];
+                      return (
+                        <div key={b.id} className="border border-gray-100 bg-gray-50 rounded-xl p-3 opacity-70">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium text-gray-600 truncate">{b.title}</span>
+                                <span className={`inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-semibold border opacity-60 ${meta.cls}`}>
+                                  {meta.label}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => toggleMutation.mutate({ id: b.id, isActive: true })}
+                                disabled={toggleMutation.isPending}
+                                title="Activate"
+                                className="p-1.5 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition">
+                                <ToggleLeft size={16} />
+                              </button>
+                              <button
+                                onClick={() => deleteMutation.mutate(b.id)}
+                                disabled={deleteMutation.isPending}
+                                className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -1408,6 +1686,7 @@ export default function ShopsPage() {
   const [detailShopId, setDetailShopId] = useState<string | null>(null);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showChurnPanel, setShowChurnPanel] = useState(false);
+  const [showBroadcastPanel, setShowBroadcastPanel] = useState(false);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   const { data: shops = [], isLoading, isError } = useQuery({
@@ -1505,6 +1784,10 @@ export default function ShopsPage() {
           <p className="text-sm text-gray-400 mt-0.5">Manage all registered shops</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowBroadcastPanel(true)} title="Broadcast announcements"
+            className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition">
+            <Megaphone size={16} />
+          </button>
           <button onClick={() => setShowChurnPanel(true)} title="Churn risk analysis"
             className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition">
             <TrendingDown size={16} />
@@ -1710,6 +1993,11 @@ export default function ShopsPage() {
         <AdminAuditPanel
           onClose={() => setShowAuditLog(false)}
         />
+      )}
+
+      {/* B3: Broadcast Panel */}
+      {showBroadcastPanel && (
+        <BroadcastPanel onClose={() => setShowBroadcastPanel(false)} />
       )}
 
       {/* B1: Churn Risk Panel */}

@@ -81,6 +81,24 @@ export async function sendRenewalReminder(req: AuthRequest, res: Response) {
   success(res, await svc.sendRenewalReminder(req.params['id'] as string, req.user!.userId));
 }
 
+// ── B3: Broadcast announcements ───────────────────────────────────────────────
+export async function listBroadcasts(_req: AuthRequest, res: Response) {
+  success(res, await svc.listBroadcasts());
+}
+
+export async function createBroadcast(req: AuthRequest, res: Response) {
+  success(res, await svc.createBroadcast(req.body, req.user!.userId), 201);
+}
+
+export async function updateBroadcast(req: AuthRequest, res: Response) {
+  success(res, await svc.updateBroadcast(req.params['id'] as string, req.body, req.user!.userId));
+}
+
+export async function deleteBroadcast(req: AuthRequest, res: Response) {
+  await svc.deleteBroadcast(req.params['id'] as string, req.user!.userId);
+  success(res, null);
+}
+
 // ── Session management ────────────────────────────────────────────────────────
 export async function getShopSessions(req: AuthRequest, res: Response) {
   success(res, await svc.getShopSessions(req.params['id'] as string));

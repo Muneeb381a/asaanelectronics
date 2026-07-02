@@ -1,16 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart, FileDown, Smartphone, Building2,
-  ArrowLeftRight, AlertOctagon, Shield,
+  ArrowLeftRight, AlertOctagon, Shield, Megaphone,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
 import { statsApi } from '../api/stats.api.ts';
 import { profileApi } from '../api/profile.api.ts';
 import { billingApi } from '../api/billing.api.ts';
+import { broadcastsApi, type Broadcast } from '../api/broadcasts.api.ts';
 import ProfileModal from '../components/ProfileModal.tsx';
 import GlobalSearch from '../components/GlobalSearch.tsx';
 
@@ -64,6 +65,29 @@ export default function DashboardLayout() {
     staleTime: 300_000,
     enabled: isOwner,
   });
+
+  // B3: Active broadcast banners (all authenticated users)
+  const { data: broadcasts = [] } = useQuery({
+    queryKey: ['broadcasts'],
+    queryFn: broadcastsApi.getActive,
+    staleTime: 5 * 60_000,
+    enabled: user?.role !== 'SUPER_ADMIN',
+  });
+
+  const getDismissed = useCallback(() => {
+    try { return JSON.parse(localStorage.getItem('dismissed_broadcasts') ?? '[]') as string[]; }
+    catch { return [] as string[]; }
+  }, []);
+
+  const [dismissed, setDismissed] = useState<string[]>(getDismissed);
+
+  const dismissBroadcast = (id: string) => {
+    const next = [...dismissed, id];
+    setDismissed(next);
+    localStorage.setItem('dismissed_broadcasts', JSON.stringify(next));
+  };
+
+  const visibleBroadcasts = broadcasts.filter((b: Broadcast) => !dismissed.includes(b.id));
 
   const overdueCount       = stats?.overdueCount       ?? 0;
   const lowStockItems      = stats?.lowStockItems       ?? [];
@@ -366,6 +390,32 @@ export default function DashboardLayout() {
         </header>
 
         <main className="flex-1 overflow-auto flex flex-col">
+          {/* B3: Broadcast banners */}
+          {visibleBroadcasts.map((b: Broadcast) => {
+            const styles: Record<string, string> = {
+              info:        'bg-indigo-600 text-white',
+              warning:     'bg-amber-500  text-white',
+              maintenance: 'bg-red-600    text-white',
+              success:     'bg-emerald-600 text-white',
+            };
+            return (
+              <div key={b.id} className={`shrink-0 px-4 py-2.5 flex items-start justify-between gap-3 text-sm ${styles[b.type] ?? styles['info']}`}>
+                <div className="flex items-start gap-2 min-w-0">
+                  <Megaphone size={14} className="shrink-0 mt-0.5 opacity-80" />
+                  <div className="min-w-0">
+                    <span className="font-semibold">{b.title}</span>
+                    <span className="ml-2 opacity-90">{b.body}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => dismissBroadcast(b.id)}
+                  className="shrink-0 p-1 rounded-lg hover:bg-white/20 transition opacity-80 hover:opacity-100">
+                  <X size={14} />
+                </button>
+              </div>
+            );
+          })}
+
           {/* A9: Grace period banner */}
           {billingUsage?.inGracePeriod && !billingUsage.hardBlocked && (
             <div className="shrink-0 bg-amber-500 text-white px-4 py-2.5 flex items-center justify-between gap-3 text-sm">

@@ -792,3 +792,18 @@ export const superAdminAuditLogs = pgTable('super_admin_audit_logs', {
   index('idx_super_admin_audit_created').on(t.createdAt),
 ]);
 
+// ── SaaS Admin: broadcast announcements ───────────────────────────────────────
+export const adminBroadcasts = pgTable('admin_broadcasts', {
+  id:         text('id').primaryKey().$defaultFn(() => randomUUID()),
+  title:      text('title').notNull(),
+  body:       text('body').notNull(),
+  targetPlan: text('target_plan').notNull().default('ALL'), // ALL | TRIAL | BASIC | PRO | ENTERPRISE
+  type:       text('type').notNull().default('info'),        // info | warning | maintenance | success
+  isActive:   boolean('is_active').notNull().default(true),
+  expiresAt:  timestamp('expires_at', { withTimezone: true }),
+  createdBy:  text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_admin_broadcasts_active').on(t.isActive, t.createdAt),
+]);
+
