@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
 import { statsApi } from '../api/stats.api.ts';
 import { profileApi } from '../api/profile.api.ts';
+import { billingApi } from '../api/billing.api.ts';
 import ProfileModal from '../components/ProfileModal.tsx';
 import GlobalSearch from '../components/GlobalSearch.tsx';
 
@@ -54,6 +55,14 @@ export default function DashboardLayout() {
     queryFn: statsApi.get,
     staleTime: 60_000,
     enabled: isOwner || !!perms?.canViewReports,
+  });
+
+  // A9: Grace period check — only for shop owners (not SUPER_ADMIN)
+  const { data: billingUsage } = useQuery({
+    queryKey: ['billing-usage'],
+    queryFn: billingApi.getUsage,
+    staleTime: 300_000,
+    enabled: isOwner,
   });
 
   const overdueCount       = stats?.overdueCount       ?? 0;
@@ -356,8 +365,50 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto">
-          <Outlet />
+        <main className="flex-1 overflow-auto flex flex-col">
+          {/* A9: Grace period banner */}
+          {billingUsage?.inGracePeriod && !billingUsage.hardBlocked && (
+            <div className="shrink-0 bg-amber-500 text-white px-4 py-2.5 flex items-center justify-between gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={15} className="shrink-0" />
+                <span>
+                  Aapka plan expire ho gaya hai —{' '}
+                  <strong>
+                    {billingUsage.graceDaysLeft === 0
+                      ? 'aaj last day hai'
+                      : `${billingUsage.graceDaysLeft} din bache hain`}
+                  </strong>{' '}
+                  grace period mein. Is ke baad access band ho jaega.
+                </span>
+              </div>
+              <a href="/billing"
+                className="shrink-0 bg-white text-amber-600 font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-amber-50 transition">
+                Renew Karo
+              </a>
+            </div>
+          )}
+
+          {/* A9: Hard block — grace period expired */}
+          {billingUsage?.hardBlocked ? (
+            <div className="flex-1 flex items-center justify-center p-8">
+              <div className="text-center max-w-sm">
+                <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle size={28} className="text-red-500" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Access Band Ho Gaya</h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  Aapka plan aur grace period dono expire ho chuke hain. Access dubara hasil karne ke liye
+                  admin se contact karein ya plan renew karein.
+                </p>
+                <a href="/billing"
+                  className="inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition">
+                  Billing Page
+                </a>
+              </div>
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
 

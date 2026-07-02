@@ -94,6 +94,18 @@ export interface ShopDetail {
   notes: AdminShopNote[];
 }
 
+export interface SuperAdminAuditLog {
+  id: string;
+  action: string;
+  sellerId: string | null;
+  shopName: string | null;
+  note: string | null;
+  meta: unknown;
+  createdAt: string;
+  actorName: string | null;
+  actorEmail: string | null;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const ownerApi = {
@@ -139,4 +151,10 @@ export const ownerApi = {
 
   deleteShopNote: (sellerId: string, noteId: string) =>
     api.delete(`/owner/shops/${sellerId}/notes/${noteId}`),
+
+  // A10: Super-admin audit log
+  listAdminAuditLogs: (sellerId?: string, limit = 100) =>
+    api.get<{ data: SuperAdminAuditLog[] }>('/owner/admin-audit-logs', {
+      params: { ...(sellerId ? { sellerId } : {}), limit },
+    }).then(unwrap<SuperAdminAuditLog[]>),
 };

@@ -7,7 +7,7 @@ import {
   TrendingUp, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
   Activity, FileText, Plus, Package,
 } from 'lucide-react';
-import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats } from '../../api/owner.api.ts';
+import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
@@ -824,6 +824,100 @@ function ShopDetailPanel({ shopId, onClose }: { shopId: string; onClose: () => v
   );
 }
 
+// ── admin audit log panel (A10) ───────────────────────────────────────────────
+
+const ACTION_META: Record<string, { label: string; color: string }> = {
+  SHOP_CREATED:        { label: 'Shop Created',       color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+  SHOP_DELETED:        { label: 'Shop Deleted',        color: 'text-red-600    bg-red-50    border-red-200'       },
+  SHOP_ACTIVATED:      { label: 'Shop Activated',      color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+  SHOP_SUSPENDED:      { label: 'Shop Suspended',      color: 'text-orange-600 bg-orange-50 border-orange-200'   },
+  SHOP_OWNER_CREATED:  { label: 'Owner Added',         color: 'text-indigo-600 bg-indigo-50 border-indigo-200'   },
+  PLAN_CHANGED:        { label: 'Plan Changed',        color: 'text-purple-600 bg-purple-50 border-purple-200'   },
+  PAYMENT_LOG_ADDED:   { label: 'Payment Logged',      color: 'text-blue-600   bg-blue-50   border-blue-200'     },
+  PAYMENT_LOG_DELETED: { label: 'Payment Log Deleted', color: 'text-gray-600   bg-gray-50   border-gray-200'     },
+  NOTE_ADDED:          { label: 'Note Added',          color: 'text-amber-700  bg-amber-50  border-amber-200'    },
+  NOTE_DELETED:        { label: 'Note Deleted',        color: 'text-gray-600   bg-gray-50   border-gray-200'     },
+};
+
+function AdminAuditPanel({ onClose, filterShopId }: { onClose: () => void; filterShopId?: string | null }) {
+  const [shopFilter, setShopFilter] = useState(filterShopId ?? '');
+
+  const { data: logs = [], isLoading } = useQuery({
+    queryKey: ['admin-audit-logs', shopFilter],
+    queryFn: () => ownerApi.listAdminAuditLogs(shopFilter || undefined, 200),
+    staleTime: 30_000,
+  });
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center">
+            <FileText size={16} className="text-purple-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-gray-900">Admin Audit Log</p>
+            <p className="text-xs text-gray-400">Super-admin ke actions ka record</p>
+          </div>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Shop filter */}
+        <div className="px-5 py-3 border-b border-gray-100 shrink-0">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+            <input value={shopFilter} onChange={(e) => setShopFilter(e.target.value)}
+              placeholder="Filter by shop ID (leave blank for all)…"
+              className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1,2,3,4,5].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : logs.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-10">No audit logs yet</p>
+          ) : (
+            <div className="space-y-2">
+              {logs.map((log: SuperAdminAuditLog) => {
+                const meta = ACTION_META[log.action] ?? { label: log.action, color: 'text-gray-600 bg-gray-50 border-gray-200' };
+                return (
+                  <div key={log.id} className="border border-gray-100 rounded-xl px-3 py-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-[10px] font-bold border ${meta.color}`}>
+                            {meta.label}
+                          </span>
+                          {log.shopName && (
+                            <span className="text-xs text-gray-600 font-medium truncate">{log.shopName}</span>
+                          )}
+                        </div>
+                        {log.note && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{log.note}</p>}
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <span className="text-[10px] text-gray-400">{fmtDate(log.createdAt)}</span>
+                          {log.actorName && (
+                            <span className="text-[10px] text-gray-400">by {log.actorName}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 type Modal = { type: 'shop' } | { type: 'owner'; shop: Shop } | { type: 'plan'; shop: Shop } | null;
@@ -837,6 +931,7 @@ export default function ShopsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
   const [statusConfirm, setStatusConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
   const [detailShopId, setDetailShopId] = useState<string | null>(null);
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
   const { data: shops = [], isLoading, isError } = useQuery({
     queryKey: ['owner-shops'],
@@ -923,6 +1018,10 @@ export default function ShopsPage() {
           <p className="text-sm text-gray-400 mt-0.5">Manage all registered shops</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowAuditLog(true)} title="Admin audit log"
+            className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition">
+            <FileText size={16} />
+          </button>
           <button onClick={() => setShowChangePwd(true)} title="Change password"
             className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition">
             <KeyRound size={16} />
@@ -1104,6 +1203,13 @@ export default function ShopsPage() {
         <ShopDetailPanel
           shopId={detailShopId}
           onClose={() => setDetailShopId(null)}
+        />
+      )}
+
+      {/* A10: Admin audit log panel */}
+      {showAuditLog && (
+        <AdminAuditPanel
+          onClose={() => setShowAuditLog(false)}
         />
       )}
     </div>

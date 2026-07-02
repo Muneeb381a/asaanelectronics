@@ -28,9 +28,24 @@ export class BillingService {
     ]);
 
     const now = new Date();
-    const trialExpired   = seller.plan === 'TRIAL'      && seller.trialEndsAt   != null && seller.trialEndsAt   < now;
-    const planExpired    = seller.plan !== 'TRIAL'      && seller.planExpiresAt != null && seller.planExpiresAt < now;
-    const trialDaysLeft  = seller.trialEndsAt
+    const GRACE_DAYS = 3;
+
+    const isTrial = seller.plan === 'TRIAL';
+    const expiredAt = isTrial ? seller.trialEndsAt : seller.planExpiresAt;
+    const isExpiredRaw = expiredAt != null && expiredAt < now;
+    const daysSinceExpiry = isExpiredRaw && expiredAt
+      ? Math.floor((now.getTime() - expiredAt.getTime()) / 86_400_000)
+      : 0;
+
+    const inGracePeriod = isExpiredRaw && daysSinceExpiry < GRACE_DAYS;
+    const hardBlocked   = isExpiredRaw && daysSinceExpiry >= GRACE_DAYS;
+    const graceDaysLeft = inGracePeriod ? Math.max(0, GRACE_DAYS - daysSinceExpiry) : 0;
+
+    // Keep legacy flags true only when hard-blocked (past grace period)
+    const trialExpired = isTrial  && hardBlocked;
+    const planExpired  = !isTrial && hardBlocked;
+
+    const trialDaysLeft = seller.trialEndsAt
       ? Math.max(0, Math.ceil((seller.trialEndsAt.getTime() - now.getTime()) / 86_400_000))
       : null;
 
@@ -43,6 +58,9 @@ export class BillingService {
       trialDaysLeft,
       trialExpired,
       planExpired,
+      inGracePeriod,
+      graceDaysLeft,
+      hardBlocked,
       isActive:      seller.isActive,
       limits: {
         customers:    usageStat(custCount,  limits.customers),

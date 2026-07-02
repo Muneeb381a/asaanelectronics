@@ -775,3 +775,20 @@ export const adminShopNotes = pgTable('admin_shop_notes', {
   index('idx_admin_shop_notes_seller').on(t.sellerId),
 ]);
 
+// ── SaaS Admin: super-admin action audit trail ────────────────────────────────
+// Tracks who did what to which shop at the platform level (accountability A10).
+export const superAdminAuditLogs = pgTable('super_admin_audit_logs', {
+  id:       text('id').primaryKey().$defaultFn(() => randomUUID()),
+  actorId:  text('actor_id').references(() => users.id, { onDelete: 'set null' }),
+  action:   text('action').notNull(),           // SHOP_CREATED, PLAN_CHANGED, SHOP_SUSPENDED …
+  sellerId: text('seller_id').references(() => sellers.id, { onDelete: 'set null' }),
+  shopName: text('shop_name'),                  // snapshot so it survives shop deletion
+  note:     text('note'),                       // human-readable summary
+  meta:     json('meta'),                       // arbitrary extras (old/new plan, amount, …)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_super_admin_audit_actor').on(t.actorId),
+  index('idx_super_admin_audit_seller').on(t.sellerId),
+  index('idx_super_admin_audit_created').on(t.createdAt),
+]);
+

@@ -18,6 +18,9 @@ export interface BillingUsage {
   trialDaysLeft: number | null;
   trialExpired: boolean;
   planExpired: boolean;
+  inGracePeriod: boolean;
+  graceDaysLeft: number;
+  hardBlocked: boolean;
   isActive: boolean;
   limits: {
     customers: UsageStat;

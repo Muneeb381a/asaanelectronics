@@ -1,39 +1,39 @@
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import type { AuthRequest } from '../../middleware/auth.js';
 import { OwnerService } from './owner.service.js';
 import { success } from '../../utils/response.js';
 
 const svc = new OwnerService();
 
-export async function listShops(_req: Request, res: Response) {
+export async function listShops(_req: AuthRequest, res: Response) {
   success(res, await svc.listShops());
 }
 
-export async function createShop(req: Request, res: Response) {
-  success(res, await svc.createShop(req.body), 201);
+export async function createShop(req: AuthRequest, res: Response) {
+  success(res, await svc.createShop(req.body, req.user!.userId), 201);
 }
 
-export async function createShopOwner(req: Request, res: Response) {
-  success(res, await svc.createShopOwner(req.params['id'] as string, req.body), 201);
+export async function createShopOwner(req: AuthRequest, res: Response) {
+  success(res, await svc.createShopOwner(req.params['id'] as string, req.body, req.user!.userId), 201);
 }
 
-export async function deleteShop(req: Request, res: Response) {
-  await svc.deleteShop(req.params['id'] as string);
+export async function deleteShop(req: AuthRequest, res: Response) {
+  await svc.deleteShop(req.params['id'] as string, req.user!.userId);
   success(res, null);
 }
 
-export async function toggleShopStatus(req: Request, res: Response) {
+export async function toggleShopStatus(req: AuthRequest, res: Response) {
   const { isActive } = req.body as { isActive: boolean };
-  success(res, await svc.toggleShopStatus(req.params['id'] as string, isActive));
+  success(res, await svc.toggleShopStatus(req.params['id'] as string, isActive, req.user!.userId));
 }
 
 // ── A1: Platform stats ────────────────────────────────────────────────────────
-export async function getPlatformStats(_req: Request, res: Response) {
+export async function getPlatformStats(_req: AuthRequest, res: Response) {
   success(res, await svc.getPlatformStats());
 }
 
 // ── A3: Shop usage drill-in ───────────────────────────────────────────────────
-export async function getShopUsage(req: Request, res: Response) {
+export async function getShopUsage(req: AuthRequest, res: Response) {
   success(res, await svc.getShopUsage(req.params['id'] as string));
 }
 
@@ -50,7 +50,7 @@ export async function addPaymentLog(req: AuthRequest, res: Response) {
 }
 
 export async function deletePaymentLog(req: AuthRequest, res: Response) {
-  success(res, await svc.deletePaymentLog(req.params['logId'] as string));
+  success(res, await svc.deletePaymentLog(req.params['logId'] as string, req.user!.userId));
 }
 
 // ── A7: Shop notes ────────────────────────────────────────────────────────────
@@ -61,5 +61,12 @@ export async function addShopNote(req: AuthRequest, res: Response) {
 }
 
 export async function deleteShopNote(req: AuthRequest, res: Response) {
-  success(res, await svc.deleteShopNote(req.params['noteId'] as string));
+  success(res, await svc.deleteShopNote(req.params['noteId'] as string, req.user!.userId));
+}
+
+// ── A10: Admin audit log ──────────────────────────────────────────────────────
+export async function listAdminAuditLogs(req: AuthRequest, res: Response) {
+  const sellerId = req.query['sellerId'] as string | undefined;
+  const limit    = Math.min(200, Number(req.query['limit'] ?? 100));
+  success(res, await svc.listAdminAuditLogs(sellerId, limit));
 }

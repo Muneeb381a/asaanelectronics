@@ -3,13 +3,33 @@ import { db } from '../../db/index.js';
 import {
   sellers, users, customers, products, installments, payments,
   verifications, recoveryActions, expenses, ledgerEntries, cashSales,
-  auditLogs, returns, adminPaymentLogs, adminShopNotes,
+  auditLogs, returns, adminPaymentLogs, adminShopNotes, superAdminAuditLogs,
 } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { hashPassword } from '../../utils/hash.js';
 import { PLAN_LIMITS } from '../../config/plans.js';
 
 export class OwnerService {
+  // ── A10: Admin audit log helper ───────────────────────────────────────────
+
+  private async logAdmin(
+    actorId: string,
+    action: string,
+    sellerId?: string | null,
+    shopName?: string | null,
+    note?: string,
+    meta?: Record<string, unknown>,
+  ) {
+    await db.insert(superAdminAuditLogs).values({
+      actorId,
+      action,
+      sellerId: sellerId ?? null,
+      shopName: shopName ?? null,
+      note:     note ?? null,
+      meta:     meta ?? null,
+    });
+  }
+
   // ── List / manage shops ────────────────────────────────────────────────────
 
   async listShops() {
@@ -34,14 +54,23 @@ export class OwnerService {
     return rows;
   }
 
-  async toggleShopStatus(id: string, isActive: boolean) {
-    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true } });
+  async toggleShopStatus(id: string, isActive: boolean, actorId?: string) {
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true } });
     if (!shop) throw new AppError('Shop not found', 404);
     const [updated] = await db.update(sellers).set({ isActive }).where(eq(sellers.id, id)).returning();
+    if (actorId) {
+      void this.logAdmin(
+        actorId,
+        isActive ? 'SHOP_ACTIVATED' : 'SHOP_SUSPENDED',
+        id,
+        shop.shopName,
+        `${isActive ? 'Activated' : 'Suspended'} shop "${shop.shopName}"`,
+      );
+    }
     return updated;
   }
 
-  async createShop(body: { shopName: string; phone: string; address?: string; plan?: 'TRIAL' | 'BASIC' | 'PRO' }) {
+  async createShop(body: { shopName: string; phone: string; address?: string; plan?: 'TRIAL' | 'BASIC' | 'PRO' }, actorId?: string) {
     const [seller] = await db
       .insert(sellers)
       .values({
@@ -52,11 +81,16 @@ export class OwnerService {
         trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       })
       .returning();
+    if (actorId && seller) {
+      void this.logAdmin(actorId, 'SHOP_CREATED', seller.id, seller.shopName,
+        `Created shop "${seller.shopName}" on plan ${seller.plan}`,
+        { phone: seller.phone, plan: seller.plan });
+    }
     return seller;
   }
 
-  async createShopOwner(sellerId: string, body: { name: string; email: string; password: string }) {
-    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { id: true } });
+  async createShopOwner(sellerId: string, body: { name: string; email: string; password: string }, actorId?: string) {
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { id: true, shopName: true } });
     if (!shop) throw new AppError('Shop not found', 404);
 
     const existing = await db.query.users.findFirst({ where: eq(users.email, body.email), columns: { id: true } });
@@ -68,12 +102,22 @@ export class OwnerService {
       .values({ name: body.name, email: body.email, password, role: 'SELLER_OWNER', sellerId })
       .returning();
 
+    if (actorId) {
+      void this.logAdmin(actorId, 'SHOP_OWNER_CREATED', sellerId, shop.shopName,
+        `Created owner account "${body.name}" (${body.email}) for "${shop.shopName}"`);
+    }
     return { id: user!.id, name: user!.name, email: user!.email, sellerId: user!.sellerId };
   }
 
-  async deleteShop(id: string) {
-    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true } });
+  async deleteShop(id: string, actorId?: string) {
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true } });
     if (!shop) throw new AppError('Shop not found', 404);
+
+    // Log before deletion so seller_id reference still exists
+    if (actorId) {
+      await this.logAdmin(actorId, 'SHOP_DELETED', null, shop.shopName,
+        `Permanently deleted shop "${shop.shopName}" and all its data`);
+    }
 
     await db.transaction(async (tx) => {
       const shopCustomers = await tx.select({ id: customers.id }).from(customers).where(eq(customers.sellerId, id));
@@ -288,7 +332,7 @@ export class OwnerService {
     amount: number; method: string; reference?: string; forMonth?: string; note?: string;
   }) {
     if (!body.amount || body.amount <= 0) throw new AppError('Amount must be > 0', 400);
-    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { id: true } });
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { id: true, shopName: true } });
     if (!shop) throw new AppError('Shop not found', 404);
 
     const [row] = await db.insert(adminPaymentLogs).values({
@@ -300,16 +344,25 @@ export class OwnerService {
       note: body.note?.trim() || undefined,
       loggedBy,
     }).returning();
+
+    void this.logAdmin(loggedBy, 'PAYMENT_LOG_ADDED', sellerId, shop.shopName,
+      `Logged PKR ${body.amount} via ${body.method} for "${shop.shopName}"${body.forMonth ? ` (${body.forMonth})` : ''}`,
+      { amount: body.amount, method: body.method, reference: body.reference, forMonth: body.forMonth });
+
     return row!;
   }
 
-  async deletePaymentLog(id: string) {
+  async deletePaymentLog(id: string, actorId?: string) {
     const existing = await db.query.adminPaymentLogs.findFirst({
       where: eq(adminPaymentLogs.id, id),
-      columns: { id: true },
+      columns: { id: true, sellerId: true, amount: true },
     });
     if (!existing) throw new AppError('Payment log not found', 404);
     await db.delete(adminPaymentLogs).where(eq(adminPaymentLogs.id, id));
+    if (actorId) {
+      void this.logAdmin(actorId, 'PAYMENT_LOG_DELETED', existing.sellerId, null,
+        `Deleted payment log PKR ${existing.amount}`);
+    }
     return { deleted: true };
   }
 
@@ -317,7 +370,7 @@ export class OwnerService {
 
   async addShopNote(sellerId: string, createdBy: string, content: string) {
     if (!content?.trim()) throw new AppError('Note content is required', 400);
-    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { id: true } });
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId), columns: { id: true, shopName: true } });
     if (!shop) throw new AppError('Shop not found', 404);
 
     const [row] = await db.insert(adminShopNotes).values({
@@ -325,16 +378,47 @@ export class OwnerService {
       content: content.trim(),
       createdBy,
     }).returning();
+
+    void this.logAdmin(createdBy, 'NOTE_ADDED', sellerId, shop.shopName,
+      `Added note to "${shop.shopName}": ${content.trim().slice(0, 60)}`);
+
     return row!;
   }
 
-  async deleteShopNote(id: string) {
+  async deleteShopNote(id: string, actorId?: string) {
     const existing = await db.query.adminShopNotes.findFirst({
       where: eq(adminShopNotes.id, id),
-      columns: { id: true },
+      columns: { id: true, sellerId: true },
     });
     if (!existing) throw new AppError('Note not found', 404);
     await db.delete(adminShopNotes).where(eq(adminShopNotes.id, id));
+    if (actorId) {
+      void this.logAdmin(actorId, 'NOTE_DELETED', existing.sellerId, null, 'Deleted internal note');
+    }
     return { deleted: true };
+  }
+
+  // ── A10: List admin audit logs ─────────────────────────────────────────────
+
+  async listAdminAuditLogs(sellerId?: string, limit = 100) {
+    const rows = await db
+      .select({
+        id:        superAdminAuditLogs.id,
+        action:    superAdminAuditLogs.action,
+        sellerId:  superAdminAuditLogs.sellerId,
+        shopName:  superAdminAuditLogs.shopName,
+        note:      superAdminAuditLogs.note,
+        meta:      superAdminAuditLogs.meta,
+        createdAt: superAdminAuditLogs.createdAt,
+        actorName: users.name,
+        actorEmail: users.email,
+      })
+      .from(superAdminAuditLogs)
+      .leftJoin(users, eq(users.id, superAdminAuditLogs.actorId))
+      .where(sellerId ? eq(superAdminAuditLogs.sellerId, sellerId) : undefined)
+      .orderBy(desc(superAdminAuditLogs.createdAt))
+      .limit(limit);
+
+    return rows;
   }
 }
