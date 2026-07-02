@@ -30,6 +30,70 @@ export interface CreateShopOwnerInput {
   password: string;
 }
 
+export interface PlatformStats {
+  totalShops: number;
+  activeShops: number;
+  suspendedShops: number;
+  expiredShops: number;
+  trialShops: number;
+  paidShops: number;
+  newThisMonth: number;
+  mrr: number;
+  totalRevenueCollected: number;
+  revenueThisMonth: number;
+  totalCustomers: number;
+  totalInstallments: number;
+  trialExpiring7: Shop[];
+  planExpiring7: Shop[];
+  planExpiring14: Shop[];
+  planExpiring30: Shop[];
+}
+
+export interface ShopUsageLimits {
+  customers: number;
+  staff: number;
+  installments: number;
+  label: string;
+  priceMonthly: number;
+}
+
+export interface ShopUsage {
+  customers: number;
+  installments: number;
+  staff: number;
+  paymentsThisMonth: number;
+  totalRevenue: number;
+  lastActivity: string | null;
+}
+
+export interface AdminPaymentLog {
+  id: string;
+  sellerId: string;
+  amount: string;
+  method: string;
+  reference: string | null;
+  forMonth: string | null;
+  note: string | null;
+  createdAt: string;
+  shopName: string | null;
+}
+
+export interface AdminShopNote {
+  id: string;
+  sellerId: string;
+  content: string;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface ShopDetail {
+  shop: Shop & { murabaha_mode?: boolean; settings?: unknown };
+  usage: ShopUsage;
+  limits: ShopUsageLimits;
+  paymentLogs: AdminPaymentLog[];
+  notes: AdminShopNote[];
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const ownerApi = {
@@ -50,4 +114,29 @@ export const ownerApi = {
 
   changePlan: (sellerId: string, plan: Plan, planExpiresAt?: string) =>
     api.patch(`/billing/${sellerId}/plan`, { plan, planExpiresAt }).then(unwrap<unknown>),
+
+  // A1: Platform stats
+  getPlatformStats: () =>
+    api.get<{ data: PlatformStats }>('/owner/stats').then(unwrap<PlatformStats>),
+
+  // A3: Shop usage drill-in
+  getShopUsage: (id: string) =>
+    api.get<{ data: ShopDetail }>(`/owner/shops/${id}/usage`).then(unwrap<ShopDetail>),
+
+  // A4: Payment logs
+  listPaymentLogs: (sellerId?: string) =>
+    api.get<{ data: AdminPaymentLog[] }>('/owner/payment-logs', { params: sellerId ? { sellerId } : {} }).then(unwrap<AdminPaymentLog[]>),
+
+  addPaymentLog: (sellerId: string, data: { amount: number; method: string; reference?: string; forMonth?: string; note?: string }) =>
+    api.post<{ data: AdminPaymentLog }>(`/owner/shops/${sellerId}/payment-logs`, data).then(unwrap<AdminPaymentLog>),
+
+  deletePaymentLog: (logId: string) =>
+    api.delete(`/owner/payment-logs/${logId}`),
+
+  // A7: Shop notes
+  addShopNote: (sellerId: string, content: string) =>
+    api.post<{ data: AdminShopNote }>(`/owner/shops/${sellerId}/notes`, { content }).then(unwrap<AdminShopNote>),
+
+  deleteShopNote: (sellerId: string, noteId: string) =>
+    api.delete(`/owner/shops/${sellerId}/notes/${noteId}`),
 };

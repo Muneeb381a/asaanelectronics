@@ -4,8 +4,10 @@ import toast from 'react-hot-toast';
 import {
   Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck,
   CreditCard, Calendar, Search, AlertTriangle, Clock, KeyRound, Eye, EyeOff,
+  TrendingUp, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
+  Activity, FileText, Plus, Package,
 } from 'lucide-react';
-import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan } from '../../api/owner.api.ts';
+import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
@@ -294,12 +296,13 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
 // ── shop card ─────────────────────────────────────────────────────────────────
 
-function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan }: {
+function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, onViewDetails }: {
   shop: Shop;
   onAddOwner: () => void;
   onDelete: () => void;
   onToggleStatus: () => void;
   onChangePlan: () => void;
+  onViewDetails: () => void;
 }) {
   const status = shopStatus(shop);
   const meta   = STATUS_META[status];
@@ -346,6 +349,10 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan }: 
 
           {/* Action icons */}
           <div className="flex items-center gap-0.5 shrink-0">
+            <button onClick={onViewDetails} title="View details"
+              className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
+              <ChevronRight size={14} />
+            </button>
             <button onClick={onChangePlan} title="Change plan"
               className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
               <CreditCard size={14} />
@@ -423,6 +430,400 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'expired',   label: 'Expired'   },
 ];
 
+// ── platform dashboard (A1) ──────────────────────────────────────────────────
+
+function PlatformDashboard({ stats }: { stats: PlatformStats }) {
+  const fmtPKR = (n: number) =>
+    n >= 1_000_000
+      ? `PKR ${(n / 1_000_000).toFixed(2)}M`
+      : n >= 1_000
+        ? `PKR ${(n / 1_000).toFixed(0)}K`
+        : `PKR ${n}`;
+
+  const hasUrgent = stats.trialExpiring7.length + stats.planExpiring7.length > 0;
+
+  return (
+    <div className="mb-6 space-y-4">
+      {/* Revenue */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          { label: 'MRR (expected)',       value: fmtPKR(stats.mrr),                    color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
+          { label: 'Revenue this month',   value: fmtPKR(stats.revenueThisMonth),       color: 'text-indigo-600',  bg: 'bg-indigo-50 border-indigo-100'   },
+          { label: 'Total collected ever', value: fmtPKR(stats.totalRevenueCollected),  color: 'text-gray-800',    bg: 'bg-white border-gray-100'          },
+        ].map((s) => (
+          <div key={s.label} className={`${s.bg} border rounded-2xl p-4`}>
+            <p className="text-xs text-gray-400 font-medium flex items-center gap-1.5">
+              <TrendingUp size={11} /> {s.label}
+            </p>
+            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Shop counts */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {[
+          { label: 'Total',     value: stats.totalShops,     color: 'text-gray-900'    },
+          { label: 'Active',    value: stats.activeShops,    color: 'text-emerald-600' },
+          { label: 'Trial',     value: stats.trialShops,     color: 'text-amber-600'   },
+          { label: 'Paid',      value: stats.paidShops,      color: 'text-indigo-600'  },
+          { label: 'Suspended', value: stats.suspendedShops, color: 'text-red-500'     },
+          { label: 'Expired',   value: stats.expiredShops,   color: 'text-orange-600'  },
+        ].map((s) => (
+          <div key={s.label} className="bg-white border border-gray-100 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-gray-400 font-medium">{s.label}</p>
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Platform totals + expiry alert */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <p className="text-xs text-gray-400 font-medium flex items-center gap-1.5"><Users size={11} /> Total customers</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalCustomers.toLocaleString()}</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <p className="text-xs text-gray-400 font-medium flex items-center gap-1.5"><Package size={11} /> Total installments</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalInstallments.toLocaleString()}</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <p className="text-xs text-gray-400 font-medium flex items-center gap-1.5"><BarChart3 size={11} /> New this month</p>
+          <p className="text-2xl font-bold text-indigo-600 mt-1">{stats.newThisMonth}</p>
+        </div>
+        <div className={`border rounded-2xl p-4 ${hasUrgent ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'}`}>
+          <p className={`text-xs font-medium flex items-center gap-1.5 ${hasUrgent ? 'text-red-600' : 'text-emerald-600'}`}>
+            <AlertTriangle size={11} /> Expiry alerts
+          </p>
+          {hasUrgent ? (
+            <p className="text-xl font-bold text-red-600 mt-1">
+              {stats.trialExpiring7.length + stats.planExpiring7.length} urgent
+            </p>
+          ) : (
+            <p className="text-xl font-bold text-emerald-600 mt-1">All clear</p>
+          )}
+          <p className="text-[10px] text-gray-400 mt-0.5">Within 7 days</p>
+        </div>
+      </div>
+
+      {/* Expiry warning list */}
+      {(stats.trialExpiring7.length > 0 || stats.planExpiring7.length > 0) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <p className="text-xs font-semibold text-amber-700 mb-3 flex items-center gap-1.5">
+            <AlertTriangle size={12} /> Urgent — expiring within 7 days
+          </p>
+          <div className="space-y-2">
+            {stats.trialExpiring7.map((s) => (
+              <div key={s.id} className="flex items-center justify-between text-xs">
+                <span className="font-medium text-gray-800">{s.shopName}</span>
+                <span className="text-amber-700 font-semibold bg-amber-100 px-2 py-0.5 rounded-lg">
+                  Trial ends {fmtDate(s.trialEndsAt!)}
+                </span>
+              </div>
+            ))}
+            {stats.planExpiring7.map((s) => (
+              <div key={s.id} className="flex items-center justify-between text-xs">
+                <span className="font-medium text-gray-800">{s.shopName}</span>
+                <span className="text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded-lg">
+                  Plan ends {fmtDate(s.planExpiresAt!)}
+                </span>
+              </div>
+            ))}
+          </div>
+          {stats.planExpiring14.length > 0 && (
+            <p className="text-[11px] text-amber-600 mt-2.5">
+              +{stats.planExpiring14.length} more expiring within 14 days
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── shop detail panel (A3 + A4 + A7) ─────────────────────────────────────────
+
+function UsageBar({ used, limit, label }: { used: number; limit: number; label: string }) {
+  const pct = limit <= 0 ? 0 : Math.min(100, (used / limit) * 100);
+  const barColor = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-indigo-500';
+  return (
+    <div>
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-gray-600">{label}</span>
+        <span className={`font-semibold ${pct >= 90 ? 'text-red-500' : 'text-gray-700'}`}>
+          {used} / {limit <= 0 ? '∞' : limit}
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+const PAYMENT_METHODS = ['BANK', 'JAZZCASH', 'EASYPAISA', 'CASH', 'OTHER'];
+
+function ShopDetailPanel({ shopId, onClose }: { shopId: string; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('BANK');
+  const [payRef, setPayRef]       = useState('');
+  const [payMonth, setPayMonth]   = useState('');
+  const [payNote, setPayNote]     = useState('');
+  const [showPayForm, setShowPayForm] = useState(false);
+  const [noteText, setNoteText]   = useState('');
+
+  const { data: detail, isLoading } = useQuery({
+    queryKey: ['owner-shop-detail', shopId],
+    queryFn: () => ownerApi.getShopUsage(shopId),
+    staleTime: 30_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['owner-shop-detail', shopId] });
+
+  const addLogMutation = useMutation({
+    mutationFn: () =>
+      ownerApi.addPaymentLog(shopId, {
+        amount: Number(payAmount), method: payMethod,
+        reference: payRef || undefined, forMonth: payMonth || undefined, note: payNote || undefined,
+      }),
+    onSuccess: () => {
+      invalidate();
+      setPayAmount(''); setPayRef(''); setPayMonth(''); setPayNote('');
+      setShowPayForm(false);
+      toast.success('Payment logged');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const deleteLogMutation = useMutation({
+    mutationFn: (logId: string) => ownerApi.deletePaymentLog(logId),
+    onSuccess: () => { invalidate(); toast.success('Log deleted'); },
+    onError:   (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const addNoteMutation = useMutation({
+    mutationFn: () => ownerApi.addShopNote(shopId, noteText),
+    onSuccess: () => { invalidate(); setNoteText(''); toast.success('Note saved'); },
+    onError:   (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: ({ noteId }: { noteId: string }) => ownerApi.deleteShopNote(shopId, noteId),
+    onSuccess: () => { invalidate(); toast.success('Note deleted'); },
+    onError:   (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const fmtPKR = (n: number | string) => `PKR ${Number(n).toLocaleString()}`;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Slide-over panel */}
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
+            <Store size={16} className="text-indigo-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 truncate">
+              {detail?.shop.shopName ?? '…'}
+            </p>
+            <p className="text-xs text-gray-400">{detail?.shop.phone ?? ''}</p>
+          </div>
+          <button onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : detail ? (
+            <>
+              {/* Plan + status badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex px-2.5 py-1 rounded-xl text-xs font-semibold border ${PLAN_STYLES[detail.shop.plan]}`}>
+                  {detail.shop.plan}
+                </span>
+                {detail.limits?.label && (
+                  <span className="text-xs text-gray-500 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-xl">
+                    {detail.limits.label}
+                  </span>
+                )}
+                {!detail.shop.isActive && (
+                  <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-xl">
+                    Suspended
+                  </span>
+                )}
+              </div>
+
+              {/* Revenue + activity */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                  <p className="text-xs text-gray-500 flex items-center gap-1"><TrendingUp size={10}/> Total revenue</p>
+                  <p className="text-base font-bold text-emerald-700 mt-0.5">{fmtPKR(detail.usage.totalRevenue)}</p>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                  <p className="text-xs text-gray-500 flex items-center gap-1"><Activity size={10}/> Payments/month</p>
+                  <p className="text-base font-bold text-indigo-700 mt-0.5">{detail.usage.paymentsThisMonth}</p>
+                </div>
+                {detail.usage.lastActivity && (
+                  <div className="col-span-2 flex items-center gap-1.5 text-xs text-gray-400">
+                    <Clock size={11} />
+                    Last activity: {fmtDate(String(detail.usage.lastActivity))}
+                  </div>
+                )}
+              </div>
+
+              {/* Usage bars */}
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+                  <BarChart3 size={12} /> Plan Usage
+                </p>
+                <UsageBar used={detail.usage.customers}    limit={detail.limits?.customers ?? -1}    label="Customers" />
+                <UsageBar used={detail.usage.installments} limit={detail.limits?.installments ?? -1} label="Installments" />
+                <UsageBar used={detail.usage.staff}        limit={detail.limits?.staff ?? -1}        label="Staff" />
+              </div>
+
+              {/* Payment logs (A4) */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                    <Banknote size={14} className="text-gray-400" /> Payment Logs
+                  </p>
+                  <button onClick={() => setShowPayForm((v) => !v)}
+                    className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                    <Plus size={13} /> Add
+                  </button>
+                </div>
+
+                {showPayForm && (
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-3 mb-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Amount (PKR)*</label>
+                        <input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)}
+                          placeholder="5000" min="1"
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Method</label>
+                        <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                          {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <input value={payRef} onChange={(e) => setPayRef(e.target.value)}
+                      placeholder="Transaction reference (optional)"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={payMonth} onChange={(e) => setPayMonth(e.target.value)}
+                        placeholder="For month (e.g. Jul 2026)"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                      <input value={payNote} onChange={(e) => setPayNote(e.target.value)}
+                        placeholder="Internal note"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowPayForm(false)}
+                        className="flex-1 py-2 text-sm border border-gray-200 text-gray-600 rounded-xl hover:bg-white transition">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => addLogMutation.mutate()}
+                        disabled={!payAmount || Number(payAmount) <= 0 || addLogMutation.isPending}
+                        className="flex-1 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50">
+                        {addLogMutation.isPending ? 'Saving…' : 'Save Log'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {detail.paymentLogs.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-3">No payment logs yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detail.paymentLogs.map((log) => (
+                      <div key={log.id} className="flex items-start justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">{fmtPKR(log.amount)}</p>
+                          <p className="text-xs text-gray-400">
+                            {log.method}
+                            {log.forMonth ? ` · ${log.forMonth}` : ''}
+                            {log.reference ? ` · ${log.reference}` : ''}
+                          </p>
+                          {log.note && <p className="text-xs text-gray-400 italic">{log.note}</p>}
+                          <p className="text-[10px] text-gray-300 mt-0.5">{fmtDate(log.createdAt)}</p>
+                        </div>
+                        <button onClick={() => deleteLogMutation.mutate(log.id)}
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition ml-2 mt-0.5 shrink-0">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Internal notes (A7) */}
+              <div>
+                <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5 mb-3">
+                  <StickyNote size={14} className="text-gray-400" /> Internal Notes
+                </p>
+
+                <div className="flex gap-2 mb-3">
+                  <input value={noteText} onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="Add a note about this shop…"
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                  <button
+                    onClick={() => addNoteMutation.mutate()}
+                    disabled={!noteText.trim() || addNoteMutation.isPending}
+                    className="px-3 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50">
+                    {addNoteMutation.isPending ? '…' : 'Add'}
+                  </button>
+                </div>
+
+                {detail.notes.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-3">No notes yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detail.notes.map((note) => (
+                      <div key={note.id}
+                        className="flex items-start justify-between bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-800">{note.content}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{fmtDate(note.createdAt)}</p>
+                        </div>
+                        <button onClick={() => deleteNoteMutation.mutate({ noteId: note.id })}
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition ml-2 mt-0.5 shrink-0">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-center text-sm text-red-500 py-8">Failed to load shop details.</div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 type Modal = { type: 'shop' } | { type: 'owner'; shop: Shop } | { type: 'plan'; shop: Shop } | null;
@@ -435,10 +836,17 @@ export default function ShopsPage() {
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
   const [statusConfirm, setStatusConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
+  const [detailShopId, setDetailShopId] = useState<string | null>(null);
 
   const { data: shops = [], isLoading, isError } = useQuery({
     queryKey: ['owner-shops'],
     queryFn: ownerApi.listShops,
+  });
+
+  const { data: platformStats } = useQuery({
+    queryKey: ['owner-stats'],
+    queryFn: ownerApi.getPlatformStats,
+    staleTime: 60_000,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['owner-shops'] });
@@ -526,7 +934,10 @@ export default function ShopsPage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* A1: Platform dashboard */}
+      {platformStats && <PlatformDashboard stats={platformStats} />}
+
+      {/* Quick filter stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
           { label: 'Total',     value: counts.all,       color: 'text-gray-900',    bg: 'bg-gray-50',    border: 'border-gray-100' },
@@ -616,6 +1027,7 @@ export default function ShopsPage() {
               onChangePlan={() => setModal({ type: 'plan', shop })}
               onDelete={() => setDeleteConfirm({ open: true, shop })}
               onToggleStatus={() => setStatusConfirm({ open: true, shop })}
+              onViewDetails={() => setDetailShopId(shop.id)}
             />
           ))}
         </div>
@@ -686,6 +1098,14 @@ export default function ShopsPage() {
 
       {/* Change password modal */}
       {showChangePwd && <ChangePasswordModal onClose={() => setShowChangePwd(false)} />}
+
+      {/* A3 + A4 + A7: Shop detail slide-over */}
+      {detailShopId && (
+        <ShopDetailPanel
+          shopId={detailShopId}
+          onClose={() => setDetailShopId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -747,3 +747,31 @@ export const attendance = pgTable('attendance', {
   index('idx_attendance_seller_date').on(t.sellerId, t.date),
   index('idx_attendance_user').on(t.userId),
 ]);
+
+// ── SaaS Admin: manual payment logs (per shop) ────────────────────────────────
+export const adminPaymentLogs = pgTable('admin_payment_logs', {
+  id:         text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:   text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  amount:     decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  method:     text('method').notNull().default('BANK'), // BANK | JAZZCASH | EASYPAISA | CASH | OTHER
+  reference:  text('reference'),                        // transaction ID / cheque no
+  forMonth:   text('for_month'),                        // e.g. "2026-07" — which billing month
+  note:       text('note'),
+  loggedBy:   text('logged_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_admin_payment_logs_seller').on(t.sellerId),
+  index('idx_admin_payment_logs_created').on(t.createdAt),
+]);
+
+// ── SaaS Admin: internal notes per shop ───────────────────────────────────────
+export const adminShopNotes = pgTable('admin_shop_notes', {
+  id:        text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:  text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  content:   text('content').notNull(),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_admin_shop_notes_seller').on(t.sellerId),
+]);
+

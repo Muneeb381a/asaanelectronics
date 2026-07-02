@@ -158,7 +158,7 @@ const plans = [
   },
   {
     name: 'Basic',
-    price: 'PKR 1,500',
+    price: 'PKR 2,999',
     period: '/month',
     desc: 'For shops running steady installment business.',
     features: ['Unlimited installments', 'Unlimited customers', 'OTP login security', 'Payment history', 'Email support'],
@@ -169,7 +169,7 @@ const plans = [
   },
   {
     name: 'Pro',
-    price: 'PKR 3,500',
+    price: 'PKR 7,999',
     period: '/month',
     desc: 'For growing shops with teams and multiple locations.',
     features: ['Everything in Basic', 'Multiple staff accounts', 'Overdue alerts', 'Advanced reports', 'Priority support'],
