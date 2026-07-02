@@ -798,6 +798,88 @@ export class OwnerService {
     await this.logAdmin(actorId, 'BROADCAST_DELETED', null, null, row.title);
   }
 
+  // ── B5: Shop onboarding checklist ────────────────────────────────────────────
+
+  async getOnboardingStatus() {
+    type RawRow = {
+      id: string; shopName: string; plan: string; isActive: boolean; createdAt: Date;
+      ownerName: string | null; ownerEmail: string | null;
+      hasOwner: boolean; hasCustomer: boolean; hasInstallment: boolean; hasPayment: boolean;
+    };
+
+    const rows = await db.execute<RawRow>(sql`
+      SELECT
+        s.id,
+        s.shop_name      AS "shopName",
+        s.plan,
+        s.is_active      AS "isActive",
+        s.created_at     AS "createdAt",
+        u.name           AS "ownerName",
+        u.email          AS "ownerEmail",
+        EXISTS(
+          SELECT 1 FROM users uu
+          WHERE uu.seller_id = s.id AND uu.role = 'SELLER_OWNER'
+        )                AS "hasOwner",
+        EXISTS(
+          SELECT 1 FROM customers c
+          WHERE c.seller_id = s.id AND c.deleted_at IS NULL
+        )                AS "hasCustomer",
+        EXISTS(
+          SELECT 1 FROM installments i
+          JOIN customers c ON c.id = i.customer_id
+          WHERE c.seller_id = s.id AND i.deleted_at IS NULL
+        )                AS "hasInstallment",
+        EXISTS(
+          SELECT 1 FROM payments p
+          JOIN installments i ON i.id = p.installment_id
+          JOIN customers c ON c.id = i.customer_id
+          WHERE c.seller_id = s.id AND p.deleted_at IS NULL
+        )                AS "hasPayment"
+      FROM sellers s
+      LEFT JOIN users u ON u.seller_id = s.id AND u.role = 'SELLER_OWNER'
+      ORDER BY s.created_at DESC
+    `);
+
+    const now = new Date();
+
+    type StuckSeverity = 'fresh' | 'warming' | 'stuck' | 'critical';
+
+    return (rows as unknown as RawRow[]).map((r) => {
+      const steps = {
+        hasOwner:       Boolean(r.hasOwner),
+        hasCustomer:    Boolean(r.hasCustomer),
+        hasInstallment: Boolean(r.hasInstallment),
+        hasPayment:     Boolean(r.hasPayment),
+      };
+
+      const completedCount = Object.values(steps).filter(Boolean).length;
+      const isComplete     = completedCount === 4;
+
+      const stuckAt: number | null =
+        !steps.hasOwner       ? 0 :
+        !steps.hasCustomer    ? 1 :
+        !steps.hasInstallment ? 2 :
+        !steps.hasPayment     ? 3 :
+        null;
+
+      const shopAgeDays = Math.floor((now.getTime() - new Date(r.createdAt).getTime()) / 86_400_000);
+
+      let stuckSeverity: StuckSeverity | null = null;
+      if (!isComplete) {
+        if      (shopAgeDays < 2)  stuckSeverity = 'fresh';
+        else if (shopAgeDays < 7)  stuckSeverity = 'warming';
+        else if (shopAgeDays < 14) stuckSeverity = 'stuck';
+        else                       stuckSeverity = 'critical';
+      }
+
+      return {
+        shopId: r.id, shopName: r.shopName, plan: r.plan, isActive: r.isActive,
+        ownerName: r.ownerName, ownerEmail: r.ownerEmail,
+        steps, completedCount, isComplete, stuckAt, stuckSeverity, shopAgeDays,
+      };
+    });
+  }
+
   async getActiveBroadcasts(sellerId: string | null) {
     const now = new Date();
     let plan = 'ALL';

@@ -9,6 +9,7 @@ import {
   listAdminAuditLogs,
   listChurnScores,
   sendRenewalReminder,
+  getOnboardingStatus,
   listBroadcasts, createBroadcast, updateBroadcast, deleteBroadcast,
   getShopSessions, killSession, killAllShopSessions,
 } from './owner.controller.js';
@@ -46,6 +47,9 @@ router.get('/churn-scores',           listChurnScores);
 
 // ── B2: Renewal reminder email ────────────────────────────────────────────────
 router.post('/shops/:id/send-reminder', sendRenewalReminder);
+
+// ── B5: Shop onboarding checklist ────────────────────────────────────────────
+router.get('/onboarding',              getOnboardingStatus);
 
 // ── B3: Broadcast announcements (admin CRUD) ──────────────────────────────────
 router.get('/broadcasts',              listBroadcasts);

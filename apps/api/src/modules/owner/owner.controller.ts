@@ -81,6 +81,11 @@ export async function sendRenewalReminder(req: AuthRequest, res: Response) {
   success(res, await svc.sendRenewalReminder(req.params['id'] as string, req.user!.userId));
 }
 
+// ── B5: Shop onboarding checklist ────────────────────────────────────────────
+export async function getOnboardingStatus(_req: AuthRequest, res: Response) {
+  success(res, await svc.getOnboardingStatus());
+}
+
 // ── B3: Broadcast announcements ───────────────────────────────────────────────
 export async function listBroadcasts(_req: AuthRequest, res: Response) {
   success(res, await svc.listBroadcasts());

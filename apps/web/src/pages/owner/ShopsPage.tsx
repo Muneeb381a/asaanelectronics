@@ -7,8 +7,9 @@ import {
   TrendingUp, TrendingDown, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
   Activity, FileText, Plus, Package, Monitor, Smartphone, Tablet2,
   ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle, Mail, Megaphone, ToggleLeft, ToggleRight,
+  ListChecks, Circle,
 } from 'lucide-react';
-import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk, type AdminBroadcast } from '../../api/owner.api.ts';
+import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk, type AdminBroadcast, type ShopOnboarding, type StuckSeverity } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
@@ -1168,6 +1169,254 @@ function AdminAuditPanel({ onClose, filterShopId }: { onClose: () => void; filte
   );
 }
 
+// ── B5: Onboarding Panel ─────────────────────────────────────────────────────
+
+const ONBOARDING_STEPS: { key: keyof import('../../api/owner.api.ts').OnboardingSteps; label: string; hint: string }[] = [
+  { key: 'hasOwner',       label: 'Owner Added',       hint: 'Shop ka owner account' },
+  { key: 'hasCustomer',    label: 'First Customer',    hint: 'Pehla customer add kiya' },
+  { key: 'hasInstallment', label: 'First Installment', hint: 'Pehla installment banaya' },
+  { key: 'hasPayment',     label: 'First Payment',     hint: 'Pehli payment record ki' },
+];
+
+const STUCK_META: Record<StuckSeverity, { label: string; cls: string; dot: string }> = {
+  fresh:    { label: 'New',      cls: 'text-indigo-600 bg-indigo-50  border-indigo-200',  dot: 'bg-indigo-400'  },
+  warming:  { label: 'Watch',    cls: 'text-amber-600  bg-amber-50   border-amber-200',   dot: 'bg-amber-400'   },
+  stuck:    { label: 'Stuck',    cls: 'text-orange-600 bg-orange-50  border-orange-200',  dot: 'bg-orange-500'  },
+  critical: { label: 'Critical', cls: 'text-red-600    bg-red-50     border-red-200',     dot: 'bg-red-500'     },
+};
+
+type OnboardFilter = 'all' | 'stuck' | 'complete';
+
+function OnboardingPanel({ onClose, onViewShop, onSendReminder, sendingId }: {
+  onClose: () => void;
+  onViewShop: (id: string) => void;
+  onSendReminder: (id: string) => void;
+  sendingId: string | null;
+}) {
+  const [filter, setFilter] = useState<OnboardFilter>('stuck');
+
+  const { data: shops = [], isLoading } = useQuery({
+    queryKey: ['owner-onboarding'],
+    queryFn: ownerApi.getOnboardingStatus,
+    staleTime: 60_000,
+  });
+
+  const completeCount = shops.filter((s: ShopOnboarding) => s.isComplete).length;
+  const stuckCount    = shops.filter((s: ShopOnboarding) => !s.isComplete).length;
+  const criticalCount = shops.filter((s: ShopOnboarding) => s.stuckSeverity === 'critical' || s.stuckSeverity === 'stuck').length;
+
+  const filtered = useMemo(() => {
+    const list = filter === 'stuck'    ? shops.filter((s: ShopOnboarding) => !s.isComplete)
+               : filter === 'complete' ? shops.filter((s: ShopOnboarding) => s.isComplete)
+               : shops;
+    return [...list].sort((a: ShopOnboarding, b: ShopOnboarding) => {
+      // stuck shops first, sorted by severity (critical > stuck > warming > fresh), then age
+      if (!a.isComplete && b.isComplete) return -1;
+      if (a.isComplete && !b.isComplete) return 1;
+      const sevOrder: Record<string, number> = { critical: 4, stuck: 3, warming: 2, fresh: 1 };
+      const aOrd = a.stuckSeverity ? (sevOrder[a.stuckSeverity] ?? 0) : 0;
+      const bOrd = b.stuckSeverity ? (sevOrder[b.stuckSeverity] ?? 0) : 0;
+      if (aOrd !== bOrd) return bOrd - aOrd;
+      return b.shopAgeDays - a.shopAgeDays;
+    });
+  }, [shops, filter]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl flex flex-col overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center">
+            <ListChecks size={16} className="text-emerald-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-gray-900">Onboarding Checklist</p>
+            <p className="text-xs text-gray-400">
+              {completeCount}/{shops.length} complete
+              {criticalCount > 0 && <span className="ml-2 text-red-500 font-semibold">• {criticalCount} urgent</span>}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Summary tiles */}
+        <div className="grid grid-cols-3 gap-px bg-gray-100 border-b border-gray-100 shrink-0">
+          {([
+            { key: 'complete' as OnboardFilter, label: 'Complete', value: completeCount, color: 'text-emerald-600' },
+            { key: 'stuck'    as OnboardFilter, label: 'Needs Help', value: stuckCount, color: 'text-orange-600' },
+            { key: 'all'      as OnboardFilter, label: 'Total', value: shops.length, color: 'text-gray-800' },
+          ] as { key: OnboardFilter; label: string; value: number; color: string }[]).map((t) => (
+            <button key={t.key} onClick={() => setFilter(t.key)}
+              className={`flex flex-col items-center py-3 px-2 transition ${filter === t.key ? 'bg-white' : 'bg-gray-50 hover:bg-white'}`}>
+              <p className={`text-2xl font-bold ${t.color}`}>{t.value}</p>
+              <p className="text-[10px] text-gray-400 font-medium mt-0.5">{t.label}</p>
+              {filter === t.key && <div className="w-5 h-0.5 mt-1.5 rounded-full bg-indigo-500" />}
+            </button>
+          ))}
+        </div>
+
+        {/* Filter tabs */}
+        <div className="flex gap-1.5 px-5 py-3 border-b border-gray-100 shrink-0">
+          {([
+            { key: 'stuck'    as OnboardFilter, label: `Needs Help (${stuckCount})` },
+            { key: 'complete' as OnboardFilter, label: `Complete (${completeCount})` },
+            { key: 'all'      as OnboardFilter, label: `All (${shops.length})` },
+          ] as { key: OnboardFilter; label: string }[]).map((f) => (
+            <button key={f.key} onClick={() => setFilter(f.key)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                filter === f.key
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1,2,3,4].map((i) => <div key={i} className="h-28 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-14">
+              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 size={24} className="text-emerald-400" />
+              </div>
+              <p className="text-sm font-semibold text-gray-700">
+                {filter === 'stuck' ? 'Sab shops onboard ho gayi hain!' : 'Koi shop nahi mili'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((s: ShopOnboarding) => {
+                const sm = s.stuckSeverity ? STUCK_META[s.stuckSeverity] : null;
+                const stuckStepLabel = s.stuckAt !== null ? ONBOARDING_STEPS[s.stuckAt]?.label : null;
+
+                return (
+                  <div key={s.shopId}
+                    className={`rounded-xl border p-4 transition hover:shadow-sm ${
+                      s.isComplete
+                        ? 'border-gray-100 bg-white'
+                        : s.stuckSeverity === 'critical' ? 'border-red-100 bg-red-50/40'
+                        : s.stuckSeverity === 'stuck'    ? 'border-orange-100 bg-orange-50/30'
+                        : 'border-gray-100 bg-white'
+                    }`}>
+
+                    {/* Top row: name + severity badge */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-gray-900 truncate">{s.shopName}</span>
+                          <span className={`inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${PLAN_STYLES[s.plan] ?? 'text-gray-500 bg-gray-50 border-gray-200'}`}>
+                            {s.plan}
+                          </span>
+                        </div>
+                        {s.ownerName && (
+                          <p className="text-[11px] text-gray-400 mt-0.5 truncate">{s.ownerName}</p>
+                        )}
+                      </div>
+                      {s.isComplete ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold border text-emerald-700 bg-emerald-50 border-emerald-200 shrink-0">
+                          <CheckCircle2 size={10} /> Done
+                        </span>
+                      ) : sm ? (
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold border shrink-0 ${sm.cls}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${sm.dot}`} />
+                          {sm.label}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+                        <span>{s.completedCount}/4 steps</span>
+                        <span>{s.shopAgeDays}d old</span>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            s.isComplete ? 'bg-emerald-500' :
+                            s.stuckSeverity === 'critical' ? 'bg-red-500' :
+                            s.stuckSeverity === 'stuck'    ? 'bg-orange-500' :
+                            'bg-indigo-500'
+                          }`}
+                          style={{ width: `${(s.completedCount / 4) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Step indicators */}
+                    <div className="flex items-center gap-1 mb-3">
+                      {ONBOARDING_STEPS.map((step, idx) => {
+                        const done    = s.steps[step.key];
+                        const current = !done && s.stuckAt === idx;
+                        return (
+                          <div key={step.key} className="flex-1 flex flex-col items-center gap-1">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition ${
+                              done
+                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                : current
+                                  ? 'bg-white border-orange-400 text-orange-500 animate-pulse'
+                                  : 'bg-gray-100 border-gray-200 text-gray-400'
+                            }`}>
+                              {done ? <CheckCircle2 size={12} /> : current ? <Circle size={10} /> : idx + 1}
+                            </div>
+                            <span className={`text-[9px] text-center leading-tight ${
+                              done ? 'text-emerald-600 font-medium' :
+                              current ? 'text-orange-500 font-semibold' :
+                              'text-gray-400'
+                            }`}>
+                              {step.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Stuck callout */}
+                    {!s.isComplete && stuckStepLabel && sm && (
+                      <div className={`rounded-lg px-3 py-2 mb-3 text-xs border ${sm.cls}`}>
+                        <span className="font-semibold">Stuck at:</span> {stuckStepLabel}
+                        {s.shopAgeDays >= 2 && (
+                          <span className="ml-1 opacity-80">— {s.shopAgeDays} din se</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { onClose(); onViewShop(s.shopId); }}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 transition">
+                        Details <ChevronRight size={11} />
+                      </button>
+                      {s.ownerEmail && (
+                        <button
+                          onClick={() => onSendReminder(s.shopId)}
+                          disabled={sendingId === s.shopId}
+                          className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 text-[11px] font-semibold hover:bg-indigo-100 transition disabled:opacity-50">
+                          {sendingId === s.shopId ? '…' : <><Mail size={10} /> Remind</>}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── B3: Broadcast Panel (admin) ───────────────────────────────────────────────
 
 const BROADCAST_TYPE_META: Record<string, { label: string; cls: string; dot: string }> = {
@@ -1687,6 +1936,7 @@ export default function ShopsPage() {
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showChurnPanel, setShowChurnPanel] = useState(false);
   const [showBroadcastPanel, setShowBroadcastPanel] = useState(false);
+  const [showOnboardingPanel, setShowOnboardingPanel] = useState(false);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   const { data: shops = [], isLoading, isError } = useQuery({
@@ -1784,6 +2034,10 @@ export default function ShopsPage() {
           <p className="text-sm text-gray-400 mt-0.5">Manage all registered shops</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowOnboardingPanel(true)} title="Onboarding checklist"
+            className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 transition">
+            <ListChecks size={16} />
+          </button>
           <button onClick={() => setShowBroadcastPanel(true)} title="Broadcast announcements"
             className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition">
             <Megaphone size={16} />
@@ -1992,6 +2246,16 @@ export default function ShopsPage() {
       {showAuditLog && (
         <AdminAuditPanel
           onClose={() => setShowAuditLog(false)}
+        />
+      )}
+
+      {/* B5: Onboarding Panel */}
+      {showOnboardingPanel && (
+        <OnboardingPanel
+          onClose={() => setShowOnboardingPanel(false)}
+          onViewShop={(id) => { setShowOnboardingPanel(false); setDetailShopId(id); }}
+          onSendReminder={(id) => sendReminderMutation.mutate(id)}
+          sendingId={sendingReminderId}
         />
       )}
 

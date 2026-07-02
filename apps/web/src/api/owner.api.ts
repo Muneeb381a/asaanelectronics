@@ -126,6 +126,30 @@ export interface ShopSessionsResult {
   sessions: ShopSession[];
 }
 
+export type StuckSeverity = 'fresh' | 'warming' | 'stuck' | 'critical';
+
+export interface OnboardingSteps {
+  hasOwner:       boolean;
+  hasCustomer:    boolean;
+  hasInstallment: boolean;
+  hasPayment:     boolean;
+}
+
+export interface ShopOnboarding {
+  shopId:        string;
+  shopName:      string;
+  plan:          string;
+  isActive:      boolean;
+  ownerName:     string | null;
+  ownerEmail:    string | null;
+  steps:         OnboardingSteps;
+  completedCount: number;
+  isComplete:    boolean;
+  stuckAt:       number | null;  // 0-3 = step index, null = complete
+  stuckSeverity: StuckSeverity | null;
+  shopAgeDays:   number;
+}
+
 export interface AdminBroadcast {
   id: string;
   title: string;
@@ -225,6 +249,10 @@ export const ownerApi = {
 
   killAllSessions: (shopId: string) =>
     api.delete<{ data: { killed: number } }>(`/owner/shops/${shopId}/sessions`).then(unwrap<{ killed: number }>),
+
+  // B5: Shop onboarding checklist
+  getOnboardingStatus: () =>
+    api.get<{ data: ShopOnboarding[] }>('/owner/onboarding').then(unwrap<ShopOnboarding[]>),
 
   // B1: Churn Risk Score
   getChurnScores: () =>
