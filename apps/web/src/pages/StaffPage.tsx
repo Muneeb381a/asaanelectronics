@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
 import { attendanceApi } from '../api/attendance.api.ts';
-import { handoversApi, type Handover } from '../api/handovers.api.ts';
+import { handoversApi, type Handover, type StaffBalance } from '../api/handovers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { CardSkeleton, EmptyState, RowSkeleton } from '../components/ui/Skeleton.tsx';
@@ -454,11 +454,116 @@ const STATUS_BADGE: Record<string, { label: string; cls: string; icon: React.Rea
   DISPUTED:  { label: 'Disputed',  cls: 'bg-red-100 text-red-700',      icon: <AlertTriangle size={10} /> },
 };
 
+// ── Staff "Cash in Hand" balance card ─────────────────────────────────────────
+function CashInHandCard({ balance, onSubmit }: { balance: StaffBalance | null | undefined; onSubmit: () => void }) {
+  const pending  = balance?.pendingHandover ?? null;
+  const cashAmt  = Number(balance?.pendingBalance ?? 0);
+  const allClear = cashAmt < 1;
+
+  return (
+    <div className={`rounded-2xl p-4 mb-4 border ${allClear ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-200'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-1">Cash in Hand</p>
+          <p className={`text-2xl font-bold ${allClear ? 'text-green-700' : 'text-amber-700'}`}>
+            {pkr(cashAmt)}
+          </p>
+          {balance && (
+            <p className="text-[11px] text-gray-400 mt-1">
+              Collected: {pkr(Number(balance.totalCollected))} &nbsp;·&nbsp; Confirmed: {pkr(Number(balance.totalConfirmed))}
+            </p>
+          )}
+        </div>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${allClear ? 'bg-green-100' : 'bg-amber-100'}`}>
+          <Banknote size={20} className={allClear ? 'text-green-600' : 'text-amber-600'} />
+        </div>
+      </div>
+
+      {allClear ? (
+        <p className="mt-3 text-xs text-green-600 font-medium flex items-center gap-1.5">
+          <CheckCircle size={12} /> Sab clear — koi pending cash nahi
+        </p>
+      ) : pending ? (
+        <div className="mt-3 bg-white/70 rounded-xl px-3 py-2.5 border border-amber-200">
+          <p className="text-[11px] font-semibold text-amber-700 flex items-center gap-1.5 mb-0.5">
+            <Clock size={11} /> Handover pending confirmation
+          </p>
+          <p className="text-xs text-gray-600">
+            {pkr(Number(pending.handedAmount))} submitted on{' '}
+            {new Date(pending.createdAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          </p>
+          {pending.note && <p className="text-[10px] text-gray-400 italic mt-0.5">"{pending.note}"</p>}
+          <p className="text-[10px] text-amber-600 mt-1">Owner ka confirmation milne ka wait karo</p>
+        </div>
+      ) : (
+        <button
+          onClick={onSubmit}
+          className="mt-3 w-full py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition flex items-center justify-center gap-2">
+          <Wallet size={14} /> Cash Handover Submit Karo
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Owner: all-staff balance grid ─────────────────────────────────────────────
+function StaffBalanceGrid({ balances, onSelectStaff }: { balances: StaffBalance[]; onSelectStaff: (id: string) => void }) {
+  const nonZero = balances.filter((b) => Number(b.pendingBalance) >= 1);
+  if (balances.length === 0) return null;
+
+  return (
+    <div className="mb-5">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Staff Cash Balances</p>
+      <div className="space-y-2">
+        {balances.map((b) => {
+          const bal     = Number(b.pendingBalance);
+          const allClear = bal < 1;
+          return (
+            <button
+              key={b.staffId}
+              onClick={() => onSelectStaff(b.staffId)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition hover:shadow-sm
+                         active:scale-[0.98]
+                         ${allClear ? 'bg-white border-gray-100 hover:border-gray-200' : 'bg-amber-50 border-amber-200 hover:border-amber-300'}"
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${allClear ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-700'}`}>
+                {b.staffName.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{b.staffName}</p>
+                {b.pendingHandover ? (
+                  <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                    <Clock size={9} /> Handover awaiting review
+                  </p>
+                ) : allClear ? (
+                  <p className="text-[10px] text-green-600 flex items-center gap-1">
+                    <CheckCircle size={9} /> All clear
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-gray-400">No handover submitted yet</p>
+                )}
+              </div>
+              <span className={`text-sm font-bold shrink-0 ${allClear ? 'text-gray-400' : 'text-amber-700'}`}>
+                {pkr(bal)}
+              </span>
+            </button>
+          );
+        })}
+        {nonZero.length === 0 && (
+          <p className="text-xs text-green-600 text-center py-2 flex items-center justify-center gap-1.5">
+            <CheckCircle size={12} /> Sab staff ka cash clear hai
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Submit Handover Modal (staff use) ─────────────────────────────────────────
 function SubmitHandoverModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
-  const [amount, setAmount]   = useState('');
-  const [note, setNote]       = useState('');
+  const [amount, setAmount] = useState('');
+  const [note, setNote]     = useState('');
 
   const { data: todayData } = useQuery({
     queryKey: ['handover-collected-today'],
@@ -470,7 +575,8 @@ function SubmitHandoverModal({ onClose }: { onClose: () => void }) {
     mutationFn: () => handoversApi.create({ handedAmount: Number(amount), note: note || undefined }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['handovers'] });
-      toast.success('Handover submitted!');
+      void qc.invalidateQueries({ queryKey: ['handover-my-balance'] });
+      toast.success('Handover submit ho gaya! Owner ka wait karo.');
       onClose();
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Submit failed')),
@@ -483,19 +589,21 @@ function SubmitHandoverModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Cash Handover</h2>
+          <h2 className="text-base font-semibold text-gray-900">Cash Handover Submit</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
         </div>
 
         {collected > 0 && (
           <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm">
-            <p className="text-xs text-gray-500 mb-0.5">Today's cash collected (system)</p>
+            <p className="text-xs text-gray-500 mb-0.5">Aaj ka collected cash (system)</p>
             <p className="text-lg font-bold text-blue-700">{pkr(collected)}</p>
           </div>
         )}
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount Handing Over (PKR) <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            Kitna cash de rahe ho? (PKR) <span className="text-red-500">*</span>
+          </label>
           <input
             type="number"
             value={amount}
@@ -507,10 +615,10 @@ function SubmitHandoverModal({ onClose }: { onClose: () => void }) {
           {amount && collected > 0 && (
             <p className={`text-xs mt-1 font-medium ${Math.abs(diff) < 1 ? 'text-green-600' : diff < 0 ? 'text-red-500' : 'text-amber-600'}`}>
               {Math.abs(diff) < 1
-                ? '✓ Matches system total'
+                ? '✓ System total se match kar raha hai'
                 : diff < 0
-                ? `PKR ${Math.abs(diff).toLocaleString()} short of system total`
-                : `PKR ${diff.toLocaleString()} over system total`}
+                ? `PKR ${Math.abs(diff).toLocaleString()} system total se kam`
+                : `PKR ${diff.toLocaleString()} system total se zyada`}
             </p>
           )}
         </div>
@@ -521,7 +629,7 @@ function SubmitHandoverModal({ onClose }: { onClose: () => void }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={2}
-            placeholder="e.g. 2 payments by card, rest cash"
+            placeholder="e.g. 2 payments card se the, baqi cash"
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition resize-none"
           />
         </div>
@@ -535,7 +643,7 @@ function SubmitHandoverModal({ onClose }: { onClose: () => void }) {
             onClick={() => mutation.mutate()}
             disabled={!amount || Number(amount) <= 0 || mutation.isPending}
             className="flex-1 py-2.5 text-sm font-semibold bg-green-600 text-white rounded-xl hover:bg-green-700 transition disabled:opacity-50">
-            {mutation.isPending ? 'Submitting…' : 'Submit Handover'}
+            {mutation.isPending ? 'Submit ho raha hai…' : 'Submit Karo'}
           </button>
         </div>
       </div>
@@ -549,26 +657,23 @@ function ConfirmHandoverModal({ handover, onClose }: { handover: Handover; onClo
   const [confirmedAmount, setConfirmedAmount] = useState(handover.handedAmount);
   const [ownerNote, setOwnerNote]             = useState('');
 
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ['handovers'] });
+    void qc.invalidateQueries({ queryKey: ['handover-balances'] });
+  };
+
   const confirmMutation = useMutation({
     mutationFn: () => handoversApi.confirm(handover.id, {
       confirmedAmount: Number(confirmedAmount),
       ownerNote: ownerNote || undefined,
     }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['handovers'] });
-      toast.success('Handover confirmed');
-      onClose();
-    },
+    onSuccess: () => { invalidate(); toast.success('Handover confirm ho gaya'); onClose(); },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   const disputeMutation = useMutation({
     mutationFn: () => handoversApi.dispute(handover.id, ownerNote || undefined),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['handovers'] });
-      toast.success('Marked as disputed');
-      onClose();
-    },
+    onSuccess: () => { invalidate(); toast.success('Dispute mark ho gaya'); onClose(); },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
@@ -578,18 +683,23 @@ function ConfirmHandoverModal({ handover, onClose }: { handover: Handover; onClo
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Confirm Handover</h2>
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Handover Review</h2>
+            <p className="text-xs text-gray-400">{handover.staffName}</p>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
         </div>
 
-        <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm">
-          <p className="text-xs text-gray-400 mb-0.5">Staff submitted</p>
-          <p className="font-bold text-gray-900 text-lg">{pkr(Number(handover.handedAmount))}</p>
+        <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-400 mb-0.5">Staff ne submit kiya</p>
+          <p className="font-bold text-gray-900 text-xl">{pkr(Number(handover.handedAmount))}</p>
           {handover.note && <p className="text-xs text-gray-500 mt-1 italic">"{handover.note}"</p>}
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Counted Amount (PKR) <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            Aap ne gina hua amount (PKR) <span className="text-red-500">*</span>
+          </label>
           <input
             type="number"
             value={confirmedAmount}
@@ -600,19 +710,19 @@ function ConfirmHandoverModal({ handover, onClose }: { handover: Handover; onClo
           {Math.abs(diff) >= 1 && (
             <p className={`text-xs mt-1 font-medium ${diff < 0 ? 'text-red-500' : 'text-amber-600'}`}>
               {diff < 0
-                ? `PKR ${Math.abs(diff).toLocaleString()} short — consider disputing`
-                : `PKR ${diff.toLocaleString()} more than submitted`}
+                ? `PKR ${Math.abs(diff).toLocaleString()} kam — dispute karne par consider karein`
+                : `PKR ${diff.toLocaleString()} zyada submit se`}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Note (optional)</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Owner note (optional)</label>
           <textarea
             value={ownerNote}
             onChange={(e) => setOwnerNote(e.target.value)}
             rows={2}
-            placeholder="Any discrepancy notes"
+            placeholder="Koi discrepancy ya note"
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition resize-none"
           />
         </div>
@@ -622,13 +732,13 @@ function ConfirmHandoverModal({ handover, onClose }: { handover: Handover; onClo
             onClick={() => disputeMutation.mutate()}
             disabled={disputeMutation.isPending || confirmMutation.isPending}
             className="flex-1 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50">
-            Dispute
+            {disputeMutation.isPending ? '…' : 'Dispute'}
           </button>
           <button
             onClick={() => confirmMutation.mutate()}
             disabled={!confirmedAmount || Number(confirmedAmount) < 0 || confirmMutation.isPending || disputeMutation.isPending}
             className="flex-1 py-2.5 text-sm font-semibold bg-green-600 text-white rounded-xl hover:bg-green-700 transition disabled:opacity-50">
-            {confirmMutation.isPending ? 'Confirming…' : 'Confirm Receipt'}
+            {confirmMutation.isPending ? 'Confirm ho raha…' : 'Confirm Receipt'}
           </button>
         </div>
       </div>
@@ -638,31 +748,57 @@ function ConfirmHandoverModal({ handover, onClose }: { handover: Handover; onClo
 
 // ── Handovers section (both staff + owner views) ──────────────────────────────
 function HandoversSection() {
+  const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === 'SELLER_OWNER';
   const isStaff = user?.role === 'SELLER_STAFF';
-  const [showSubmit, setShowSubmit]   = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<Handover | null>(null);
-  const [expanded, setExpanded]       = useState(false);
+
+  const [showSubmit,     setShowSubmit]     = useState(false);
+  const [confirmTarget,  setConfirmTarget]  = useState<Handover | null>(null);
+  const [expanded,       setExpanded]       = useState(false);
+  const [filterStaffId,  setFilterStaffId]  = useState<string | undefined>(undefined);
 
   const { data: handovers = [], isLoading } = useQuery({
-    queryKey: ['handovers'],
-    queryFn: () => handoversApi.list(),
+    queryKey: ['handovers', filterStaffId],
+    queryFn: () => handoversApi.list({ staffId: filterStaffId }),
     staleTime: 30_000,
   });
 
-  const { data: todayData } = useQuery({
-    queryKey: ['handover-collected-today'],
-    queryFn: () => handoversApi.collectedToday(),
+  // Staff: own balance card
+  const { data: myBalance } = useQuery({
+    queryKey: ['handover-my-balance'],
+    queryFn: () => handoversApi.myBalance(),
     staleTime: 30_000,
     enabled: isStaff,
   });
 
+  // Owner: all-staff balances grid
+  const { data: allBalances = [] } = useQuery({
+    queryKey: ['handover-balances'],
+    queryFn: () => handoversApi.pendingBalances(),
+    staleTime: 30_000,
+    enabled: isOwner,
+  });
+
+  const reopenMutation = useMutation({
+    mutationFn: (id: string) => handoversApi.reopen(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['handovers'] });
+      void qc.invalidateQueries({ queryKey: ['handover-balances'] });
+      toast.success('Handover reopen ho gaya');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Reopen failed')),
+  });
+
   const pending   = handovers.filter((h) => h.status === 'PENDING');
-  const displayed = expanded ? handovers : handovers.slice(0, 5);
+  const displayed = expanded ? handovers : handovers.slice(0, 8);
+
+  // Staff: if they already have a pending handover, block submit
+  const hasPendingHandover = isStaff && !!myBalance?.pendingHandover;
 
   return (
     <div className="mt-8 pt-6 border-t border-gray-100">
+      {/* ── Header ── */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Wallet size={16} className="text-green-600" />
@@ -673,7 +809,7 @@ function HandoversSection() {
             </span>
           )}
         </div>
-        {isStaff && (
+        {isStaff && !hasPendingHandover && (
           <button
             onClick={() => setShowSubmit(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition">
@@ -682,30 +818,54 @@ function HandoversSection() {
         )}
       </div>
 
-      {isStaff && todayData && todayData.collected > 0 && (
-        <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-          <p className="text-xs text-gray-500">Today's cash collected</p>
-          <p className="text-base font-bold text-blue-700">{pkr(todayData.collected)}</p>
+      {/* ── Staff: cash in hand card ── */}
+      {isStaff && (
+        <CashInHandCard
+          balance={myBalance}
+          onSubmit={() => setShowSubmit(true)}
+        />
+      )}
+
+      {/* ── Owner: staff balance grid ── */}
+      {isOwner && (
+        <StaffBalanceGrid
+          balances={allBalances}
+          onSelectStaff={(id) => setFilterStaffId((prev) => prev === id ? undefined : id)}
+        />
+      )}
+
+      {/* ── Filter chip (owner filtered to one staff) ── */}
+      {isOwner && filterStaffId && (
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs text-gray-500">
+            Showing: {allBalances.find((b) => b.staffId === filterStaffId)?.staffName ?? filterStaffId}
+          </span>
+          <button
+            onClick={() => setFilterStaffId(undefined)}
+            className="text-[10px] text-blue-500 hover:underline">
+            Clear filter
+          </button>
         </div>
       )}
 
+      {/* ── Handover list ── */}
       {isLoading ? (
         <RowSkeleton rows={3} />
       ) : handovers.length === 0 ? (
         <div className="text-center py-6 border border-dashed border-gray-200 rounded-xl text-gray-400">
           <Wallet size={22} className="mx-auto mb-1.5 opacity-30" />
-          <p className="text-xs">No handovers yet</p>
+          <p className="text-xs">{filterStaffId ? 'Is staff ka koi handover nahi' : 'Koi handover nahi abhi tak'}</p>
         </div>
       ) : (
         <>
           <div className="space-y-2">
             {displayed.map((h) => {
-              const badge = STATUS_BADGE[h.status] ?? STATUS_BADGE.PENDING;
+              const badge    = STATUS_BADGE[h.status] ?? STATUS_BADGE.PENDING;
               const shortfall = h.confirmedAmount != null
                 ? Number(h.confirmedAmount) - Number(h.handedAmount)
                 : null;
               return (
-                <div key={h.id} className="border border-gray-100 rounded-xl p-3 bg-white">
+                <div key={h.id} className={`border rounded-xl p-3 bg-white ${h.status === 'DISPUTED' ? 'border-red-200 bg-red-50/30' : h.status === 'PENDING' ? 'border-amber-200' : 'border-gray-100'}`}>
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -720,7 +880,7 @@ function HandoversSection() {
                       <div className="flex items-baseline gap-2 mt-1">
                         <span className="text-sm font-bold text-gray-900">{pkr(Number(h.handedAmount))}</span>
                         {h.confirmedAmount && (
-                          <span className={`text-xs ${shortfall && shortfall < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                          <span className={`text-xs ${shortfall != null && shortfall < 0 ? 'text-red-500' : 'text-green-600'}`}>
                             → confirmed {pkr(Number(h.confirmedAmount))}
                             {shortfall != null && Math.abs(shortfall) >= 1 && (
                               <span className="ml-1">({shortfall < 0 ? '-' : '+'}{pkr(Math.abs(shortfall))})</span>
@@ -729,26 +889,40 @@ function HandoversSection() {
                         )}
                       </div>
                       {h.note && <p className="text-xs text-gray-400 mt-0.5 italic truncate">"{h.note}"</p>}
-                      {h.ownerNote && <p className="text-xs text-blue-500 mt-0.5 italic truncate">Owner: "{h.ownerNote}"</p>}
+                      {h.ownerNote && <p className="text-xs text-red-500 mt-0.5 italic truncate">Owner: "{h.ownerNote}"</p>}
                     </div>
-                    {isOwner && h.status === 'PENDING' && (
-                      <button
-                        onClick={() => setConfirmTarget(h)}
-                        className="shrink-0 px-2.5 py-1 text-xs font-semibold text-green-700 border border-green-200 rounded-lg hover:bg-green-50 transition">
-                        Review
-                      </button>
-                    )}
+
+                    <div className="flex flex-col gap-1 shrink-0">
+                      {/* Owner: review PENDING */}
+                      {isOwner && h.status === 'PENDING' && (
+                        <button
+                          onClick={() => setConfirmTarget(h)}
+                          className="px-2.5 py-1 text-xs font-semibold text-green-700 border border-green-200 rounded-lg hover:bg-green-50 transition">
+                          Review
+                        </button>
+                      )}
+                      {/* Owner: reopen DISPUTED */}
+                      {isOwner && h.status === 'DISPUTED' && (
+                        <button
+                          onClick={() => reopenMutation.mutate(h.id)}
+                          disabled={reopenMutation.isPending}
+                          title="Reopen as Pending"
+                          className="px-2.5 py-1 text-xs font-semibold text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-50 transition flex items-center gap-1 disabled:opacity-50">
+                          <RotateCcw size={10} /> Reopen
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
-          {handovers.length > 5 && (
+          {handovers.length > 8 && (
             <button
               onClick={() => setExpanded((v) => !v)}
               className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition">
               {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              {expanded ? 'Show less' : `Show ${handovers.length - 5} more`}
+              {expanded ? 'Kam dikhao' : `${handovers.length - 8} aur dikhao`}
             </button>
           )}
         </>
