@@ -126,6 +126,33 @@ export interface ShopSessionsResult {
   sessions: ShopSession[];
 }
 
+export type ChurnRisk = 'healthy' | 'at-risk' | 'churning';
+export type ChurnSeverity = 'positive' | 'low' | 'medium' | 'high';
+
+export interface ChurnFactor {
+  key: string;
+  label: string;
+  points: number;
+  severity: ChurnSeverity;
+}
+
+export interface ShopChurnScore {
+  shopId: string;
+  shopName: string;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  plan: string;
+  isActive: boolean;
+  score: number;
+  risk: ChurnRisk;
+  factors: ChurnFactor[];
+  lastPaymentDate: string | null;
+  daysSinceActivity: number | null;
+  customerCount: number;
+  paymentsThisMonth: number;
+  shopAgeDays: number;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const ownerApi = {
@@ -187,4 +214,8 @@ export const ownerApi = {
 
   killAllSessions: (shopId: string) =>
     api.delete<{ data: { killed: number } }>(`/owner/shops/${shopId}/sessions`).then(unwrap<{ killed: number }>),
+
+  // B1: Churn Risk Score
+  getChurnScores: () =>
+    api.get<{ data: ShopChurnScore[] }>('/owner/churn-scores').then(unwrap<ShopChurnScore[]>),
 };

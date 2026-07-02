@@ -7,6 +7,7 @@ import {
   listPaymentLogs, addPaymentLog, deletePaymentLog,
   addShopNote, deleteShopNote,
   listAdminAuditLogs,
+  listChurnScores,
   getShopSessions, killSession, killAllShopSessions,
 } from './owner.controller.js';
 
@@ -37,6 +38,9 @@ router.delete('/shops/:id/notes/:noteId', deleteShopNote);
 
 // ── A10: Super-admin audit log ────────────────────────────────────────────────
 router.get('/admin-audit-logs',       listAdminAuditLogs);
+
+// ── B1: Churn Risk Score ──────────────────────────────────────────────────────
+router.get('/churn-scores',           listChurnScores);
 
 // ── Session management ────────────────────────────────────────────────────────
 router.get('/shops/:id/sessions',              getShopSessions);

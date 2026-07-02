@@ -71,6 +71,11 @@ export async function listAdminAuditLogs(req: AuthRequest, res: Response) {
   success(res, await svc.listAdminAuditLogs(sellerId, limit));
 }
 
+// ── B1: Churn Risk Score ──────────────────────────────────────────────────────
+export async function listChurnScores(_req: AuthRequest, res: Response) {
+  success(res, await svc.getChurnScores());
+}
+
 // ── Session management ────────────────────────────────────────────────────────
 export async function getShopSessions(req: AuthRequest, res: Response) {
   success(res, await svc.getShopSessions(req.params['id'] as string));

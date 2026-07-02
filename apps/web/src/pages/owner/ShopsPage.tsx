@@ -4,11 +4,11 @@ import toast from 'react-hot-toast';
 import {
   Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck,
   CreditCard, Calendar, Search, AlertTriangle, Clock, KeyRound, Eye, EyeOff,
-  TrendingUp, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
+  TrendingUp, TrendingDown, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
   Activity, FileText, Plus, Package, Monitor, Smartphone, Tablet2,
-  ShieldAlert, LogOut, Wifi,
+  ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle,
 } from 'lucide-react';
-import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession } from '../../api/owner.api.ts';
+import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
@@ -1123,6 +1123,235 @@ function AdminAuditPanel({ onClose, filterShopId }: { onClose: () => void; filte
   );
 }
 
+// ── B1: Churn Risk Panel ──────────────────────────────────────────────────────
+
+const RISK_META: Record<ChurnRisk, { label: string; cls: string; bar: string; icon: React.ReactNode }> = {
+  healthy:  { label: 'Healthy',  cls: 'text-emerald-700 bg-emerald-50 border-emerald-200', bar: 'bg-emerald-500', icon: <CheckCircle2 size={11} /> },
+  'at-risk':{ label: 'At-Risk',  cls: 'text-amber-700  bg-amber-50  border-amber-200',    bar: 'bg-amber-400',   icon: <AlertTriangle size={11} /> },
+  churning: { label: 'Churning', cls: 'text-red-600    bg-red-50    border-red-200',       bar: 'bg-red-500',     icon: <XCircle size={11} /> },
+};
+
+const FACTOR_SEV: Record<string, string> = {
+  positive: 'text-emerald-600',
+  low:      'text-amber-600',
+  medium:   'text-orange-600',
+  high:     'text-red-600',
+};
+
+type ChurnFilter = 'all' | ChurnRisk;
+
+function ChurnScoreBar({ score }: { score: number }) {
+  const risk: ChurnRisk = score <= 20 ? 'healthy' : score <= 50 ? 'at-risk' : 'churning';
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-12">
+        <div className={`h-full rounded-full transition-all ${RISK_META[risk].bar}`}
+          style={{ width: `${score}%` }} />
+      </div>
+      <span className={`text-xs font-bold w-5 text-right ${
+        risk === 'churning' ? 'text-red-600' : risk === 'at-risk' ? 'text-amber-600' : 'text-emerald-600'
+      }`}>{score}</span>
+    </div>
+  );
+}
+
+function ChurnRiskPanel({ onClose, onViewShop }: {
+  onClose: () => void;
+  onViewShop: (shopId: string) => void;
+}) {
+  const [churnFilter, setChurnFilter] = useState<ChurnFilter>('churning');
+
+  const { data: scores = [], isLoading } = useQuery({
+    queryKey: ['owner-churn-scores'],
+    queryFn: ownerApi.getChurnScores,
+    staleTime: 120_000,
+  });
+
+  const summary = {
+    healthy:  scores.filter((s) => s.risk === 'healthy').length,
+    'at-risk':scores.filter((s) => s.risk === 'at-risk').length,
+    churning: scores.filter((s) => s.risk === 'churning').length,
+  };
+
+  const filtered = useMemo(() => {
+    const list = churnFilter === 'all'
+      ? [...scores]
+      : scores.filter((s) => s.risk === churnFilter);
+    return list.sort((a, b) => b.score - a.score);
+  }, [scores, churnFilter]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center">
+            <TrendingDown size={16} className="text-red-500" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-gray-900">Churn Risk Analysis</p>
+            <p className="text-xs text-gray-400">Shops jo band hone ke khatray mein hain</p>
+          </div>
+          <button onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Summary tiles */}
+        <div className="grid grid-cols-3 gap-px bg-gray-100 border-b border-gray-100 shrink-0">
+          {(['churning', 'at-risk', 'healthy'] as ChurnRisk[]).map((r) => (
+            <button key={r} onClick={() => setChurnFilter(r)}
+              className={`flex flex-col items-center py-3 px-2 transition ${
+                churnFilter === r ? 'bg-white' : 'bg-gray-50 hover:bg-white'
+              }`}>
+              <p className={`text-2xl font-bold ${
+                r === 'churning' ? 'text-red-600' : r === 'at-risk' ? 'text-amber-600' : 'text-emerald-600'
+              }`}>{summary[r]}</p>
+              <div className={`inline-flex items-center gap-1 mt-0.5 text-[10px] font-semibold ${
+                r === 'churning' ? 'text-red-500' : r === 'at-risk' ? 'text-amber-600' : 'text-emerald-600'
+              }`}>
+                {RISK_META[r].icon} {RISK_META[r].label}
+              </div>
+              {churnFilter === r && <div className={`w-6 h-0.5 mt-1.5 rounded-full ${RISK_META[r].bar}`} />}
+            </button>
+          ))}
+        </div>
+
+        {/* Filter tabs */}
+        <div className="flex items-center gap-1.5 px-5 py-3 border-b border-gray-100 shrink-0">
+          {(['all', 'churning', 'at-risk', 'healthy'] as ChurnFilter[]).map((f) => (
+            <button key={f} onClick={() => setChurnFilter(f)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                churnFilter === f
+                  ? f === 'churning' ? 'bg-red-600 text-white border-red-600'
+                  : f === 'at-risk'  ? 'bg-amber-500 text-white border-amber-500'
+                  : f === 'healthy'  ? 'bg-emerald-600 text-white border-emerald-600'
+                  :                   'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}>
+              {f === 'all' ? `All (${scores.length})` : RISK_META[f].label}
+            </button>
+          ))}
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1,2,3,4].map((i) => <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 size={24} className="text-emerald-400" />
+              </div>
+              <p className="text-sm font-semibold text-gray-700">
+                {churnFilter === 'churning' ? 'Koi churn risk nahi' : 'Koi shop nahi mili'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {churnFilter === 'churning' ? 'Sab shops theek hain!' : 'Filter change karke dekhein'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((s: ShopChurnScore) => {
+                const rm = RISK_META[s.risk];
+                const topFactors = s.factors
+                  .filter((f) => f.severity !== 'positive')
+                  .slice(0, 2);
+                const positiveFactors = s.factors
+                  .filter((f) => f.severity === 'positive')
+                  .slice(0, 1);
+                return (
+                  <div key={s.shopId}
+                    className={`rounded-xl border p-4 transition hover:shadow-sm ${
+                      s.risk === 'churning' ? 'border-red-100 bg-red-50/40' :
+                      s.risk === 'at-risk'  ? 'border-amber-100 bg-amber-50/30' :
+                      'border-gray-100 bg-white'
+                    }`}>
+                    {/* Top row */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-gray-900 truncate">{s.shopName}</span>
+                          <span className={`inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${PLAN_STYLES[s.plan] ?? 'text-gray-500 bg-gray-50 border-gray-200'}`}>
+                            {s.plan}
+                          </span>
+                          {!s.isActive && (
+                            <span className="inline-flex px-1.5 py-0.5 rounded-md text-[10px] font-semibold border text-red-600 bg-red-50 border-red-200">
+                              Suspended
+                            </span>
+                          )}
+                        </div>
+                        {s.ownerName && (
+                          <p className="text-[11px] text-gray-400 mt-0.5 truncate">{s.ownerName}</p>
+                        )}
+                      </div>
+                      {/* Risk badge */}
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold border shrink-0 ${rm.cls}`}>
+                        {rm.icon} {rm.label}
+                      </span>
+                    </div>
+
+                    {/* Score bar */}
+                    <div className="mt-3">
+                      <ChurnScoreBar score={s.score} />
+                    </div>
+
+                    {/* Meta row */}
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                        <Users size={10} /> {s.customerCount} customers
+                      </span>
+                      <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                        <Activity size={10} /> {s.paymentsThisMonth} payments/mo
+                      </span>
+                      {s.daysSinceActivity !== null && (
+                        <span className={`text-[11px] flex items-center gap-1 ${s.daysSinceActivity > 30 ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
+                          <Clock size={10} /> {s.daysSinceActivity}d ago
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Factors */}
+                    {(topFactors.length > 0 || positiveFactors.length > 0) && (
+                      <div className="mt-2.5 space-y-1">
+                        {topFactors.map((f) => (
+                          <div key={f.key} className="flex items-start gap-1.5">
+                            <span className={`text-[10px] font-bold mt-0.5 shrink-0 ${FACTOR_SEV[f.severity]}`}>
+                              {f.severity === 'high' ? '●●' : f.severity === 'medium' ? '●' : '·'}
+                            </span>
+                            <span className="text-[11px] text-gray-600 leading-tight">{f.label}</span>
+                          </div>
+                        ))}
+                        {positiveFactors.map((f) => (
+                          <div key={f.key} className="flex items-start gap-1.5">
+                            <span className="text-[10px] font-bold mt-0.5 shrink-0 text-emerald-500">✓</span>
+                            <span className="text-[11px] text-emerald-600 leading-tight">{f.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* View details link */}
+                    <button
+                      onClick={() => { onClose(); onViewShop(s.shopId); }}
+                      className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 transition">
+                      Details dekhein <ChevronRight size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 type Modal = { type: 'shop' } | { type: 'owner'; shop: Shop } | { type: 'plan'; shop: Shop } | null;
@@ -1137,6 +1366,7 @@ export default function ShopsPage() {
   const [statusConfirm, setStatusConfirm] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
   const [detailShopId, setDetailShopId] = useState<string | null>(null);
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [showChurnPanel, setShowChurnPanel] = useState(false);
 
   const { data: shops = [], isLoading, isError } = useQuery({
     queryKey: ['owner-shops'],
@@ -1223,6 +1453,10 @@ export default function ShopsPage() {
           <p className="text-sm text-gray-400 mt-0.5">Manage all registered shops</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowChurnPanel(true)} title="Churn risk analysis"
+            className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition">
+            <TrendingDown size={16} />
+          </button>
           <button onClick={() => setShowAuditLog(true)} title="Admin audit log"
             className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition">
             <FileText size={16} />
@@ -1415,6 +1649,14 @@ export default function ShopsPage() {
       {showAuditLog && (
         <AdminAuditPanel
           onClose={() => setShowAuditLog(false)}
+        />
+      )}
+
+      {/* B1: Churn Risk Panel */}
+      {showChurnPanel && (
+        <ChurnRiskPanel
+          onClose={() => setShowChurnPanel(false)}
+          onViewShop={(shopId) => { setShowChurnPanel(false); setDetailShopId(shopId); }}
         />
       )}
     </div>

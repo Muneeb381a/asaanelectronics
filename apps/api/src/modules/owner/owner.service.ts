@@ -516,6 +516,162 @@ export class OwnerService {
     return { killed };
   }
 
+  // ── B1: Churn Risk Score ──────────────────────────────────────────────────
+
+  async getChurnScores() {
+    const now       = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    type RawRow = {
+      id: string; shopName: string; plan: string; isActive: boolean;
+      trialEndsAt: Date | null; planExpiresAt: Date | null; createdAt: Date;
+      ownerName: string | null; ownerEmail: string | null;
+      customerCount: string; installmentCount: string;
+      lastPaymentDate: Date | null; paymentsThisMonth: string;
+    };
+
+    const rows = await db.execute<RawRow>(sql`
+      SELECT
+        s.id,
+        s.shop_name      AS "shopName",
+        s.plan,
+        s.is_active      AS "isActive",
+        s.trial_ends_at  AS "trialEndsAt",
+        s.plan_expires_at AS "planExpiresAt",
+        s.created_at     AS "createdAt",
+        u.name           AS "ownerName",
+        u.email          AS "ownerEmail",
+        COALESCE(cust.cnt,  0)::text AS "customerCount",
+        COALESCE(inst.cnt,  0)::text AS "installmentCount",
+        pay.last_payment_date        AS "lastPaymentDate",
+        COALESCE(pay.this_month, 0)::text AS "paymentsThisMonth"
+      FROM sellers s
+      LEFT JOIN users u
+        ON u.seller_id = s.id AND u.role = 'SELLER_OWNER'
+      LEFT JOIN (
+        SELECT seller_id, COUNT(*) AS cnt
+        FROM customers WHERE deleted_at IS NULL
+        GROUP BY seller_id
+      ) cust ON cust.seller_id = s.id
+      LEFT JOIN (
+        SELECT c.seller_id, COUNT(i.id) AS cnt
+        FROM installments i
+        JOIN customers c ON c.id = i.customer_id
+        WHERE i.deleted_at IS NULL
+        GROUP BY c.seller_id
+      ) inst ON inst.seller_id = s.id
+      LEFT JOIN (
+        SELECT
+          c.seller_id,
+          MAX(p.paid_on) AS last_payment_date,
+          COUNT(CASE WHEN p.paid_on >= ${monthStart} THEN 1 END) AS this_month
+        FROM payments p
+        JOIN installments i ON i.id = p.installment_id
+        JOIN customers  c ON c.id = i.customer_id
+        WHERE p.deleted_at IS NULL
+        GROUP BY c.seller_id
+      ) pay ON pay.seller_id = s.id
+      ORDER BY s.created_at DESC
+    `);
+
+    return (rows as unknown as RawRow[]).map((r) => {
+      const custCount      = Number(r.customerCount);
+      const paysThisMonth  = Number(r.paymentsThisMonth);
+      const limits         = PLAN_LIMITS[r.plan as keyof typeof PLAN_LIMITS] ?? PLAN_LIMITS.TRIAL;
+      const shopAgeDays    = Math.floor((now.getTime() - new Date(r.createdAt).getTime()) / 86_400_000);
+      const lastPay        = r.lastPaymentDate ? new Date(r.lastPaymentDate) : null;
+      const daysSince      = lastPay ? Math.floor((now.getTime() - lastPay.getTime()) / 86_400_000) : null;
+
+      const isExpired =
+        (r.plan === 'TRIAL' && r.trialEndsAt && new Date(r.trialEndsAt) < now) ||
+        (r.plan !== 'TRIAL' && r.planExpiresAt && new Date(r.planExpiresAt) < now);
+      const hardBlocked =
+        isExpired &&
+        (() => {
+          const expAt = r.plan === 'TRIAL' ? r.trialEndsAt : r.planExpiresAt;
+          return expAt ? Math.floor((now.getTime() - new Date(expAt).getTime()) / 86_400_000) >= 3 : false;
+        })();
+
+      type Severity = 'positive' | 'low' | 'medium' | 'high';
+      const factors: { key: string; label: string; points: number; severity: Severity }[] = [];
+      let score = 0;
+
+      const add = (key: string, label: string, pts: number, sev: Severity) => {
+        factors.push({ key, label, points: pts, severity: sev });
+        score += pts;
+      };
+
+      // ── New shop grace: ignore most signals ──────────────────────────────
+      if (shopAgeDays < 7) {
+        add('new_shop', `Shop created ${shopAgeDays}d ago — grace period`, -999, 'positive');
+        return {
+          shopId: r.id, shopName: r.shopName, ownerName: r.ownerName, ownerEmail: r.ownerEmail,
+          plan: r.plan, isActive: r.isActive, score: 0, risk: 'healthy' as const,
+          factors: [{ key: 'new_shop', label: `Shop created ${shopAgeDays}d ago — grace period`, points: 0, severity: 'positive' as Severity }],
+          lastPaymentDate: lastPay?.toISOString() ?? null, daysSinceActivity: null,
+          customerCount: custCount, paymentsThisMonth: paysThisMonth, shopAgeDays,
+        };
+      }
+
+      // ── Activity signals ─────────────────────────────────────────────────
+      if (custCount === 0) {
+        add('no_customers', 'No customers ever added', 40, 'high');
+      } else if (daysSince === null) {
+        add('no_activity', 'Has customers but zero payments ever', 50, 'high');
+      } else if (daysSince > 60) {
+        add('inactive_60d', `No activity for ${daysSince} days`, 45, 'high');
+      } else if (daysSince > 30) {
+        add('inactive_30d', `No activity for ${daysSince} days`, 28, 'medium');
+      } else if (daysSince > 14) {
+        add('inactive_14d', `No activity for ${daysSince} days`, 12, 'low');
+      }
+
+      // ── Usage signals ─────────────────────────────────────────────────────
+      const custLimit = limits.customers;
+      const custPct   = custLimit <= 0 ? 100 : (custCount / custLimit) * 100;
+      if (custCount > 0 && custPct < 10) {
+        add('low_usage', `Only ${custCount} customers (${Math.round(custPct)}% of plan)`, 12, 'medium');
+      } else if (custPct > 75) {
+        add('high_usage', `${Math.round(custPct)}% plan capacity used`, -10, 'positive');
+      }
+
+      // ── Payment velocity this month ───────────────────────────────────────
+      if (custCount >= 5 && paysThisMonth === 0) {
+        add('zero_payments_month', 'Zero payments collected this month', 18, 'medium');
+      } else if (paysThisMonth > 25) {
+        add('high_velocity', `${paysThisMonth} payments collected this month`, -15, 'positive');
+      }
+
+      // ── Plan / account status ─────────────────────────────────────────────
+      if (!r.isActive) {
+        add('suspended', 'Shop is suspended', 30, 'high');
+      } else if (hardBlocked) {
+        add('expired', 'Plan expired (past grace period)', 20, 'high');
+      } else if (isExpired) {
+        add('in_grace', 'Plan expired — in 3-day grace period', 8, 'low');
+      }
+
+      // ── Long-term loyalty bonus ───────────────────────────────────────────
+      if (shopAgeDays > 90 && r.plan !== 'TRIAL' && !isExpired && r.isActive) {
+        add('loyal', `Paying customer for ${Math.floor(shopAgeDays / 30)}+ months`, -8, 'positive');
+      }
+
+      score = Math.max(0, Math.min(100, score));
+      const risk = score <= 20 ? 'healthy' : score <= 50 ? 'at-risk' : 'churning';
+
+      return {
+        shopId: r.id, shopName: r.shopName, ownerName: r.ownerName, ownerEmail: r.ownerEmail,
+        plan: r.plan, isActive: r.isActive, score, risk,
+        factors: factors.filter((f) => f.key !== 'new_shop'),
+        lastPaymentDate: lastPay?.toISOString() ?? null,
+        daysSinceActivity: daysSince,
+        customerCount: custCount,
+        paymentsThisMonth: paysThisMonth,
+        shopAgeDays,
+      };
+    });
+  }
+
   // ── A10: List admin audit logs ─────────────────────────────────────────────
 
   async listAdminAuditLogs(sellerId?: string, limit = 100) {
