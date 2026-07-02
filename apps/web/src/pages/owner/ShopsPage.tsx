@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
   Activity, FileText, Plus, Package, Monitor, Smartphone, Tablet2,
   ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle, Mail, Megaphone, ToggleLeft, ToggleRight,
-  ListChecks, Circle,
+  ListChecks, Circle, Download,
 } from 'lucide-react';
 import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk, type AdminBroadcast, type ShopOnboarding, type StuckSeverity } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
@@ -1989,6 +1989,22 @@ export default function ShopsPage() {
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
+  const exportMutation = useMutation({
+    mutationFn: ownerApi.exportShops,
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = `shops-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Export download ho raha hai');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Export nahi hua')),
+  });
+
   const sendReminderMutation = useMutation({
     mutationFn: (shopId: string) => ownerApi.sendRenewalReminder(shopId),
     onMutate: (shopId) => setSendingReminderId(shopId),
@@ -2049,6 +2065,16 @@ export default function ShopsPage() {
           <button onClick={() => setShowAuditLog(true)} title="Admin audit log"
             className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition">
             <FileText size={16} />
+          </button>
+          <button
+            onClick={() => exportMutation.mutate()}
+            disabled={exportMutation.isPending}
+            title="Export shops to CSV"
+            className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 transition disabled:opacity-50">
+            {exportMutation.isPending
+              ? <span className="block w-4 h-4 border-2 border-gray-300 border-t-emerald-500 rounded-full animate-spin" />
+              : <Download size={16} />
+            }
           </button>
           <button onClick={() => setShowChangePwd(true)} title="Change password"
             className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition">

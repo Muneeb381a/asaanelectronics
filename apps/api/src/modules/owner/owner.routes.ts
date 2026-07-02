@@ -9,6 +9,7 @@ import {
   listAdminAuditLogs,
   listChurnScores,
   sendRenewalReminder,
+  exportShopsCSV,
   getOnboardingStatus,
   listBroadcasts, createBroadcast, updateBroadcast, deleteBroadcast,
   getShopSessions, killSession, killAllShopSessions,
@@ -19,6 +20,7 @@ router.use(authenticate, requireSuperAdmin);
 
 // ── Core shop management ──────────────────────────────────────────────────────
 router.get('/shops',                  listShops);
+router.get('/shops/export',           exportShopsCSV);   // must be before /shops/:id
 router.post('/shops',                 createShop);
 router.post('/shops/:id/owner',       createShopOwner);
 router.delete('/shops/:id',           deleteShop);

@@ -798,6 +798,119 @@ export class OwnerService {
     await this.logAdmin(actorId, 'BROADCAST_DELETED', null, null, row.title);
   }
 
+  // ── B4: Shops CSV export ─────────────────────────────────────────────────────
+
+  async exportShopsCSV() {
+    type RawRow = {
+      id: string; shopName: string; phone: string; address: string | null;
+      plan: string; isActive: boolean;
+      trialEndsAt: Date | null; planExpiresAt: Date | null; createdAt: Date;
+      ownerName: string | null; ownerEmail: string | null;
+      customerCount: string; installmentCount: string;
+      saasRevenue: string; lastActivity: Date | null;
+    };
+
+    const rows = await db.execute<RawRow>(sql`
+      SELECT
+        s.id,
+        s.shop_name        AS "shopName",
+        s.phone,
+        s.address,
+        s.plan,
+        s.is_active        AS "isActive",
+        s.trial_ends_at    AS "trialEndsAt",
+        s.plan_expires_at  AS "planExpiresAt",
+        s.created_at       AS "createdAt",
+        u.name             AS "ownerName",
+        u.email            AS "ownerEmail",
+        COALESCE(cust.cnt,  0)::text  AS "customerCount",
+        COALESCE(inst.cnt,  0)::text  AS "installmentCount",
+        COALESCE(apl.total, 0)::text  AS "saasRevenue",
+        pay.last_pay                  AS "lastActivity"
+      FROM sellers s
+      LEFT JOIN users u
+        ON u.seller_id = s.id AND u.role = 'SELLER_OWNER'
+      LEFT JOIN (
+        SELECT seller_id, COUNT(*) AS cnt
+        FROM customers WHERE deleted_at IS NULL
+        GROUP BY seller_id
+      ) cust ON cust.seller_id = s.id
+      LEFT JOIN (
+        SELECT c.seller_id, COUNT(i.id) AS cnt
+        FROM installments i JOIN customers c ON c.id = i.customer_id
+        WHERE i.deleted_at IS NULL
+        GROUP BY c.seller_id
+      ) inst ON inst.seller_id = s.id
+      LEFT JOIN (
+        SELECT seller_id, SUM(amount) AS total
+        FROM admin_payment_logs
+        GROUP BY seller_id
+      ) apl ON apl.seller_id = s.id
+      LEFT JOIN (
+        SELECT c.seller_id, MAX(p.paid_on) AS last_pay
+        FROM payments p
+        JOIN installments i ON i.id = p.installment_id
+        JOIN customers  c ON c.id = i.customer_id
+        WHERE p.deleted_at IS NULL
+        GROUP BY c.seller_id
+      ) pay ON pay.seller_id = s.id
+      ORDER BY s.created_at DESC
+    `);
+
+    const now = new Date();
+
+    const computeStatus = (r: RawRow): string => {
+      if (!r.isActive) return 'Suspended';
+      if (r.plan === 'TRIAL' && r.trialEndsAt && new Date(r.trialEndsAt) < now) return 'Trial Expired';
+      if (r.planExpiresAt && new Date(r.planExpiresAt) < now) return 'Plan Expired';
+      if (r.plan === 'TRIAL') return 'Trial (Active)';
+      return 'Active';
+    };
+
+    const fmtD = (d: Date | null | undefined) =>
+      d ? new Date(d).toISOString().slice(0, 10) : '';
+
+    const fmtAge = (createdAt: Date) =>
+      String(Math.floor((now.getTime() - new Date(createdAt).getTime()) / 86_400_000));
+
+    const esc = (v: unknown): string => {
+      const s = v == null ? '' : String(v);
+      return s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')
+        ? `"${s.replace(/"/g, '""')}"`
+        : s;
+    };
+
+    const HEADERS = [
+      'Shop ID', 'Shop Name', 'Owner Name', 'Owner Email', 'Phone', 'Address',
+      'Plan', 'Status', 'Created Date', 'Expiry Date', 'Age (Days)',
+      'Customers', 'Installments', 'SaaS Revenue (PKR)', 'Last Activity',
+    ];
+
+    const dataRows = (rows as unknown as RawRow[]).map((r) => [
+      r.id,
+      r.shopName,
+      r.ownerName  ?? '',
+      r.ownerEmail ?? '',
+      r.phone,
+      r.address    ?? '',
+      r.plan,
+      computeStatus(r),
+      fmtD(r.createdAt),
+      fmtD(r.plan === 'TRIAL' ? r.trialEndsAt : r.planExpiresAt),
+      fmtAge(r.createdAt),
+      r.customerCount,
+      r.installmentCount,
+      r.saasRevenue,
+      fmtD(r.lastActivity),
+    ]);
+
+    const lines = [HEADERS, ...dataRows]
+      .map((row) => row.map(esc).join(','))
+      .join('\r\n');
+
+    return '﻿' + lines; // BOM → Excel opens as UTF-8 correctly
+  }
+
   // ── B5: Shop onboarding checklist ────────────────────────────────────────────
 
   async getOnboardingStatus() {

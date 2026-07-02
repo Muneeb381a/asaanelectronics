@@ -250,6 +250,10 @@ export const ownerApi = {
   killAllSessions: (shopId: string) =>
     api.delete<{ data: { killed: number } }>(`/owner/shops/${shopId}/sessions`).then(unwrap<{ killed: number }>),
 
+  // B4: Shops CSV export
+  exportShops: () =>
+    api.get('/owner/shops/export', { responseType: 'blob' }).then((r) => r.data as Blob),
+
   // B5: Shop onboarding checklist
   getOnboardingStatus: () =>
     api.get<{ data: ShopOnboarding[] }>('/owner/onboarding').then(unwrap<ShopOnboarding[]>),

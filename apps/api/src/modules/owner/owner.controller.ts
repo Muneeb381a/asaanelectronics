@@ -81,6 +81,15 @@ export async function sendRenewalReminder(req: AuthRequest, res: Response) {
   success(res, await svc.sendRenewalReminder(req.params['id'] as string, req.user!.userId));
 }
 
+// ── B4: Shops CSV export ──────────────────────────────────────────────────────
+export async function exportShopsCSV(_req: AuthRequest, res: Response) {
+  const csv  = await svc.exportShopsCSV();
+  const date = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="shops-${date}.csv"`);
+  res.send(csv);
+}
+
 // ── B5: Shop onboarding checklist ────────────────────────────────────────────
 export async function getOnboardingStatus(_req: AuthRequest, res: Response) {
   success(res, await svc.getOnboardingStatus());
