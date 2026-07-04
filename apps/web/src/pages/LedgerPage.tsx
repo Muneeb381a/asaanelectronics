@@ -716,6 +716,7 @@ function timeAgo(iso: string) {
 
 function ReconcileTab() {
   const qc = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data: latest, isLoading, isError } = useQuery({
     queryKey: ['recon-latest'],
@@ -734,9 +735,9 @@ function ReconcileTab() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['recon-latest'] });
       void qc.invalidateQueries({ queryKey: ['recon-history'] });
-      toast.success('Reconciliation complete');
+      toast.success('Reconciliation complete — books checked');
     },
-    onError: () => toast.error('Reconciliation failed'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Reconciliation failed')),
   });
 
   const pkr = (v: string | null) =>
@@ -748,6 +749,15 @@ function ReconcileTab() {
   return (
     <div className="space-y-5">
 
+      {/* ── Info banner ── */}
+      <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 text-sm text-indigo-700">
+        <ShieldCheck size={16} className="shrink-0 mt-0.5" />
+        <p>
+          Reconciliation sirf <strong>check</strong> karta hai — koi data delete ya change nahi hota.
+          Ye ledger, payments, aur journal entries ko compare karta hai aur gaps report karta hai.
+        </p>
+      </div>
+
       {/* ── Run Now header ── */}
       <div className="flex items-center justify-between">
         <div>
@@ -758,7 +768,7 @@ function ReconcileTab() {
           <p className="text-xs text-gray-400 mt-0.5">Runs daily at 00:01 · detects ledger mismatches, installment drift, journal imbalance</p>
         </div>
         <button
-          onClick={() => runMutation.mutate()}
+          onClick={() => setConfirmOpen(true)}
           disabled={runMutation.isPending}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
         >
@@ -766,6 +776,17 @@ function ReconcileTab() {
           {runMutation.isPending ? 'Running…' : 'Run Now'}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Reconciliation Run Karo?"
+        description="Ye aapke ledger, payments, aur journal entries ko scan karega aur koi mismatch report karega. Koi data delete ya modify nahi hoga — ye sirf ek read-only audit check hai."
+        confirmLabel="Haan, Check Karo"
+        variant="info"
+        isPending={runMutation.isPending}
+        onConfirm={() => { setConfirmOpen(false); runMutation.mutate(); }}
+        onCancel={() => setConfirmOpen(false)}
+      />
 
       {/* ── Latest run result ── */}
       {latest ? (

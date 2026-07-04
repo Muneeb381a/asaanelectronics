@@ -112,7 +112,7 @@ export class ReconciliationService {
 
   async #paymentsTotal(sellerId: string): Promise<number> {
     const [row] = await db
-      .select({ total: sql<number>`COALESCE(SUM(p.amount)::float, 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(${payments.amount})::float, 0)` })
       .from(payments)
       .innerJoin(installments, eq(payments.installmentId, installments.id))
       .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -126,7 +126,7 @@ export class ReconciliationService {
         id:             installments.id,
         totalAmount:    installments.totalAmount,
         storedRemaining: installments.remaining,
-        paidSum: sql<number>`COALESCE(SUM(p.amount) FILTER (WHERE p.deleted_at IS NULL), 0)::float`,
+        paidSum: sql<number>`COALESCE(SUM(${payments.amount}) FILTER (WHERE ${payments.deletedAt} IS NULL), 0)::float`,
       })
       .from(installments)
       .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -148,8 +148,8 @@ export class ReconciliationService {
       .select({
         id:        journalEntries.id,
         memo:      journalEntries.memo,
-        debitSum:  sql<number>`COALESCE(SUM(ll.debit)::float, 0)`,
-        creditSum: sql<number>`COALESCE(SUM(ll.credit)::float, 0)`,
+        debitSum:  sql<number>`COALESCE(SUM(${ledgerLines.debit})::float, 0)`,
+        creditSum: sql<number>`COALESCE(SUM(${ledgerLines.credit})::float, 0)`,
       })
       .from(journalEntries)
       .leftJoin(ledgerLines, eq(ledgerLines.journalId, journalEntries.id))
