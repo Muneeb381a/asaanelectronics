@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ShieldCheck, ShieldX, Clock, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { customersApi } from '../../api/customers.api.ts';
+import { guarantorsApi } from '../../api/guarantors.api.ts';
 import { productsApi } from '../../api/products.api.ts';
 import { productUnitsApi } from '../../api/productUnits.api.ts';
 import { fmtDate } from '../../utils/dateFormat.ts';
@@ -292,6 +293,31 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     staleTime: 60_000,
   });
   const selectedCustomer = customers?.data.find((c) => c.id === customerId) ?? fetchedCustomer;
+
+  // Guarantor exposure check — warns if a guarantor is already overexposed
+  const g1Phone = fetchedCustomer?.guarantorPhone ?? null;
+  const g2Phone = fetchedCustomer?.guarantor2Phone ?? null;
+  const { data: g1List } = useQuery({
+    queryKey: ['guarantor-exposure', g1Phone],
+    queryFn: () => guarantorsApi.list(g1Phone!),
+    enabled: !!g1Phone && !!customerId,
+    staleTime: 60_000,
+  });
+  const { data: g2List } = useQuery({
+    queryKey: ['guarantor-exposure', g2Phone],
+    queryFn: () => guarantorsApi.list(g2Phone!),
+    enabled: !!g2Phone && !!customerId && g2Phone !== g1Phone,
+    staleTime: 60_000,
+  });
+  type GWarn = { name: string; activeCount: number; defaultedCount: number };
+  const guarantorWarnings: GWarn[] = [
+    g1List?.find((g) => g.phone === g1Phone),
+    g2List?.find((g) => g.phone === g2Phone) ?? (g2Phone === g1Phone ? g1List?.find((g) => g.phone === g2Phone) : null),
+  ].map((g, i) => ({
+    name:           (i === 0 ? fetchedCustomer?.guarantorName : fetchedCustomer?.guarantor2Name) ?? 'Guarantor',
+    activeCount:    g?.activeCount ?? 0,
+    defaultedCount: g?.defaultedCount ?? 0,
+  })).filter((w) => w.activeCount >= 2 || w.defaultedCount > 0);
   const selectedProduct  = products?.data.find((p) => p.id === productId);
 
   const cashPriceDisplay = selectedProduct ? Number(selectedProduct.price) : null;
@@ -474,6 +500,23 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
               </div>
             );
           })()}
+
+          {guarantorWarnings.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              {guarantorWarnings.map((w) => (
+                <div key={w.name} className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber-500" />
+                  <div>
+                    <span className="font-semibold">{w.name}</span> pehle se{' '}
+                    <span className="font-semibold">{w.activeCount}</span> account(s) guarantee kar raha/rahi hai
+                    {w.defaultedCount > 0 && (
+                      <span className="text-red-600"> · {w.defaultedCount} default(s)</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

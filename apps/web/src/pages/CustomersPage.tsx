@@ -16,7 +16,7 @@ import InstallmentForm from '../features/installments/InstallmentForm.tsx';
 import PaymentModal from '../features/installments/PaymentModal.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
-import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
+import { openWhatsApp, reminderMessage, balanceStatementMessage } from '../utils/whatsapp.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import CustomerAgreementPrint from '../components/CustomerAgreementPrint.tsx';
 import CustomerStatementPrint from '../components/CustomerStatementPrint.tsx';
@@ -798,10 +798,22 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   }
 
   const installments = data?.data ?? [];
-  const totalBusiness = installments.reduce((s, i) => s + Number(i.totalAmount), 0);
-  const totalPaid     = installments.reduce((s, i) => s + (Number(i.totalAmount) - Number(i.remaining)), 0);
+  const totalBusiness  = installments.reduce((s, i) => s + Number(i.totalAmount), 0);
+  const totalPaid      = installments.reduce((s, i) => s + (Number(i.totalAmount) - Number(i.remaining)), 0);
   const totalRemaining = installments.reduce((s, i) => s + Number(i.remaining), 0);
-  const activeCount   = installments.filter((i) => i.status === 'ACTIVE').length;
+  const activeCount    = installments.filter((i) => i.status === 'ACTIVE').length;
+  const completedCount = installments.filter((i) => i.status === 'COMPLETED').length;
+  const defaultedCount = installments.filter((i) => i.status === 'DEFAULTED').length;
+
+  type LoyaltyGrade = { label: string; cls: string };
+  function loyaltyGrade(): LoyaltyGrade | null {
+    if (defaultedCount >= 2) return { label: 'High Risk', cls: 'text-red-600 bg-red-50 border-red-200' };
+    if (defaultedCount === 1) return { label: 'Caution', cls: 'text-orange-600 bg-orange-50 border-orange-200' };
+    if (completedCount >= 3)  return { label: 'Gold Customer', cls: 'text-amber-600 bg-amber-50 border-amber-200' };
+    if (completedCount >= 1)  return { label: 'Loyal Customer', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' };
+    return null;
+  }
+  const grade = loyaltyGrade();
 
   return (
     <>
@@ -888,6 +900,31 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               <Printer size={13} />
               Agreement
             </button>
+            {shopData && (activeCount > 0 || defaultedCount > 0) && (
+              <button
+                onClick={() => openWhatsApp(
+                  customer.phone,
+                  balanceStatementMessage({
+                    shopName: shopData.shopName,
+                    customerName: customer.name,
+                    installments: installments
+                      .filter((i) => i.status === 'ACTIVE' || i.status === 'DEFAULTED')
+                      .map((i) => ({
+                        productName:      i.productName,
+                        remaining:        i.remaining,
+                        monthly:          i.monthly,
+                        status:           i.status,
+                        paymentFrequency: i.paymentFrequency,
+                      })),
+                  })
+                )}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-200 text-xs text-green-700 hover:bg-green-50 transition"
+                title="Send balance statement on WhatsApp"
+              >
+                <MessageCircle size={13} />
+                Balance
+              </button>
+            )}
             {isOwnerInDrawer && (
               isBlacklisted ? (
                 <button
@@ -1178,11 +1215,31 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
 
         {/* Footer stats */}
         {installments.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-100 shrink-0">
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <TrendingUp size={13} className="text-blue-500" />
-              Lifetime business value: <span className="font-bold text-gray-900 ml-0.5">{pkr(totalBusiness)}</span>
+          <div className="px-6 py-4 border-t border-gray-100 shrink-0 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <TrendingUp size={13} className="text-blue-500" />
+                Lifetime value: <span className="font-bold text-gray-900 ml-0.5">{pkr(totalBusiness)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                {completedCount > 0 && (
+                  <span className="text-emerald-600 font-medium">{completedCount} completed</span>
+                )}
+                {defaultedCount > 0 && (
+                  <span className="text-red-500 font-medium">{defaultedCount} defaulted</span>
+                )}
+              </div>
             </div>
+            {grade && (
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${grade.cls}`}>
+                {grade.label}
+              </div>
+            )}
+            {completedCount >= 1 && defaultedCount === 0 && (
+              <p className="text-xs text-blue-600 font-medium">
+                Naya deal offer karo — repeat customer hai
+              </p>
+            )}
           </div>
         )}
 

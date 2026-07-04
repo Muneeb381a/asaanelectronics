@@ -38,6 +38,36 @@ export function reminderMessage(opts: {
   );
 }
 
+export function balanceStatementMessage(opts: {
+  shopName: string;
+  customerName: string;
+  installments: Array<{
+    productName: string;
+    remaining: string | number;
+    monthly: string | number;
+    status: string;
+    paymentFrequency?: string | null;
+  }>;
+}) {
+  const fmt = (v: string | number) => 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
+  const relevant = opts.installments.filter((i) => i.status === 'ACTIVE' || i.status === 'DEFAULTED');
+  const totalRemaining = relevant.reduce((s, i) => s + Number(i.remaining), 0);
+  const lines = relevant.map((i, idx) => {
+    const isDaily    = i.paymentFrequency === 'daily';
+    const instLabel  = isDaily ? 'Daily' : 'Monthly';
+    const statusMark = i.status === 'DEFAULTED' ? ' ⚠️' : '';
+    return `${idx + 1}. *${i.productName}*${statusMark}\n   ${instLabel}: ${fmt(i.monthly)} · Remaining: ${fmt(i.remaining)}`;
+  }).join('\n\n');
+  return (
+    `Dear ${opts.customerName},\n\n` +
+    `Aapka balance statement from *${opts.shopName}*:\n\n` +
+    lines +
+    `\n\n💰 *Total Baqi: ${fmt(totalRemaining)}*\n\n` +
+    `Kisi bhi sawal ke liye rabta karen.\n\n` +
+    `— ${opts.shopName}`
+  );
+}
+
 export function billMessage(opts: {
   shopName: string;
   customerName: string;
