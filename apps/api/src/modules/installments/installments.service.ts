@@ -693,6 +693,125 @@ export class InstallmentsService {
     return dueItems;
   }
 
+  async collectionSchedule(sellerId: string, days: number = 7) {
+    const rows = await db.execute<{
+      id: string; monthly: string; remaining: string; months: number;
+      payment_frequency: string; start_date: string; payment_due_day: number;
+      total_amount: string; down_payment: string;
+      customer_name: string; customer_phone: string; customer_address: string | null;
+      product_name: string; last_payment_date: string | null; last_payment_amount: string | null;
+    }>(sql`
+      SELECT i.id, i.monthly, i.remaining, i.months, i.payment_frequency,
+             i.start_date, i.payment_due_day, i.total_amount, i.down_payment,
+             c.name AS customer_name, c.phone AS customer_phone, c.address AS customer_address,
+             p.name AS product_name,
+             lp.paid_on AS last_payment_date,
+             lp.amount   AS last_payment_amount
+      FROM installments i
+      INNER JOIN customers c ON i.customer_id = c.id
+      INNER JOIN products  p ON i.product_id  = p.id
+      LEFT JOIN LATERAL (
+        SELECT amount, paid_on
+        FROM payments
+        WHERE installment_id = i.id AND deleted_at IS NULL
+        ORDER BY paid_on DESC, created_at DESC
+        LIMIT 1
+      ) lp ON true
+      WHERE c.seller_id = ${sellerId}
+        AND i.status = 'ACTIVE'
+        AND i.deleted_at IS NULL
+        AND c.deleted_at IS NULL
+      LIMIT 3000
+    `);
+
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const windowEnd = new Date(todayMidnight);
+    windowEnd.setDate(windowEnd.getDate() + days);
+
+    type ScheduleItem = {
+      id: string; customerName: string; customerPhone: string; customerAddress: string;
+      productName: string; monthly: number; remaining: number;
+      nextDueDate: string; daysUntilDue: number; area: string;
+      lastPaymentDate: string | null; lastPaymentAmount: number | null;
+      urgency: 'overdue' | 'today' | 'upcoming';
+    };
+
+    const items: ScheduleItem[] = [];
+
+    for (const inst of rows) {
+      const monthly = Number(inst.monthly);
+      if (monthly <= 0) continue;
+
+      const paidAmt = Number(inst.total_amount) - Number(inst.down_payment) - Number(inst.remaining);
+      const paidPeriods = Math.max(0, Math.floor(paidAmt / monthly + 0.001));
+      const nextPeriod = paidPeriods + 1;
+      if (nextPeriod > inst.months) continue;
+
+      const startDate = new Date(inst.start_date);
+      let nextDueDate: Date;
+
+      if (inst.payment_frequency === 'daily') {
+        nextDueDate = new Date(startDate);
+        nextDueDate.setDate(nextDueDate.getDate() + nextPeriod);
+      } else {
+        const dueDay = Number(inst.payment_due_day) || 10;
+        const mo = startDate.getMonth() + nextPeriod;
+        const lastDay = new Date(startDate.getFullYear(), mo + 1, 0).getDate();
+        nextDueDate = new Date(startDate.getFullYear(), mo, Math.min(dueDay, lastDay));
+      }
+
+      const nextMidnight = new Date(nextDueDate.getFullYear(), nextDueDate.getMonth(), nextDueDate.getDate());
+
+      // Include overdue AND upcoming within window
+      if (nextMidnight > windowEnd) continue;
+
+      const diffDays = Math.floor(
+        (nextMidnight.getTime() - todayMidnight.getTime()) / 86_400_000,
+      );
+
+      const nextDateStr = `${nextDueDate.getFullYear()}-${String(nextDueDate.getMonth() + 1).padStart(2, '0')}-${String(nextDueDate.getDate()).padStart(2, '0')}`;
+      const area = inst.customer_address
+        ? inst.customer_address.split(',').pop()?.trim() || 'Unknown'
+        : 'Unknown';
+
+      items.push({
+        id:                  inst.id,
+        customerName:        inst.customer_name,
+        customerPhone:       inst.customer_phone,
+        customerAddress:     inst.customer_address ?? '',
+        productName:         inst.product_name,
+        monthly,
+        remaining:           Number(inst.remaining),
+        nextDueDate:         nextDateStr,
+        daysUntilDue:        diffDays,   // negative = overdue, 0 = today, positive = upcoming
+        area,
+        lastPaymentDate:     inst.last_payment_date ?? null,
+        lastPaymentAmount:   inst.last_payment_amount != null ? Number(inst.last_payment_amount) : null,
+        urgency:             diffDays < 0 ? 'overdue' : diffDays === 0 ? 'today' : 'upcoming',
+      });
+    }
+
+    // Sort: overdue first (most overdue at top), then today, then upcoming (soonest first)
+    items.sort((a, b) => {
+      if (a.urgency !== b.urgency) {
+        const order = { overdue: 0, today: 1, upcoming: 2 };
+        return order[a.urgency] - order[b.urgency];
+      }
+      if (a.urgency === 'overdue') return a.daysUntilDue - b.daysUntilDue; // most overdue first
+      return a.daysUntilDue - b.daysUntilDue; // soonest first for upcoming
+    });
+
+    const summary = {
+      overdue:  items.filter((i) => i.urgency === 'overdue').length,
+      today:    items.filter((i) => i.urgency === 'today').length,
+      upcoming: items.filter((i) => i.urgency === 'upcoming').length,
+      totalDue: items.reduce((s, i) => s + i.monthly, 0),
+    };
+
+    return { items, summary };
+  }
+
   async pause(id: string, sellerId: string, pausedBy: string, body: { months: number; reason?: string }) {
     const row = await this.getOne(id, sellerId);
     if (row.status !== 'ACTIVE') throw new AppError('Only active installments can be paused', 400);

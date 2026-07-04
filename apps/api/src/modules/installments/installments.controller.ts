@@ -47,6 +47,11 @@ export async function getDueSheet(req: AuthRequest, res: Response) {
   success(res, await svc.dueSheet(req.user!.sellerId!));
 }
 
+export async function getCollectionSchedule(req: AuthRequest, res: Response) {
+  const days = Math.min(30, Math.max(0, Number(req.query['days'] ?? 7)));
+  success(res, await svc.collectionSchedule(req.user!.sellerId!, days));
+}
+
 export async function createInstallment(req: AuthRequest, res: Response) {
   const result = await svc.create(req.user!.sellerId!, req.body);
   success(res, result, 201);

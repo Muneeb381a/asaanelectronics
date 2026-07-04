@@ -7,7 +7,8 @@ import {
   listInstallments, getInstallment, createInstallment, defaultInstallment,
   cancelInstallment, rescheduleInstallment, deleteInstallment,
   approveInstallment, closeInstallment, importInstallments, updateInstallment,
-  getDueSheet, waiverInstallment, getSettlement, pauseInstallment, unpauseInstallment,
+  getDueSheet, getCollectionSchedule, waiverInstallment, getSettlement,
+  pauseInstallment, unpauseInstallment,
   listOverdueWithStage, transferInstallment,
 } from './installments.controller.js';
 
@@ -15,8 +16,9 @@ const router = Router();
 
 router.use(authenticate, requireSeller);
 
-router.get('/due-sheet',       getDueSheet);
-router.get('/overdue-stage',   listOverdueWithStage);
+router.get('/due-sheet',            getDueSheet);
+router.get('/collection-schedule', getCollectionSchedule);
+router.get('/overdue-stage',        listOverdueWithStage);
 router.get('/',                listInstallments);
 router.get('/:id',            getInstallment);
 router.get('/:id/settlement', getSettlement);

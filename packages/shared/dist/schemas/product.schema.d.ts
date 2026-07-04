@@ -14,6 +14,7 @@ export declare const createProductSchema: z.ZodObject<{
     serial: z.ZodOptional<z.ZodString>;
     warrantyMonths: z.ZodOptional<z.ZodNumber>;
     description: z.ZodOptional<z.ZodString>;
+    supplierId: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     price: number;
@@ -29,6 +30,7 @@ export declare const createProductSchema: z.ZodObject<{
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
     description?: string | undefined;
+    supplierId?: string | undefined;
 }, {
     name: string;
     price: number;
@@ -44,6 +46,7 @@ export declare const createProductSchema: z.ZodObject<{
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
     description?: string | undefined;
+    supplierId?: string | undefined;
 }>;
 export declare const updateProductSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
@@ -60,6 +63,7 @@ export declare const updateProductSchema: z.ZodObject<{
     serial: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     warrantyMonths: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     description: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    supplierId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
     photoUrl?: string | undefined;
@@ -75,6 +79,7 @@ export declare const updateProductSchema: z.ZodObject<{
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
     description?: string | undefined;
+    supplierId?: string | undefined;
 }, {
     name?: string | undefined;
     photoUrl?: string | undefined;
@@ -90,6 +95,7 @@ export declare const updateProductSchema: z.ZodObject<{
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
     description?: string | undefined;
+    supplierId?: string | undefined;
 }>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

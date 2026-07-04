@@ -591,4 +591,162 @@ export class ReportsService {
       installmentCount,
     }));
   }
+
+  async getCustomerBalances(sellerId: string) {
+    const rows = await db.execute<{
+      customer_id: string; customer_name: string; customer_phone: string;
+      customer_address: string | null;
+      installment_id: string; product_name: string; total_amount: string;
+      down_payment: string; remaining: string; monthly: string; months: number;
+      payment_frequency: string; start_date: string; payment_due_day: number;
+      status: string;
+      last_payment_date: string | null; last_payment_amount: string | null;
+      paid_total: string;
+    }>(sql`
+      SELECT
+        c.id              AS customer_id,
+        c.name            AS customer_name,
+        c.phone           AS customer_phone,
+        c.address         AS customer_address,
+        i.id              AS installment_id,
+        p.name            AS product_name,
+        i.total_amount,
+        i.down_payment,
+        i.remaining,
+        i.monthly,
+        i.months,
+        i.payment_frequency,
+        i.start_date,
+        i.payment_due_day,
+        i.status,
+        lp.paid_on        AS last_payment_date,
+        lp.amount         AS last_payment_amount,
+        COALESCE(pt.paid_total, '0') AS paid_total
+      FROM installments i
+      INNER JOIN customers c ON i.customer_id = c.id
+      INNER JOIN products  p ON i.product_id  = p.id
+      LEFT JOIN LATERAL (
+        SELECT amount, paid_on FROM payments
+        WHERE installment_id = i.id AND deleted_at IS NULL
+        ORDER BY paid_on DESC, created_at DESC LIMIT 1
+      ) lp ON true
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(amount), 0)::text AS paid_total FROM payments
+        WHERE installment_id = i.id AND deleted_at IS NULL
+      ) pt ON true
+      WHERE c.seller_id = ${sellerId}
+        AND i.status IN ('ACTIVE', 'DEFAULTED')
+        AND i.deleted_at IS NULL
+        AND c.deleted_at IS NULL
+      ORDER BY c.name ASC, i.start_date ASC
+    `);
+
+    // Compute next due date for each installment
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    type InstRow = {
+      installmentId: string; productName: string; totalAmount: number;
+      downPayment: number; remaining: number; monthly: number; months: number;
+      paidTotal: number; lastPaymentDate: string | null; lastPaymentAmount: number | null;
+      nextDueDate: string | null; daysUntilDue: number | null; status: string;
+    };
+
+    const customerMap = new Map<string, {
+      customerId: string; customerName: string; customerPhone: string;
+      customerAddress: string | null; installments: InstRow[];
+    }>();
+
+    for (const r of rows) {
+      const monthly    = Number(r.monthly);
+      const totalAmt   = Number(r.total_amount);
+      const downPmt    = Number(r.down_payment);
+      const remaining  = Number(r.remaining);
+      const paidTotal  = Number(r.paid_total);
+
+      // Compute next due date
+      let nextDueDate: string | null = null;
+      let daysUntilDue: number | null = null;
+
+      if (r.status === 'ACTIVE' && monthly > 0) {
+        const paidPeriods = Math.max(0, Math.floor((totalAmt - downPmt - remaining) / monthly + 0.001));
+        const nextPeriod  = paidPeriods + 1;
+
+        if (nextPeriod <= r.months) {
+          const startDate = new Date(r.start_date);
+          let due: Date;
+
+          if (r.payment_frequency === 'daily') {
+            due = new Date(startDate);
+            due.setDate(due.getDate() + nextPeriod);
+          } else {
+            const dueDay = Number(r.payment_due_day) || 10;
+            const mo = startDate.getMonth() + nextPeriod;
+            const lastDay = new Date(startDate.getFullYear(), mo + 1, 0).getDate();
+            due = new Date(startDate.getFullYear(), mo, Math.min(dueDay, lastDay));
+          }
+
+          const dueMidnight = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+          daysUntilDue = Math.floor((dueMidnight.getTime() - todayMidnight.getTime()) / 86_400_000);
+          nextDueDate  = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`;
+        }
+      }
+
+      if (!customerMap.has(r.customer_id)) {
+        customerMap.set(r.customer_id, {
+          customerId:      r.customer_id,
+          customerName:    r.customer_name,
+          customerPhone:   r.customer_phone,
+          customerAddress: r.customer_address ?? null,
+          installments:    [],
+        });
+      }
+
+      customerMap.get(r.customer_id)!.installments.push({
+        installmentId:       r.installment_id,
+        productName:         r.product_name,
+        totalAmount:         totalAmt,
+        downPayment:         downPmt,
+        remaining,
+        monthly,
+        months:              r.months,
+        paidTotal,
+        lastPaymentDate:     r.last_payment_date ?? null,
+        lastPaymentAmount:   r.last_payment_amount != null ? Number(r.last_payment_amount) : null,
+        nextDueDate,
+        daysUntilDue,
+        status:              r.status,
+      });
+    }
+
+    const result = Array.from(customerMap.values()).map((c) => {
+      const totalRemaining  = c.installments.reduce((s, i) => s + i.remaining, 0);
+      const totalPaid       = c.installments.reduce((s, i) => s + i.paidTotal, 0);
+      const activeCount     = c.installments.filter((i) => i.status === 'ACTIVE').length;
+      const defaultedCount  = c.installments.filter((i) => i.status === 'DEFAULTED').length;
+      const mostOverdue     = c.installments
+        .filter((i) => i.daysUntilDue !== null && i.daysUntilDue < 0)
+        .reduce((worst, i) => (i.daysUntilDue! < (worst?.daysUntilDue ?? 0) ? i : worst), null as InstRow | null);
+
+      return {
+        ...c,
+        totalRemaining,
+        totalPaid,
+        activeCount,
+        defaultedCount,
+        mostOverdueDays: mostOverdue ? Math.abs(mostOverdue.daysUntilDue!) : 0,
+      };
+    });
+
+    // Sort: defaulted first, then by most overdue, then by remaining balance desc
+    result.sort((a, b) => {
+      if (a.defaultedCount > 0 && b.defaultedCount === 0) return -1;
+      if (b.defaultedCount > 0 && a.defaultedCount === 0) return 1;
+      if (b.mostOverdueDays !== a.mostOverdueDays) return b.mostOverdueDays - a.mostOverdueDays;
+      return b.totalRemaining - a.totalRemaining;
+    });
+
+    const grandTotal = result.reduce((s, c) => s + c.totalRemaining, 0);
+    return { customers: result, grandTotal };
+  }
 }

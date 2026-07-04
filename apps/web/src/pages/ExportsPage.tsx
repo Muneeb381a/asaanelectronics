@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt, BarChart3, Users, Database, Loader2 } from 'lucide-react';
-import { installmentsApi } from '../api/installments.api.ts';
+import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt, BarChart3, Users, Database, Loader2, ClipboardList, Phone, Wallet, ChevronDown, ChevronRight } from 'lucide-react';
+import { installmentsApi, type CollectionScheduleItem } from '../api/installments.api.ts';
+import { reportsApi, type CustomerBalance } from '../api/reports.api.ts';
 import { paymentsApi } from '../api/payments.api.ts';
 import { cashSalesApi } from '../api/cashSales.api.ts';
 import { returnsApi } from '../api/returns.api.ts';
@@ -13,7 +14,7 @@ import { toCsv, downloadCsv } from '../utils/exportCsv.ts';
 import { exportsApi } from '../api/exports.api.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 
-type Tab = 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses' | 'monthly' | 'monthly-customers' | 'backup';
+type Tab = 'collection' | 'balances' | 'overdue' | 'defaulters' | 'today' | 'cashsales' | 'returns' | 'expenses' | 'monthly' | 'monthly-customers' | 'backup';
 
 const METHOD_LABELS: Record<string, string> = {
   CASH: 'Cash', BANK: 'Bank', JAZZCASH: 'JazzCash', EASYPAISA: 'EasyPaisa', OTHER: 'Other',
@@ -53,7 +54,9 @@ function startOfMonth() {
 }
 
 export default function ExportsPage() {
-  const [tab, setTab] = useState<Tab>('overdue');
+  const [tab, setTab] = useState<Tab>('collection');
+  const [collectionDays, setCollectionDays] = useState<7 | 3 | 14 | 0>(7);
+  const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
   const [cashRange, setCashRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [expenseRange, setExpenseRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [returnsStatus, setReturnsStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED'>('ALL');
@@ -80,6 +83,20 @@ export default function ExportsPage() {
     : expenseRange === 'week' ? startOfWeek()
     : expenseRange === 'month' ? startOfMonth()
     : undefined;
+
+  const collectionQ = useQuery({
+    queryKey: ['collection-schedule', collectionDays],
+    queryFn: () => installmentsApi.collectionSchedule(collectionDays),
+    staleTime: 60_000,
+    enabled: tab === 'collection',
+  });
+
+  const balancesQ = useQuery({
+    queryKey: ['customer-balances'],
+    queryFn: reportsApi.getCustomerBalances,
+    staleTime: 2 * 60_000,
+    enabled: tab === 'balances',
+  });
 
   const overdueQ = useQuery({
     queryKey: ['export-overdue'],
@@ -137,6 +154,10 @@ export default function ExportsPage() {
     enabled: tab === 'monthly-customers',
   });
 
+  const collectionItems = collectionQ.data?.items ?? [];
+  const collectionSummary = collectionQ.data?.summary ?? { overdue: 0, today: 0, upcoming: 0, totalDue: 0 };
+  const balanceCustomers = balancesQ.data?.customers ?? [];
+  const balanceGrandTotal = balancesQ.data?.grandTotal ?? 0;
   const overdue   = (overdueQ.data?.data   ?? []).filter((i) => i.isOverdue);
   const defaulters = defaultersQ.data?.data ?? [];
   const todayPay  = Array.isArray(todayPayQ.data) ? todayPayQ.data : [];
@@ -145,6 +166,117 @@ export default function ExportsPage() {
   const expensesList = expensesQ.data ?? [];
   const monthlyRows = monthlyQ.data ?? [];
   const custRows    = custMonthlyQ.data ?? [];
+
+  function downloadCollectionSchedule() {
+    const windowLabel = collectionDays === 0 ? 'Today' : `Next ${collectionDays} Days`;
+    printReport({
+      title: `Collection Schedule — ${windowLabel}`,
+      subtitle: `Due & upcoming payments — generated ${fmtDate(today)}`,
+      shopName,
+      shopPhone: seller?.phone,
+      columns: ['#', 'Customer', 'Phone', 'Area', 'Product', 'Due Date', 'Status', 'Amount (PKR)', 'Remaining (PKR)', 'Last Payment'],
+      rows: collectionItems.map((i, idx) => [
+        idx + 1,
+        i.customerName,
+        i.customerPhone,
+        i.area || '-',
+        i.productName,
+        fmtDate(i.nextDueDate),
+        i.urgency === 'overdue'
+          ? `Overdue ${Math.abs(i.daysUntilDue)} day${Math.abs(i.daysUntilDue) !== 1 ? 's' : ''}`
+          : i.urgency === 'today' ? 'Due Today'
+          : `In ${i.daysUntilDue} day${i.daysUntilDue !== 1 ? 's' : ''}`,
+        Number(i.monthly).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+        Number(i.remaining).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+        i.lastPaymentDate ? fmtDate(i.lastPaymentDate) : '—',
+      ]),
+      summary: [
+        `<strong>Overdue:</strong> ${collectionSummary.overdue}`,
+        `<strong>Due today:</strong> ${collectionSummary.today}`,
+        `<strong>Upcoming:</strong> ${collectionSummary.upcoming}`,
+        `<strong>Total due amount:</strong> ${pkr(collectionSummary.totalDue)}`,
+      ],
+    });
+  }
+
+  function downloadCollectionCsv() {
+    const rows = collectionItems.map((i) => ({
+      'Customer Name': i.customerName,
+      'Phone': i.customerPhone,
+      'Area': i.area || '',
+      'Product': i.productName,
+      'Due Date': i.nextDueDate,
+      'Status': i.urgency === 'overdue'
+        ? `Overdue ${Math.abs(i.daysUntilDue)}d`
+        : i.urgency === 'today' ? 'Due Today'
+        : `In ${i.daysUntilDue}d`,
+      'Amount Due (PKR)': i.monthly,
+      'Total Remaining (PKR)': i.remaining,
+      'Last Payment Date': i.lastPaymentDate ?? '',
+      'Last Payment Amount (PKR)': i.lastPaymentAmount ?? '',
+    }));
+    downloadCsv(toCsv(rows), `collection-schedule-${today}.csv`);
+  }
+
+  function downloadBalancesPdf() {
+    const allRows: (string | number)[][] = [];
+    for (const c of balanceCustomers) {
+      for (const i of c.installments) {
+        const statusLabel = i.status === 'DEFAULTED' ? 'Defaulted'
+          : i.daysUntilDue === null ? 'Active'
+          : i.daysUntilDue < 0 ? `Overdue ${Math.abs(i.daysUntilDue)}d`
+          : i.daysUntilDue === 0 ? 'Due Today'
+          : `Due in ${i.daysUntilDue}d`;
+        allRows.push([
+          c.customerName,
+          c.customerPhone,
+          i.productName,
+          Number(i.totalAmount).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+          Number(i.paidTotal).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+          Number(i.remaining).toLocaleString('en-PK', { maximumFractionDigits: 0 }),
+          i.nextDueDate ? fmtDate(i.nextDueDate) : '—',
+          statusLabel,
+          i.lastPaymentDate ? fmtDate(i.lastPaymentDate) : '—',
+        ]);
+      }
+    }
+    printReport({
+      title: 'Customer Balance Statement',
+      subtitle: `Outstanding receivables — all active & defaulted installments — ${fmtDate(today)}`,
+      shopName,
+      shopPhone: seller?.phone,
+      columns: ['Customer', 'Phone', 'Product', 'Total (PKR)', 'Paid (PKR)', 'Remaining (PKR)', 'Next Due', 'Status', 'Last Payment'],
+      rows: allRows,
+      summary: [
+        `<strong>Total customers:</strong> ${balanceCustomers.length}`,
+        `<strong>Total outstanding:</strong> ${pkr(balanceGrandTotal)}`,
+      ],
+    });
+  }
+
+  function downloadBalancesCsv() {
+    const rows: Record<string, string | number>[] = [];
+    for (const c of balanceCustomers) {
+      for (const i of c.installments) {
+        rows.push({
+          'Customer Name':    c.customerName,
+          'Phone':            c.customerPhone,
+          'Address':          c.customerAddress ?? '',
+          'Product':          i.productName,
+          'Total Amount':     i.totalAmount,
+          'Paid Total':       i.paidTotal,
+          'Remaining':        i.remaining,
+          'Monthly Amount':   i.monthly,
+          'Status':           i.status,
+          'Next Due Date':    i.nextDueDate ?? '',
+          'Days Until Due':   i.daysUntilDue ?? '',
+          'Last Payment Date': i.lastPaymentDate ?? '',
+          'Last Payment Amt': i.lastPaymentAmount ?? '',
+        });
+      }
+    }
+    downloadCsv(toCsv(rows), `customer-balances-${today}.csv`);
+  }
 
   function downloadOverdueOnly() {
     const totalRem = overdue.reduce((s, i) => s + Number(i.remaining), 0);
@@ -334,18 +466,22 @@ export default function ExportsPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: typeof FileDown }[] = [
-    { id: 'backup',            label: 'Full Backup',        icon: Database },
-    { id: 'monthly',           label: 'Monthly Summary',    icon: BarChart3 },
-    { id: 'monthly-customers', label: 'Monthly Customers',  icon: Users },
-    { id: 'overdue',           label: 'Overdue',            icon: AlertTriangle },
-    { id: 'defaulters',        label: 'Defaulters',         icon: ShieldX },
-    { id: 'today',             label: "Today's Payments",   icon: CalendarCheck },
-    { id: 'cashsales',         label: 'Cash Sales',         icon: ShoppingCart },
-    { id: 'returns',           label: 'Returns',            icon: Undo2 },
-    { id: 'expenses',          label: 'Expenses',           icon: Receipt },
+    { id: 'collection',        label: 'Collection Schedule', icon: ClipboardList },
+    { id: 'balances',          label: 'Customer Balances',   icon: Wallet },
+    { id: 'backup',            label: 'Full Backup',         icon: Database },
+    { id: 'monthly',           label: 'Monthly Summary',     icon: BarChart3 },
+    { id: 'monthly-customers', label: 'Monthly Customers',   icon: Users },
+    { id: 'overdue',           label: 'Overdue',             icon: AlertTriangle },
+    { id: 'defaulters',        label: 'Defaulters',          icon: ShieldX },
+    { id: 'today',             label: "Today's Payments",    icon: CalendarCheck },
+    { id: 'cashsales',         label: 'Cash Sales',          icon: ShoppingCart },
+    { id: 'returns',           label: 'Returns',             icon: Undo2 },
+    { id: 'expenses',          label: 'Expenses',            icon: Receipt },
   ];
 
   const isLoading =
+    (tab === 'collection' && collectionQ.isFetching) ||
+    (tab === 'balances'   && balancesQ.isFetching) ||
     (tab === 'overdue'    && (overdueQ.isFetching || defaultersQ.isFetching)) ||
     (tab === 'defaulters' && defaultersQ.isFetching) ||
     (tab === 'today'      && todayPayQ.isFetching) ||
@@ -356,6 +492,8 @@ export default function ExportsPage() {
     (tab === 'monthly-customers' && custMonthlyQ.isFetching);
 
   function refetchCurrent() {
+    if (tab === 'collection') void collectionQ.refetch();
+    if (tab === 'balances')   void balancesQ.refetch();
     if (tab === 'overdue')    { void overdueQ.refetch(); void defaultersQ.refetch(); }
     if (tab === 'defaulters') void defaultersQ.refetch();
     if (tab === 'today')      void todayPayQ.refetch();
@@ -546,6 +684,331 @@ export default function ExportsPage() {
           </button>
         ))}
       </div>
+
+      {/* Collection Schedule tab */}
+      {tab === 'collection' && (() => {
+        const urgencyGroups: { key: CollectionScheduleItem['urgency']; label: string; color: string; badge: string }[] = [
+          { key: 'overdue',  label: 'Overdue',   color: 'red',    badge: 'bg-red-100 text-red-700' },
+          { key: 'today',    label: 'Due Today', color: 'amber',  badge: 'bg-amber-100 text-amber-700' },
+          { key: 'upcoming', label: 'Upcoming',  color: 'green',  badge: 'bg-green-100 text-green-700' },
+        ];
+
+        return (
+          <div className="space-y-5">
+            {/* Header card */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="font-semibold text-gray-900">Collection Schedule</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Field collectors ki daily list — overdue + due soon</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Window filter */}
+                  {([0, 3, 7, 14] as const).map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setCollectionDays(d)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        collectionDays === d
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {d === 0 ? 'Today Only' : `Next ${d} Days`}
+                    </button>
+                  ))}
+                  <button
+                    onClick={downloadCollectionSchedule}
+                    disabled={collectionItems.length === 0}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-gray-800 transition-colors"
+                  >
+                    <FileDown size={14} /> Print PDF
+                  </button>
+                  <button
+                    onClick={downloadCollectionCsv}
+                    disabled={collectionItems.length === 0}
+                    className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                  >
+                    <FileDown size={14} /> CSV
+                  </button>
+                </div>
+              </div>
+
+              {/* Summary tiles */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-red-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-red-700">{collectionSummary.overdue}</p>
+                  <p className="text-xs text-red-600 mt-0.5">Overdue</p>
+                </div>
+                <div className="bg-amber-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-700">{collectionSummary.today}</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Due Today</p>
+                </div>
+                <div className="bg-green-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-green-700">{collectionSummary.upcoming}</p>
+                  <p className="text-xs text-green-600 mt-0.5">Upcoming</p>
+                </div>
+                <div className="bg-indigo-50 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-indigo-700">{pkr(collectionSummary.totalDue)}</p>
+                  <p className="text-xs text-indigo-600 mt-0.5">Total to Collect</p>
+                </div>
+              </div>
+            </div>
+
+            {collectionQ.isLoading ? (
+              <div className="flex items-center justify-center py-16 text-gray-400 text-sm gap-2">
+                <Loader2 size={18} className="animate-spin" /> Loading…
+              </div>
+            ) : collectionItems.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <ClipboardList size={32} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm">
+                  {collectionDays === 0 ? 'Aaj koi payment due nahi' : `Agle ${collectionDays} dinon mein koi due nahi`}
+                </p>
+              </div>
+            ) : (
+              urgencyGroups.map(({ key, label, badge }) => {
+                const group = collectionItems.filter((i) => i.urgency === key);
+                if (group.length === 0) return null;
+                const groupTotal = group.reduce((s, i) => s + i.monthly, 0);
+                return (
+                  <div key={key} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badge}`}>{label}</span>
+                        <span className="text-sm text-gray-500">{group.length} customers</span>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-700">{pkr(groupTotal)}</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wide">
+                            <th className="px-4 py-2.5 text-left">#</th>
+                            <th className="px-4 py-2.5 text-left">Customer</th>
+                            <th className="px-4 py-2.5 text-left">Phone</th>
+                            <th className="px-4 py-2.5 text-left">Area</th>
+                            <th className="px-4 py-2.5 text-left">Product</th>
+                            <th className="px-4 py-2.5 text-left">Due Date</th>
+                            <th className="px-4 py-2.5 text-right">Amount</th>
+                            <th className="px-4 py-2.5 text-right">Remaining</th>
+                            <th className="px-4 py-2.5 text-left">Last Payment</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {group.map((item, idx) => (
+                            <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-2.5 text-gray-400 text-xs">{idx + 1}</td>
+                              <td className="px-4 py-2.5 font-medium text-gray-900 whitespace-nowrap">{item.customerName}</td>
+                              <td className="px-4 py-2.5 whitespace-nowrap">
+                                <a
+                                  href={`tel:${item.customerPhone}`}
+                                  className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 transition-colors"
+                                >
+                                  <Phone size={12} />
+                                  {item.customerPhone}
+                                </a>
+                              </td>
+                              <td className="px-4 py-2.5 text-gray-500 text-xs">{item.area || '—'}</td>
+                              <td className="px-4 py-2.5 text-gray-600 max-w-[160px] truncate">{item.productName}</td>
+                              <td className="px-4 py-2.5 whitespace-nowrap">
+                                <div className="text-gray-700">{fmtDate(item.nextDueDate)}</div>
+                                {item.urgency === 'overdue' && (
+                                  <div className="text-xs text-red-500 font-medium">
+                                    {Math.abs(item.daysUntilDue)}d overdue
+                                  </div>
+                                )}
+                                {item.urgency === 'upcoming' && (
+                                  <div className="text-xs text-green-600">
+                                    in {item.daysUntilDue} day{item.daysUntilDue !== 1 ? 's' : ''}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">{pkr(item.monthly)}</td>
+                              <td className="px-4 py-2.5 text-right text-gray-500 text-xs whitespace-nowrap">{pkr(item.remaining)}</td>
+                              <td className="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">
+                                {item.lastPaymentDate
+                                  ? <>{fmtDate(item.lastPaymentDate)}{item.lastPaymentAmount ? <span className="ml-1 text-green-600">({pkr(item.lastPaymentAmount)})</span> : null}</>
+                                  : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Customer Balances tab */}
+      {tab === 'balances' && (() => {
+        const toggleCustomer = (id: string) => {
+          setExpandedCustomers((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+          });
+        };
+
+        return (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="font-semibold text-gray-900">Customer Balance Statement</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Har customer ka outstanding balance — active aur defaulted installments
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={downloadBalancesPdf}
+                    disabled={balanceCustomers.length === 0}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-gray-800 transition-colors"
+                  >
+                    <FileDown size={14} /> Print PDF
+                  </button>
+                  <button
+                    onClick={downloadBalancesCsv}
+                    disabled={balanceCustomers.length === 0}
+                    className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                  >
+                    <FileDown size={14} /> CSV
+                  </button>
+                </div>
+              </div>
+              {/* Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="bg-indigo-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-indigo-700">{balanceCustomers.length}</p>
+                  <p className="text-xs text-indigo-600 mt-0.5">Total Customers</p>
+                </div>
+                <div className="bg-red-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-red-700">
+                    {balanceCustomers.filter((c) => c.defaultedCount > 0).length}
+                  </p>
+                  <p className="text-xs text-red-600 mt-0.5">With Defaults</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3 text-center col-span-2 md:col-span-1">
+                  <p className="text-xl font-bold text-gray-900">{pkr(balanceGrandTotal)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Total Outstanding</p>
+                </div>
+              </div>
+            </div>
+
+            {balancesQ.isLoading ? (
+              <div className="flex items-center justify-center py-16 text-gray-400 text-sm gap-2">
+                <Loader2 size={18} className="animate-spin" /> Loading…
+              </div>
+            ) : balanceCustomers.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <Wallet size={32} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Koi active ya defaulted installment nahi</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                {balanceCustomers.map((c: CustomerBalance) => {
+                  const isExpanded = expandedCustomers.has(c.customerId);
+                  const hasDefault = c.defaultedCount > 0;
+                  const mostOverdue = c.mostOverdueDays;
+                  return (
+                    <div key={c.customerId}>
+                      {/* Customer row */}
+                      <button
+                        onClick={() => toggleCustomer(c.customerId)}
+                        className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        {isExpanded ? <ChevronDown size={14} className="text-gray-400 shrink-0" /> : <ChevronRight size={14} className="text-gray-400 shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-gray-900 text-sm">{c.customerName}</span>
+                            {hasDefault && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Defaulted</span>
+                            )}
+                            {!hasDefault && mostOverdue > 0 && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">{mostOverdue}d overdue</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <a
+                              href={`tel:${c.customerPhone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1 text-xs text-indigo-600"
+                            >
+                              <Phone size={10} />{c.customerPhone}
+                            </a>
+                            {c.customerAddress && (
+                              <span className="text-xs text-gray-400 truncate max-w-[180px]">{c.customerAddress}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-gray-900">{pkr(c.totalRemaining)}</p>
+                          <p className="text-xs text-gray-400">{c.activeCount + c.defaultedCount} installment{c.activeCount + c.defaultedCount !== 1 ? 's' : ''}</p>
+                        </div>
+                      </button>
+
+                      {/* Expanded installment rows */}
+                      {isExpanded && (
+                        <div className="bg-gray-50 border-t border-gray-100">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-gray-400 font-semibold uppercase tracking-wide">
+                                  <th className="px-6 py-2 text-left">Product</th>
+                                  <th className="px-4 py-2 text-right">Total</th>
+                                  <th className="px-4 py-2 text-right">Paid</th>
+                                  <th className="px-4 py-2 text-right">Remaining</th>
+                                  <th className="px-4 py-2 text-left">Next Due</th>
+                                  <th className="px-4 py-2 text-left">Last Payment</th>
+                                  <th className="px-4 py-2 text-left">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {c.installments.map((i) => {
+                                  const dueBadge = i.status === 'DEFAULTED'
+                                    ? <span className="text-red-600 font-semibold">Defaulted</span>
+                                    : i.daysUntilDue === null ? <span className="text-gray-400">—</span>
+                                    : i.daysUntilDue < 0 ? <span className="text-red-600 font-semibold">{Math.abs(i.daysUntilDue)}d overdue</span>
+                                    : i.daysUntilDue === 0 ? <span className="text-amber-600 font-semibold">Due Today</span>
+                                    : <span className="text-green-600">in {i.daysUntilDue}d</span>;
+
+                                  return (
+                                    <tr key={i.installmentId} className="hover:bg-gray-100 transition-colors">
+                                      <td className="px-6 py-2.5 text-gray-700 max-w-[200px] truncate">{i.productName}</td>
+                                      <td className="px-4 py-2.5 text-right text-gray-600">{pkr(i.totalAmount)}</td>
+                                      <td className="px-4 py-2.5 text-right text-green-600">{pkr(i.paidTotal)}</td>
+                                      <td className="px-4 py-2.5 text-right font-semibold text-gray-900">{pkr(i.remaining)}</td>
+                                      <td className="px-4 py-2.5 whitespace-nowrap">
+                                        {i.nextDueDate ? fmtDate(i.nextDueDate) : '—'}
+                                      </td>
+                                      <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">
+                                        {i.lastPaymentDate
+                                          ? <>{fmtDate(i.lastPaymentDate)}{i.lastPaymentAmount != null ? <span className="ml-1 text-green-600">({pkr(i.lastPaymentAmount)})</span> : null}</>
+                                          : '—'}
+                                      </td>
+                                      <td className="px-4 py-2.5">{dueBadge}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Full Backup tab */}
       {tab === 'backup' && <BackupTab shopName={shopName} />}

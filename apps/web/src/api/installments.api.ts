@@ -50,6 +50,27 @@ export interface DueSheetItem {
   area: string;
 }
 
+export interface CollectionScheduleItem {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  productName: string;
+  monthly: number;
+  remaining: number;
+  nextDueDate: string;
+  daysUntilDue: number;
+  area: string;
+  lastPaymentDate: string | null;
+  lastPaymentAmount: number | null;
+  urgency: 'overdue' | 'today' | 'upcoming';
+}
+
+export interface CollectionSchedule {
+  items: CollectionScheduleItem[];
+  summary: { overdue: number; today: number; upcoming: number; totalDue: number };
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const installmentsApi = {
@@ -115,6 +136,9 @@ export const installmentsApi = {
 
   transfer: (id: string, body: { newCustomerId: string; reason?: string }) =>
     api.patch<{ data: TransferResult }>(`/installments/${id}/transfer`, body).then(unwrap<TransferResult>),
+
+  collectionSchedule: (days: number = 7) =>
+    api.get<{ data: CollectionSchedule }>('/installments/collection-schedule', { params: { days } }).then(unwrap<CollectionSchedule>),
 };
 
 export interface TransferResult {

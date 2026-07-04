@@ -54,6 +54,40 @@ export type ForecastMonth = {
   installmentCount: number;
 };
 
+export type CustomerBalanceInstallment = {
+  installmentId:     string;
+  productName:       string;
+  totalAmount:       number;
+  downPayment:       number;
+  remaining:         number;
+  monthly:           number;
+  months:            number;
+  paidTotal:         number;
+  lastPaymentDate:   string | null;
+  lastPaymentAmount: number | null;
+  nextDueDate:       string | null;
+  daysUntilDue:      number | null;
+  status:            string;
+};
+
+export type CustomerBalance = {
+  customerId:      string;
+  customerName:    string;
+  customerPhone:   string;
+  customerAddress: string | null;
+  installments:    CustomerBalanceInstallment[];
+  totalRemaining:  number;
+  totalPaid:       number;
+  activeCount:     number;
+  defaultedCount:  number;
+  mostOverdueDays: number;
+};
+
+export type CustomerBalancesReport = {
+  customers:  CustomerBalance[];
+  grandTotal: number;
+};
+
 export const reportsApi = {
   getMonthly: (year: number): Promise<MonthlyReportRow[]> =>
     api.get(`/reports/monthly?year=${year}`).then((res) => res.data.data),
@@ -72,4 +106,7 @@ export const reportsApi = {
 
   getForecast: (): Promise<ForecastMonth[]> =>
     api.get('/reports/forecast').then((res) => res.data.data),
+
+  getCustomerBalances: (): Promise<CustomerBalancesReport> =>
+    api.get('/reports/customer-balances').then((res) => res.data.data),
 };
