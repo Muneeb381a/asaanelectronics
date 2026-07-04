@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart, FileDown, Smartphone, Building2,
-  ArrowLeftRight, AlertOctagon, Shield, Megaphone,
+  ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -155,6 +155,7 @@ export default function DashboardLayout() {
           { to: '/audit',     label: 'Audit Log',  icon: ShieldCheck, end: undefined },
           { to: '/staff',     label: 'Staff',      icon: UserCog,     end: undefined },
           { to: '/billing',   label: 'Billing',    icon: Wallet,      end: undefined },
+          { to: '/cashflow',      label: 'Cash Flow',     icon: CalendarDays,    end: undefined },
           { to: '/exports',       label: 'Exports',       icon: FileDown,        end: undefined },
           { to: '/trade-ins',     label: 'Trade-Ins',     icon: ArrowLeftRight,  end: undefined },
           { to: '/repossessions', label: 'Repossessions', icon: AlertOctagon,    end: undefined },

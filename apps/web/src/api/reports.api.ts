@@ -88,6 +88,29 @@ export type CustomerBalancesReport = {
   grandTotal: number;
 };
 
+export type CashflowCalendarDay = {
+  date:            string;
+  expectedAmount:  number;
+  expectedCount:   number;
+  collectedAmount: number;
+  collectedCount:  number;
+};
+
+export type CashflowDayInstallment = {
+  id:               string;
+  customerName:     string;
+  customerPhone:    string;
+  area:             string | null;
+  address:          string | null;
+  productName:      string;
+  monthly:          number;
+  remaining:        number;
+  status:           string;
+  paymentFrequency: string;
+  paidToday:        number;
+  paymentCount:     number;
+};
+
 export const reportsApi = {
   getMonthly: (year: number): Promise<MonthlyReportRow[]> =>
     api.get(`/reports/monthly?year=${year}`).then((res) => res.data.data),
@@ -109,4 +132,10 @@ export const reportsApi = {
 
   getCustomerBalances: (): Promise<CustomerBalancesReport> =>
     api.get('/reports/customer-balances').then((res) => res.data.data),
+
+  getCashflowCalendar: (year: number, month: number): Promise<CashflowCalendarDay[]> =>
+    api.get(`/reports/cashflow-calendar?year=${year}&month=${month}`).then((res) => res.data.data),
+
+  getCashflowDay: (date: string): Promise<CashflowDayInstallment[]> =>
+    api.get(`/reports/cashflow-day?date=${date}`).then((res) => res.data.data),
 };

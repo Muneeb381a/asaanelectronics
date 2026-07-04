@@ -592,6 +592,157 @@ export class ReportsService {
     }));
   }
 
+  async getCashflowCalendar(sellerId: string, year: number, month: number) {
+    const rows = await db.execute<{
+      date:             string;
+      expected_amount:  number;
+      expected_count:   number;
+      collected_amount: number;
+      collected_count:  number;
+    }>(sql`
+      WITH days AS (
+        SELECT generate_series(
+          make_date(${year}::int, ${month}::int, 1),
+          make_date(${year}::int, ${month}::int, 1) + INTERVAL '1 month' - INTERVAL '1 day',
+          INTERVAL '1 day'
+        )::date AS day
+      ),
+      monthly_exp AS (
+        SELECT d.day,
+          COALESCE(SUM(i.monthly::float), 0) AS expected,
+          COUNT(i.id)                          AS cnt
+        FROM days d
+        LEFT JOIN installments i ON
+          i.payment_due_day = EXTRACT(DAY FROM d.day)::int
+          AND i.payment_frequency = 'monthly'
+          AND i.status IN ('ACTIVE', 'DEFAULTED')
+          AND i.deleted_at IS NULL
+          AND i.start_date::date <= d.day
+          AND i.customer_id IN (
+            SELECT id FROM customers WHERE seller_id = ${sellerId} AND deleted_at IS NULL
+          )
+        GROUP BY d.day
+      ),
+      daily_exp AS (
+        SELECT d.day,
+          COALESCE(SUM(i.monthly::float), 0) AS expected,
+          COUNT(i.id)                          AS cnt
+        FROM days d
+        LEFT JOIN installments i ON
+          i.payment_frequency = 'daily'
+          AND i.status IN ('ACTIVE', 'DEFAULTED')
+          AND i.deleted_at IS NULL
+          AND i.start_date::date <= d.day
+          AND i.customer_id IN (
+            SELECT id FROM customers WHERE seller_id = ${sellerId} AND deleted_at IS NULL
+          )
+        GROUP BY d.day
+      ),
+      collected AS (
+        SELECT
+          p.paid_on::date AS day,
+          COALESCE(SUM(p.amount::float), 0) AS amt,
+          COUNT(*)::int                      AS cnt
+        FROM payments p
+        JOIN installments i ON i.id = p.installment_id AND i.deleted_at IS NULL
+        JOIN customers c ON c.id = i.customer_id AND c.seller_id = ${sellerId} AND c.deleted_at IS NULL
+        WHERE p.paid_on >= make_date(${year}::int, ${month}::int, 1)
+          AND p.paid_on <  make_date(${year}::int, ${month}::int, 1) + INTERVAL '1 month'
+          AND p.deleted_at IS NULL
+        GROUP BY p.paid_on::date
+      )
+      SELECT
+        d.day::text                                            AS date,
+        (COALESCE(me.expected, 0) + COALESCE(de.expected, 0)) AS expected_amount,
+        (COALESCE(me.cnt, 0) + COALESCE(de.cnt, 0))::int      AS expected_count,
+        COALESCE(c.amt, 0)                                     AS collected_amount,
+        COALESCE(c.cnt, 0)::int                                AS collected_count
+      FROM days d
+      LEFT JOIN monthly_exp me ON me.day = d.day
+      LEFT JOIN daily_exp   de ON de.day = d.day
+      LEFT JOIN collected    c  ON c.day  = d.day
+      ORDER BY d.day
+    `);
+
+    return rows.map((r) => ({
+      date:            String(r.date).slice(0, 10),
+      expectedAmount:  Number(r.expected_amount),
+      expectedCount:   Number(r.expected_count),
+      collectedAmount: Number(r.collected_amount),
+      collectedCount:  Number(r.collected_count),
+    }));
+  }
+
+  async getCashflowDay(sellerId: string, date: string) {
+    const rows = await db.execute<{
+      id:               string;
+      customer_name:    string;
+      customer_phone:   string;
+      area:             string | null;
+      address:          string | null;
+      product_name:     string;
+      monthly:          string;
+      remaining:        string;
+      status:           string;
+      payment_frequency: string;
+      paid_today:       number;
+      payment_count:    number;
+    }>(sql`
+      SELECT
+        i.id,
+        c.name      AS customer_name,
+        c.phone     AS customer_phone,
+        c.area,
+        c.address,
+        pr.name     AS product_name,
+        i.monthly::text,
+        i.remaining::text,
+        i.status,
+        i.payment_frequency,
+        COALESCE(dp.total_paid, 0)::float   AS paid_today,
+        COALESCE(dp.payment_count, 0)::int  AS payment_count
+      FROM installments i
+      JOIN customers c  ON c.id  = i.customer_id AND c.seller_id = ${sellerId} AND c.deleted_at IS NULL
+      JOIN products  pr ON pr.id = i.product_id
+      LEFT JOIN (
+        SELECT installment_id,
+          SUM(amount::float) AS total_paid,
+          COUNT(*)           AS payment_count
+        FROM payments
+        WHERE paid_on::date = ${date}::date AND deleted_at IS NULL
+        GROUP BY installment_id
+      ) dp ON dp.installment_id = i.id
+      WHERE i.deleted_at IS NULL
+        AND i.status IN ('ACTIVE', 'DEFAULTED')
+        AND i.start_date::date <= ${date}::date
+        AND (
+          (i.payment_frequency = 'monthly'
+            AND i.payment_due_day = EXTRACT(DAY FROM ${date}::date)::int)
+          OR i.payment_frequency = 'daily'
+        )
+      ORDER BY
+        CASE WHEN COALESCE(dp.total_paid, 0) = 0 THEN 0 ELSE 1 END,
+        CASE i.status WHEN 'DEFAULTED' THEN 0 ELSE 1 END,
+        c.area NULLS LAST,
+        c.name
+    `);
+
+    return rows.map((r) => ({
+      id:               r.id,
+      customerName:     r.customer_name,
+      customerPhone:    r.customer_phone,
+      area:             r.area,
+      address:          r.address,
+      productName:      r.product_name,
+      monthly:          Number(r.monthly),
+      remaining:        Number(r.remaining),
+      status:           r.status,
+      paymentFrequency: r.payment_frequency,
+      paidToday:        Number(r.paid_today),
+      paymentCount:     Number(r.payment_count),
+    }));
+  }
+
   async getCustomerBalances(sellerId: string) {
     const rows = await db.execute<{
       customer_id: string; customer_name: string; customer_phone: string;

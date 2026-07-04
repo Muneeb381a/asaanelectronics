@@ -41,6 +41,7 @@ const SuppliersPage         = lazy(() => import('../pages/SuppliersPage.tsx'));
 const TradeInsPage          = lazy(() => import('../pages/TradeInsPage.tsx'));
 const RepossessionsPage     = lazy(() => import('../pages/RepossessionsPage.tsx'));
 const GuarantorsPage        = lazy(() => import('../pages/GuarantorsPage.tsx'));
+const CashFlowPage          = lazy(() => import('../pages/CashFlowPage.tsx'));
 
 // ── Fallback loader ────────────────────────────────────────────────────────────
 function PageLoader() {
@@ -154,6 +155,7 @@ export const router = createBrowserRouter([
       { path: '/trade-ins',         element: <SellerOwnerGuard><S><TradeInsPage /></S></SellerOwnerGuard> },
       { path: '/repossessions',     element: <SellerOwnerGuard><S><RepossessionsPage /></S></SellerOwnerGuard> },
       { path: '/guarantors',        element: <SellerOwnerGuard><S><GuarantorsPage /></S></SellerOwnerGuard> },
+      { path: '/cashflow',          element: <SellerOwnerGuard><S><CashFlowPage /></S></SellerOwnerGuard> },
       { path: '/verifications',    element: <S><VerificationQueuePage /></S> },
     ],
   },
