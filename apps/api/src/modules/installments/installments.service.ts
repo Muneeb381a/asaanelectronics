@@ -699,11 +699,13 @@ export class InstallmentsService {
       payment_frequency: string; start_date: string; payment_due_day: number;
       total_amount: string; down_payment: string;
       customer_name: string; customer_phone: string; customer_address: string | null;
+      customer_area: string | null;
       product_name: string; last_payment_date: string | null; last_payment_amount: string | null;
     }>(sql`
       SELECT i.id, i.monthly, i.remaining, i.months, i.payment_frequency,
              i.start_date, i.payment_due_day, i.total_amount, i.down_payment,
              c.name AS customer_name, c.phone AS customer_phone, c.address AS customer_address,
+             c.area AS customer_area,
              p.name AS product_name,
              lp.paid_on AS last_payment_date,
              lp.amount   AS last_payment_amount
@@ -731,7 +733,7 @@ export class InstallmentsService {
 
     type ScheduleItem = {
       id: string; customerName: string; customerPhone: string; customerAddress: string;
-      productName: string; monthly: number; remaining: number;
+      productName: string; monthly: number; remaining: number; paymentFrequency: string;
       nextDueDate: string; daysUntilDue: number; area: string;
       lastPaymentDate: string | null; lastPaymentAmount: number | null;
       urgency: 'overdue' | 'today' | 'upcoming';
@@ -771,9 +773,9 @@ export class InstallmentsService {
       );
 
       const nextDateStr = `${nextDueDate.getFullYear()}-${String(nextDueDate.getMonth() + 1).padStart(2, '0')}-${String(nextDueDate.getDate()).padStart(2, '0')}`;
-      const area = inst.customer_address
-        ? inst.customer_address.split(',').pop()?.trim() || 'Unknown'
-        : 'Unknown';
+      const area = inst.customer_area?.trim()
+        || (inst.customer_address ? inst.customer_address.split(',').pop()?.trim() : null)
+        || 'Unknown';
 
       items.push({
         id:                  inst.id,
@@ -783,8 +785,9 @@ export class InstallmentsService {
         productName:         inst.product_name,
         monthly,
         remaining:           Number(inst.remaining),
+        paymentFrequency:    inst.payment_frequency,
         nextDueDate:         nextDateStr,
-        daysUntilDue:        diffDays,   // negative = overdue, 0 = today, positive = upcoming
+        daysUntilDue:        diffDays,
         area,
         lastPaymentDate:     inst.last_payment_date ?? null,
         lastPaymentAmount:   inst.last_payment_amount != null ? Number(inst.last_payment_amount) : null,

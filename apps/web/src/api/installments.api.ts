@@ -58,6 +58,7 @@ export interface CollectionScheduleItem {
   productName: string;
   monthly: number;
   remaining: number;
+  paymentFrequency: string;
   nextDueDate: string;
   daysUntilDue: number;
   area: string;
