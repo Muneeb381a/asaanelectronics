@@ -46,12 +46,22 @@ export interface DashboardData {
   advanced: Advanced | null;
 }
 
+export interface UrgentAccount {
+  id:            string;
+  customerName:  string;
+  customerPhone: string;
+  monthly:       number;
+  daysOverdue:   number;
+}
+
 export interface DailyBriefing {
   dueToday:       number;
+  dueTomorrow:    number;
   overdueTotal:   number;
   promisesToday:  number;
   collectedToday: number;
   defaultedCount: number;
+  urgentAccounts: UrgentAccount[];
 }
 
 export const statsApi = {

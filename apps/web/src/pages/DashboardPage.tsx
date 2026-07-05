@@ -340,6 +340,57 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Focus Today — top overdue accounts needing action */}
+      {briefing && briefing.urgentAccounts.length > 0 && (
+        <div className="bg-white border border-red-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-red-50 bg-red-50/40">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center">
+                <AlertTriangle size={13} className="text-red-500" />
+              </div>
+              <p className="text-xs font-semibold text-red-600 uppercase tracking-widest">Focus Today</p>
+            </div>
+            {briefing.dueTomorrow > 0 && (
+              <span className="text-[10px] bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
+                +{briefing.dueTomorrow} due tomorrow
+              </span>
+            )}
+          </div>
+          <div className="divide-y divide-gray-50">
+            {briefing.urgentAccounts.map((acct) => {
+              const wa = `https://wa.me/92${acct.customerPhone.replace(/^0/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                `Assalam-o-Alaikum ${acct.customerName}, aapka installment PKR ${acct.monthly.toLocaleString('en-PK')} ka payment ${acct.daysOverdue} din se overdue hai. Meherbani farma ke jald settlement karein. Shukriya.`
+              )}`;
+              return (
+                <div key={acct.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{acct.customerName}</p>
+                    <p className="text-[11px] text-gray-400">{acct.customerPhone}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-gray-900">
+                      PKR {acct.monthly.toLocaleString('en-PK', { maximumFractionDigits: 0 })}
+                    </p>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                      acct.daysOverdue >= 30 ? 'bg-red-100 text-red-700' :
+                      acct.daysOverdue >= 7  ? 'bg-amber-100 text-amber-700' :
+                                               'bg-orange-100 text-orange-600'
+                    }`}>
+                      {acct.daysOverdue}d overdue
+                    </span>
+                  </div>
+                  <a href={wa} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-semibold transition shrink-0">
+                    <PhoneCall size={11} />
+                    WhatsApp
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Daily target progress — only shown when owner has set a target */}
       {isOwner && shop?.settings?.dailyTarget && (
         (() => {
