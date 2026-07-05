@@ -43,6 +43,7 @@ const RepossessionsPage     = lazy(() => import('../pages/RepossessionsPage.tsx'
 const GuarantorsPage        = lazy(() => import('../pages/GuarantorsPage.tsx'));
 const CashFlowPage          = lazy(() => import('../pages/CashFlowPage.tsx'));
 const CollectionSheetPage   = lazy(() => import('../pages/CollectionSheetPage.tsx'));
+const AgreementPage         = lazy(() => import('../pages/AgreementPage.tsx'));
 
 // ── Fallback loader ────────────────────────────────────────────────────────────
 function PageLoader() {
@@ -161,7 +162,8 @@ export const router = createBrowserRouter([
       { path: '/verifications',    element: <S><VerificationQueuePage /></S> },
     ],
   },
-  { path: '/due-sheet', element: <ProtectedRoute><S><DueSheetPage /></S></ProtectedRoute> },
+  { path: '/due-sheet',          element: <ProtectedRoute><S><DueSheetPage /></S></ProtectedRoute> },
+  { path: '/agreement/:id',     element: <ProtectedRoute><S><AgreementPage /></S></ProtectedRoute> },
   { path: '/portal',           element: <PortalGuestRoute><S><PortalLoginPage /></S></PortalGuestRoute> },
   { path: '/portal/dashboard', element: <PortalAuthRoute><S><PortalDashboardPage /></S></PortalAuthRoute> },
   { path: '*', element: <Navigate to="/" replace /> },

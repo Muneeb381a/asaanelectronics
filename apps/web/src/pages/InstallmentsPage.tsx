@@ -1973,6 +1973,12 @@ export default function InstallmentsPage() {
                 View Schedule
               </button>
             )}
+            <button
+              onClick={() => { close(); window.open(`/agreement/${inst.id}`, '_blank'); }}
+              className="w-full text-left px-3 py-2 text-xs text-indigo-700 hover:bg-indigo-50 transition font-medium flex items-center gap-1.5"
+            >
+              <FileText size={11} className="shrink-0" /> Agreement (Iqrarnama)
+            </button>
             {inst.status !== 'ACTIVE' && inst.status !== 'PENDING' && (
               <button onClick={() => { close(); setPayInst(inst); }}
                 className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
