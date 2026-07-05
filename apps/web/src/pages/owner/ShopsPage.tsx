@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck,
@@ -1926,6 +1927,7 @@ type Modal = { type: 'shop' } | { type: 'owner'; shop: Shop } | { type: 'plan'; 
 
 export default function ShopsPage() {
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [modal, setModal]           = useState<Modal>(null);
   const [filter, setFilter]         = useState<FilterTab>('all');
   const [search, setSearch]         = useState('');
@@ -1938,6 +1940,16 @@ export default function ShopsPage() {
   const [showBroadcastPanel, setShowBroadcastPanel] = useState(false);
   const [showOnboardingPanel, setShowOnboardingPanel] = useState(false);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const panel = searchParams.get('panel');
+    if (!panel) return;
+    if (panel === 'churn')       setShowChurnPanel(true);
+    if (panel === 'onboarding')  setShowOnboardingPanel(true);
+    if (panel === 'broadcasts')  setShowBroadcastPanel(true);
+    if (panel === 'audit')       setShowAuditLog(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const { data: shops = [], isLoading, isError } = useQuery({
     queryKey: ['owner-shops'],
@@ -2085,6 +2097,55 @@ export default function ShopsPage() {
             + New shop
           </button>
         </div>
+      </div>
+
+      {/* Admin tool quick-access strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {[
+          {
+            label: 'Churn Risk',
+            desc: 'Shops jo band hone wali hain',
+            icon: TrendingDown,
+            onClick: () => setShowChurnPanel(true),
+            cls: 'border-red-100 hover:border-red-300 hover:bg-red-50',
+            iconCls: 'text-red-500 bg-red-50',
+          },
+          {
+            label: 'Onboarding',
+            desc: 'Naye shops ka setup track karo',
+            icon: ListChecks,
+            onClick: () => setShowOnboardingPanel(true),
+            cls: 'border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50',
+            iconCls: 'text-emerald-600 bg-emerald-50',
+          },
+          {
+            label: 'Broadcasts',
+            desc: 'Sab shops ko announcement bhejo',
+            icon: Megaphone,
+            onClick: () => setShowBroadcastPanel(true),
+            cls: 'border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50',
+            iconCls: 'text-indigo-600 bg-indigo-50',
+          },
+          {
+            label: 'Audit Log',
+            desc: 'Admin actions ka record dekhein',
+            icon: FileText,
+            onClick: () => setShowAuditLog(true),
+            cls: 'border-purple-100 hover:border-purple-300 hover:bg-purple-50',
+            iconCls: 'text-purple-600 bg-purple-50',
+          },
+        ].map(({ label, desc, icon: Icon, onClick, cls, iconCls }) => (
+          <button key={label} onClick={onClick}
+            className={`flex items-center gap-3 p-3.5 rounded-2xl border bg-white text-left transition-all hover:shadow-sm ${cls}`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconCls}`}>
+              <Icon size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900">{label}</p>
+              <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{desc}</p>
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* A1: Platform dashboard */}

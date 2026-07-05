@@ -1,20 +1,28 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { Store, LogOut, ChevronRight } from 'lucide-react';
+import {
+  Store, LogOut, ChevronRight, TrendingDown, ListChecks,
+  Megaphone, FileText,
+} from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
 import ProfileModal from '../components/ProfileModal.tsx';
 
-const navItems = [
-  { to: '/owner', label: 'Shops', icon: Store, end: true },
+const PANEL_ITEMS = [
+  { panel: 'churn',       label: 'Churn Risk',    icon: TrendingDown, color: 'text-red-500',     hoverBg: 'hover:bg-red-50',     hoverText: 'hover:text-red-600'     },
+  { panel: 'onboarding',  label: 'Onboarding',    icon: ListChecks,   color: 'text-emerald-600', hoverBg: 'hover:bg-emerald-50', hoverText: 'hover:text-emerald-700' },
+  { panel: 'broadcasts',  label: 'Broadcasts',    icon: Megaphone,    color: 'text-indigo-600',  hoverBg: 'hover:bg-indigo-50',  hoverText: 'hover:text-indigo-700'  },
+  { panel: 'audit',       label: 'Audit Log',     icon: FileText,     color: 'text-purple-600',  hoverBg: 'hover:bg-purple-50',  hoverText: 'hover:text-purple-700'  },
 ];
 
 export default function OwnerLayout() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showProfile, setShowProfile] = useState(false);
+
+  const activePanel = new URLSearchParams(location.search).get('panel');
 
   const { mutate: logout } = useMutation({
     mutationFn: () => authApi.logout(localStorage.getItem('refresh_token') ?? ''),
@@ -22,6 +30,10 @@ export default function OwnerLayout() {
   });
 
   const initials = user?.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() ?? '?';
+
+  const openPanel = (panel: string) => {
+    void navigate(`/owner?panel=${panel}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -33,23 +45,40 @@ export default function OwnerLayout() {
           </span>
         </div>
 
-        <nav className="flex-1 p-3 space-y-0.5">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                }`
-              }>
-              {({ isActive }) => (
-                <>
-                  <Icon size={17} className={isActive ? 'text-white' : 'text-gray-400'} />
-                  {label}
-                </>
-              )}
-            </NavLink>
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          {/* Main nav */}
+          <NavLink to="/owner" end
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+              }`
+            }>
+            {({ isActive }) => (
+              <>
+                <Store size={17} className={isActive ? 'text-white' : 'text-gray-400'} />
+                Shops
+              </>
+            )}
+          </NavLink>
+
+          {/* Tools section */}
+          <div className="pt-3 pb-1">
+            <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Admin Tools</p>
+          </div>
+
+          {PANEL_ITEMS.map(({ panel, label, icon: Icon, color, hoverBg, hoverText }) => (
+            <button key={panel}
+              onClick={() => openPanel(panel)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
+                activePanel === panel
+                  ? `bg-gray-100 ${color}`
+                  : `text-gray-500 ${hoverBg} ${hoverText}`
+              }`}>
+              <Icon size={17} className={activePanel === panel ? color : 'text-gray-400'} />
+              {label}
+            </button>
           ))}
         </nav>
 
