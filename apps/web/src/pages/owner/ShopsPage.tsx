@@ -6,11 +6,11 @@ import {
   Store, UserPlus, Phone, MapPin, Trash2, Crown, ShieldOff, ShieldCheck,
   CreditCard, Calendar, Search, AlertTriangle, Clock, KeyRound, Eye, EyeOff,
   TrendingUp, TrendingDown, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
-  Activity, FileText, Plus, Package, Monitor, Smartphone, Tablet2,
+  Activity, FileText, Plus, Package, Monitor, Smartphone, Table2,
   ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle, Mail, Megaphone, ToggleLeft, ToggleRight,
   ListChecks, Circle, Download,
 } from 'lucide-react';
-import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type ShopDetail, type AdminPaymentLog, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk, type AdminBroadcast, type ShopOnboarding, type StuckSeverity } from '../../api/owner.api.ts';
+import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk, type AdminBroadcast, type ShopOnboarding, type StuckSeverity } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
@@ -606,7 +606,7 @@ function timeAgo(dateStr: string | null) {
 
 function DeviceIcon({ type }: { type: string | null }) {
   if (type === 'mobile')  return <Smartphone size={14} className="text-indigo-500" />;
-  if (type === 'tablet')  return <Tablet2    size={14} className="text-purple-500"  />;
+  if (type === 'tablet')  return <Table2    size={14} className="text-purple-500"  />;
   return                         <Monitor    size={14} className="text-gray-500"    />;
 }
 

@@ -112,7 +112,7 @@ export default function AgreementPage() {
 
   const isDaily    = inst.paymentFrequency === 'daily';
   const schedule   = buildSchedule(
-    inst.startDate, inst.paymentFrequency, inst.months,
+    inst.startDate ?? '', inst.paymentFrequency ?? 'monthly', inst.months,
     inst.monthly, inst.totalAmount, inst.downPayment, inst.remaining,
     inst.paymentDueDay,
   );

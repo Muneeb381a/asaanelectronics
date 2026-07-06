@@ -12,6 +12,12 @@ export function toCsv(headers: string[], rows: unknown[][]): string {
   return lines.join('\r\n');
 }
 
+export function objsToCsv(rows: Record<string, unknown>[]): string {
+  if (rows.length === 0) return '';
+  const headers = Object.keys(rows[0]);
+  return toCsv(headers, rows.map((r) => headers.map((h) => r[h])));
+}
+
 export function downloadCsv(filename: string, csv: string) {
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);

@@ -8,9 +8,8 @@ import { cashSalesApi } from '../api/cashSales.api.ts';
 import { returnsApi } from '../api/returns.api.ts';
 import { expensesApi } from '../api/expenses.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
-import { reportsApi } from '../api/reports.api.ts';
 import { printReport } from '../utils/exportPdf.ts';
-import { toCsv, downloadCsv } from '../utils/exportCsv.ts';
+import { toCsv, objsToCsv, downloadCsv } from '../utils/exportCsv.ts';
 import { exportsApi } from '../api/exports.api.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 
@@ -215,7 +214,7 @@ export default function ExportsPage() {
       'Last Payment Date': i.lastPaymentDate ?? '',
       'Last Payment Amount (PKR)': i.lastPaymentAmount ?? '',
     }));
-    downloadCsv(toCsv(rows), `collection-schedule-${today}.csv`);
+    downloadCsv(`collection-schedule-${today}.csv`, objsToCsv(rows));
   }
 
   function downloadBalancesPdf() {
@@ -275,7 +274,7 @@ export default function ExportsPage() {
         });
       }
     }
-    downloadCsv(toCsv(rows), `customer-balances-${today}.csv`);
+    downloadCsv(`customer-balances-${today}.csv`, objsToCsv(rows));
   }
 
   function downloadOverdueOnly() {

@@ -80,7 +80,7 @@ export default function CashFlowPage() {
 
   const { data: shop } = useQuery({
     queryKey: ['shop-profile'],
-    queryFn:  sellersApi.getProfile,
+    queryFn:  sellersApi.getMe,
     staleTime: 300_000,
   });
 
