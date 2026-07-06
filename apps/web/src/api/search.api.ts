@@ -36,10 +36,19 @@ export type SearchProduct = {
   category: string | null;
 };
 
+export type BureauShopResult = {
+  shopName:       string;
+  activeCount:    number;
+  defaultedCount: number;
+  completedCount: number;
+  totalRemaining: string;
+};
+
 export type SearchResults = {
   customers:    SearchCustomer[];
   installments: SearchInstallment[];
   products:     SearchProduct[];
+  bureau:       BureauShopResult[];
 };
 
 export const searchApi = {

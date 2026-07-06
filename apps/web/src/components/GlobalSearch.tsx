@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, X, Users, CreditCard, Package, Loader2, AlertOctagon,
-  ChevronRight, Phone, MapPin,
+  ChevronRight, Phone, MapPin, ShieldAlert, CheckCircle2, Clock,
 } from 'lucide-react';
 import { searchApi, type SearchResults } from '../api/search.api.ts';
 
@@ -62,7 +62,8 @@ export default function GlobalSearch({ open, onClose }: Props) {
   });
 
   const hasResults = data && (
-    data.customers.length > 0 || data.installments.length > 0 || data.products.length > 0
+    data.customers.length > 0 || data.installments.length > 0 ||
+    data.products.length > 0  || (data.bureau?.length ?? 0) > 0
   );
 
   const go = useCallback((path: string) => { navigate(path); onClose(); }, [navigate, onClose]);
@@ -175,6 +176,52 @@ export default function GlobalSearch({ open, onClose }: Props) {
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-400 shrink-0" />
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Cross-shop Bureau — only appears on CNIC searches */}
+              {(data?.bureau?.length ?? 0) > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                    <ShieldAlert className="w-3.5 h-3.5 text-orange-500" />
+                    <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Other Shops (Bureau)</span>
+                    <span className="text-[10px] text-orange-400 ml-auto">Cross-shop installment history</span>
+                  </div>
+                  {data!.bureau.map((b, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-orange-50/50">
+                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                        <ShieldAlert className="w-4 h-4 text-orange-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-800 truncate block">{b.shopName}</span>
+                        <div className="flex items-center gap-3 text-[11px] mt-0.5 flex-wrap">
+                          {b.activeCount > 0 && (
+                            <span className="flex items-center gap-1 text-blue-600 font-medium">
+                              <Clock className="w-3 h-3" />{b.activeCount} active
+                            </span>
+                          )}
+                          {b.defaultedCount > 0 && (
+                            <span className="flex items-center gap-1 text-red-600 font-medium">
+                              <AlertOctagon className="w-3 h-3" />{b.defaultedCount} defaulted
+                            </span>
+                          )}
+                          {b.completedCount > 0 && (
+                            <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                              <CheckCircle2 className="w-3 h-3" />{b.completedCount} completed
+                            </span>
+                          )}
+                          {b.activeCount > 0 && (
+                            <span className="text-gray-500">Remaining: {pkr(b.totalRemaining)}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="mx-4 mb-2 mt-1 p-2 bg-orange-50 border border-orange-100 rounded-lg">
+                    <p className="text-[10px] text-orange-600 text-center">
+                      ⚠️ This customer has installment history at other shops. Review before approving.
+                    </p>
+                  </div>
                 </div>
               )}
 
