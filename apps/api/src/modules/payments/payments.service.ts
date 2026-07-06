@@ -142,7 +142,7 @@ export class PaymentsService {
         }).returning(),
         tx.update(installments).set({
           remaining: String(newRemaining),
-          ...(isCleared && { status: 'COMPLETED' }),
+          ...(isCleared && { status: 'COMPLETED', completedAt: new Date() }),
         }).where(eq(installments.id, body.installmentId)),
       ]);
 
@@ -196,8 +196,8 @@ export class PaymentsService {
       const safeRemaining = Math.max(0, newRemaining);
       const wasCompleted  = pmt.instStatus === 'COMPLETED';
       const isCleared     = safeRemaining === 0;
-      const statusUpdate  = isCleared && !wasCompleted ? { status: 'COMPLETED' as const }
-                          : !isCleared && wasCompleted  ? { status: 'ACTIVE'    as const }
+      const statusUpdate  = isCleared && !wasCompleted ? { status: 'COMPLETED' as const, completedAt: new Date() }
+                          : !isCleared && wasCompleted  ? { status: 'ACTIVE'    as const, completedAt: null }
                           : {};
 
       await Promise.all([
@@ -247,7 +247,7 @@ export class PaymentsService {
 
     const restoredRemaining = Number(pmt.instRemaining) + Number(pmt.amount);
     const statusRevert = pmt.instStatus === 'COMPLETED' && restoredRemaining > 0
-      ? { status: 'ACTIVE' as const }
+      ? { status: 'ACTIVE' as const, completedAt: null }
       : {};
 
     await db.transaction(async (tx) => {

@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
@@ -33,7 +33,25 @@ export class InstallmentsService {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
     // Restrict to staff's own customers when they lack canViewAllInstallments
     if (staffUserId) conditions.push(eq(customers.createdByUserId, staffUserId));
-    if (status)     conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED' | 'PENDING'));
+    if (status) {
+      conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED' | 'PENDING'));
+    } else {
+      // Default "All" view: hide completed installments from previous months.
+      // Completed this month (or completedAt is null but status=COMPLETED → treat as old) stay hidden.
+      // Only COMPLETED with completedAt >= start of current month are shown in default view.
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      conditions.push(
+        or(
+          sql`${installments.status} != 'COMPLETED'`,
+          and(
+            eq(installments.status, 'COMPLETED'),
+            sql`${installments.completedAt} >= ${startOfMonth.toISOString()}`,
+          ),
+        )!,
+      );
+    }
     if (search) {
       const cleanSearch = search.trim().replace(/-/g, '');
       const conds: SQL[] = [
@@ -432,7 +450,7 @@ export class InstallmentsService {
         .update(installments)
         .set({
           remaining: String(newRemaining),
-          ...(isFullyCleared ? { status: 'COMPLETED' } : {}),
+          ...(isFullyCleared ? { status: 'COMPLETED', completedAt: new Date() } : {}),
         })
         .where(eq(installments.id, id))
         .returning();
@@ -473,7 +491,7 @@ export class InstallmentsService {
       patch.totalAmount = String(newTotal.toFixed(2));
       patch.downPayment = String(newDown.toFixed(2));
       patch.remaining   = String(newRemaining.toFixed(2));
-      if (newRemaining === 0 && row.status === 'ACTIVE') patch.status = 'COMPLETED';
+      if (newRemaining === 0 && row.status === 'ACTIVE') { patch.status = 'COMPLETED'; patch.completedAt = new Date(); }
     }
 
     if (body.monthly          !== undefined) patch.monthly          = String(body.monthly.toFixed(2));

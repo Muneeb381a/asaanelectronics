@@ -282,6 +282,7 @@ export const installments = pgTable('installments', {
   paymentFrequency: text('payment_frequency').default('monthly').notNull(),
   paymentDueDay:    integer('payment_due_day').default(10).notNull(),
   createdAt:        timestamp('created_at').defaultNow().notNull(),
+  completedAt:  timestamp('completed_at'),
   deletedAt:    timestamp('deleted_at'),
   deletedBy:    text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
   pausedUntil:  timestamp('paused_until'),
