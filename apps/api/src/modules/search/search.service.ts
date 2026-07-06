@@ -1,4 +1,4 @@
-import { and, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, ilike, isNull, ne, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, products, sellers } from '../../db/schema.js';
 import { hashCnicBoth } from '../../utils/hash.js';
@@ -35,8 +35,8 @@ export class SearchService {
     const prodConds = [ilike(products.name, `%${clean}%`)];
     if (products.serial) prodConds.push(ilike(products.serial, `%${clean}%`));
 
-    // Run all queries in parallel (bureau only when CNIC)
-    const [customerRows, installmentRows, productRows, bureauRows] = await Promise.all([
+    // Run main queries in parallel
+    const [customerRows, installmentRows, productRows] = await Promise.all([
       db.select({
         id:             customers.id,
         name:           customers.name,
@@ -101,35 +101,57 @@ export class SearchService {
         isNull(products.deletedAt),
         or(...prodConds),
       )).limit(6),
-
-      // Cross-shop bureau — only runs when search is a CNIC
-      isCnic ? (async () => {
-        const [hmac, legacy] = hashCnicBoth(clean);
-        return db.execute<{
-          shopName:       string;
-          activeCount:    number;
-          defaultedCount: number;
-          completedCount: number;
-          totalRemaining: string;
-        }>(sql`
-          SELECT
-            s.shop_name                                                                               AS "shopName",
-            COUNT(CASE WHEN i.status = 'ACTIVE'    THEN 1 END)::int                                  AS "activeCount",
-            COUNT(CASE WHEN i.status = 'DEFAULTED' THEN 1 END)::int                                  AS "defaultedCount",
-            COUNT(CASE WHEN i.status = 'COMPLETED' THEN 1 END)::int                                  AS "completedCount",
-            COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' THEN i.remaining::numeric ELSE 0 END), 0)::text AS "totalRemaining"
-          FROM customers c
-          JOIN sellers s ON c.seller_id = s.id
-          LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
-          WHERE c.cnic_hash IN (${hmac}, ${legacy})
-            AND c.seller_id != ${sellerId}
-            AND c.deleted_at IS NULL
-          GROUP BY s.shop_name, s.id, c.id
-          ORDER BY "activeCount" DESC, "defaultedCount" DESC
-          LIMIT 10
-        `);
-      })() : Promise.resolve([] as { shopName: string; activeCount: number; defaultedCount: number; completedCount: number; totalRemaining: string }[]),
     ]);
+
+    // Cross-shop bureau — separate from main Promise.all so its failure never breaks search
+    let bureauRows: {
+      customerId:    string;
+      customerName:  string;
+      customerPhone: string;
+      cnicMasked:    string;
+      shopName:      string;
+      activeCount:   number;
+      defaultedCount: number;
+      completedCount: number;
+      totalRemaining: string;
+    }[] = [];
+
+    if (isCnic) {
+      try {
+        const [hmac, legacy] = hashCnicBoth(clean);
+        bureauRows = await db
+          .select({
+            customerId:    customers.id,
+            customerName:  customers.name,
+            customerPhone: customers.phone,
+            cnicMasked:    customers.cnicMasked,
+            shopName:      sellers.shopName,
+            activeCount:   sql<number>`COUNT(CASE WHEN ${installments.status} = 'ACTIVE'    THEN 1 END)::int`,
+            defaultedCount: sql<number>`COUNT(CASE WHEN ${installments.status} = 'DEFAULTED' THEN 1 END)::int`,
+            completedCount: sql<number>`COUNT(CASE WHEN ${installments.status} = 'COMPLETED' THEN 1 END)::int`,
+            totalRemaining: sql<string>`COALESCE(SUM(CASE WHEN ${installments.status} = 'ACTIVE' THEN ${installments.remaining}::numeric ELSE 0 END), 0)::text`,
+          })
+          .from(customers)
+          .innerJoin(sellers, eq(customers.sellerId, sellers.id))
+          .leftJoin(installments, and(
+            eq(installments.customerId, customers.id),
+            isNull(installments.deletedAt),
+          ))
+          .where(and(
+            or(eq(customers.cnicHash, hmac), eq(customers.cnicHash, legacy)),
+            ne(customers.sellerId, sellerId),
+            isNull(customers.deletedAt),
+          ))
+          .groupBy(
+            customers.id, customers.name, customers.phone,
+            customers.cnicMasked, sellers.shopName, sellers.id,
+          )
+          .orderBy(sql`COUNT(CASE WHEN ${installments.status} = 'ACTIVE' THEN 1 END) DESC NULLS LAST`)
+          .limit(10);
+      } catch (err) {
+        console.error('[search] bureau lookup failed:', err);
+      }
+    }
 
     return {
       customers:    customerRows,

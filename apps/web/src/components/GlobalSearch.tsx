@@ -29,6 +29,17 @@ function useDebounce(value: string, ms: number) {
   return debounced;
 }
 
+// Auto-format input as CNIC (XXXXX-XXXXXXX-X) when user types only digits.
+// If input has letters, return as-is (normal text search).
+function formatIfCnic(raw: string): string {
+  const digits = raw.replace(/-/g, '');
+  if (!/^\d*$/.test(digits) || digits.length > 13) return raw;
+  if (digits.length === 0) return '';
+  if (digits.length <= 5)  return digits;
+  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -82,8 +93,8 @@ export default function GlobalSearch({ open, onClose }: Props) {
           <input
             ref={inputRef}
             value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search customers, installments, products, IMEI…"
+            onChange={(e) => setQ(formatIfCnic(e.target.value))}
+            placeholder="Name, phone, CNIC (35202-…), IMEI…"
             className="flex-1 text-sm outline-none bg-transparent text-gray-800 placeholder-gray-400"
           />
           {isFetching && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin shrink-0" />}
@@ -133,9 +144,14 @@ export default function GlobalSearch({ open, onClose }: Props) {
                             <AlertOctagon className="w-3.5 h-3.5 text-red-500 shrink-0" aria-label="Blacklisted" />
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5 flex-wrap">
                           <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>
                           {c.area && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.area}</span>}
+                          {c.cnicMasked && (
+                            <span className="flex items-center gap-1 font-mono text-[10px] text-gray-400">
+                              <CreditCard className="w-3 h-3" />{c.cnicMasked}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-400 shrink-0" />
@@ -184,34 +200,50 @@ export default function GlobalSearch({ open, onClose }: Props) {
                 <div>
                   <div className="flex items-center gap-2 px-4 pt-3 pb-1">
                     <ShieldAlert className="w-3.5 h-3.5 text-orange-500" />
-                    <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Other Shops (Bureau)</span>
-                    <span className="text-[10px] text-orange-400 ml-auto">Cross-shop installment history</span>
+                    <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Doosri Shops mein History</span>
+                    <span className="text-[10px] text-orange-400 ml-auto">Cross-shop bureau</span>
                   </div>
                   {data!.bureau.map((b, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-orange-50/50">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                        <ShieldAlert className="w-4 h-4 text-orange-500" />
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-orange-50/60 border-l-2 border-orange-300">
+                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-sm font-semibold shrink-0">
+                        {b.customerName.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-800 truncate block">{b.shopName}</span>
-                        <div className="flex items-center gap-3 text-[11px] mt-0.5 flex-wrap">
+                        {/* Customer identity */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-800 truncate">{b.customerName}</span>
+                          {b.cnicMasked && (
+                            <span className="font-mono text-[10px] text-gray-400">{b.cnicMasked}</span>
+                          )}
+                        </div>
+                        {/* Shop name + phone */}
+                        <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-0.5 flex-wrap">
+                          <span className="flex items-center gap-1 font-medium text-orange-600">
+                            <ShieldAlert className="w-3 h-3" />{b.shopName}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />{b.customerPhone}
+                          </span>
+                        </div>
+                        {/* Installment status counts */}
+                        <div className="flex items-center gap-3 text-[11px] mt-1 flex-wrap">
                           {b.activeCount > 0 && (
                             <span className="flex items-center gap-1 text-blue-600 font-medium">
-                              <Clock className="w-3 h-3" />{b.activeCount} active
+                              <Clock className="w-3 h-3" />{b.activeCount} active · {pkr(b.totalRemaining)} baki
                             </span>
                           )}
                           {b.defaultedCount > 0 && (
                             <span className="flex items-center gap-1 text-red-600 font-medium">
-                              <AlertOctagon className="w-3 h-3" />{b.defaultedCount} defaulted
+                              <AlertOctagon className="w-3 h-3" />{b.defaultedCount} default
                             </span>
                           )}
                           {b.completedCount > 0 && (
                             <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                              <CheckCircle2 className="w-3 h-3" />{b.completedCount} completed
+                              <CheckCircle2 className="w-3 h-3" />{b.completedCount} complete
                             </span>
                           )}
-                          {b.activeCount > 0 && (
-                            <span className="text-gray-500">Remaining: {pkr(b.totalRemaining)}</span>
+                          {b.activeCount === 0 && b.defaultedCount === 0 && b.completedCount === 0 && (
+                            <span className="text-gray-400">Koi installment nahi</span>
                           )}
                         </div>
                       </div>
@@ -219,7 +251,7 @@ export default function GlobalSearch({ open, onClose }: Props) {
                   ))}
                   <div className="mx-4 mb-2 mt-1 p-2 bg-orange-50 border border-orange-100 rounded-lg">
                     <p className="text-[10px] text-orange-600 text-center">
-                      ⚠️ This customer has installment history at other shops. Review before approving.
+                      ⚠️ Is customer ki doosri shops mein installment history hai — approve karne se pehle review karein
                     </p>
                   </div>
                 </div>

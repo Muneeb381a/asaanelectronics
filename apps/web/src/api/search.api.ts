@@ -37,8 +37,12 @@ export type SearchProduct = {
 };
 
 export type BureauShopResult = {
-  shopName:       string;
-  activeCount:    number;
+  customerId:    string;
+  customerName:  string;
+  customerPhone: string;
+  cnicMasked:    string;
+  shopName:      string;
+  activeCount:   number;
   defaultedCount: number;
   completedCount: number;
   totalRemaining: string;
