@@ -5,6 +5,7 @@ import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { markUnitSoldInTx, markUnitAvailableInTx } from '../productUnits/productUnits.service.js';
+import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { fsm } from '../../utils/fsm.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
@@ -241,7 +242,7 @@ export class InstallmentsService {
       ? Math.round((remaining / body.months) / 5) * 5
       : Math.round((remaining / body.months) / 25) * 25;
 
-    return db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // Advisory lock prevents concurrent invoice number generation for same seller
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sellerId}))`);
 
@@ -316,6 +317,8 @@ export class InstallmentsService {
       // Return names already in memory — avoids a follow-up getOne() in the controller
       return { ...installment, customerName: customer.name, productName: product.name };
     });
+    clearSellerStatsCache(sellerId);
+    return result;
   }
 
   async approve(id: string, sellerId: string) {
@@ -324,6 +327,7 @@ export class InstallmentsService {
     const [updated] = await db
       .update(installments).set({ status: 'ACTIVE' })
       .where(eq(installments.id, id)).returning();
+    clearSellerStatsCache(sellerId);
     return updated;
   }
 
@@ -333,6 +337,7 @@ export class InstallmentsService {
     const [updated] = await db
       .update(installments).set({ status: 'CLOSED' })
       .where(eq(installments.id, id)).returning();
+    clearSellerStatsCache(sellerId);
     return updated;
   }
 
@@ -342,6 +347,7 @@ export class InstallmentsService {
     const [updated] = await db
       .update(installments).set({ status: 'DEFAULTED' })
       .where(eq(installments.id, id)).returning();
+    clearSellerStatsCache(sellerId);
     return updated;
   }
 
@@ -349,7 +355,7 @@ export class InstallmentsService {
     const row = await this.getOne(id, sellerId);
     fsm.installment.assert(row.status, 'CANCELLED');
 
-    return db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       if (row.status === 'PENDING') {
         // Restore reserved stock on pre-activation cancel
         await tx.update(products)
@@ -361,6 +367,8 @@ export class InstallmentsService {
         .where(eq(installments.id, id)).returning();
       return updated;
     });
+    clearSellerStatsCache(sellerId);
+    return result;
   }
 
   async remove(id: string, sellerId: string, deletedBy: string) {
@@ -390,6 +398,7 @@ export class InstallmentsService {
         );
       }
     });
+    clearSellerStatsCache(sellerId);
     return row;
   }
 
@@ -427,6 +436,7 @@ export class InstallmentsService {
       .set({ monthly: String(newMonthly.toFixed(2)), months: newMonths, ...statusUpdate })
       .where(eq(installments.id, id))
       .returning();
+    clearSellerStatsCache(sellerId);
     return updated;
   }
 
@@ -445,7 +455,7 @@ export class InstallmentsService {
     const newRemaining = Number((currentRemaining - body.amount).toFixed(2));
     const isFullyCleared = newRemaining <= 0;
 
-    return db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(installments)
         .set({
@@ -469,6 +479,8 @@ export class InstallmentsService {
 
       return updated;
     });
+    clearSellerStatsCache(sellerId);
+    return result;
   }
 
   async update(id: string, sellerId: string, body: {
@@ -509,6 +521,7 @@ export class InstallmentsService {
       .set(patch as Parameters<typeof db.update>[0] extends never ? never : Record<string, unknown>)
       .where(eq(installments.id, id))
       .returning();
+    clearSellerStatsCache(sellerId);
     return { ...updated, customerName: row.customerName, productName: row.productName };
   }
 
@@ -624,6 +637,7 @@ export class InstallmentsService {
       }
     }
 
+    if (imported > 0) clearSellerStatsCache(sellerId);
     return { imported, customersCreated, customersLinked, productsCreated, errors };
   }
 
@@ -847,6 +861,7 @@ export class InstallmentsService {
       .set({ pausedUntil, pauseReason: body.reason ?? null, pausedBy })
       .where(eq(installments.id, id))
       .returning();
+    clearSellerStatsCache(sellerId);
     return updated;
   }
 
@@ -859,6 +874,7 @@ export class InstallmentsService {
       .set({ pausedUntil: null, pauseReason: null, pausedBy: null })
       .where(eq(installments.id, id))
       .returning();
+    clearSellerStatsCache(sellerId);
     return updated;
   }
 

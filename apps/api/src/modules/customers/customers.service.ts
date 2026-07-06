@@ -4,6 +4,7 @@ import { customers, installments, ledgerEntries, payments, products, sellers } f
 import { AppError } from '../../middleware/error.js';
 import { hashCnic, hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
+import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 type BureauShopRow = { shopName: string; activeCount: number; defaultedCount: number; completedCount: number; cancelledCount: number; totalRemaining: string };
 
@@ -797,6 +798,7 @@ export class CustomersService {
         );
       }
     });
+    clearSellerStatsCache(sellerId);
     return existing;
   }
 
