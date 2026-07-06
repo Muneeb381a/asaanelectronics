@@ -1340,7 +1340,7 @@ export default function InstallmentsPage() {
       : <ChevronDown size={11} className="text-blue-600 shrink-0" />;
   }
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(25);
+  const [limit, setLimit] = useState(15);
   const debouncedSearch = useDebounce(search, 350);
   const [committedSearch, setCommittedSearch] = useState('');
 
@@ -1942,7 +1942,7 @@ export default function InstallmentsPage() {
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
               className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white outline-none focus:border-blue-400 transition cursor-pointer"
             >
-              {[25, 50, 100].map((n) => (
+              {[15, 25, 50].map((n) => (
                 <option key={n} value={n}>{n} per page</option>
               ))}
             </select>
