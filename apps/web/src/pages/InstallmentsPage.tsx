@@ -1340,6 +1340,7 @@ export default function InstallmentsPage() {
       : <ChevronDown size={11} className="text-blue-600 shrink-0" />;
   }
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const debouncedSearch = useDebounce(search, 350);
   const [committedSearch, setCommittedSearch] = useState('');
 
@@ -1379,14 +1380,12 @@ export default function InstallmentsPage() {
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
   const { data: paymentAccountsData = [] } = useQuery<PaymentAccount[]>({ queryKey: ['payment-accounts'], queryFn: sellersApi.listPaymentAccounts, staleTime: 10 * 60_000 });
 
-  const LIMIT = 20;
-
   // Staff must search first — don't load all installments by default
   const staffMustSearch = !isOwner && committedSearch.trim().length < 2;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['installments', statusFilter, frequencyFilter, committedSearch, page, sortBy, sortDir],
-    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: committedSearch || undefined, page, limit: LIMIT, sortBy, sortDir }),
+    queryKey: ['installments', statusFilter, frequencyFilter, committedSearch, page, limit, sortBy, sortDir],
+    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: committedSearch || undefined, page, limit, sortBy, sortDir }),
     enabled: !staffMustSearch,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
@@ -1931,28 +1930,75 @@ export default function InstallmentsPage() {
       </div>
 
       {/* Pagination */}
-      {data && data.total > LIMIT && (
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-gray-500">
-            Showing {(page - 1) * LIMIT + 1}â€"{Math.min(page * LIMIT, data.total)} of {data.total}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
-              Previous
-            </button>
-            <span className="text-sm text-gray-600 font-medium">
-              {page} / {Math.ceil(data.total / LIMIT)}
-            </span>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page * LIMIT >= data.total}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
-              Next
-            </button>
+      {data && data.total > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-1">
+          {/* Left: count + per-page selector */}
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-gray-400">
+              {(page - 1) * limit + 1}–{Math.min(page * limit, data.total)} of <span className="font-semibold text-gray-600">{data.total}</span> installments
+            </p>
+            <select
+              value={limit}
+              onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white outline-none focus:border-blue-400 transition cursor-pointer"
+            >
+              {[25, 50, 100].map((n) => (
+                <option key={n} value={n}>{n} per page</option>
+              ))}
+            </select>
           </div>
+
+          {/* Right: page buttons */}
+          {data.total > limit && (() => {
+            const totalPages = Math.ceil(data.total / limit);
+            const pages: (number | '...')[] = [];
+            if (totalPages <= 7) {
+              for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+              pages.push(1);
+              if (page > 3) pages.push('...');
+              for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+              if (page < totalPages - 2) pages.push('...');
+              pages.push(totalPages);
+            }
+            return (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(1)}
+                  disabled={page === 1}
+                  className="px-2 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >«</button>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >Prev</button>
+                {pages.map((p, i) =>
+                  p === '...'
+                    ? <span key={`e${i}`} className="px-2 text-xs text-gray-400">…</span>
+                    : <button
+                        key={p}
+                        onClick={() => setPage(p as number)}
+                        className={`min-w-[32px] px-2 py-1.5 text-xs rounded-lg border transition font-medium ${
+                          page === p
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >{p}</button>
+                )}
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page * limit >= data.total}
+                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >Next</button>
+                <button
+                  onClick={() => setPage(Math.ceil(data.total / limit))}
+                  disabled={page * limit >= data.total}
+                  className="px-2 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >»</button>
+              </div>
+            );
+          })()}
         </div>
       )}
 
