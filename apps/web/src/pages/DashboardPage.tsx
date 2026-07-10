@@ -1,16 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, CreditCard, AlertTriangle,
   Calendar, Package, ArrowRight, BarChart3,
   MapPin, Users, ShieldCheck, Zap, Plus, ShoppingCart, Receipt, Bell, Target, Gift,
   ClipboardList, Clock, PhoneCall, Banknote, XOctagon,
+  Wallet, CheckCircle, Send, X,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
 import { recoveryApi } from '../api/recovery.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { customersApi } from '../api/customers.api.ts';
+import { handoversApi } from '../api/handovers.api.ts';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
@@ -90,6 +93,44 @@ export default function DashboardPage() {
   const user    = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const isOwner = user?.role === 'SELLER_OWNER';
+  const queryClient = useQueryClient();
+
+  // Handover modal state
+  const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [handoverAmount, setHandoverAmount]       = useState('');
+  const [handoverNote, setHandoverNote]           = useState('');
+
+  // Staff: own pending cash balance (how much collected but not yet handed over)
+  const { data: myBalance } = useQuery({
+    queryKey: ['handover-my-balance'],
+    queryFn:  () => handoversApi.myBalance(),
+    enabled:  !isOwner,
+    staleTime: 30_000,
+    refetchInterval: 120_000,
+  });
+
+  // Owner: every staff member's pending cash balance
+  const { data: pendingBalances = [] } = useQuery({
+    queryKey: ['handover-pending-balances'],
+    queryFn:  handoversApi.pendingBalances,
+    enabled:  isOwner,
+    staleTime: 30_000,
+    refetchInterval: 120_000,
+  });
+
+  // Submit handover mutation — staff records physical cash hand-off to owner
+  const submitHandover = useMutation({
+    mutationFn: () => handoversApi.create({
+      handedAmount: Number(handoverAmount),
+      note: handoverNote.trim() || undefined,
+    }),
+    onSuccess: () => {
+      setShowHandoverModal(false);
+      setHandoverAmount('');
+      setHandoverNote('');
+      void queryClient.invalidateQueries({ queryKey: ['handover-my-balance'] });
+    },
+  });
 
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -254,6 +295,54 @@ export default function DashboardPage() {
         );
       })()}
 
+      {/* Staff: Cash in Hand widget — shown when staff has unconfirmed cash */}
+      {!isOwner && (() => {
+        if (!myBalance) return null;
+        const balance = Number(myBalance.pendingBalance);
+        if (balance <= 0) return null;
+        // Has a pending handover submitted (waiting for owner to confirm)
+        if (myBalance.pendingHandover) {
+          return (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+              <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+                <CheckCircle size={18} className="text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-amber-800">Handover Submitted</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  {pkr(balance)} — Owner ki confirmation ka intezaar hai
+                </p>
+              </div>
+              <span className="shrink-0 text-[10px] font-bold bg-amber-200 text-amber-700 px-2 py-1 rounded-lg tracking-wide">
+                PENDING
+              </span>
+            </div>
+          );
+        }
+        // Has cash but hasn't submitted handover yet
+        return (
+          <div className="bg-linear-to-r from-emerald-600 to-emerald-500 rounded-2xl p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                <Wallet size={20} className="text-white" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-emerald-100 uppercase tracking-wide">Cash in Hand</p>
+                <p className="text-2xl font-black text-white">{pkr(balance)}</p>
+                <p className="text-[11px] text-emerald-100 mt-0.5">Abhi tak jama nahi hua</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { setHandoverAmount(String(balance)); setShowHandoverModal(true); }}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-white text-emerald-700 font-bold text-sm rounded-xl hover:bg-emerald-50 transition"
+            >
+              <Send size={14} />
+              Jama Karein
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {isLoading
@@ -275,6 +364,59 @@ export default function DashboardPage() {
             </div>
           ))}
       </div>
+
+      {/* Owner: Cash in Field summary — staff cash that hasn't reached the shop yet */}
+      {isOwner && (() => {
+        const staffWithCash = pendingBalances.filter((s) => Number(s.pendingBalance) > 0);
+        if (!staffWithCash.length) return null;
+        const totalCash = staffWithCash.reduce((sum, s) => sum + Number(s.pendingBalance), 0);
+        return (
+          <div className="bg-white border border-orange-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-orange-50 bg-orange-50/50">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Wallet size={13} className="text-orange-600" />
+                </div>
+                <p className="text-xs font-semibold text-orange-600 uppercase tracking-widest">Cash in Field</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-black text-orange-700">{pkr(totalCash)}</span>
+                <button
+                  onClick={() => navigate('/staff')}
+                  className="flex items-center gap-1 text-xs text-orange-600 hover:underline font-medium"
+                >
+                  Review <ArrowRight size={12} />
+                </button>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {staffWithCash.map((s) => (
+                <div key={s.staffId} className="flex items-center justify-between px-4 py-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-[11px] font-bold text-gray-500 shrink-0">
+                      {s.staffName[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-800">{s.staffName}</p>
+                      {s.pendingHandover
+                        ? <p className="text-[10px] text-amber-600 font-medium">Handover submitted</p>
+                        : <p className="text-[10px] text-gray-400">Not yet submitted</p>
+                      }
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-gray-900">{pkr(Number(s.pendingBalance))}</p>
+                    {s.pendingHandover
+                      ? <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md">Confirm karein</span>
+                      : <span className="text-[10px] text-gray-400">Field mein</span>
+                    }
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Monthly vs Daily installment split */}
       {data && (data.monthlyActiveCount > 0 || data.dailyActiveCount > 0) && (() => {
@@ -859,6 +1001,94 @@ export default function DashboardPage() {
           </div>
         )}
       </div>}
+
+      {/* Cash handover modal — staff submits physical cash to owner */}
+      {showHandoverModal && !isOwner && (() => {
+        const balance = Number(myBalance?.pendingBalance ?? 0);
+        const amt     = Number(handoverAmount);
+        const diff    = amt - balance;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div>
+                  <h3 className="font-bold text-gray-900">Cash Jama Karein</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Owner ko cash hand-off ka record</p>
+                </div>
+                <button
+                  onClick={() => setShowHandoverModal(false)}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <X size={18} className="text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* System balance reference */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                  <p className="text-[11px] text-gray-400 font-medium">System ka hisaab (collected − confirmed)</p>
+                  <p className="text-xl font-black text-gray-900 mt-0.5">{pkr(balance)}</p>
+                </div>
+
+                {/* Amount input */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Actual Amount (PKR) *
+                  </label>
+                  <input
+                    type="number"
+                    value={handoverAmount}
+                    onChange={(e) => setHandoverAmount(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-3 text-lg font-bold focus:outline-none focus:border-emerald-400 transition"
+                    placeholder="0"
+                    autoFocus
+                  />
+                  {handoverAmount && amt !== balance && (
+                    <p className={`text-[11px] mt-1.5 font-semibold ${diff < 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                      System se {pkr(Math.abs(diff))} {diff < 0 ? 'kam' : 'zyada'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Note */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Note (optional)
+                  </label>
+                  <textarea
+                    value={handoverNote}
+                    onChange={(e) => setHandoverNote(e.target.value)}
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-emerald-400 transition"
+                    placeholder="Koi additional info..."
+                  />
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-2 px-5 pb-5">
+                <button
+                  onClick={() => setShowHandoverModal(false)}
+                  className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!handoverAmount || amt <= 0 || submitHandover.isPending}
+                  onClick={() => submitHandover.mutate()}
+                  className="flex-1 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl transition flex items-center justify-center gap-1.5"
+                >
+                  {submitHandover.isPending
+                    ? <span className="animate-pulse">Jama ho raha hai...</span>
+                    : <><Send size={13} /> Jama Karein</>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

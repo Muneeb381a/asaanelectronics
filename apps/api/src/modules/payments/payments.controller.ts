@@ -71,6 +71,10 @@ export async function recordBulkPayments(req: AuthRequest, res: Response) {
 }
 
 export async function recordPayment(req: AuthRequest, res: Response) {
+  // Staff: always tag as collected by themselves — never trust client-supplied collectedBy
+  if (req.user!.role === 'SELLER_STAFF') {
+    req.body.collectedBy = req.user!.userId;
+  }
   const result = await svc.record(req.user!.sellerId!, req.body);
   success(res, result, 201);
   void audit.log({
