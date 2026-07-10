@@ -4,7 +4,7 @@ import { customers, installments, products, sellers } from '../../db/schema.js';
 import { hashCnicBoth } from '../../utils/hash.js';
 
 export class SearchService {
-  async globalSearch(sellerId: string, q: string) {
+  async globalSearch(sellerId: string, q: string, canSearchCnic = false) {
     const clean = q.trim().replace(/-/g, '');
     if (clean.length < 2) return { customers: [], installments: [], products: [], bureau: [] };
 
@@ -116,7 +116,7 @@ export class SearchService {
       totalRemaining: string;
     }[] = [];
 
-    if (isCnic) {
+    if (isCnic && canSearchCnic) {
       try {
         const [hmac, legacy] = hashCnicBoth(clean);
         bureauRows = await db

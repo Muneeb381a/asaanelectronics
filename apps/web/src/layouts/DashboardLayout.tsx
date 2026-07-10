@@ -106,11 +106,13 @@ export default function DashboardLayout() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  const canSearch = isOwner || !!perms?.canSearchCnic;
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        setSearchOpen((v) => !v);
+        if (canSearch) setSearchOpen((v) => !v);
       }
       if (e.key === 'Escape') {
         setMobileOpen(false);
@@ -287,7 +289,7 @@ export default function DashboardLayout() {
         </nav>
 
         {/* Global CNIC search */}
-        {(isOwner || perms?.canSearchCnic) && (
+        {canSearch && (
           <div className="px-3 pb-1">
             <button
               onClick={() => { setSearchOpen(true); setMobileOpen(false); }}

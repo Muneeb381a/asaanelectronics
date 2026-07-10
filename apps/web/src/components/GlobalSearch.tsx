@@ -77,6 +77,9 @@ export default function GlobalSearch({ open, onClose }: Props) {
     data.products.length > 0  || (data.bureau?.length ?? 0) > 0
   );
 
+  const isCnicQuery = /^\d{13}$/.test(debouncedQ.replace(/-/g, ''));
+  const bureauEmpty = !isFetching && isCnicQuery && data != null && (data.bureau?.length ?? 0) === 0;
+
   const go = useCallback((path: string) => { navigate(path); onClose(); }, [navigate, onClose]);
 
   if (!open) return null;
@@ -192,6 +195,21 @@ export default function GlobalSearch({ open, onClose }: Props) {
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-400 shrink-0" />
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Bureau empty state — shown when CNIC searched but no cross-shop history found */}
+              {bureauEmpty && (data?.customers.length ?? 0) + (data?.installments.length ?? 0) === 0 && (
+                <div className="px-4 py-6 text-center">
+                  <ShieldAlert className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500 font-medium">No cross-shop history found</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Koi doosri shop mein is CNIC ka record nahi mila</p>
+                </div>
+              )}
+              {bureauEmpty && ((data?.customers.length ?? 0) + (data?.installments.length ?? 0)) > 0 && (
+                <div className="mx-4 my-2 px-3 py-2 bg-green-50 border border-green-100 rounded-lg flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                  <p className="text-xs text-green-700">Is CNIC ki koi doosri shop mein history nahi — bureau clear hai</p>
                 </div>
               )}
 
