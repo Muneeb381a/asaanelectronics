@@ -25,20 +25,51 @@ export type StaffMember = {
   createdAt: string;
 };
 
+// Each entry: [label, description shown as tooltip/subtext]
 const PERM_LABELS: Record<keyof StaffPermissions, string> = {
-  canAddCustomer:         'Add customers',
-  canEditCustomer:        'Edit customers',
-  canAddInstallment:      'Add installments',
+  // Customer management
+  canAddCustomer:         'Add new customers',
+  canEditCustomer:        'Edit customer details',
+  canVerifyCustomers:     'Verify customers (AVO)',
+  canSearchCnic:          'CNIC bureau search (cross-shop)',
+  // Installment & payment operations
+  canAddInstallment:      'Create installments',
   canRecordPayment:       'Record payments',
-  canViewReports:         'View reports',
-  canManageProducts:      'Manage products',
-  canVerifyCustomers:     'AVO — Verify customers',
-  canRecordExpense:       'Record expenses',
-  canManageReturns:       'Manage returns',
-  canSearchCnic:          'CNIC Search (bureau lookup)',
-  canMakeCashSales:       'Cash Sales',
-  canViewAllInstallments: 'Search all installments (not just own)',
+  canMakeCashSales:       'Make cash sales',
+  canManageReturns:       'Process product returns',
+  // Inventory
+  canManageProducts:      'Add / edit products & inventory',
+  // Finance (sensitive — owner should control)
+  canRecordExpense:       'Record shop expenses',
+  canViewReports:         'View analytics & financial reports',
+  // Data visibility
+  canViewAllInstallments: 'See all installments (not just own customers)',
 };
+
+export type PermGroup = { label: string; keys: (keyof StaffPermissions)[] };
+
+export const PERM_GROUPS: PermGroup[] = [
+  {
+    label: 'Customer Management',
+    keys: ['canAddCustomer', 'canEditCustomer', 'canVerifyCustomers', 'canSearchCnic'],
+  },
+  {
+    label: 'Installments & Payments',
+    keys: ['canAddInstallment', 'canRecordPayment', 'canMakeCashSales', 'canManageReturns'],
+  },
+  {
+    label: 'Inventory',
+    keys: ['canManageProducts'],
+  },
+  {
+    label: 'Finance & Reports (Sensitive)',
+    keys: ['canRecordExpense', 'canViewReports'],
+  },
+  {
+    label: 'Data Visibility',
+    keys: ['canViewAllInstallments'],
+  },
+];
 
 export { PERM_LABELS };
 

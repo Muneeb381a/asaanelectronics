@@ -16,6 +16,12 @@ const router = Router();
 
 router.use(authenticate, requireSeller);
 
+// Any staff doing operational work needs to see customer data.
+const canAccessCustomers = requirePermission([
+  'canAddCustomer', 'canEditCustomer', 'canAddInstallment',
+  'canRecordPayment', 'canVerifyCustomers', 'canViewReports',
+]);
+
 router.get('/lifecycle-counts',     getLifecycleCounts);
 router.get('/guarantors',           requireOwner, listGuarantors);
 router.get('/nadra-status',         nadraStatus);
@@ -23,9 +29,9 @@ router.post('/nadra-verify',        requireOwner, nadraVerifyCnic);
 router.get('/upcoming-birthdays',   getUpcomingBirthdays);
 router.get('/referral-leaderboard', getReferralLeaderboard);
 router.get('/lookup',           requirePermission(['canSearchCnic', 'canAddInstallment', 'canAddCustomer', 'canRecordPayment']), lookupByCnic);
-router.get('/',                 listCustomers);
-router.get('/:id',              getCustomer);
-router.get('/:id/risk-breakdown', getRiskBreakdown);
+router.get('/',                 canAccessCustomers, listCustomers);
+router.get('/:id',              canAccessCustomers, getCustomer);
+router.get('/:id/risk-breakdown', requirePermission('canViewReports'), getRiskBreakdown);
 router.post('/',      requirePermission('canAddCustomer'),  validate(createCustomerSchema), createCustomer);
 router.patch('/:id',  requirePermission('canEditCustomer'), validate(updateCustomerSchema), updateCustomer);
 router.patch('/:id/assign-avo', requirePermission('canVerifyCustomers'), assignAvo);
@@ -33,11 +39,11 @@ router.delete('/:id', requireOwner, deleteCustomer);
 router.patch('/:id/blacklist',   requireOwner, blacklistCustomer);
 router.delete('/:id/blacklist',  requireOwner, unblacklistCustomer);
 
-router.get('/:customerId/notes',            listNotes);
+router.get('/:customerId/notes',            canAccessCustomers, listNotes);
 router.post('/:customerId/notes',           requirePermission('canAddCustomer'), addNote);
 router.delete('/:customerId/notes/:noteId', requireOwner, deleteNote);
 
-router.get('/:customerId/documents',              listCustomerDocs);
+router.get('/:customerId/documents',              canAccessCustomers, listCustomerDocs);
 router.post('/:customerId/documents',             requirePermission('canEditCustomer'), addCustomerDoc);
 router.patch('/:customerId/documents/:docId',     requirePermission('canEditCustomer'), updateCustomerDoc);
 router.delete('/:customerId/documents/:docId',    requireOwner, deleteCustomerDoc);

@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { authenticate, requireSeller } from '../../middleware/auth.js';
+import { requirePermission } from '../../middleware/checkPermission.js';
 import { getMonthlyReport, getMonthlyCustomers, getAreaReport, getAgingReport, getCollectionsHeatmap, getPnL, getForecastReport, getCustomerBalances, getCashflowCalendar, getCashflowDay } from './reports.controller.js';
 
 const router = Router();
 
 router.use(authenticate, requireSeller);
+router.use(requirePermission('canViewReports'));
+
 router.get('/monthly',              getMonthlyReport);
 router.get('/monthly-customers',    getMonthlyCustomers);
 router.get('/areas',                getAreaReport);

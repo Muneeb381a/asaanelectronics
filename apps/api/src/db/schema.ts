@@ -81,14 +81,14 @@ export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
   canEditCustomer: true,
   canAddInstallment: true,
   canRecordPayment: true,
-  canViewReports: true,
-  canManageProducts: true,
+  canViewReports: false,       // owner must explicitly grant report access
+  canManageProducts: false,    // only grant to relevant roles
   canVerifyCustomers: false,
   canRecordExpense: false,
   canManageReturns: false,
   canSearchCnic: false,
   canMakeCashSales: false,
-  canViewAllInstallments: true,
+  canViewAllInstallments: false, // staff see only their own customers by default
 };
 
 export const users = pgTable('users', {

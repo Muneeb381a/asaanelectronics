@@ -9,9 +9,9 @@ const router = Router();
 
 router.use(authenticate, requireSeller);
 
-router.get('/intelligence', getInventoryIntelligence);
-router.get('/valuation',   getValuation);
-router.get('/',            listProducts);
+router.get('/intelligence', requirePermission(['canManageProducts', 'canViewReports']), getInventoryIntelligence);
+router.get('/valuation',   requirePermission(['canManageProducts', 'canViewReports']), getValuation);
+router.get('/',            requirePermission('canManageProducts'), listProducts);
 router.post('/',      requirePermission('canManageProducts'), validate(createProductSchema), createProduct);
 router.patch('/:id',  requirePermission('canManageProducts'), validate(updateProductSchema), updateProduct);
 router.delete('/:id', requireOwner, deleteProduct);

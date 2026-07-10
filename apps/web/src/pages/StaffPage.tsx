@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { staffApi, PERM_LABELS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
+import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
 import { attendanceApi } from '../api/attendance.api.ts';
 import { handoversApi, type Handover, type StaffBalance } from '../api/handovers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -13,24 +13,28 @@ import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 type StaffType = 'ACCOUNT' | 'AVO' | 'MANAGER' | 'CASHIER' | 'CUSTOM';
 
 const PRESET_PERMS: Record<Exclude<StaffType, 'CUSTOM'>, StaffPermissions> = {
-  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: true,  canViewAllInstallments: true  },
+  // Account staff: day-to-day customer & installment operations — no financial reports
+  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: true  },
+  // AVO: verification-only — cannot add/edit customers or see financials
   AVO:     { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: false, canViewReports: false, canManageProducts: false, canVerifyCustomers: true,  canRecordExpense: false, canManageReturns: false, canSearchCnic: true,  canMakeCashSales: false, canViewAllInstallments: false },
+  // Manager: full access including reports and expenses
   MANAGER: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: true,  canRecordExpense: true,  canManageReturns: true,  canSearchCnic: true,  canMakeCashSales: true,  canViewAllInstallments: true  },
-  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: true,  canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: true,  canViewAllInstallments: true  },
+  // Cashier: records payments and cash sales only — no customer/installment mgmt, no reports
+  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: true,  canViewAllInstallments: false },
 };
 
 const DEFAULT_CUSTOM_PERMS: StaffPermissions = {
   canAddCustomer: true, canEditCustomer: true, canAddInstallment: true,
-  canRecordPayment: true, canViewReports: true, canManageProducts: true,
+  canRecordPayment: true, canViewReports: false, canManageProducts: false,
   canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false,
-  canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: true,
+  canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: false,
 };
 
 const STAFF_TYPES: { value: StaffType; label: string; desc: string }[] = [
   { value: 'ACCOUNT', label: 'Account Staff', desc: 'Customers, installments & payments' },
   { value: 'AVO',     label: 'AVO',           desc: 'Area Verification Officer' },
-  { value: 'MANAGER', label: 'Manager',       desc: 'Full access to all features' },
-  { value: 'CASHIER', label: 'Cashier',       desc: 'Payments & reports only' },
+  { value: 'MANAGER', label: 'Manager',       desc: 'Full access including reports' },
+  { value: 'CASHIER', label: 'Cashier',       desc: 'Record payments & cash sales only' },
   { value: 'CUSTOM',  label: 'Custom',        desc: 'Set permissions manually' },
 ];
 
@@ -102,41 +106,47 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Permissions preview / editor */}
-        <div className="mb-4 border border-gray-100 rounded-xl p-3">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <div className="mb-4 border border-gray-100 rounded-xl p-3 space-y-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
             {staffType === 'CUSTOM' ? 'Set Permissions' : 'Included Permissions'}
           </p>
-          <div className="space-y-2">
-            {(Object.keys(PERM_LABELS) as (keyof StaffPermissions)[]).map((key) => {
-              const active = staffType === 'CUSTOM' ? customPerms[key] : PRESET_PERMS[staffType][key];
-              return (
-                <div key={key} className="flex items-center justify-between">
-                  <span className={`text-xs ${active ? 'text-gray-700' : 'text-gray-400'}`}>
-                    {PERM_LABELS[key]}
-                  </span>
-                  {staffType === 'CUSTOM' ? (
-                    <button
-                      type="button"
-                      onClick={() => setCustomPerms((p) => ({ ...p, [key]: !p[key] }))}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        customPerms[key] ? 'bg-blue-600' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                        customPerms[key] ? 'translate-x-4.5' : 'translate-x-0.5'
-                      }`} />
-                    </button>
-                  ) : (
-                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${
-                      active ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-300'
-                    }`}>
-                      {active ? <Check size={11} strokeWidth={2.5} /> : <XIcon size={11} strokeWidth={2.5} />}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {PERM_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{group.label}</p>
+              <div className="space-y-1.5">
+                {group.keys.map((key) => {
+                  const active = staffType === 'CUSTOM' ? customPerms[key] : PRESET_PERMS[staffType as Exclude<StaffType, 'CUSTOM'>][key];
+                  const isSensitive = group.label.includes('Sensitive');
+                  return (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className={`text-xs ${active ? (isSensitive ? 'text-orange-700 font-medium' : 'text-gray-700') : 'text-gray-400'}`}>
+                        {PERM_LABELS[key]}
+                      </span>
+                      {staffType === 'CUSTOM' ? (
+                        <button
+                          type="button"
+                          onClick={() => setCustomPerms((p) => ({ ...p, [key]: !p[key] }))}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            customPerms[key] ? (isSensitive ? 'bg-orange-500' : 'bg-blue-600') : 'bg-gray-200'
+                          }`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                            customPerms[key] ? 'translate-x-4.5' : 'translate-x-0.5'
+                          }`} />
+                        </button>
+                      ) : (
+                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${
+                          active ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-300'
+                        }`}>
+                          {active ? <Check size={11} strokeWidth={2.5} /> : <XIcon size={11} strokeWidth={2.5} />}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="space-y-3">
@@ -408,23 +418,37 @@ function StaffCard({ member }: { member: StaffMember }) {
           )}
         </div>
 
-        <div className="border-t border-gray-50 pt-3 space-y-2.5">
-          <div className="flex items-center gap-1.5 mb-2">
+        <div className="border-t border-gray-50 pt-3 space-y-3">
+          <div className="flex items-center gap-1.5 mb-1">
             <Shield size={12} className="text-gray-400" />
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Permissions</p>
           </div>
-          {(Object.keys(PERM_LABELS) as (keyof StaffPermissions)[]).map((key) => (
-            <div key={key} className="flex items-center justify-between">
-              <span className="text-xs text-gray-600">{PERM_LABELS[key]}</span>
-              {isOwner ? (
-                <PermissionToggle member={member} permKey={key} />
-              ) : (
-                <div className={`relative inline-flex h-5 w-9 items-center rounded-full cursor-default ${perms[key] ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${perms[key] ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+          {PERM_GROUPS.map((group) => {
+            const isSensitive = group.label.includes('Sensitive');
+            return (
+              <div key={group.label}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1.5 ${isSensitive ? 'text-orange-400' : 'text-gray-400'}`}>
+                  {group.label}
+                </p>
+                <div className="space-y-1.5">
+                  {group.keys.map((key) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className={`text-xs ${perms[key] ? (isSensitive ? 'text-orange-700 font-medium' : 'text-gray-700') : 'text-gray-400'}`}>
+                        {PERM_LABELS[key]}
+                      </span>
+                      {isOwner ? (
+                        <PermissionToggle member={member} permKey={key} />
+                      ) : (
+                        <div className={`relative inline-flex h-5 w-9 items-center rounded-full cursor-default ${perms[key] ? (isSensitive ? 'bg-orange-500' : 'bg-blue-600') : 'bg-gray-200'}`}>
+                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${perms[key] ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
 

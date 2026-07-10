@@ -16,7 +16,7 @@ router.post('/jazzcash-callback',       jazzCashCallback);
 
 router.use(authenticate, requireSeller);
 
-router.get('/',       listPayments);
+router.get('/',       requirePermission('canRecordPayment'), listPayments);
 router.get('/jazzcash-status',  jazzCashStatus);
 router.post('/jazzcash-link',   requireOwner, generateJazzCashLink);
 router.post('/',      requirePermission('canRecordPayment'), validate(createPaymentSchema), recordPayment);
