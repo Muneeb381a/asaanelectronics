@@ -153,11 +153,36 @@ export class SearchService {
       }
     }
 
+    // ACS — only computed when bureau data exists
+    const acsScore = bureauRows.length > 0 ? computeAcs(bureauRows) : null;
+
     return {
       customers:    customerRows,
       installments: installmentRows,
       products:     productRows,
       bureau:       bureauRows,
+      acsScore,
     };
   }
+}
+
+function computeAcs(rows: { activeCount: number; defaultedCount: number; completedCount: number; totalRemaining: string }[]): number {
+  const totalDefaults  = rows.reduce((s, r) => s + r.defaultedCount, 0);
+  const totalActive    = rows.reduce((s, r) => s + r.activeCount, 0);
+  const totalRemaining = rows.reduce((s, r) => s + Number(r.totalRemaining), 0);
+
+  let score = 100;
+
+  // Default penalty: -25 per default, capped at -75
+  score -= Math.min(totalDefaults * 25, 75);
+
+  // Active overexposure penalty (running too many loans at once)
+  if (totalActive >= 3) score -= 10;
+  else if (totalActive >= 2) score -= 5;
+
+  // Outstanding balance exposure penalty
+  if (totalRemaining > 200_000) score -= 10;
+  else if (totalRemaining > 100_000) score -= 5;
+
+  return Math.max(0, score);
 }

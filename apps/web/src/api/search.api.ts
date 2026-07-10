@@ -53,6 +53,7 @@ export type SearchResults = {
   installments: SearchInstallment[];
   products:     SearchProduct[];
   bureau:       BureauShopResult[];
+  acsScore:     number | null;
 };
 
 export const searchApi = {

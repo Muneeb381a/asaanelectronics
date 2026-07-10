@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, X, Users, CreditCard, Package, Loader2, AlertOctagon,
-  ChevronRight, Phone, MapPin, ShieldAlert, CheckCircle2, Clock,
+  ChevronRight, Phone, MapPin, ShieldAlert, CheckCircle2, Clock, Star,
 } from 'lucide-react';
 import { searchApi, type SearchResults } from '../api/search.api.ts';
 
@@ -18,6 +18,14 @@ const STATUS_COLOR: Record<string, string> = {
 
 function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
+}
+
+function acsLabel(score: number): { label: string; cls: string; bar: string } {
+  if (score >= 90) return { label: 'Excellent',       cls: 'text-emerald-700 bg-emerald-50 border-emerald-200', bar: 'bg-emerald-500' };
+  if (score >= 75) return { label: 'Good',             cls: 'text-blue-700 bg-blue-50 border-blue-200',         bar: 'bg-blue-500' };
+  if (score >= 55) return { label: 'Average',          cls: 'text-amber-700 bg-amber-50 border-amber-200',      bar: 'bg-amber-400' };
+  if (score >= 35) return { label: 'Risky',            cls: 'text-orange-700 bg-orange-50 border-orange-200',   bar: 'bg-orange-500' };
+  return             { label: 'Very High Risk',  cls: 'text-red-700 bg-red-50 border-red-200',           bar: 'bg-red-500' };
 }
 
 function useDebounce(value: string, ms: number) {
@@ -213,67 +221,85 @@ export default function GlobalSearch({ open, onClose }: Props) {
                 </div>
               )}
 
-              {/* Cross-shop Bureau — only appears on CNIC searches */}
-              {(data?.bureau?.length ?? 0) > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-                    <ShieldAlert className="w-3.5 h-3.5 text-orange-500" />
-                    <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Doosri Shops mein History</span>
-                    <span className="text-[10px] text-orange-400 ml-auto">Cross-shop bureau</span>
-                  </div>
-                  {data!.bureau.map((b, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-orange-50/60 border-l-2 border-orange-300">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-sm font-semibold shrink-0">
-                        {b.customerName.charAt(0).toUpperCase()}
+              {/* Cross-shop Bureau + ACS Score */}
+              {(data?.bureau?.length ?? 0) > 0 && (() => {
+                const score = data!.acsScore ?? 100;
+                const acs   = acsLabel(score);
+                const totalDefaults  = data!.bureau.reduce((s, b) => s + b.defaultedCount, 0);
+                const totalCompleted = data!.bureau.reduce((s, b) => s + b.completedCount, 0);
+                const totalActive    = data!.bureau.reduce((s, b) => s + b.activeCount, 0);
+                const totalRemaining = data!.bureau.reduce((s, b) => s + Number(b.totalRemaining), 0);
+                return (
+                  <div>
+                    {/* ACS Score Card */}
+                    <div className={`mx-4 mt-3 mb-2 rounded-xl border p-3 ${acs.cls}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Star className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-bold uppercase tracking-wider">Assaan Credit Score</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black">{score}</span>
+                          <span className="text-xs font-semibold opacity-60">/ 100</span>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        {/* Customer identity */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-800 truncate">{b.customerName}</span>
-                          {b.cnicMasked && (
-                            <span className="font-mono text-[10px] text-gray-400">{b.cnicMasked}</span>
-                          )}
-                        </div>
-                        {/* Shop name + phone */}
-                        <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-0.5 flex-wrap">
-                          <span className="flex items-center gap-1 font-medium text-orange-600">
-                            <ShieldAlert className="w-3 h-3" />{b.shopName}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Phone className="w-3 h-3" />{b.customerPhone}
-                          </span>
-                        </div>
-                        {/* Installment status counts */}
-                        <div className="flex items-center gap-3 text-[11px] mt-1 flex-wrap">
-                          {b.activeCount > 0 && (
-                            <span className="flex items-center gap-1 text-blue-600 font-medium">
-                              <Clock className="w-3 h-3" />{b.activeCount} active · {pkr(b.totalRemaining)} baki
-                            </span>
-                          )}
-                          {b.defaultedCount > 0 && (
-                            <span className="flex items-center gap-1 text-red-600 font-medium">
-                              <AlertOctagon className="w-3 h-3" />{b.defaultedCount} default
-                            </span>
-                          )}
-                          {b.completedCount > 0 && (
-                            <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                              <CheckCircle2 className="w-3 h-3" />{b.completedCount} complete
-                            </span>
-                          )}
-                          {b.activeCount === 0 && b.defaultedCount === 0 && b.completedCount === 0 && (
-                            <span className="text-gray-400">Koi installment nahi</span>
-                          )}
+                      {/* Score bar */}
+                      <div className="w-full h-1.5 rounded-full bg-black/10 mb-2">
+                        <div className={`h-1.5 rounded-full transition-all ${acs.bar}`} style={{ width: `${score}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold">{acs.label}</span>
+                        <div className="flex items-center gap-3 text-[11px] opacity-80">
+                          {totalCompleted > 0 && <span><CheckCircle2 className="w-3 h-3 inline mr-0.5" />{totalCompleted} complete</span>}
+                          {totalActive    > 0 && <span><Clock       className="w-3 h-3 inline mr-0.5" />{totalActive} active</span>}
+                          {totalDefaults  > 0 && <span><AlertOctagon className="w-3 h-3 inline mr-0.5" />{totalDefaults} default</span>}
+                          {totalRemaining > 0 && <span>{pkr(totalRemaining)} baki</span>}
                         </div>
                       </div>
                     </div>
-                  ))}
-                  <div className="mx-4 mb-2 mt-1 p-2 bg-orange-50 border border-orange-100 rounded-lg">
-                    <p className="text-[10px] text-orange-600 text-center">
-                      ⚠️ Is customer ki doosri shops mein installment history hai — approve karne se pehle review karein
-                    </p>
+
+                    {/* Per-shop breakdown header */}
+                    <div className="flex items-center gap-2 px-4 pt-1 pb-1">
+                      <ShieldAlert className="w-3.5 h-3.5 text-orange-500" />
+                      <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Shop-wise History</span>
+                      <span className="text-[10px] text-orange-400 ml-auto">{data!.bureau.length} shop{data!.bureau.length !== 1 ? 's' : ''}</span>
+                    </div>
+
+                    {/* Per-shop rows */}
+                    {data!.bureau.map((b, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-2.5 bg-orange-50/40 border-l-2 border-orange-200">
+                        <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xs font-semibold shrink-0">
+                          {b.customerName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-gray-800 truncate">{b.customerName}</span>
+                            {b.cnicMasked && <span className="font-mono text-[10px] text-gray-400">{b.cnicMasked}</span>}
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-0.5 flex-wrap">
+                            <span className="font-medium text-orange-600">{b.shopName}</span>
+                            <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{b.customerPhone}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] mt-0.5 flex-wrap">
+                            {b.activeCount    > 0 && <span className="text-blue-600"><Clock        className="w-3 h-3 inline mr-0.5" />{b.activeCount} active · {pkr(b.totalRemaining)} baki</span>}
+                            {b.defaultedCount > 0 && <span className="text-red-600 font-semibold"><AlertOctagon className="w-3 h-3 inline mr-0.5" />{b.defaultedCount} default</span>}
+                            {b.completedCount > 0 && <span className="text-emerald-600"><CheckCircle2 className="w-3 h-3 inline mr-0.5" />{b.completedCount} complete</span>}
+                            {b.activeCount === 0 && b.defaultedCount === 0 && b.completedCount === 0 && <span className="text-gray-400">Koi installment nahi</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {totalDefaults > 0 && (
+                      <div className="mx-4 mb-2 mt-1 p-2 bg-red-50 border border-red-100 rounded-lg">
+                        <p className="text-[10px] text-red-600 text-center font-medium">
+                          ⚠️ Is customer ne kisi shop mein default kiya hai — approve karne se pehle carefully review karein
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Products */}
               {(data?.products.length ?? 0) > 0 && (
