@@ -276,6 +276,58 @@ export default function DashboardPage() {
           ))}
       </div>
 
+      {/* Monthly vs Daily installment split */}
+      {data && (data.monthlyActiveCount > 0 || data.dailyActiveCount > 0) && (() => {
+        const total = data.monthlyActiveCount + data.dailyActiveCount;
+        const mPct  = total > 0 ? Math.round((data.monthlyActiveCount / total) * 100) : 0;
+        const dPct  = 100 - mPct;
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            {/* Monthly card */}
+            <div
+              className="bg-white rounded-2xl border border-blue-100 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate('/installments?freq=monthly')}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
+                  <Calendar size={16} className="text-blue-600" />
+                </div>
+                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wide">Monthly</span>
+              </div>
+              <p className="text-3xl font-black text-gray-900">{data.monthlyActiveCount}</p>
+              <p className="text-xs text-gray-400 mt-0.5">active plans</p>
+              <p className="text-xs font-semibold text-blue-700 mt-1">{pkr(data.monthlyActiveRemaining)}</p>
+              <p className="text-[10px] text-gray-400">outstanding</p>
+              <div className="mt-3 bg-gray-100 rounded-full h-1 overflow-hidden">
+                <div className="h-full bg-blue-400 rounded-full" style={{ width: `${mPct}%` }} />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">{mPct}% of all active</p>
+            </div>
+
+            {/* Daily card */}
+            <div
+              className="bg-white rounded-2xl border border-violet-100 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate('/installments?freq=daily')}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-8 h-8 bg-violet-50 rounded-xl flex items-center justify-center">
+                  <Clock size={16} className="text-violet-600" />
+                </div>
+                <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wide">Daily</span>
+              </div>
+              <p className="text-3xl font-black text-gray-900">{data.dailyActiveCount}</p>
+              <p className="text-xs text-gray-400 mt-0.5">active plans</p>
+              <p className="text-xs font-semibold text-violet-700 mt-1">{pkr(data.dailyActiveRemaining)}</p>
+              <p className="text-[10px] text-gray-400">outstanding</p>
+              <div className="mt-3 bg-gray-100 rounded-full h-1 overflow-hidden">
+                <div className="h-full bg-violet-400 rounded-full" style={{ width: `${dPct}%` }} />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">{dPct}% of all active</p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Daily Briefing — today's priority numbers */}
       {briefing && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, isNull, lt, sql, sum } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments, products, recoveryActions, sellers } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
@@ -18,7 +18,11 @@ async function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): P
 // that affects installments, payments, or cash sales.
 export function clearSellerStatsCache(sellerId: string): void {
   for (const key of _statsCache.keys()) {
-    if (key.startsWith(`stats:${sellerId}`) || key.startsWith(`reports:${sellerId}`)) {
+    if (
+      key.startsWith(`stats:${sellerId}`) ||
+      key.startsWith(`reports:${sellerId}`) ||
+      key.startsWith(`advanced:${sellerId}`)
+    ) {
       _statsCache.delete(key);
     }
   }
@@ -33,9 +37,21 @@ export class StatsService {
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
+    // Next individual payment due date (not plan maturity). Mirrors the formula used in
+    // overdueCount and getDailyBriefing so aging buckets are consistent with overdue counts.
     const dueExpr: SQL = sql`(CASE WHEN ${installments.paymentFrequency} = 'daily'
-      THEN ${installments.startDate} + (${installments.months} || ' days')::interval
-      ELSE ${installments.startDate} + (${installments.months} || ' months')::interval
+      THEN ${installments.startDate} + (
+        (GREATEST(0, FLOOR(
+          (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+          / NULLIF(${installments.monthly}::numeric, 0)
+        )) + 1) || ' days'
+      )::interval
+      ELSE DATE_TRUNC('month', ${installments.startDate} + (
+        (GREATEST(0, FLOOR(
+          (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+          / NULLIF(${installments.monthly}::numeric, 0)
+        )) + 1) || ' months'
+      )::interval)::date + (${installments.paymentDueDay} - 1)
     END)`;
 
     const [monthlyRaw, monthlyCashRaw, collectionData, agingData, topDebtors, topProducts] = await Promise.all([
@@ -193,9 +209,13 @@ export class StatsService {
         monthCollections: Number(monthCollections[0]?.total ?? 0),
         todayCashSales:   Number(todayCashSales[0]?.total   ?? 0),
         monthCashSales:   Number(monthCashSales[0]?.total   ?? 0),
-        activeCount:        0,
-        overdueCount:       0,
-        overdueAmount:      0,
+        activeCount:             0,
+        overdueCount:            0,
+        overdueAmount:           0,
+        monthlyActiveCount:      0,
+        dailyActiveCount:        0,
+        monthlyActiveRemaining:  0,
+        dailyActiveRemaining:    0,
         recentInstallments: [],
         lowStockItems:      [],
         promisesDueCount:   0,
@@ -204,7 +224,7 @@ export class StatsService {
       };
     }
 
-    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses] = await Promise.all([
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -253,11 +273,12 @@ export class StatsService {
           ...(userId ? [eq(cashSales.soldByUserId, userId)] : []),
         )),
 
+      // ACTIVE + PENDING both count as "running" — PENDING is newly created but not yet approved
       db
         .select({ total: count() })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
-        .where(and(eq(customers.sellerId, sellerId), eq(installments.status, 'ACTIVE'), isNull(installments.deletedAt), isNull(customers.deletedAt))),
+        .where(and(eq(customers.sellerId, sellerId), inArray(installments.status, ['ACTIVE', 'PENDING']), isNull(installments.deletedAt), isNull(customers.deletedAt))),
 
       db
         .select({ total: count(), amount: sum(installments.remaining) })
@@ -369,6 +390,23 @@ export class StatsService {
           gte(expenses.date, monthStart as unknown as Date),
         ))
         .groupBy(expenses.category),
+
+      // Monthly vs daily active split
+      db
+        .select({
+          monthlyCount:     sql<number>`COUNT(*) FILTER (WHERE ${installments.paymentFrequency} = 'monthly')::int`,
+          dailyCount:       sql<number>`COUNT(*) FILTER (WHERE ${installments.paymentFrequency} = 'daily')::int`,
+          monthlyRemaining: sql<string>`COALESCE(SUM(CASE WHEN ${installments.paymentFrequency} = 'monthly' THEN ${installments.remaining}::numeric ELSE 0 END), 0)::text`,
+          dailyRemaining:   sql<string>`COALESCE(SUM(CASE WHEN ${installments.paymentFrequency} = 'daily'   THEN ${installments.remaining}::numeric ELSE 0 END), 0)::text`,
+        })
+        .from(installments)
+        .innerJoin(customers, eq(installments.customerId, customers.id))
+        .where(and(
+          eq(customers.sellerId, sellerId),
+          inArray(installments.status, ['ACTIVE', 'PENDING']),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
+        )),
     ]);
 
     const budgetLimits = (sellerRow?.settings?.expenseBudgets ?? {}) as Partial<Record<string, number>>;
@@ -378,14 +416,19 @@ export class StatsService {
       limit && limit > 0 && (spentByCat[cat] ?? 0) >= limit,
     ).length;
 
+    const fs = frequencyStats[0];
     return {
       todayCollections: Number(todayCollections[0]?.total ?? 0),
       monthCollections: Number(monthCollections[0]?.total ?? 0),
       todayCashSales:   Number(todayCashSales[0]?.total   ?? 0),
       monthCashSales:   Number(monthCashSales[0]?.total   ?? 0),
-      activeCount:   Number(activeCount[0]?.total  ?? 0),
-      overdueCount:  Number(overdueCount[0]?.total  ?? 0),
-      overdueAmount: Number(overdueCount[0]?.amount ?? 0),
+      activeCount:      Number(activeCount[0]?.total  ?? 0),
+      overdueCount:     Number(overdueCount[0]?.total  ?? 0),
+      overdueAmount:    Number(overdueCount[0]?.amount ?? 0),
+      monthlyActiveCount:     Number(fs?.monthlyCount     ?? 0),
+      dailyActiveCount:       Number(fs?.dailyCount       ?? 0),
+      monthlyActiveRemaining: Number(fs?.monthlyRemaining ?? 0),
+      dailyActiveRemaining:   Number(fs?.dailyRemaining   ?? 0),
       recentInstallments: recent,
       lowStockItems,
       promisesDueCount:    Number(promisesData[0]?.total ?? 0),

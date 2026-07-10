@@ -18,6 +18,10 @@ export interface Stats {
   activeCount: number;
   overdueCount: number;
   overdueAmount: number;
+  monthlyActiveCount: number;
+  dailyActiveCount: number;
+  monthlyActiveRemaining: number;
+  dailyActiveRemaining: number;
   recentInstallments: RecentInstallment[];
   lowStockItems: Array<{ id: string; name: string; stock: number; minStock: number }>;
   promisesDueCount: number;
