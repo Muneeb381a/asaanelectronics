@@ -327,8 +327,8 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* ── HERO: Money Snapshot ─────────────────────────────────── */}
-      {isLoading ? <HeroSkeleton /> : (
+      {/* ── HERO: Money Snapshot (owner only) ───────────────────── */}
+      {isOwner && (isLoading ? <HeroSkeleton /> : (
         <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white shadow-md">
           <div className="grid grid-cols-2 gap-5 mb-4">
             {/* Today */}
@@ -391,7 +391,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* ── Owner: Cash in Field ─────────────────────────────────── */}
       {isOwner && (() => {
@@ -503,7 +503,7 @@ export default function DashboardPage() {
               {
                 label: 'Aaj Mila',
                 sub: 'Cash + installments',
-                value: `${pkrShort(briefing.collectedToday)}`,
+                value: `${pkrShort(todayTotal)}`,
                 icon: Banknote,
                 bg: 'bg-emerald-50',
                 col: 'text-emerald-600',
