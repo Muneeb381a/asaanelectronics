@@ -52,12 +52,16 @@ export async function deletePayment(req: AuthRequest, res: Response) {
 }
 
 export async function recordBulkPayments(req: AuthRequest, res: Response) {
-  const { entries } = req.body as {
-    entries: Array<{ installmentId: string; amount: number; method: string; note?: string }>;
+  let { entries } = req.body as {
+    entries: Array<{ installmentId: string; amount: number; method: string; note?: string; collectedBy?: string }>;
   };
   if (!Array.isArray(entries)) {
     res.status(400).json({ message: 'entries must be an array' });
     return;
+  }
+  // Staff: force collectedBy on every entry — same guarantee as single-payment path
+  if (req.user!.role === 'SELLER_STAFF') {
+    entries = entries.map((e) => ({ ...e, collectedBy: req.user!.userId }));
   }
   const result = await svc.recordBulk(req.user!.sellerId!, entries as Parameters<typeof svc.recordBulk>[1]);
   success(res, result, 200);

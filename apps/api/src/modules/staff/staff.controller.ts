@@ -144,3 +144,14 @@ export async function deleteSalaryPayment(req: AuthRequest, res: Response, next:
     success(res, data);
   } catch (e) { next(e); }
 }
+
+// ── Collections Report ────────────────────────────────────────────────────────
+
+export async function getCollections(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const from  = (req.query['from'] as string | undefined) ?? today;
+    const to    = (req.query['to']   as string | undefined) ?? today;
+    success(res, await svc.collections(req.user!.sellerId!, from, to));
+  } catch (e) { next(e); }
+}

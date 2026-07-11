@@ -1,9 +1,9 @@
-import { eq, and, sql, inArray } from 'drizzle-orm';
+import { eq, and, sql, inArray, gte, lte, isNull } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { db } from '../../db/index.js';
 import {
   users, sellers, refreshTokens, payments, customers, installments,
-  commissionPayments, salaryPayments,
+  commissionPayments, salaryPayments, cashSales, products,
   DEFAULT_STAFF_PERMISSIONS, type StaffPermissions,
 } from '../../db/schema.js';
 export type { StaffPermissions };
@@ -376,5 +376,134 @@ export class StaffService {
       .returning();
     if (!deleted) throw new AppError('Salary payment not found', 404);
     return deleted;
+  }
+
+  // ── Collections Report ────────────────────────────────────────────────────────
+
+  async collections(sellerId: string, from: string, to: string) {
+    const fromDate = new Date(from + 'T00:00:00.000Z');
+    const toDate   = new Date(to   + 'T23:59:59.999Z');
+
+    // All staff for this seller (even those with zero collections show up)
+    const allStaff = await db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(and(eq(users.sellerId, sellerId), eq(users.role, 'SELLER_STAFF')));
+
+    if (!allStaff.length) return { from, to, staff: [] };
+
+    const staffIds = allStaff.map((s) => s.id);
+
+    // Installment payments collected by staff in range
+    const pymtRows = await db
+      .select({
+        id:            payments.id,
+        amount:        payments.amount,
+        method:        payments.method,
+        paidOn:        payments.paidOn,
+        note:          payments.note,
+        collectedBy:   payments.collectedBy,
+        customerName:  customers.name,
+        customerPhone: customers.phone,
+        customerId:    customers.id,
+        installmentId: payments.installmentId,
+      })
+      .from(payments)
+      .innerJoin(installments, eq(payments.installmentId, installments.id))
+      .innerJoin(customers,    eq(installments.customerId, customers.id))
+      .where(and(
+        eq(customers.sellerId, sellerId),
+        isNull(payments.deletedAt),
+        gte(payments.paidOn, fromDate),
+        lte(payments.paidOn, toDate),
+        inArray(payments.collectedBy as Parameters<typeof inArray>[0], staffIds),
+      ))
+      .orderBy(payments.paidOn);
+
+    // Cash sales made by staff in range
+    const saleRows = await db
+      .select({
+        id:           cashSales.id,
+        amount:       cashSales.amount,
+        method:       cashSales.method,
+        createdAt:    cashSales.createdAt,
+        note:         cashSales.note,
+        soldBy:       cashSales.soldByUserId,
+        customerName: cashSales.customerName,
+        customerPhone:cashSales.customerPhone,
+        productName:  products.name,
+      })
+      .from(cashSales)
+      .innerJoin(products, eq(cashSales.productId, products.id))
+      .where(and(
+        eq(cashSales.sellerId, sellerId),
+        gte(cashSales.createdAt, fromDate),
+        lte(cashSales.createdAt, toDate),
+        inArray(cashSales.soldByUserId as Parameters<typeof inArray>[0], staffIds),
+      ))
+      .orderBy(cashSales.createdAt);
+
+    // Build per-staff result map
+    type Entry =
+      | { type: 'INSTALLMENT'; id: string; amount: number; method: string; date: Date; note: string | null; customerName: string; customerPhone: string; customerId: string; installmentId: string }
+      | { type: 'CASH_SALE';   id: string; amount: number; method: string; date: Date; note: string | null; customerName: string | null; customerPhone: string | null; productName: string };
+
+    const staffMap = new Map(allStaff.map((s) => [s.id, {
+      userId:    s.id,
+      userName:  s.name,
+      summary: {
+        installments: { count: 0, total: 0, cashTotal: 0, nonCashTotal: 0 },
+        cashSales:    { count: 0, total: 0, cashTotal: 0, nonCashTotal: 0 },
+        grandTotal:   0,
+        needsHandover: 0,
+      },
+      entries: [] as Entry[],
+    }]));
+
+    for (const r of pymtRows) {
+      const staff = staffMap.get(r.collectedBy!);
+      if (!staff) continue;
+      const amount = Number(r.amount);
+      const isCash = r.method === 'CASH';
+      staff.summary.installments.count++;
+      staff.summary.installments.total    += amount;
+      if (isCash) staff.summary.installments.cashTotal    += amount;
+      else        staff.summary.installments.nonCashTotal += amount;
+      staff.entries.push({
+        type: 'INSTALLMENT', id: r.id, amount, method: r.method, date: r.paidOn,
+        note: r.note, customerName: r.customerName, customerPhone: r.customerPhone,
+        customerId: r.customerId, installmentId: r.installmentId,
+      });
+    }
+
+    for (const r of saleRows) {
+      const staff = staffMap.get(r.soldBy!);
+      if (!staff) continue;
+      const amount = Number(r.amount);
+      const isCash = r.method === 'CASH';
+      staff.summary.cashSales.count++;
+      staff.summary.cashSales.total    += amount;
+      if (isCash) staff.summary.cashSales.cashTotal    += amount;
+      else        staff.summary.cashSales.nonCashTotal += amount;
+      staff.entries.push({
+        type: 'CASH_SALE', id: r.id, amount, method: r.method, date: r.createdAt,
+        note: r.note, customerName: r.customerName, customerPhone: r.customerPhone,
+        productName: r.productName,
+      });
+    }
+
+    for (const staff of staffMap.values()) {
+      staff.summary.grandTotal    = staff.summary.installments.total + staff.summary.cashSales.total;
+      staff.summary.needsHandover = staff.summary.installments.cashTotal + staff.summary.cashSales.cashTotal;
+      // Sort entries newest first
+      staff.entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+
+    // Only return staff who have activity — owner can filter easily
+    return {
+      from,
+      to,
+      staff: Array.from(staffMap.values()).filter((s) => s.summary.grandTotal > 0),
+    };
   }
 }

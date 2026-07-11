@@ -6,6 +6,7 @@ import {
   listStaff, createStaff, updatePermissions, updateProfile, removeStaff, freezeStaff, unfreezeStaff,
   getCommissions, payCommission, deleteCommissionPayment,
   listSalaries, paySalary, deleteSalaryPayment,
+  getCollections,
 } from './staff.controller.js';
 
 const router = Router();
@@ -30,5 +31,8 @@ router.delete('/commissions/pay',  requireOwner, deleteCommissionPayment);
 router.get('/salaries',         requireOwner, listSalaries);
 router.post('/salaries/pay',    requireOwner, paySalary);
 router.delete('/salaries/pay',  requireOwner, deleteSalaryPayment);
+
+// Collections report
+router.get('/collections',      requireOwner, getCollections);
 
 export default router;

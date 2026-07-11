@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
+import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions, type CollectionEntry } from '../api/staff.api.ts';
 import { attendanceApi } from '../api/attendance.api.ts';
 import { handoversApi, type Handover, type StaffBalance } from '../api/handovers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -1543,6 +1543,268 @@ function SalarySection() {
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function pkrShort(v: number): string {
+  if (v >= 100_000) return `${(v / 100_000).toFixed(v % 100_000 === 0 ? 0 : 1)}L`;
+  if (v >= 1_000)   return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}K`;
+  return String(Math.round(v));
+}
+
+function fmtDay(d: string | Date) {
+  return new Date(d).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' });
+}
+
+const METHOD_LABEL: Record<string, string> = {
+  CASH: 'Cash', BANK: 'Bank', JAZZCASH: 'JazzCash', EASYPAISA: 'EasyPaisa', OTHER: 'Other',
+};
+
+const METHOD_COLOR: Record<string, string> = {
+  CASH: 'bg-emerald-100 text-emerald-700',
+  BANK: 'bg-blue-100 text-blue-700',
+  JAZZCASH: 'bg-red-100 text-red-700',
+  EASYPAISA: 'bg-green-100 text-green-700',
+  OTHER: 'bg-gray-100 text-gray-600',
+};
+
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+// ── Collections Section ────────────────────────────────────────────────────────
+
+type Preset = 'today' | 'week' | 'month' | 'custom';
+
+function EntryRow({ entry }: { entry: CollectionEntry }) {
+  const isInstallment = entry.type === 'INSTALLMENT';
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isInstallment ? 'bg-blue-50' : 'bg-amber-50'}`}>
+        {isInstallment
+          ? <CreditCard size={13} className="text-blue-500" />
+          : <ShoppingCart size={13} className="text-amber-500" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-gray-800 truncate">
+          {isInstallment ? entry.customerName : (entry.customerName ?? 'Walk-in')}
+        </p>
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          {isInstallment
+            ? (entry.customerPhone || '—')
+            : `Cash Sale — ${entry.productName}`}
+          {entry.note ? ` · ${entry.note}` : ''}
+        </p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-xs font-bold text-gray-900">{pkr(entry.amount)}</p>
+        <div className="flex items-center gap-1 justify-end mt-0.5">
+          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${METHOD_COLOR[entry.method] ?? METHOD_COLOR.OTHER}`}>
+            {METHOD_LABEL[entry.method] ?? entry.method}
+          </span>
+          <span className="text-[9px] text-gray-400">{fmtDay(entry.date)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StaffCollectionCard({ row }: { row: { userId: string; userName: string; summary: { installments: { count: number; total: number; cashTotal: number; nonCashTotal: number }; cashSales: { count: number; total: number; cashTotal: number; nonCashTotal: number }; grandTotal: number; needsHandover: number }; entries: CollectionEntry[] } }) {
+  const [open, setOpen] = useState(false);
+  const { summary } = row;
+  const initials = row.userName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+      {/* Header row */}
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+          <span className="text-sm font-bold text-blue-700">{initials}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-gray-900">{row.userName}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {summary.installments.count > 0 && `${summary.installments.count} payment${summary.installments.count !== 1 ? 's' : ''}`}
+            {summary.installments.count > 0 && summary.cashSales.count > 0 && ' · '}
+            {summary.cashSales.count > 0 && `${summary.cashSales.count} cash sale${summary.cashSales.count !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-lg font-black text-gray-900">{pkrShort(summary.grandTotal)}</p>
+          <p className="text-[10px] text-gray-400">Total collected</p>
+        </div>
+      </div>
+
+      {/* Summary pills */}
+      <div className="grid grid-cols-2 gap-2 px-4 pb-3">
+        {/* Needs handover */}
+        <div className={`rounded-xl px-3 py-2 ${summary.needsHandover > 0 ? 'bg-orange-50 border border-orange-100' : 'bg-gray-50'}`}>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <ArrowDownCircle size={11} className={summary.needsHandover > 0 ? 'text-orange-500' : 'text-gray-400'} />
+            <p className="text-[10px] font-semibold text-gray-500">Haath Mein Cash</p>
+          </div>
+          <p className={`text-sm font-black ${summary.needsHandover > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+            {pkrShort(summary.needsHandover)}
+          </p>
+          <p className="text-[9px] text-gray-400 mt-0.5">Handover dena baqi</p>
+        </div>
+
+        {/* Already transferred */}
+        {(() => {
+          const nonCash = summary.installments.nonCashTotal + summary.cashSales.nonCashTotal;
+          return (
+            <div className={`rounded-xl px-3 py-2 ${nonCash > 0 ? 'bg-blue-50 border border-blue-100' : 'bg-gray-50'}`}>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <Landmark size={11} className={nonCash > 0 ? 'text-blue-500' : 'text-gray-400'} />
+                <p className="text-[10px] font-semibold text-gray-500">Bank / Digital</p>
+              </div>
+              <p className={`text-sm font-black ${nonCash > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                {pkrShort(nonCash)}
+              </p>
+              <p className="text-[9px] text-gray-400 mt-0.5">Bank mein — handover nahi chahiye</p>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Expand / collapse */}
+      {row.entries.length > 0 && (
+        <>
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 py-2.5 border-t border-gray-50 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition"
+          >
+            <span>{open ? 'Chhupao' : `${row.entries.length} entries dikhao`}</span>
+            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+
+          {open && (
+            <div className="px-4 pb-3">
+              {row.entries.map((e) => <EntryRow key={e.id} entry={e} />)}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CollectionsSection() {
+  const today     = isoDate(new Date());
+  const weekStart = isoDate(new Date(Date.now() - 6 * 86400_000));
+  const monthStart = isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+
+  const [preset, setPreset]     = useState<Preset>('today');
+  const [customFrom, setCustomFrom] = useState(today);
+  const [customTo,   setCustomTo]   = useState(today);
+
+  const from = preset === 'today'  ? today
+              : preset === 'week'  ? weekStart
+              : preset === 'month' ? monthStart
+              : customFrom;
+  const to   = preset === 'custom' ? customTo : today;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['staff-collections', from, to],
+    queryFn:  () => staffApi.collections(from, to),
+    staleTime: 60_000,
+  });
+
+  const PRESETS: { key: Preset; label: string }[] = [
+    { key: 'today', label: 'Aaj' },
+    { key: 'week',  label: 'Is Hafta' },
+    { key: 'month', label: 'Is Mahine' },
+    { key: 'custom', label: 'Custom' },
+  ];
+
+  const totalCollected = data?.staff.reduce((s, r) => s + r.summary.grandTotal, 0) ?? 0;
+  const totalHandover  = data?.staff.reduce((s, r) => s + r.summary.needsHandover, 0) ?? 0;
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-100">
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <BarChart2 size={16} className="text-indigo-600" />
+          <h2 className="text-sm font-semibold text-gray-900">Collection Report</h2>
+        </div>
+        {/* Preset tabs */}
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+          {PRESETS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPreset(p.key)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                preset === p.key
+                  ? 'bg-white shadow-sm text-gray-900'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom date inputs */}
+      {preset === 'custom' && (
+        <div className="flex gap-2 mb-4">
+          <div className="flex-1">
+            <label className="block text-[10px] font-semibold text-gray-400 mb-1">From</label>
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-400 transition" />
+          </div>
+          <div className="flex-1">
+            <label className="block text-[10px] font-semibold text-gray-400 mb-1">To</label>
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-400 transition" />
+          </div>
+        </div>
+      )}
+
+      {/* Summary bar */}
+      {!isLoading && (data?.staff.length ?? 0) > 0 && (
+        <div className="flex items-center gap-3 mb-4 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
+          <div className="flex-1">
+            <p className="text-[10px] text-indigo-400 font-semibold uppercase tracking-wide">Total Collected</p>
+            <p className="text-xl font-black text-indigo-700">{pkr(totalCollected)}</p>
+          </div>
+          <div className="w-px h-10 bg-indigo-200" />
+          <div className="flex-1">
+            <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wide">Haath Mein</p>
+            <p className="text-xl font-black text-orange-600">{pkr(totalHandover)}</p>
+          </div>
+          <div className="w-px h-10 bg-indigo-200" />
+          <div className="flex-1">
+            <p className="text-[10px] text-blue-400 font-semibold uppercase tracking-wide">Bank/Digital</p>
+            <p className="text-xl font-black text-blue-600">{pkr(totalCollected - totalHandover)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Staff cards */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-32 bg-gray-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : !data?.staff.length ? (
+        <div className="text-center py-8 text-gray-400">
+          <BarChart2 size={28} className="mx-auto mb-2 opacity-40" />
+          <p className="text-sm font-medium">Is period mein koi collection nahi</p>
+          <p className="text-xs mt-0.5">Koi aur date range try karein</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {data.staff.map((row) => (
+            <StaffCollectionCard key={row.userId} row={row} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StaffPage() {
   const { user } = useAuthStore();
   const isOwner = user?.role === 'SELLER_OWNER';
@@ -1594,6 +1856,8 @@ export default function StaffPage() {
       {isOwner && <CommissionSection />}
 
       {isOwner && <SalarySection />}
+
+      {isOwner && <CollectionsSection />}
 
       {showAdd && <AddStaffModal onClose={() => setShowAdd(false)} />}
     </div>

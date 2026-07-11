@@ -100,6 +100,50 @@ export interface SalaryReport {
   staff: SalaryRow[];
 }
 
+// Collection report
+export interface CollectionInstallmentEntry {
+  type:          'INSTALLMENT';
+  id:            string;
+  amount:        number;
+  method:        string;
+  date:          string;
+  note:          string | null;
+  customerName:  string;
+  customerPhone: string;
+  customerId:    string;
+  installmentId: string;
+}
+export interface CollectionSaleEntry {
+  type:          'CASH_SALE';
+  id:            string;
+  amount:        number;
+  method:        string;
+  date:          string;
+  note:          string | null;
+  customerName:  string | null;
+  customerPhone: string | null;
+  productName:   string;
+}
+export type CollectionEntry = CollectionInstallmentEntry | CollectionSaleEntry;
+
+export interface CollectionStaffRow {
+  userId:    string;
+  userName:  string;
+  summary: {
+    installments:  { count: number; total: number; cashTotal: number; nonCashTotal: number };
+    cashSales:     { count: number; total: number; cashTotal: number; nonCashTotal: number };
+    grandTotal:    number;
+    needsHandover: number;
+  };
+  entries: CollectionEntry[];
+}
+
+export interface CollectionReport {
+  from:  string;
+  to:    string;
+  staff: CollectionStaffRow[];
+}
+
 export const staffApi = {
   list: () =>
     api.get<{ data: StaffMember[] }>('/staff').then((r) => r.data.data),
@@ -142,4 +186,9 @@ export const staffApi = {
 
   deleteSalaryPayment: (staffId: string, month: string) =>
     api.delete('/staff/salaries/pay', { data: { staffId, month } }),
+
+  // Collections report
+  collections: (from: string, to: string) =>
+    api.get<{ data: CollectionReport }>('/staff/collections', { params: { from, to } })
+      .then((r) => r.data.data),
 };
