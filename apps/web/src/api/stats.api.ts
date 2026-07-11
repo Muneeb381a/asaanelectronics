@@ -27,6 +27,10 @@ export interface Stats {
   promisesDueCount: number;
   guarantorRiskCount: number;
   budgetAlertsCount: number;
+  newThisMonthCount: number;
+  newThisMonthValue: number;
+  completedThisMonthCount: number;
+  completedThisMonthValue: number;
 }
 
 export interface Reports {

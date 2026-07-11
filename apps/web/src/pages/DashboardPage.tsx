@@ -958,6 +958,139 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* New Business + Completed This Month — owner only */}
+      {isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
+        <div className="grid grid-cols-2 gap-4">
+          {/* New business */}
+          <div className="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center">
+                <TrendingUp size={16} className="text-indigo-600" />
+              </div>
+              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide">This Month</span>
+            </div>
+            <p className="text-3xl font-black text-gray-900">{data.newThisMonthCount}</p>
+            <p className="text-xs text-gray-400 mt-0.5">new plans started</p>
+            <p className="text-xs font-semibold text-indigo-700 mt-2">{pkr(data.newThisMonthValue)}</p>
+            <p className="text-[10px] text-gray-400">total value</p>
+          </div>
+
+          {/* Completed */}
+          <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
+                <CheckCircle size={16} className="text-emerald-600" />
+              </div>
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Completed</span>
+            </div>
+            <p className="text-3xl font-black text-gray-900">{data.completedThisMonthCount}</p>
+            <p className="text-xs text-gray-400 mt-0.5">plans fully paid off</p>
+            <p className="text-xs font-semibold text-emerald-700 mt-2">{pkr(data.completedThisMonthValue)}</p>
+            <p className="text-[10px] text-gray-400">total recovered</p>
+          </div>
+        </div>
+      )}
+
+      {/* Top Debtors — who owes the most; already fetched in reports */}
+      {isOwner && reports && reports.topDebtors.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-gray-50">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-red-50 rounded-lg flex items-center justify-center">
+                <AlertTriangle size={13} className="text-red-500" />
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Biggest Outstanding</p>
+            </div>
+            <button
+              onClick={() => navigate('/installments')}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium"
+            >
+              View all <ArrowRight size={12} />
+            </button>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {reports.topDebtors.slice(0, 6).map((d) => {
+              const wa = `https://wa.me/92${d.phone.replace(/^0/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                `Assalam-o-Alaikum ${d.name}, aapka installment ka PKR ${d.remaining.toLocaleString('en-PK')} baaki hai. Meherbani farma ke jald settlement karein. Shukriya.`
+              )}`;
+              const maxRemaining = reports.topDebtors[0]?.remaining ?? 1;
+              const pct = Math.round((d.remaining / maxRemaining) * 100);
+              return (
+                <div key={d.name + d.phone} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{d.name}</p>
+                      <p className="text-[10px] text-gray-400">{d.count} plan{d.count !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <p className="text-sm font-bold text-red-600">{pkr(d.remaining)}</p>
+                      <a
+                        href={wa}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-semibold transition"
+                      >
+                        <PhoneCall size={10} />
+                        WA
+                      </a>
+                    </div>
+                  </div>
+                  <div className="bg-gray-100 rounded-full h-1 overflow-hidden">
+                    <div className="h-full bg-red-400 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Top Products — already fetched in reports */}
+      {isOwner && reports && reports.topProducts.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-gray-50">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-amber-50 rounded-lg flex items-center justify-center">
+                <Package size={13} className="text-amber-600" />
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Best Selling Products</p>
+            </div>
+            <button
+              onClick={() => navigate('/products')}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium"
+            >
+              Manage <ArrowRight size={12} />
+            </button>
+          </div>
+          <div className="p-4 space-y-3">
+            {reports.topProducts.map((p, i) => {
+              const maxCount = reports.topProducts[0]?.count ?? 1;
+              const pct = Math.round((p.count / maxCount) * 100);
+              return (
+                <div key={p.name}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-bold text-gray-300 w-4 shrink-0">#{i + 1}</span>
+                      <span className="text-xs font-semibold text-gray-800 truncate">{p.name}</span>
+                    </div>
+                    <div className="text-right shrink-0 ml-3">
+                      <span className="text-xs font-bold text-gray-900">{p.count} sold</span>
+                      <span className="text-[10px] text-gray-400 ml-2">{pkr(p.totalAmount)}</span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-amber-400"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Recent installments — owner only */}
       {isOwner && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">

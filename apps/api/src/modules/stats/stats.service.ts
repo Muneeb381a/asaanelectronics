@@ -218,13 +218,17 @@ export class StatsService {
         dailyActiveRemaining:    0,
         recentInstallments: [],
         lowStockItems:      [],
-        promisesDueCount:   0,
-        guarantorRiskCount: 0,
-        budgetAlertsCount:  0,
+        promisesDueCount:        0,
+        guarantorRiskCount:      0,
+        budgetAlertsCount:       0,
+        newThisMonthCount:       0,
+        newThisMonthValue:       0,
+        completedThisMonthCount: 0,
+        completedThisMonthValue: 0,
       };
     }
 
-    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats] = await Promise.all([
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -407,6 +411,31 @@ export class StatsService {
           isNull(installments.deletedAt),
           isNull(customers.deletedAt),
         )),
+
+      // New installments opened this calendar month
+      db
+        .select({ count: count(), totalValue: sql<string>`COALESCE(SUM(${installments.totalAmount}::numeric), 0)::text` })
+        .from(installments)
+        .innerJoin(customers, eq(installments.customerId, customers.id))
+        .where(and(
+          eq(customers.sellerId, sellerId),
+          gte(installments.createdAt, monthStart),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
+        )),
+
+      // Installments completed this calendar month
+      db
+        .select({ count: count(), totalValue: sql<string>`COALESCE(SUM(${installments.totalAmount}::numeric), 0)::text` })
+        .from(installments)
+        .innerJoin(customers, eq(installments.customerId, customers.id))
+        .where(and(
+          eq(customers.sellerId, sellerId),
+          eq(installments.status, 'COMPLETED'),
+          gte(installments.completedAt, monthStart),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
+        )),
     ]);
 
     const budgetLimits = (sellerRow?.settings?.expenseBudgets ?? {}) as Partial<Record<string, number>>;
@@ -434,6 +463,10 @@ export class StatsService {
       promisesDueCount:    Number(promisesData[0]?.total ?? 0),
       guarantorRiskCount:  Number((guarantorRisk[0] as { total: string } | undefined)?.total ?? 0),
       budgetAlertsCount,
+      newThisMonthCount:   Number(newThisMonth[0]?.count ?? 0),
+      newThisMonthValue:   Number(newThisMonth[0]?.totalValue ?? 0),
+      completedThisMonthCount: Number(completedThisMonth[0]?.count ?? 0),
+      completedThisMonthValue: Number(completedThisMonth[0]?.totalValue ?? 0),
     };
   }
 
