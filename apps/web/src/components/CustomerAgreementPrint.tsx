@@ -69,7 +69,8 @@ function DocImage({ src, label, wide }: { src: string; label: string; wide?: boo
   return (
     <div style={{ textAlign: 'center' }}>
       <img src={src} alt={label} style={{
-        width: '100%', height: wide ? 160 : 110, objectFit: 'cover',
+        width: '100%', height: wide ? 180 : 130, objectFit: 'contain',
+        background: '#f8fafc',
         border: '1.5px solid #e2e8f0', borderRadius: 6, display: 'block', marginBottom: 4,
       }} />
       <div style={{ fontSize: 8, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
@@ -88,7 +89,8 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
         body * { visibility: hidden !important; }
         #agreement-print-root, #agreement-print-root * { visibility: visible !important; }
         #agreement-print-root {
-          position: fixed !important; inset: 0 !important;
+          position: absolute !important; top: 0 !important; left: 0 !important;
+          width: 100% !important;
           background: white !important; overflow: visible !important;
           box-shadow: none !important; border-radius: 0 !important;
           max-width: none !important; padding: 0 !important;
