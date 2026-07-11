@@ -4,6 +4,7 @@ import {
   listHandovers, getCollectedToday, createHandover,
   confirmHandover, disputeHandover, reopenHandover,
   getPendingBalances, getMyBalance,
+  directReceiveHandover,
 } from './handovers.controller.js';
 
 const router = Router();
@@ -19,8 +20,9 @@ router.get('/my-balance',          getMyBalance);                       // own b
 router.post('/',                   createHandover);                    // staff submits handover
 
 // ── Owner-only actions ────────────────────────────────────────────────────────
+router.post('/direct-receive',     requireOwner, directReceiveHandover); // owner-initiated, no staff submit needed
 router.patch('/:id/confirm',       requireOwner, confirmHandover);
 router.patch('/:id/dispute',       requireOwner, disputeHandover);
-router.patch('/:id/reopen',        requireOwner, reopenHandover);      // DISPUTED → PENDING
+router.patch('/:id/reopen',        requireOwner, reopenHandover);        // DISPUTED → PENDING
 
 export default router;

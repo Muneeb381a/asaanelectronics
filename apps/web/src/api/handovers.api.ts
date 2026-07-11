@@ -65,4 +65,7 @@ export const handoversApi = {
 
   reopen: (id: string): Promise<Handover> =>
     api.patch(`/handovers/${id}/reopen`, {}).then(unwrap<Handover>),
+
+  directReceive: (data: { staffId: string; amount: number; note?: string }): Promise<Handover> =>
+    api.post('/handovers/direct-receive', data).then(unwrap<Handover>),
 };

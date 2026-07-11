@@ -68,6 +68,18 @@ export async function disputeHandover(req: AuthRequest, res: Response) {
   }).catch(console.error);
 }
 
+export async function directReceiveHandover(req: AuthRequest, res: Response) {
+  const { staffId, amount, note } = req.body as { staffId: string; amount: number; note?: string };
+  const row = await svc.directReceive(req.user!.sellerId!, req.user!.userId, { staffId, amount, note });
+  success(res, row);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'HANDOVER_CONFIRMED', entityType: 'HANDOVER', entityId: row.id,
+    description: `Cash received directly from staff: PKR ${row.confirmedAmount}`,
+    ...auditCtx(req),
+  }).catch(console.error);
+}
+
 export async function reopenHandover(req: AuthRequest, res: Response) {
   const row = await svc.reopen(req.params['id']!, req.user!.sellerId!);
   success(res, row);

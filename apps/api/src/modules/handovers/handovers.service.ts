@@ -240,6 +240,59 @@ export class HandoversService {
     return row!;
   }
 
+  // Owner directly receives cash from a staff member without waiting for staff
+  // to submit first. If there is already a PENDING handover for this staff,
+  // that one is confirmed (no duplicate). If not, a new CONFIRMED record is
+  // created immediately — staff's balance clears on the same request.
+  async directReceive(
+    sellerId: string,
+    ownerId: string,
+    body: { staffId: string; amount: number; note?: string },
+  ) {
+    if (!body.amount || body.amount <= 0)
+      throw new AppError('Amount must be greater than 0', 400);
+
+    // Consume any existing PENDING handover rather than creating a duplicate
+    const pending = await db.query.staffHandovers.findFirst({
+      where: and(
+        eq(staffHandovers.staffId, body.staffId),
+        eq(staffHandovers.sellerId, sellerId),
+        eq(staffHandovers.status, 'PENDING'),
+      ),
+    });
+
+    if (pending) {
+      const [row] = await db
+        .update(staffHandovers)
+        .set({
+          confirmedAmount: String(body.amount),
+          ownerNote:       body.note?.trim() || undefined,
+          status:          'CONFIRMED',
+          confirmedAt:     new Date(),
+          confirmedById:   ownerId,
+        })
+        .where(eq(staffHandovers.id, pending.id))
+        .returning();
+      return row!;
+    }
+
+    const [row] = await db
+      .insert(staffHandovers)
+      .values({
+        sellerId,
+        staffId:         body.staffId,
+        handedAmount:    String(body.amount),
+        confirmedAmount: String(body.amount),
+        status:          'CONFIRMED',
+        confirmedAt:     new Date(),
+        confirmedById:   ownerId,
+        note:            body.note?.trim() || undefined,
+        handoverDate:    new Date(),
+      })
+      .returning();
+    return row!;
+  }
+
   // Reopen a DISPUTED handover back to PENDING so the staff can resubmit or
   // the owner reconsiders. Only DISPUTED → PENDING is allowed.
   async reopen(id: string, sellerId: string) {

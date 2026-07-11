@@ -560,6 +560,108 @@ function pkr(v: number) {
   return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
+// ── Direct Receive Modal (owner initiates cash receive without waiting for staff) ──
+
+function DirectReceiveModal({ target, onClose }: { target: StaffBalance; onClose: () => void }) {
+  const qc = useQueryClient();
+  const systemBalance = Number(target.pendingBalance);
+  const prefill = target.pendingHandover ? target.pendingHandover.handedAmount : String(systemBalance);
+
+  const [amount, setAmount] = useState(prefill);
+  const [note,   setNote]   = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      handoversApi.directReceive({ staffId: target.staffId, amount: Number(amount), note: note.trim() || undefined }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['handovers'] });
+      void qc.invalidateQueries({ queryKey: ['handover-balances'] });
+      void qc.invalidateQueries({ queryKey: ['handover-pending-balances'] });
+      toast.success(`${target.staffName} se PKR ${Number(amount).toLocaleString()} receive ho gaya`);
+      onClose();
+    },
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Kuch masla ho gaya')),
+  });
+
+  const diff    = Number(amount) - systemBalance;
+  const hasDiff = Math.abs(diff) >= 1;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Cash Li</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{target.staffName} se receive karo</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+        </div>
+
+        {/* System balance */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+          <p className="text-[11px] text-blue-400 font-semibold uppercase tracking-wide mb-0.5">System Balance (Cash)</p>
+          <p className="text-xl font-black text-blue-700">{pkr(systemBalance)}</p>
+        </div>
+
+        {/* Staff's pending claim */}
+        {target.pendingHandover && (
+          <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+            <p className="text-[11px] text-amber-500 font-semibold uppercase tracking-wide mb-0.5">Staff ne submit kiya</p>
+            <p className="text-xl font-black text-amber-700">{pkr(Number(target.pendingHandover.handedAmount))}</p>
+            {target.pendingHandover.note && (
+              <p className="text-xs text-gray-400 mt-1 italic">"{target.pendingHandover.note}"</p>
+            )}
+          </div>
+        )}
+
+        {/* Actual amount */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+            Aap ne gina hua amount (PKR) <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
+            min="0"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50 transition"
+          />
+          {amount && hasDiff && (
+            <p className={`text-xs mt-1 font-medium ${diff < 0 ? 'text-red-500' : 'text-amber-600'}`}>
+              {diff < 0
+                ? `PKR ${Math.abs(diff).toLocaleString()} system se kam — note zaroor likhein`
+                : `PKR ${diff.toLocaleString()} system se zyada`}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+            Note {hasDiff && <span className="text-amber-500">(farq ki wajah)</span>}
+          </label>
+          <textarea
+            value={note} onChange={(e) => setNote(e.target.value)}
+            rows={2} placeholder="e.g. PKR 2000 kal dega, ya bank transfer hua"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50 transition resize-none"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!amount || Number(amount) < 0 || mutation.isPending}
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5"
+          >
+            {mutation.isPending ? 'Processing…' : <><CheckCircle size={14} /> Cash Li</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
   PENDING:   { label: 'Pending',   cls: 'bg-amber-100 text-amber-700',  icon: <Clock size={10} /> },
   CONFIRMED: { label: 'Confirmed', cls: 'bg-green-100 text-green-700',  icon: <CheckCircle size={10} /> },
@@ -619,7 +721,15 @@ function CashInHandCard({ balance, onSubmit }: { balance: StaffBalance | null | 
 }
 
 // ── Owner: all-staff balance grid ─────────────────────────────────────────────
-function StaffBalanceGrid({ balances, onSelectStaff }: { balances: StaffBalance[]; onSelectStaff: (id: string) => void }) {
+function StaffBalanceGrid({
+  balances,
+  onSelectStaff,
+  onReceive,
+}: {
+  balances: StaffBalance[];
+  onSelectStaff: (id: string) => void;
+  onReceive: (b: StaffBalance) => void;
+}) {
   const nonZero = balances.filter((b) => Number(b.pendingBalance) >= 1);
   if (balances.length === 0) return null;
 
@@ -628,37 +738,56 @@ function StaffBalanceGrid({ balances, onSelectStaff }: { balances: StaffBalance[
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Staff Cash Balances</p>
       <div className="space-y-2">
         {balances.map((b) => {
-          const bal     = Number(b.pendingBalance);
+          const bal      = Number(b.pendingBalance);
           const allClear = bal < 1;
           return (
-            <button
+            <div
               key={b.staffId}
-              onClick={() => onSelectStaff(b.staffId)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition hover:shadow-sm
-                         active:scale-[0.98]
-                         ${allClear ? 'bg-white border-gray-100 hover:border-gray-200' : 'bg-amber-50 border-amber-200 hover:border-amber-300'}"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition ${
+                allClear ? 'bg-white border-gray-100' : 'bg-amber-50 border-amber-200'
+              }`}
             >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${allClear ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-700'}`}>
-                {b.staffName.slice(0, 1).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{b.staffName}</p>
-                {b.pendingHandover ? (
-                  <p className="text-[10px] text-amber-600 flex items-center gap-1">
-                    <Clock size={9} /> Handover awaiting review
-                  </p>
-                ) : allClear ? (
-                  <p className="text-[10px] text-green-600 flex items-center gap-1">
-                    <CheckCircle size={9} /> All clear
-                  </p>
-                ) : (
-                  <p className="text-[10px] text-gray-400">No handover submitted yet</p>
-                )}
-              </div>
-              <span className={`text-sm font-bold shrink-0 ${allClear ? 'text-gray-400' : 'text-amber-700'}`}>
-                {pkr(bal)}
-              </span>
-            </button>
+              {/* Clickable left area — filters handover list */}
+              <button
+                onClick={() => onSelectStaff(b.staffId)}
+                className="flex items-center gap-3 flex-1 min-w-0 text-left"
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${allClear ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-700'}`}>
+                  {b.staffName.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{b.staffName}</p>
+                  {b.pendingHandover ? (
+                    <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                      <Clock size={9} /> Handover submit kia — confirm karein
+                    </p>
+                  ) : allClear ? (
+                    <p className="text-[10px] text-green-600 flex items-center gap-1">
+                      <CheckCircle size={9} /> Sab clear hai
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-gray-400">Handover nahi kia abhi</p>
+                  )}
+                </div>
+                <span className={`text-sm font-bold shrink-0 ${allClear ? 'text-gray-400' : 'text-amber-700'}`}>
+                  {pkr(bal)}
+                </span>
+              </button>
+
+              {/* Action button — only when cash is pending */}
+              {!allClear && (
+                <button
+                  onClick={() => onReceive(b)}
+                  className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl transition ${
+                    b.pendingHandover
+                      ? 'bg-amber-200 text-amber-800 hover:bg-amber-300'
+                      : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                  }`}
+                >
+                  {b.pendingHandover ? 'Confirm' : 'Cash Li'}
+                </button>
+              )}
+            </div>
           );
         })}
         {nonZero.length === 0 && (
@@ -865,10 +994,11 @@ function HandoversSection() {
   const isOwner = user?.role === 'SELLER_OWNER';
   const isStaff = user?.role === 'SELLER_STAFF';
 
-  const [showSubmit,     setShowSubmit]     = useState(false);
-  const [confirmTarget,  setConfirmTarget]  = useState<Handover | null>(null);
-  const [expanded,       setExpanded]       = useState(false);
-  const [filterStaffId,  setFilterStaffId]  = useState<string | undefined>(undefined);
+  const [showSubmit,          setShowSubmit]          = useState(false);
+  const [confirmTarget,       setConfirmTarget]       = useState<Handover | null>(null);
+  const [directReceiveTarget, setDirectReceiveTarget] = useState<StaffBalance | null>(null);
+  const [expanded,            setExpanded]            = useState(false);
+  const [filterStaffId,       setFilterStaffId]       = useState<string | undefined>(undefined);
 
   const { data: handovers = [], isLoading } = useQuery({
     queryKey: ['handovers', filterStaffId],
@@ -943,6 +1073,7 @@ function HandoversSection() {
         <StaffBalanceGrid
           balances={allBalances}
           onSelectStaff={(id) => setFilterStaffId((prev) => prev === id ? undefined : id)}
+          onReceive={(b) => setDirectReceiveTarget(b)}
         />
       )}
 
@@ -1042,6 +1173,9 @@ function HandoversSection() {
 
       {showSubmit && <SubmitHandoverModal onClose={() => setShowSubmit(false)} />}
       {confirmTarget && <ConfirmHandoverModal handover={confirmTarget} onClose={() => setConfirmTarget(null)} />}
+      {directReceiveTarget && (
+        <DirectReceiveModal target={directReceiveTarget} onClose={() => setDirectReceiveTarget(null)} />
+      )}
     </div>
   );
 }
