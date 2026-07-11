@@ -14,7 +14,7 @@ import { recoveryApi } from '../api/recovery.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { handoversApi } from '../api/handovers.api.ts';
-import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
+import { RowSkeleton } from '../components/ui/Skeleton.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
 function pkr(v: number) {
