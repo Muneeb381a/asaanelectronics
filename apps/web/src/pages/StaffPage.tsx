@@ -538,7 +538,6 @@ function StaffCard({ member }: { member: StaffMember }) {
           </div>
         )}
       </div>
-      </div>
 
       {showFreeze   && <FreezeModal member={member} onClose={() => setShowFreeze(false)} />}
       {showProfile  && <ProfileEditModal member={member} onClose={() => setShowProfile(false)} />}
