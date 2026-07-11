@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions } from '../api/staff.api.ts';
 import { attendanceApi } from '../api/attendance.api.ts';
@@ -336,6 +336,70 @@ function FreezeModal({ member, onClose }: { member: StaffMember; onClose: () => 
   );
 }
 
+function ProfileEditModal({ member, onClose }: { member: StaffMember; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [commRate, setCommRate]   = useState(member.commissionRate ? String(Number(member.commissionRate)) : '');
+  const [salary,   setSalary]     = useState(member.monthlySalary  ? String(Number(member.monthlySalary))  : '');
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => staffApi.updateProfile(member.id, {
+      commissionRate: commRate !== '' ? Number(commRate) : null,
+      monthlySalary:  salary   !== '' ? Number(salary)   : null,
+    }),
+    onSuccess: (updated) => {
+      qc.setQueryData<StaffMember[]>(['staff'], (old) => old?.map((m) => m.id === updated.id ? updated : m) ?? []);
+      toast.success('Profile updated');
+      onClose();
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">{member.name}</h3>
+            <p className="text-xs text-gray-400">Commission Rate & Salary</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+            Commission Rate (%) — leave blank to use shop-wide rate
+          </label>
+          <div className="relative">
+            <Percent size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="number" value={commRate} onChange={(e) => setCommRate(e.target.value)} min="0" max="100" step="0.5"
+              placeholder="e.g. 2.5"
+              className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 transition" />
+          </div>
+          {commRate && <p className="text-[10px] text-blue-500 mt-1">{member.name} ko har payment pe {commRate}% commission milegi</p>}
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Monthly Salary (PKR)</label>
+          <div className="relative">
+            <DollarSign size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="number" value={salary} onChange={(e) => setSalary(e.target.value)} min="0"
+              placeholder="e.g. 25000"
+              className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 transition" />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={onClose} className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Cancel</button>
+          <button onClick={() => mutate()} disabled={isPending}
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition disabled:opacity-50">
+            {isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StaffCard({ member }: { member: StaffMember }) {
   const qc = useQueryClient();
   const { user } = useAuthStore();
@@ -344,8 +408,9 @@ function StaffCard({ member }: { member: StaffMember }) {
   const staffType = detectStaffType(perms);
   const initials = member.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const frozen = isMemberFrozen(member);
-  const [showFreeze, setShowFreeze] = useState(false);
+  const [showFreeze,  setShowFreeze]  = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const { mutate: remove, isPending: isRemoving } = useMutation({
     mutationFn: () => staffApi.remove(member.id),
@@ -450,9 +515,33 @@ function StaffCard({ member }: { member: StaffMember }) {
             );
           })}
         </div>
+
+        {/* Rate & Salary footer — owner only */}
+        {isOwner && (
+          <div className="border-t border-gray-50 mt-3 pt-3 flex items-center justify-between gap-2">
+            <div className="flex gap-3 text-[11px] text-gray-500">
+              <span className="flex items-center gap-1">
+                <Percent size={10} className="text-blue-400" />
+                {member.commissionRate ? `${Number(member.commissionRate)}% comm` : 'Shop rate'}
+              </span>
+              <span className="flex items-center gap-1">
+                <DollarSign size={10} className="text-emerald-500" />
+                {member.monthlySalary
+                  ? `PKR ${Number(member.monthlySalary).toLocaleString('en-PK', { maximumFractionDigits: 0 })}/mo`
+                  : 'No salary set'}
+              </span>
+            </div>
+            <button onClick={() => setShowProfile(true)}
+              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-blue-500 transition">
+              <Pencil size={10} /> Edit
+            </button>
+          </div>
+        )}
+      </div>
       </div>
 
-      {showFreeze && <FreezeModal member={member} onClose={() => setShowFreeze(false)} />}
+      {showFreeze   && <FreezeModal member={member} onClose={() => setShowFreeze(false)} />}
+      {showProfile  && <ProfileEditModal member={member} onClose={() => setShowProfile(false)} />}
 
       <ConfirmDialog
         open={removeConfirm}
@@ -1183,12 +1272,36 @@ function AttendanceSection({ isOwner }: { isOwner: boolean }) {
 }
 
 function CommissionSection() {
+  const qc  = useQueryClient();
   const now = new Date();
   const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  const [payTarget, setPayTarget] = useState<{ userId: string; userName: string; commission: number } | null>(null);
+  const [payNote, setPayNote]     = useState('');
+  const [payAmount, setPayAmount] = useState('');
+
   const { data, isLoading } = useQuery({
     queryKey: ['staff-commissions', month],
     queryFn: () => staffApi.commissions(month),
     staleTime: 60_000,
+  });
+
+  const payMutation = useMutation({
+    mutationFn: () => staffApi.payCommission({ staffId: payTarget!.userId, month, amount: Number(payAmount), note: payNote || undefined }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-commissions', month] });
+      toast.success('Commission de di!');
+      setPayTarget(null); setPayNote(''); setPayAmount('');
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  const undoMutation = useMutation({
+    mutationFn: (staffId: string) => staffApi.deleteCommissionPayment(staffId, month),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-commissions', month] });
+      toast.success('Commission payment wapas liya');
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
   });
 
   return (
@@ -1196,51 +1309,235 @@ function CommissionSection() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <TrendingUp size={16} className="text-blue-600" />
-          <h2 className="text-sm font-semibold text-gray-900">Commission Report</h2>
-          {data?.commissionRate ? (
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{data.commissionRate}% rate</span>
-          ) : (
-            <span className="text-xs text-gray-400">(set commission rate in Settings)</span>
-          )}
+          <h2 className="text-sm font-semibold text-gray-900">Commission</h2>
+          {data?.commissionRate
+            ? <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Shop rate: {data.commissionRate}%</span>
+            : <span className="text-xs text-gray-400">(Settings mein rate set karein)</span>
+          }
         </div>
-        <input
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
+          className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">
-          {[0, 1].map((i) => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}
-        </div>
+        <div className="space-y-2">{[0, 1].map((i) => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}</div>
       ) : !data?.staff.length ? (
-        <p className="text-sm text-gray-400 text-center py-4">No payment collections recorded for this month.</p>
+        <p className="text-sm text-gray-400 text-center py-4">Is mahine koi payment collection record nahi</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left py-2 text-xs font-medium text-gray-400">Staff Member</th>
-                <th className="text-right py-2 text-xs font-medium text-gray-400">Payments</th>
-                <th className="text-right py-2 text-xs font-medium text-gray-400">Collected</th>
-                {data.commissionRate > 0 && <th className="text-right py-2 text-xs font-medium text-gray-400">Commission</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data.staff.map((row) => (
-                <tr key={row.userId}>
-                  <td className="py-2.5 font-medium text-gray-900">{row.userName}</td>
-                  <td className="py-2.5 text-right text-gray-500">{row.payments}</td>
-                  <td className="py-2.5 text-right text-gray-900 font-medium">{pkr(row.collected)}</td>
-                  {data.commissionRate > 0 && (
-                    <td className="py-2.5 text-right text-emerald-600 font-bold">{pkr(row.commission)}</td>
+        <div className="space-y-2">
+          {data.staff.map((row) => (
+            <div key={row.userId} className={`rounded-xl border px-4 py-3 ${row.paid ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-gray-100'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-900">{row.userName}</p>
+                    <span className="text-[10px] text-gray-400">{row.commissionRate}% rate · {row.payments} payments · {pkr(row.collected)} collected</span>
+                  </div>
+                  <p className="text-lg font-black text-gray-900 mt-0.5">{pkr(row.commission)}</p>
+                  {row.paid && (
+                    <p className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
+                      <BadgeCheck size={11} />
+                      {pkr(row.paid.amount)} diya — {new Date(row.paid.paidAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
+                      {row.paid.note && <span className="text-emerald-600 italic"> · {row.paid.note}</span>}
+                    </p>
                   )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                </div>
+                <div className="shrink-0 flex flex-col gap-1.5 items-end">
+                  {row.paid ? (
+                    <button onClick={() => undoMutation.mutate(row.userId)} disabled={undoMutation.isPending}
+                      className="text-[10px] text-gray-400 hover:text-red-500 transition flex items-center gap-1 disabled:opacity-50">
+                      <RotateCcw size={9} /> Undo
+                    </button>
+                  ) : row.commission > 0 ? (
+                    <button
+                      onClick={() => { setPayTarget(row); setPayAmount(String(row.commission)); }}
+                      className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition flex items-center gap-1.5">
+                      <BadgeCheck size={12} /> De Di
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pay commission modal */}
+      {payTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Commission De Dein</h3>
+                <p className="text-xs text-gray-400">{payTarget.userName} · {month}</p>
+              </div>
+              <button onClick={() => setPayTarget(null)} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+              <p className="text-[10px] text-gray-400 mb-0.5">Calculated commission</p>
+              <p className="text-xl font-black text-emerald-700">{pkr(payTarget.commission)}</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Amount paid (PKR) *</label>
+              <input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} min="0"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Note (optional)</label>
+              <input type="text" value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="e.g. Cash mein diya"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 transition" />
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setPayTarget(null)} className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Cancel</button>
+              <button onClick={() => payMutation.mutate()} disabled={!payAmount || Number(payAmount) <= 0 || payMutation.isPending}
+                className="flex-1 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition disabled:opacity-50">
+                {payMutation.isPending ? 'Saving…' : 'Record Karein'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SalarySection() {
+  const qc  = useQueryClient();
+  const now = new Date();
+  const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  const [payTarget, setPayTarget] = useState<{ id: string; name: string; monthlySalary: number | null } | null>(null);
+  const [payNote, setPayNote]     = useState('');
+  const [payAmount, setPayAmount] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['staff-salaries', month],
+    queryFn: () => staffApi.salaries(month),
+    staleTime: 60_000,
+  });
+
+  const payMutation = useMutation({
+    mutationFn: () => staffApi.paySalary({ staffId: payTarget!.id, month, amount: Number(payAmount), note: payNote || undefined }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-salaries', month] });
+      toast.success('Salary de di!');
+      setPayTarget(null); setPayNote(''); setPayAmount('');
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  const undoMutation = useMutation({
+    mutationFn: (staffId: string) => staffApi.deleteSalaryPayment(staffId, month),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-salaries', month] });
+      toast.success('Salary payment wapas liya');
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  const totalDue  = data?.staff.reduce((s, r) => s + (r.monthlySalary ?? 0), 0) ?? 0;
+  const totalPaid = data?.staff.reduce((s, r) => s + (r.paid?.amount ?? 0), 0) ?? 0;
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-100">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <DollarSign size={16} className="text-emerald-600" />
+          <h2 className="text-sm font-semibold text-gray-900">Salary</h2>
+          {totalDue > 0 && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${totalPaid >= totalDue ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              {pkr(totalPaid)} / {pkr(totalDue)}
+            </span>
+          )}
+        </div>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
+          className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">{[0, 1].map((i) => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+      ) : !data?.staff.length ? (
+        <p className="text-sm text-gray-400 text-center py-4">Koi staff nahi</p>
+      ) : (
+        <div className="space-y-2">
+          {data.staff.map((row) => (
+            <div key={row.id} className={`rounded-xl border px-4 py-3 ${row.paid ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-gray-100'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{row.name}</p>
+                  {row.monthlySalary ? (
+                    <p className="text-xs text-gray-400 mt-0.5">Monthly: {pkr(row.monthlySalary)}</p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-0.5 italic">Salary set nahi — Staff card mein edit karein</p>
+                  )}
+                  {row.paid && (
+                    <p className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
+                      <BadgeCheck size={11} />
+                      {pkr(row.paid.amount)} diya — {new Date(row.paid.paidAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
+                      {row.paid.note && <span className="italic"> · {row.paid.note}</span>}
+                    </p>
+                  )}
+                </div>
+                <div className="shrink-0 flex flex-col gap-1.5 items-end">
+                  {row.paid ? (
+                    <button onClick={() => undoMutation.mutate(row.id)} disabled={undoMutation.isPending}
+                      className="text-[10px] text-gray-400 hover:text-red-500 transition flex items-center gap-1 disabled:opacity-50">
+                      <RotateCcw size={9} /> Undo
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setPayTarget(row); setPayAmount(row.monthlySalary ? String(row.monthlySalary) : ''); }}
+                      className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-1.5">
+                      <BadgeCheck size={12} /> De Dein
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pay salary modal */}
+      {payTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Salary De Dein</h3>
+                <p className="text-xs text-gray-400">{payTarget.name} · {month}</p>
+              </div>
+              <button onClick={() => setPayTarget(null)} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+            </div>
+
+            {payTarget.monthlySalary && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                <p className="text-[10px] text-gray-400 mb-0.5">Monthly salary</p>
+                <p className="text-xl font-black text-blue-700">{pkr(payTarget.monthlySalary)}</p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Amount paid (PKR) *</label>
+              <input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} min="0"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Note (optional)</label>
+              <input type="text" value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="e.g. Bank transfer"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 transition" />
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setPayTarget(null)} className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Cancel</button>
+              <button onClick={() => payMutation.mutate()} disabled={!payAmount || Number(payAmount) <= 0 || payMutation.isPending}
+                className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition disabled:opacity-50">
+                {payMutation.isPending ? 'Saving…' : 'Record Karein'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1296,6 +1593,8 @@ export default function StaffPage() {
       <AttendanceSection isOwner={isOwner} />
 
       {isOwner && <CommissionSection />}
+
+      {isOwner && <SalarySection />}
 
       {showAdd && <AddStaffModal onClose={() => setShowAdd(false)} />}
     </div>

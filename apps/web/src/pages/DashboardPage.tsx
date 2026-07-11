@@ -21,6 +21,13 @@ function pkr(v: number) {
   return 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
+// Compact format for scannability: 1,25,000 → 1.25L  |  45,000 → 45K
+function pkrShort(v: number): string {
+  if (v >= 100_000) return `${(v / 100_000).toFixed(v % 100_000 === 0 ? 0 : 1)}L`;
+  if (v >= 1_000)   return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}K`;
+  return String(v);
+}
+
 function greeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
@@ -35,7 +42,6 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: 'bg-gray-100 text-gray-500',
 };
 
-// Mini sparkline — 6 bars, no labels
 function Sparkline({ data }: { data: number[] }) {
   const max = Math.max(...data, 1);
   return (
@@ -44,35 +50,21 @@ function Sparkline({ data }: { data: number[] }) {
         const pct = Math.max((v / max) * 100, v > 0 ? 6 : 0);
         const isLast = i === data.length - 1;
         return (
-          <div
-            key={i}
-            className={`flex-1 rounded-sm ${isLast ? 'bg-blue-500' : 'bg-blue-200'}`}
-            style={{ height: `${pct}%` }}
-          />
+          <div key={i} className={`flex-1 rounded-sm ${isLast ? 'bg-blue-500' : 'bg-blue-200'}`} style={{ height: `${pct}%` }} />
         );
       })}
     </div>
   );
 }
 
-function StatCardSkeleton() {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-      <BlockSkeleton className="w-9 h-9 rounded-xl mb-3" />
-      <BlockSkeleton className="h-3 w-20 rounded mb-2" />
-      <BlockSkeleton className="h-7 w-28 rounded" />
-    </div>
-  );
-}
-
 function CashflowBar({ data }: { data: Array<{ date: string; expected: number }> }) {
-  if (!data.length) return <p className="text-xs text-gray-400 py-4 text-center">No payments due in next 30 days</p>;
+  if (!data.length) return <p className="text-xs text-gray-400 py-4 text-center">Agli 30 dinon mein koi payment due nahi</p>;
   const max = Math.max(...data.map((d) => d.expected), 1);
   const total = data.reduce((s, d) => s + d.expected, 0);
   return (
     <div>
-      <p className="text-2xl font-extrabold text-gray-900">PKR {total.toLocaleString('en-PK', { maximumFractionDigits: 0 })}</p>
-      <p className="text-xs text-gray-400 mb-3">expected in next 30 days</p>
+      <p className="text-2xl font-extrabold text-gray-900">PKR {pkrShort(total)}</p>
+      <p className="text-xs text-gray-400 mb-3">agli 30 dinon mein milne wala</p>
       <div className="flex items-end gap-0.5 h-14 overflow-hidden">
         {data.map((d) => (
           <div key={d.date} className="flex-1 flex flex-col items-center gap-0.5 group relative">
@@ -89,18 +81,56 @@ function CashflowBar({ data }: { data: Array<{ date: string; expected: number }>
   );
 }
 
+// Labeled section break — visually groups related cards
+function SectionDivider({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-1">
+      <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500 shrink-0">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-gray-700 leading-none">{title}</p>
+        {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
+      </div>
+      <div className="h-px w-16 bg-gray-200 shrink-0" />
+    </div>
+  );
+}
+
+function HeroSkeleton() {
+  return (
+    <div className="bg-gray-900 rounded-2xl p-5 animate-pulse">
+      <div className="grid grid-cols-2 gap-5 mb-4">
+        <div>
+          <div className="h-3 bg-gray-700 rounded w-16 mb-2" />
+          <div className="h-9 bg-gray-700 rounded w-28" />
+          <div className="h-3 bg-gray-800 rounded w-20 mt-2" />
+        </div>
+        <div>
+          <div className="h-3 bg-gray-700 rounded w-16 mb-2" />
+          <div className="h-9 bg-gray-700 rounded w-28" />
+          <div className="h-3 bg-gray-800 rounded w-20 mt-2" />
+        </div>
+      </div>
+      <div className="h-px bg-gray-700 mb-3" />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="h-14 bg-gray-800 rounded-xl" />
+        <div className="h-14 bg-gray-800 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const user    = useAuthStore((s) => s.user);
+  const user     = useAuthStore((s) => s.user);
   const navigate = useNavigate();
-  const isOwner = user?.role === 'SELLER_OWNER';
+  const isOwner  = user?.role === 'SELLER_OWNER';
   const queryClient = useQueryClient();
 
-  // Handover modal state
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [handoverAmount, setHandoverAmount]       = useState('');
   const [handoverNote, setHandoverNote]           = useState('');
 
-  // Staff: own pending cash balance (how much collected but not yet handed over)
   const { data: myBalance } = useQuery({
     queryKey: ['handover-my-balance'],
     queryFn:  () => handoversApi.myBalance(),
@@ -109,7 +139,6 @@ export default function DashboardPage() {
     refetchInterval: 120_000,
   });
 
-  // Owner: every staff member's pending cash balance
   const { data: pendingBalances = [] } = useQuery({
     queryKey: ['handover-pending-balances'],
     queryFn:  handoversApi.pendingBalances,
@@ -118,7 +147,6 @@ export default function DashboardPage() {
     refetchInterval: 120_000,
   });
 
-  // Submit handover mutation — staff records physical cash hand-off to owner
   const submitHandover = useMutation({
     mutationFn: () => handoversApi.create({
       handedAmount: Number(handoverAmount),
@@ -164,7 +192,6 @@ export default function DashboardPage() {
 
   const today = fmtDate(new Date());
 
-  // Derived values
   const thisMonth = reports?.monthlyCollections.at(-1)?.total ?? 0;
   const lastMonth = reports?.monthlyCollections.at(-2)?.total ?? 0;
   const momChange = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null;
@@ -174,9 +201,8 @@ export default function DashboardPage() {
   const rateColor = rate >= 80 ? 'text-emerald-600' : rate >= 60 ? 'text-amber-600' : 'text-red-500';
   const rateBar   = rate >= 80 ? 'bg-emerald-500' : rate >= 60 ? 'bg-amber-400' : 'bg-red-500';
 
-  const aging = reports?.agingBuckets;
-
-  const lowStock  = data?.lowStockItems ?? [];
+  const aging    = reports?.agingBuckets;
+  const lowStock = data?.lowStockItems ?? [];
 
   const { data: birthdays = [] } = useQuery({
     queryKey: ['upcoming-birthdays'],
@@ -193,52 +219,15 @@ export default function DashboardPage() {
     refetchInterval: 5 * 60_000,
   });
 
-  const todayTotal  = (data?.todayCollections ?? 0) + (data?.todayCashSales ?? 0);
-  const monthTotal  = (data?.monthCollections ?? 0) + (data?.monthCashSales ?? 0);
+  const todayTotal = (data?.todayCollections ?? 0) + (data?.todayCashSales ?? 0);
+  const monthTotal = (data?.monthCollections ?? 0) + (data?.monthCashSales ?? 0);
 
-  const statCards = [
-    {
-      label: "Today's Revenue",
-      value: pkr(todayTotal),
-      sub: data && (data.todayCashSales > 0 || data.todayCollections > 0)
-        ? `Inst: ${pkr(data.todayCollections)} · Cash: ${pkr(data.todayCashSales)}`
-        : undefined,
-      icon: TrendingUp,
-      light: 'bg-blue-50',
-      text: 'text-blue-600',
-    },
-    {
-      label: 'This Month',
-      value: pkr(monthTotal),
-      sub: data && (data.monthCashSales > 0 || data.monthCollections > 0)
-        ? `Inst: ${pkr(data.monthCollections)} · Cash: ${pkr(data.monthCashSales)}`
-        : undefined,
-      icon: Calendar,
-      light: 'bg-purple-50',
-      text: 'text-purple-600',
-    },
-    {
-      label: 'Active Plans',
-      value: String(data?.activeCount ?? 0),
-      icon: CreditCard,
-      light: 'bg-emerald-50',
-      text: 'text-emerald-600',
-    },
-    {
-      label: 'Overdue',
-      value: String(data?.overdueCount ?? 0),
-      sub: (data?.overdueAmount ?? 0) > 0 ? `${pkr(data!.overdueAmount)} outstanding` : undefined,
-      icon: AlertTriangle,
-      light: (data?.overdueCount ?? 0) > 0 ? 'bg-red-50'  : 'bg-gray-50',
-      text:  (data?.overdueCount ?? 0) > 0 ? 'text-red-500' : 'text-gray-400',
-      to: '/installments',
-    },
-  ];
+  const hasAnalytics = !!(reports?.topDebtors.length || reports?.topProducts.length || advanced);
 
   return (
-    <div className="px-4 py-5 sm:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="px-4 py-5 sm:p-6 max-w-5xl mx-auto space-y-5">
 
-      {/* Header */}
+      {/* ── Header ──────────────────────────────────────────────── */}
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-400">{today}</p>
@@ -246,32 +235,34 @@ export default function DashboardPage() {
             {greeting()}, {user?.name.split(' ')[0]}
           </h1>
         </div>
-        <button
-          onClick={() => navigate('/reports')}
-          className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline font-medium mt-1"
-        >
-          <BarChart3 size={13} /> Full analytics
-        </button>
+        {isOwner && (
+          <button
+            onClick={() => navigate('/reports')}
+            className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline font-medium mt-1"
+          >
+            <BarChart3 size={13} /> Full analytics
+          </button>
+        )}
       </div>
 
-      {/* Quick actions strip */}
+      {/* ── Quick actions strip ──────────────────────────────────── */}
       {(() => {
         const perms = user?.permissions as Record<string, boolean> | null | undefined;
         const actions = [
           isOwner || perms?.canAddInstallment
-            ? { label: 'New Installment', icon: CreditCard,  color: 'text-blue-600',    bg: 'bg-blue-50',    to: '/installments' }
+            ? { label: 'New Installment', icon: CreditCard,   color: 'text-blue-600',    bg: 'bg-blue-50',    to: '/installments' }
             : null,
           isOwner || perms?.canAddCustomer
-            ? { label: 'Add Customer',    icon: Users,       color: 'text-violet-600',  bg: 'bg-violet-50',  to: '/customers' }
+            ? { label: 'Add Customer',    icon: Users,        color: 'text-violet-600',  bg: 'bg-violet-50',  to: '/customers' }
             : null,
           isOwner || perms?.canMakeCashSales
-            ? { label: 'Cash Sale',       icon: ShoppingCart,color: 'text-emerald-600', bg: 'bg-emerald-50', to: '/cash-sales' }
+            ? { label: 'Cash Sale',       icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50', to: '/cash-sales' }
             : null,
           isOwner || perms?.canRecordExpense
-            ? { label: 'Add Expense',     icon: Receipt,     color: 'text-orange-600',  bg: 'bg-orange-50',  to: '/expenses' }
+            ? { label: 'Add Expense',     icon: Receipt,      color: 'text-orange-600',  bg: 'bg-orange-50',  to: '/expenses' }
             : null,
           isOwner || perms?.canManageProducts
-            ? { label: 'Add Product',     icon: Package,     color: 'text-amber-600',   bg: 'bg-amber-50',   to: '/products' }
+            ? { label: 'Add Product',     icon: Package,      color: 'text-amber-600',   bg: 'bg-amber-50',   to: '/products' }
             : null,
         ].filter(Boolean) as { label: string; icon: React.ElementType; color: string; bg: string; to: string }[];
 
@@ -295,12 +286,11 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* Staff: Cash in Hand widget — shown when staff has unconfirmed cash */}
+      {/* ── Staff: Cash in Hand ──────────────────────────────────── */}
       {!isOwner && (() => {
         if (!myBalance) return null;
         const balance = Number(myBalance.pendingBalance);
         if (balance <= 0) return null;
-        // Has a pending handover submitted (waiting for owner to confirm)
         if (myBalance.pendingHandover) {
           return (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
@@ -309,17 +299,12 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-amber-800">Handover Submitted</p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  {pkr(balance)} — Owner ki confirmation ka intezaar hai
-                </p>
+                <p className="text-xs text-amber-600 mt-0.5">{pkr(balance)} — Owner ki confirmation ka intezaar hai</p>
               </div>
-              <span className="shrink-0 text-[10px] font-bold bg-amber-200 text-amber-700 px-2 py-1 rounded-lg tracking-wide">
-                PENDING
-              </span>
+              <span className="shrink-0 text-[10px] font-bold bg-amber-200 text-amber-700 px-2 py-1 rounded-lg tracking-wide">PENDING</span>
             </div>
           );
         }
-        // Has cash but hasn't submitted handover yet
         return (
           <div className="bg-linear-to-r from-emerald-600 to-emerald-500 rounded-2xl p-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -336,36 +321,79 @@ export default function DashboardPage() {
               onClick={() => { setHandoverAmount(String(balance)); setShowHandoverModal(true); }}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-white text-emerald-700 font-bold text-sm rounded-xl hover:bg-emerald-50 transition"
             >
-              <Send size={14} />
-              Jama Karein
+              <Send size={14} /> Jama Karein
             </button>
           </div>
         );
       })()}
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {isLoading
-          ? [0, 1, 2, 3].map((i) => <StatCardSkeleton key={i} />)
-          : statCards.map((card) => (
-            <div
-              key={card.label}
-              className={`bg-white rounded-2xl border border-gray-100 p-5 shadow-sm ${'to' in card && card.to ? 'cursor-pointer hover:shadow-md hover:border-gray-200 transition-shadow' : ''}`}
-              onClick={'to' in card && card.to ? () => navigate(card.to!) : undefined}
-            >
-              <div className={`w-9 h-9 ${card.light} rounded-xl flex items-center justify-center mb-3`}>
-                <card.icon size={18} className={card.text} />
-              </div>
-              <p className="text-xs text-gray-400 font-medium">{card.label}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-0.5">{card.value}</p>
-              {'sub' in card && card.sub && (
-                <p className="text-[10px] text-gray-400 mt-1 leading-tight">{card.sub}</p>
+      {/* ── HERO: Money Snapshot ─────────────────────────────────── */}
+      {isLoading ? <HeroSkeleton /> : (
+        <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white shadow-md">
+          <div className="grid grid-cols-2 gap-5 mb-4">
+            {/* Today */}
+            <div>
+              <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest mb-1">Aaj Aya</p>
+              <p className="text-4xl font-black text-white leading-none">
+                {pkrShort(todayTotal)}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-1">{pkr(todayTotal)}</p>
+              {data && (data.todayCashSales > 0 || data.todayCollections > 0) && (
+                <div className="flex gap-3 mt-2">
+                  <span className="text-[10px] text-gray-400">Inst: <span className="text-gray-300 font-medium">{pkrShort(data.todayCollections)}</span></span>
+                  <span className="text-[10px] text-gray-400">Cash: <span className="text-gray-300 font-medium">{pkrShort(data.todayCashSales)}</span></span>
+                </div>
               )}
             </div>
-          ))}
-      </div>
+            {/* This Month */}
+            <div>
+              <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest mb-1">Is Mahine</p>
+              <p className="text-4xl font-black text-white leading-none">
+                {pkrShort(monthTotal)}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-1">{pkr(monthTotal)}</p>
+              {momChange !== null && (
+                <div className="flex items-center gap-1 mt-2">
+                  {momChange >= 0
+                    ? <TrendingUp size={11} className="text-emerald-400" />
+                    : <TrendingDown size={11} className="text-red-400" />}
+                  <span className={`text-[10px] font-semibold ${momChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {Math.abs(momChange)}% {momChange >= 0 ? 'zyada' : 'kam'} — pichle mahine se
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
 
-      {/* Owner: Cash in Field summary — staff cash that hasn't reached the shop yet */}
+          {/* Active + Overdue badges */}
+          <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+            <div className="flex items-center gap-2 bg-white/8 rounded-xl px-3 py-2 flex-1">
+              <CreditCard size={14} className="text-emerald-400 shrink-0" />
+              <div>
+                <p className="text-lg font-black text-white leading-none">{data?.activeCount ?? 0}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Active Plans</p>
+              </div>
+            </div>
+            <div
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 flex-1 cursor-pointer transition ${(data?.overdueCount ?? 0) > 0 ? 'bg-red-500/20 hover:bg-red-500/30' : 'bg-white/8'}`}
+              onClick={() => navigate('/installments')}
+            >
+              <AlertTriangle size={14} className={`shrink-0 ${(data?.overdueCount ?? 0) > 0 ? 'text-red-400' : 'text-gray-600'}`} />
+              <div className="flex-1 min-w-0">
+                <p className={`text-lg font-black leading-none ${(data?.overdueCount ?? 0) > 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                  {data?.overdueCount ?? 0}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Overdue</p>
+              </div>
+              {(data?.overdueAmount ?? 0) > 0 && (
+                <p className="text-[10px] text-red-400/80 font-bold shrink-0">{pkrShort(data!.overdueAmount)}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Owner: Cash in Field ─────────────────────────────────── */}
       {isOwner && (() => {
         const staffWithCash = pendingBalances.filter((s) => Number(s.pendingBalance) > 0);
         if (!staffWithCash.length) return null;
@@ -377,14 +405,14 @@ export default function DashboardPage() {
                 <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
                   <Wallet size={13} className="text-orange-600" />
                 </div>
-                <p className="text-xs font-semibold text-orange-600 uppercase tracking-widest">Cash in Field</p>
+                <div>
+                  <p className="text-xs font-bold text-orange-700">Cash in Field</p>
+                  <p className="text-[10px] text-orange-400">Employees k paas — abhi shop nahi aya</p>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-black text-orange-700">{pkr(totalCash)}</span>
-                <button
-                  onClick={() => navigate('/staff')}
-                  className="flex items-center gap-1 text-xs text-orange-600 hover:underline font-medium"
-                >
+                <button onClick={() => navigate('/staff')} className="flex items-center gap-1 text-xs text-orange-600 hover:underline font-medium">
                   Review <ArrowRight size={12} />
                 </button>
               </div>
@@ -399,8 +427,8 @@ export default function DashboardPage() {
                     <div>
                       <p className="text-xs font-semibold text-gray-800">{s.staffName}</p>
                       {s.pendingHandover
-                        ? <p className="text-[10px] text-amber-600 font-medium">Handover submitted</p>
-                        : <p className="text-[10px] text-gray-400">Not yet submitted</p>
+                        ? <p className="text-[10px] text-amber-600 font-medium">Handover submit kia — confirm karein</p>
+                        : <p className="text-[10px] text-gray-400">Field mein — abhi jama nahi kia</p>
                       }
                     </div>
                   </div>
@@ -418,135 +446,108 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* Monthly vs Daily installment split */}
-      {data && (data.monthlyActiveCount > 0 || data.dailyActiveCount > 0) && (() => {
-        const total = data.monthlyActiveCount + data.dailyActiveCount;
-        const mPct  = total > 0 ? Math.round((data.monthlyActiveCount / total) * 100) : 0;
-        const dPct  = 100 - mPct;
-        return (
-          <div className="grid grid-cols-2 gap-4">
-            {/* Monthly card */}
-            <div
-              className="bg-white rounded-2xl border border-blue-100 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/installments?freq=monthly')}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
-                  <Calendar size={16} className="text-blue-600" />
-                </div>
-                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wide">Monthly</span>
-              </div>
-              <p className="text-3xl font-black text-gray-900">{data.monthlyActiveCount}</p>
-              <p className="text-xs text-gray-400 mt-0.5">active plans</p>
-              <p className="text-xs font-semibold text-blue-700 mt-1">{pkr(data.monthlyActiveRemaining)}</p>
-              <p className="text-[10px] text-gray-400">outstanding</p>
-              <div className="mt-3 bg-gray-100 rounded-full h-1 overflow-hidden">
-                <div className="h-full bg-blue-400 rounded-full" style={{ width: `${mPct}%` }} />
-              </div>
-              <p className="text-[10px] text-gray-400 mt-1">{mPct}% of all active</p>
-            </div>
+      {/* ═══════════════════════════════════════════════════════════
+          SECTION: Aaj Ka Kaam
+      ═══════════════════════════════════════════════════════════ */}
+      <SectionDivider icon={<ClipboardList size={14} />} title="Aaj Ka Kaam" sub="Ye cheezein aaj handle karni hain" />
 
-            {/* Daily card */}
-            <div
-              className="bg-white rounded-2xl border border-violet-100 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/installments?freq=daily')}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-8 h-8 bg-violet-50 rounded-xl flex items-center justify-center">
-                  <Clock size={16} className="text-violet-600" />
-                </div>
-                <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wide">Daily</span>
-              </div>
-              <p className="text-3xl font-black text-gray-900">{data.dailyActiveCount}</p>
-              <p className="text-xs text-gray-400 mt-0.5">active plans</p>
-              <p className="text-xs font-semibold text-violet-700 mt-1">{pkr(data.dailyActiveRemaining)}</p>
-              <p className="text-[10px] text-gray-400">outstanding</p>
-              <div className="mt-3 bg-gray-100 rounded-full h-1 overflow-hidden">
-                <div className="h-full bg-violet-400 rounded-full" style={{ width: `${dPct}%` }} />
-              </div>
-              <p className="text-[10px] text-gray-400 mt-1">{dPct}% of all active</p>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Daily Briefing — today's priority numbers */}
+      {/* Daily Briefing — urgency hierarchy: 2 big + 3 small */}
       {briefing && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-gray-50">
-            <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
-              <ClipboardList size={13} className="text-indigo-600" />
-            </div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Today's Briefing</p>
-          </div>
-          <div className="grid grid-cols-5 divide-x divide-gray-100">
+          {/* Top row: Due Today + Overdue (most actionable) */}
+          <div className="grid grid-cols-2 divide-x divide-gray-100 border-b border-gray-100">
             {[
               {
-                label: 'Due Today',
+                label: 'Aaj Due Hain',
+                sub: briefing.dueToday > 0 ? 'Inhe yaad dilao' : 'Koi due nahi — acha!',
                 value: briefing.dueToday,
                 icon: Clock,
-                bg: 'bg-blue-50',
-                color: 'text-blue-600',
-                urgent: briefing.dueToday > 0,
+                bg: briefing.dueToday > 0 ? 'bg-blue-50' : 'bg-gray-50',
+                col: briefing.dueToday > 0 ? 'text-blue-600' : 'text-gray-400',
+                valCls: briefing.dueToday > 0 ? 'text-blue-700' : 'text-gray-400',
               },
               {
-                label: 'Overdue',
+                label: 'Late Hain',
+                sub: briefing.overdueTotal > 0 ? 'Call karo — foran' : 'Sab time pe — Alhamdulillah',
                 value: briefing.overdueTotal,
                 icon: AlertTriangle,
-                bg: briefing.overdueTotal > 0 ? 'bg-red-50'   : 'bg-gray-50',
-                color: briefing.overdueTotal > 0 ? 'text-red-500' : 'text-gray-400',
-                urgent: briefing.overdueTotal > 0,
+                bg: briefing.overdueTotal > 0 ? 'bg-red-50' : 'bg-gray-50',
+                col: briefing.overdueTotal > 0 ? 'text-red-500' : 'text-gray-400',
+                valCls: briefing.overdueTotal > 0 ? 'text-red-600' : 'text-gray-400',
               },
+            ].map(({ label, sub, value, icon: Icon, bg, col, valCls }) => (
+              <div key={label} className="flex items-center gap-3 p-4">
+                <div className={`w-11 h-11 ${bg} rounded-xl flex items-center justify-center shrink-0`}>
+                  <Icon size={22} className={col} />
+                </div>
+                <div>
+                  <p className={`text-3xl font-black leading-none ${valCls}`}>{value}</p>
+                  <p className="text-xs font-bold text-gray-700 mt-1">{label}</p>
+                  <p className="text-[10px] text-gray-400">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Bottom row: Promises + Collected + Defaulted (secondary info) */}
+          <div className="grid grid-cols-3 divide-x divide-gray-100">
+            {[
               {
-                label: 'Promises',
+                label: 'Waday',
+                sub: 'Aaj follow karein',
                 value: briefing.promisesToday,
                 icon: PhoneCall,
                 bg: briefing.promisesToday > 0 ? 'bg-amber-50' : 'bg-gray-50',
-                color: briefing.promisesToday > 0 ? 'text-amber-600' : 'text-gray-400',
-                urgent: false,
+                col: briefing.promisesToday > 0 ? 'text-amber-600' : 'text-gray-400',
+                valCls: briefing.promisesToday > 0 ? 'text-amber-700' : 'text-gray-300',
               },
               {
-                label: 'Collected',
-                value: `PKR ${briefing.collectedToday.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`,
+                label: 'Aaj Mila',
+                sub: 'Cash + installments',
+                value: `${pkrShort(briefing.collectedToday)}`,
                 icon: Banknote,
                 bg: 'bg-emerald-50',
-                color: 'text-emerald-600',
-                urgent: false,
+                col: 'text-emerald-600',
+                valCls: 'text-emerald-700',
               },
               {
-                label: 'Defaulted',
+                label: 'Default',
+                sub: 'Serious mamla',
                 value: briefing.defaultedCount,
                 icon: XOctagon,
-                bg: briefing.defaultedCount > 0 ? 'bg-red-50'   : 'bg-gray-50',
-                color: briefing.defaultedCount > 0 ? 'text-red-500' : 'text-gray-400',
-                urgent: false,
+                bg: briefing.defaultedCount > 0 ? 'bg-red-50' : 'bg-gray-50',
+                col: briefing.defaultedCount > 0 ? 'text-red-500' : 'text-gray-400',
+                valCls: briefing.defaultedCount > 0 ? 'text-red-600' : 'text-gray-300',
               },
-            ].map(({ label, value, icon: Icon, bg, color }) => (
+            ].map(({ label, sub, value, icon: Icon, bg, col, valCls }) => (
               <div key={label} className="flex flex-col items-center gap-1 py-3 px-2 text-center">
                 <div className={`w-7 h-7 ${bg} rounded-lg flex items-center justify-center`}>
-                  <Icon size={14} className={color} />
+                  <Icon size={13} className={col} />
                 </div>
-                <p className={`text-base font-extrabold ${color} leading-none`}>{value}</p>
-                <p className="text-[10px] text-gray-400 leading-tight">{label}</p>
+                <p className={`text-lg font-extrabold leading-none ${valCls}`}>{value}</p>
+                <p className="text-[11px] font-semibold text-gray-600">{label}</p>
+                <p className="text-[9px] text-gray-400 leading-tight">{sub}</p>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Focus Today — top overdue accounts needing action */}
+      {/* Focus Today — overdue accounts to call */}
       {briefing && briefing.urgentAccounts.length > 0 && (
         <div className="bg-white border border-red-100 rounded-2xl shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-red-50 bg-red-50/40">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-red-50 bg-red-50/40">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center">
-                <AlertTriangle size={13} className="text-red-500" />
+              <div className="w-7 h-7 bg-red-100 rounded-lg flex items-center justify-center">
+                <PhoneCall size={14} className="text-red-500" />
               </div>
-              <p className="text-xs font-semibold text-red-600 uppercase tracking-widest">Focus Today</p>
+              <div>
+                <p className="text-xs font-bold text-red-700">Inhe Call Karein</p>
+                <p className="text-[10px] text-red-400">Sabse zyada late installments — foran contact karein</p>
+              </div>
             </div>
             {briefing.dueTomorrow > 0 && (
-              <span className="text-[10px] bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
-                +{briefing.dueTomorrow} due tomorrow
+              <span className="text-[10px] bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full shrink-0">
+                +{briefing.dueTomorrow} kal due
               </span>
             )}
           </div>
@@ -562,21 +563,18 @@ export default function DashboardPage() {
                     <p className="text-[11px] text-gray-400">{acct.customerPhone}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-gray-900">
-                      PKR {acct.monthly.toLocaleString('en-PK', { maximumFractionDigits: 0 })}
-                    </p>
+                    <p className="text-sm font-bold text-gray-900">{pkr(acct.monthly)}</p>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                       acct.daysOverdue >= 30 ? 'bg-red-100 text-red-700' :
                       acct.daysOverdue >= 7  ? 'bg-amber-100 text-amber-700' :
                                                'bg-orange-100 text-orange-600'
                     }`}>
-                      {acct.daysOverdue}d overdue
+                      {acct.daysOverdue} din late
                     </span>
                   </div>
                   <a href={wa} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-semibold transition shrink-0">
-                    <PhoneCall size={11} />
-                    WhatsApp
+                    <PhoneCall size={11} /> WhatsApp
                   </a>
                 </div>
               );
@@ -585,179 +583,30 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Daily target progress — only shown when owner has set a target */}
-      {isOwner && shop?.settings?.dailyTarget && (
-        (() => {
-          const target = shop.settings!.dailyTarget!;
-          const pct    = Math.min(Math.round((todayTotal / target) * 100), 100);
-          const over   = todayTotal > target;
-          const barCls = over ? 'bg-emerald-500' : pct >= 75 ? 'bg-blue-500' : pct >= 40 ? 'bg-amber-400' : 'bg-gray-300';
-          const txtCls = over ? 'text-emerald-600' : 'text-blue-600';
-          return (
-            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <Target size={14} className="text-blue-600" />
-                  </div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Daily Target</p>
-                </div>
-                <span className={`text-xs font-bold ${txtCls}`}>{pct}%{over ? ' ✓' : ''}</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 mb-2">
-                <span className="text-2xl font-extrabold text-gray-900">{pkr(todayTotal)}</span>
-                <span className="text-xs text-gray-400">of {pkr(target)}</span>
-              </div>
-              <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${barCls}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              {over && (
-                <p className="text-[10px] text-emerald-600 font-semibold mt-1.5">
-                  +{pkr(todayTotal - target)} above target
-                </p>
-              )}
-            </div>
-          );
-        })()
-      )}
-
-      {/* Collection rate + Aging + Sparkline */}
-      {reports && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-
-          {/* Collection rate */}
-          <div className="md:col-span-2 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Collection Rate</p>
-            <p className={`text-4xl font-extrabold ${rateColor}`}>{rate}%</p>
-            <div className="mt-3 bg-gray-100 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ${rateBar}`}
-                style={{ width: `${rate}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              {pkr(reports.collectionRate.totalCollected)} collected of {pkr(reports.collectionRate.totalBilled)} billed
-            </p>
-          </div>
-
-          {/* Aging buckets — DPD (Days Past Due) */}
-          <div className="md:col-span-2 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Installment Aging (DPD)</p>
-            <div className="space-y-2">
-              {[
-                { label: 'On Schedule', n: aging?.current ?? 0,    dot: 'bg-emerald-500', text: 'text-emerald-700', bar: 'bg-emerald-400' },
-                { label: '1–7 days',    n: aging?.days0_7 ?? 0,    dot: 'bg-amber-400',   text: 'text-amber-700',   bar: 'bg-amber-400' },
-                { label: '8–30 days',   n: aging?.days8_30 ?? 0,   dot: 'bg-orange-500',  text: 'text-orange-700',  bar: 'bg-orange-400' },
-                { label: '31–90 days',  n: aging?.days31_90 ?? 0,  dot: 'bg-red-500',     text: 'text-red-700',     bar: 'bg-red-500' },
-                { label: '90+ days',    n: aging?.days90plus ?? 0, dot: 'bg-red-800',     text: 'text-red-800',     bar: 'bg-red-800' },
-              ].map(({ label, n, dot, text, bar }) => {
-                const total = (aging?.current ?? 0) + (aging?.days0_7 ?? 0) + (aging?.days8_30 ?? 0) + (aging?.days31_90 ?? 0) + (aging?.days90plus ?? 0);
-                const pct = total > 0 ? Math.round((n / total) * 100) : 0;
-                return (
-                  <div key={label} className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-                    <span className="text-xs text-gray-500 w-20 shrink-0">{label}</span>
-                    <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                      <div className={`h-full rounded-full ${bar}`} style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className={`text-xs font-bold w-6 text-right ${n > 0 ? text : 'text-gray-300'}`}>{n}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 6-month sparkline */}
-          <div className="md:col-span-1 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">6-Month Trend</p>
-            <div className="flex-1 flex flex-col justify-end gap-2 mt-3">
-              {spark6.length > 0 ? <Sparkline data={spark6} /> : (
-                <div className="h-8 flex items-end gap-0.5">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex-1 bg-gray-100 rounded-sm h-1" />
-                  ))}
-                </div>
-              )}
-            </div>
-            {momChange !== null && (
-              <p className={`text-xs font-semibold mt-2 flex items-center gap-0.5 ${momChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                {momChange >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                {Math.abs(momChange)}% vs last month
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Low stock alert */}
-      {lowStock.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Package size={16} className="text-amber-600" />
-              <p className="text-sm font-semibold text-amber-700">
-                {lowStock.length} product{lowStock.length !== 1 ? 's' : ''} low on stock
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/products')}
-              className="flex items-center gap-1 text-xs text-amber-700 hover:underline font-medium"
-            >
-              Manage <ArrowRight size={12} />
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {lowStock.map((p) => (
-              <span
-                key={p.id}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                  p.stock === 0
-                    ? 'bg-red-100 text-red-700 border border-red-200'
-                    : 'bg-amber-100 text-amber-700 border border-amber-200'
-                }`}
-              >
-                {p.name}
-                <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${p.stock === 0 ? 'bg-red-200' : 'bg-amber-200'}`}>
-                  {p.stock === 0 ? 'OUT' : `${p.stock}/${p.minStock}`}
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Promise-to-Pay follow-up alerts */}
+      {/* Promises due for follow-up */}
       {promisesDueCount > 0 && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-indigo-600" />
-              <p className="text-sm font-semibold text-indigo-700">
-                {promisesDueCount} promise{promisesDueCount !== 1 ? 's' : ''} due for follow-up
-              </p>
+              <div>
+                <p className="text-sm font-bold text-indigo-700">
+                  {promisesDueCount} Waday — Aaj Follow Karein
+                </p>
+                <p className="text-[10px] text-indigo-400">In logo ne kal payment ka wada kia tha</p>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/installments')}
-              className="flex items-center gap-1 text-xs text-indigo-700 hover:underline font-medium"
-            >
+            <button onClick={() => navigate('/installments')} className="flex items-center gap-1 text-xs text-indigo-700 hover:underline font-medium">
               View all <ArrowRight size={12} />
             </button>
           </div>
           {promisesLoading ? (
-            <div className="space-y-2">
-              {[0, 1].map((i) => (
-                <div key={i} className="h-10 bg-indigo-100 rounded-xl animate-pulse" />
-              ))}
-            </div>
+            <div className="space-y-2">{[0, 1].map((i) => <div key={i} className="h-10 bg-indigo-100 rounded-xl animate-pulse" />)}</div>
           ) : (
             <div className="space-y-1.5">
               {promises.slice(0, 6).map((p) => {
                 const pd = new Date(p.promiseDate);
-                const todayMidnight = new Date();
-                todayMidnight.setHours(0, 0, 0, 0);
+                const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
                 const isOverdue = pd < todayMidnight;
                 return (
                   <div key={p.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 border border-indigo-100">
@@ -766,9 +615,7 @@ export default function DashboardPage() {
                       <p className="text-[10px] text-gray-400 truncate">{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-                        isOverdue ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'
-                      }`}>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'}`}>
                         {isOverdue ? 'Overdue' : 'Today'}
                       </span>
                       <p className="text-[10px] text-gray-400 mt-0.5">{fmtDate(pd)}</p>
@@ -776,11 +623,257 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
-              {promises.length > 6 && (
-                <p className="text-[10px] text-indigo-400 text-center pt-1">+{promises.length - 6} more</p>
-              )}
+              {promises.length > 6 && <p className="text-[10px] text-indigo-400 text-center pt-1">+{promises.length - 6} more</p>}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Daily target progress */}
+      {isOwner && shop?.settings?.dailyTarget && (() => {
+        const target = shop.settings!.dailyTarget!;
+        const pct    = Math.min(Math.round((todayTotal / target) * 100), 100);
+        const over   = todayTotal > target;
+        const barCls = over ? 'bg-emerald-500' : pct >= 75 ? 'bg-blue-500' : pct >= 40 ? 'bg-amber-400' : 'bg-gray-300';
+        const txtCls = over ? 'text-emerald-600' : 'text-blue-600';
+        return (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Target size={14} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-700">Roz Ka Target</p>
+                  <p className="text-[10px] text-gray-400">Aaj kahan ho target ke mukable</p>
+                </div>
+              </div>
+              <span className={`text-sm font-black ${txtCls}`}>{pct}%{over ? ' ✓' : ''}</span>
+            </div>
+            <div className="flex items-baseline gap-1.5 mb-2">
+              <span className="text-2xl font-extrabold text-gray-900">{pkr(todayTotal)}</span>
+              <span className="text-xs text-gray-400">of {pkr(target)}</span>
+            </div>
+            <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-700 ${barCls}`} style={{ width: `${pct}%` }} />
+            </div>
+            {over
+              ? <p className="text-[10px] text-emerald-600 font-semibold mt-1.5">+{pkr(todayTotal - target)} target se zyada — Masha'Allah!</p>
+              : <p className="text-[10px] text-gray-400 mt-1.5">{pkr(target - todayTotal)} aur chahiye target tak</p>
+            }
+          </div>
+        );
+      })()}
+
+      {/* ═══════════════════════════════════════════════════════════
+          SECTION: Portfolio Ki Sehat
+      ═══════════════════════════════════════════════════════════ */}
+      {isOwner && <SectionDivider icon={<BarChart3 size={14} />} title="Portfolio Ki Sehat" sub="Sare plans aur collections ka overview" />}
+
+      {/* Monthly vs Daily split */}
+      {data && (data.monthlyActiveCount > 0 || data.dailyActiveCount > 0) && (() => {
+        const total = data.monthlyActiveCount + data.dailyActiveCount;
+        const mPct  = total > 0 ? Math.round((data.monthlyActiveCount / total) * 100) : 0;
+        const dPct  = 100 - mPct;
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            <div
+              className="bg-white rounded-2xl border border-blue-100 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate('/installments?freq=monthly')}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
+                  <Calendar size={16} className="text-blue-600" />
+                </div>
+                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wide">Monthly</span>
+              </div>
+              <p className="text-3xl font-black text-gray-900">{data.monthlyActiveCount}</p>
+              <p className="text-xs text-gray-400 mt-0.5">mahana plans</p>
+              <p className="text-xs font-bold text-blue-700 mt-2">{pkr(data.monthlyActiveRemaining)}</p>
+              <p className="text-[10px] text-gray-400">baaki hai</p>
+              <div className="mt-3 bg-gray-100 rounded-full h-1 overflow-hidden">
+                <div className="h-full bg-blue-400 rounded-full" style={{ width: `${mPct}%` }} />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">{mPct}% of all active</p>
+            </div>
+
+            <div
+              className="bg-white rounded-2xl border border-violet-100 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate('/installments?freq=daily')}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="w-8 h-8 bg-violet-50 rounded-xl flex items-center justify-center">
+                  <Clock size={16} className="text-violet-600" />
+                </div>
+                <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wide">Daily</span>
+              </div>
+              <p className="text-3xl font-black text-gray-900">{data.dailyActiveCount}</p>
+              <p className="text-xs text-gray-400 mt-0.5">rozana plans</p>
+              <p className="text-xs font-bold text-violet-700 mt-2">{pkr(data.dailyActiveRemaining)}</p>
+              <p className="text-[10px] text-gray-400">baaki hai</p>
+              <div className="mt-3 bg-gray-100 rounded-full h-1 overflow-hidden">
+                <div className="h-full bg-violet-400 rounded-full" style={{ width: `${dPct}%` }} />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">{dPct}% of all active</p>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Collection Rate + Aging + Sparkline */}
+      {reports && (
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+
+          {/* Collection Rate — with plain-language status */}
+          <div className="md:col-span-2 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-start justify-between mb-1">
+              <div>
+                <p className="text-xs font-bold text-gray-600">Collection Rate</p>
+                <p className="text-[10px] text-gray-400">Jitna billing tha, utna kitna wapas aya</p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-lg shrink-0 ml-2 ${
+                rate >= 80 ? 'bg-emerald-100 text-emerald-700' :
+                rate >= 60 ? 'bg-amber-100 text-amber-700' :
+                'bg-red-100 text-red-600'
+              }`}>
+                {rate >= 80 ? '👍 Bohot Acha' : rate >= 60 ? '⚠️ Theek Hai' : '❌ Kharaab'}
+              </span>
+            </div>
+            <p className={`text-5xl font-extrabold mt-3 ${rateColor}`}>{rate}%</p>
+            <div className="mt-3 bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-700 ${rateBar}`} style={{ width: `${rate}%` }} />
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              {pkr(reports.collectionRate.totalCollected)} mila · {pkr(reports.collectionRate.totalBilled)} total
+            </p>
+          </div>
+
+          {/* Payments Ka Haal (Aging DPD) */}
+          <div className="md:col-span-2 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <div className="mb-3">
+              <p className="text-xs font-bold text-gray-600">Payments Ka Haal</p>
+              <p className="text-[10px] text-gray-400">Kitne log time pe de rahe hain</p>
+            </div>
+            <div className="space-y-2.5">
+              {[
+                { label: 'Waqt pe', sub: 'On schedule', n: aging?.current ?? 0, dot: 'bg-emerald-500', text: 'text-emerald-700', bar: 'bg-emerald-400' },
+                { label: '1–7 din late', sub: 'Yaad dilao', n: aging?.days0_7 ?? 0, dot: 'bg-amber-400', text: 'text-amber-700', bar: 'bg-amber-400' },
+                { label: '8–30 din late', sub: 'Call karein', n: aging?.days8_30 ?? 0, dot: 'bg-orange-500', text: 'text-orange-700', bar: 'bg-orange-400' },
+                { label: '31–90 din late', sub: 'Serious', n: aging?.days31_90 ?? 0, dot: 'bg-red-500', text: 'text-red-700', bar: 'bg-red-500' },
+                { label: '90+ din late', sub: 'Recovery mein', n: aging?.days90plus ?? 0, dot: 'bg-red-800', text: 'text-red-800', bar: 'bg-red-800' },
+              ].map(({ label, sub, n, dot, text, bar }) => {
+                const total = (aging?.current ?? 0) + (aging?.days0_7 ?? 0) + (aging?.days8_30 ?? 0) + (aging?.days31_90 ?? 0) + (aging?.days90plus ?? 0);
+                const pct = total > 0 ? Math.round((n / total) * 100) : 0;
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+                    <div className="w-24 shrink-0">
+                      <p className="text-[11px] font-semibold text-gray-700 leading-none">{label}</p>
+                      <p className="text-[9px] text-gray-400">{sub}</p>
+                    </div>
+                    <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                      <div className={`h-full rounded-full ${bar}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className={`text-xs font-bold w-5 text-right shrink-0 ${n > 0 ? text : 'text-gray-300'}`}>{n}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 6-Month Trend */}
+          <div className="md:col-span-1 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-600">6 Mahine</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Collection trend</p>
+            </div>
+            <div className="flex-1 flex flex-col justify-end gap-2 mt-3">
+              {spark6.length > 0 ? <Sparkline data={spark6} /> : (
+                <div className="h-8 flex items-end gap-0.5">
+                  {Array.from({ length: 6 }).map((_, i) => <div key={i} className="flex-1 bg-gray-100 rounded-sm h-1" />)}
+                </div>
+              )}
+            </div>
+            {momChange !== null && (
+              <p className={`text-xs font-semibold mt-2 flex items-center gap-0.5 ${momChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {momChange >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {Math.abs(momChange)}% pichle mahine se
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          SECTION: Is Mahine Ka Haal
+      ═══════════════════════════════════════════════════════════ */}
+      {isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
+        <SectionDivider icon={<Calendar size={14} />} title="Is Mahine Ka Haal" sub="Naye plans aur poore hue accounts" />
+      )}
+
+      {/* New Business + Completed */}
+      {isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center">
+                <TrendingUp size={16} className="text-indigo-600" />
+              </div>
+              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide">Naye Plans</span>
+            </div>
+            <p className="text-3xl font-black text-gray-900">{data.newThisMonthCount}</p>
+            <p className="text-xs text-gray-400 mt-0.5">is mahine shuru hue</p>
+            <p className="text-xs font-bold text-indigo-700 mt-2">{pkr(data.newThisMonthValue)}</p>
+            <p className="text-[10px] text-gray-400">total value</p>
+          </div>
+
+          <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
+                <CheckCircle size={16} className="text-emerald-600" />
+              </div>
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Poore Hue</span>
+            </div>
+            <p className="text-3xl font-black text-gray-900">{data.completedThisMonthCount}</p>
+            <p className="text-xs text-gray-400 mt-0.5">plans mukammal hue</p>
+            <p className="text-xs font-bold text-emerald-700 mt-2">{pkr(data.completedThisMonthValue)}</p>
+            <p className="text-[10px] text-gray-400">total wapas aya</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Alerts ──────────────────────────────────────────────── */}
+
+      {/* Low stock */}
+      {lowStock.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Package size={16} className="text-amber-600" />
+              <div>
+                <p className="text-sm font-bold text-amber-700">{lowStock.length} cheez kam ho gayi</p>
+                <p className="text-[10px] text-amber-500">Stock check karein aur order karein</p>
+              </div>
+            </div>
+            <button onClick={() => navigate('/products')} className="flex items-center gap-1 text-xs text-amber-700 hover:underline font-medium">
+              Manage <ArrowRight size={12} />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {lowStock.map((p) => (
+              <span
+                key={p.id}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                  p.stock === 0 ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-amber-100 text-amber-700 border border-amber-200'
+                }`}
+              >
+                {p.name}
+                <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${p.stock === 0 ? 'bg-red-200' : 'bg-amber-200'}`}>
+                  {p.stock === 0 ? 'KHATAM' : `${p.stock}/${p.minStock}`}
+                </span>
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -790,9 +883,10 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Gift size={16} className="text-pink-600" />
-              <p className="text-sm font-semibold text-pink-700">
-                {birthdays.length} customer birthday{birthdays.length !== 1 ? 's' : ''} this week
-              </p>
+              <div>
+                <p className="text-sm font-bold text-pink-700">{birthdays.length} customer ka birthday is hafte</p>
+                <p className="text-[10px] text-pink-400">WhatsApp bhej ke rishta mazboot karein</p>
+              </div>
             </div>
           </div>
           <div className="space-y-1.5">
@@ -800,8 +894,8 @@ export default function DashboardPage() {
               const [, mm, dd] = c.dob.split('-');
               const thisYear = new Date().getFullYear();
               const bday = new Date(`${thisYear}-${mm}-${dd}`);
-              const today = new Date(); today.setHours(0, 0, 0, 0);
-              const isToday = bday.toDateString() === today.toDateString();
+              const todayD = new Date(); todayD.setHours(0, 0, 0, 0);
+              const isToday = bday.toDateString() === todayD.toDateString();
               const phone = c.phone.replace(/^0/, '92');
               const msg = encodeURIComponent(`Assalamu Alaikum ${c.name}! 🎉 Aaj aap ka birthday hai — bohat bohat mubarak ho! Duaon mein yaad rakhna.`);
               return (
@@ -817,7 +911,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-3">
-                    {isToday && <span className="text-[10px] font-bold bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-md">Today!</span>}
+                    {isToday && <span className="text-[10px] font-bold bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-md">Aaj!</span>}
                     <button
                       onClick={() => window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')}
                       className="text-[11px] font-medium text-white bg-green-500 hover:bg-green-600 px-2.5 py-1 rounded-lg transition"
@@ -832,166 +926,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Advanced widgets row */}
-      {advanced && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-          {/* Cashflow Forecast */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
-                <Zap size={14} className="text-blue-600" />
-              </div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Cashflow Forecast</p>
-            </div>
-            <CashflowBar data={advanced.cashflowForecast} />
-          </div>
-
-          {/* Recovery Efficiency */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center">
-                <ShieldCheck size={14} className="text-emerald-600" />
-              </div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Recovery Efficiency</p>
-            </div>
-            {advanced.recovery.overdueCount === 0 ? (
-              <p className="text-xs text-gray-400 py-4 text-center">No overdue or defaulted installments</p>
-            ) : (
-              <>
-                <p className={`text-4xl font-extrabold ${
-                  advanced.recovery.efficiency >= 70 ? 'text-emerald-600'
-                  : advanced.recovery.efficiency >= 40 ? 'text-amber-600'
-                  : 'text-red-500'
-                }`}>{advanced.recovery.efficiency}%</p>
-                <div className="mt-2 bg-gray-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      advanced.recovery.efficiency >= 70 ? 'bg-emerald-500'
-                      : advanced.recovery.efficiency >= 40 ? 'bg-amber-400'
-                      : 'bg-red-500'
-                    }`}
-                    style={{ width: `${advanced.recovery.efficiency}%` }}
-                  />
-                </div>
-                <div className="flex justify-between mt-2 text-xs text-gray-400">
-                  <span>PKR {advanced.recovery.totalCollected.toLocaleString('en-PK', { maximumFractionDigits: 0 })} recovered</span>
-                  <span>{advanced.recovery.overdueCount} accounts</span>
-                </div>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  of PKR {advanced.recovery.totalDue.toLocaleString('en-PK', { maximumFractionDigits: 0 })} total due
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Staff Productivity */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-violet-50 rounded-lg flex items-center justify-center">
-                <Users size={14} className="text-violet-600" />
-              </div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Staff Productivity — 30 days</p>
-            </div>
-            {!advanced.staffProductivity.length ? (
-              <p className="text-xs text-gray-400 py-4 text-center">No payments recorded this month</p>
-            ) : (
-              <div className="space-y-2">
-                {advanced.staffProductivity.map((s) => {
-                  const maxCount = advanced.staffProductivity[0]?.count ?? 1;
-                  return (
-                    <div key={s.userId}>
-                      <div className="flex items-center justify-between text-xs mb-0.5">
-                        <span className="font-medium text-gray-700 truncate max-w-35">{s.name}</span>
-                        <span className="text-gray-400 shrink-0 ml-2">{s.count} payments · PKR {s.total.toLocaleString('en-PK', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-violet-400"
-                          style={{ width: `${(s.count / maxCount) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <p className="text-[10px] text-gray-300 mt-3">Based on payment audit logs — figures are approximate</p>
-          </div>
-
-          {/* Area Heatmap */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-rose-50 rounded-lg flex items-center justify-center">
-                <MapPin size={14} className="text-rose-600" />
-              </div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Overdue by Area</p>
-            </div>
-            {!advanced.areaHeatmap.length ? (
-              <p className="text-xs text-gray-400 py-4 text-center">No overdue customers</p>
-            ) : (
-              <div className="space-y-2">
-                {advanced.areaHeatmap.map((a) => {
-                  const maxTotal = advanced.areaHeatmap[0] ? advanced.areaHeatmap[0].overdueCount + advanced.areaHeatmap[0].defaultedCount : 1;
-                  return (
-                    <div key={a.city}>
-                      <div className="flex items-center justify-between text-xs mb-0.5">
-                        <span className="font-medium text-gray-700 truncate max-w-35">{a.city}</span>
-                        <span className="text-gray-400 shrink-0 ml-2">
-                          {a.overdueCount > 0 && <span className="text-amber-600">{a.overdueCount} late</span>}
-                          {a.overdueCount > 0 && a.defaultedCount > 0 && <span className="mx-1 text-gray-300">·</span>}
-                          {a.defaultedCount > 0 && <span className="text-red-500">{a.defaultedCount} defaulted</span>}
-                        </span>
-                      </div>
-                      <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden flex">
-                        <div className="h-full bg-amber-400" style={{ width: `${(a.overdueCount / maxTotal) * 100}%` }} />
-                        <div className="h-full bg-red-500"  style={{ width: `${(a.defaultedCount / maxTotal) * 100}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <p className="text-[10px] text-gray-300 mt-3">Derived from last word in address field — accuracy varies</p>
-          </div>
-
-        </div>
+      {/* ═══════════════════════════════════════════════════════════
+          SECTION: Tafseeli Report
+      ═══════════════════════════════════════════════════════════ */}
+      {isOwner && hasAnalytics && (
+        <SectionDivider icon={<BarChart3 size={14} />} title="Tafseeli Report" sub="Gehri nazar — weekly check karein" />
       )}
 
-      {/* New Business + Completed This Month — owner only */}
-      {isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
-        <div className="grid grid-cols-2 gap-4">
-          {/* New business */}
-          <div className="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center">
-                <TrendingUp size={16} className="text-indigo-600" />
-              </div>
-              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide">This Month</span>
-            </div>
-            <p className="text-3xl font-black text-gray-900">{data.newThisMonthCount}</p>
-            <p className="text-xs text-gray-400 mt-0.5">new plans started</p>
-            <p className="text-xs font-semibold text-indigo-700 mt-2">{pkr(data.newThisMonthValue)}</p>
-            <p className="text-[10px] text-gray-400">total value</p>
-          </div>
-
-          {/* Completed */}
-          <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
-                <CheckCircle size={16} className="text-emerald-600" />
-              </div>
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Completed</span>
-            </div>
-            <p className="text-3xl font-black text-gray-900">{data.completedThisMonthCount}</p>
-            <p className="text-xs text-gray-400 mt-0.5">plans fully paid off</p>
-            <p className="text-xs font-semibold text-emerald-700 mt-2">{pkr(data.completedThisMonthValue)}</p>
-            <p className="text-[10px] text-gray-400">total recovered</p>
-          </div>
-        </div>
-      )}
-
-      {/* Top Debtors — who owes the most; already fetched in reports */}
+      {/* Top Debtors */}
       {isOwner && reports && reports.topDebtors.length > 0 && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-gray-50">
@@ -999,12 +941,12 @@ export default function DashboardPage() {
               <div className="w-6 h-6 bg-red-50 rounded-lg flex items-center justify-center">
                 <AlertTriangle size={13} className="text-red-500" />
               </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Biggest Outstanding</p>
+              <div>
+                <p className="text-xs font-bold text-gray-700">Sabse Zyada Baaki</p>
+                <p className="text-[10px] text-gray-400">In logo ka sabse zyada amount pending hai</p>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/installments')}
-              className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium"
-            >
+            <button onClick={() => navigate('/installments')} className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
               View all <ArrowRight size={12} />
             </button>
           </div>
@@ -1024,14 +966,9 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
                       <p className="text-sm font-bold text-red-600">{pkr(d.remaining)}</p>
-                      <a
-                        href={wa}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-semibold transition"
-                      >
-                        <PhoneCall size={10} />
-                        WA
+                      <a href={wa} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-semibold transition">
+                        <PhoneCall size={10} /> WA
                       </a>
                     </div>
                   </div>
@@ -1045,7 +982,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Top Products — already fetched in reports */}
+      {/* Top Products */}
       {isOwner && reports && reports.topProducts.length > 0 && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-gray-50">
@@ -1053,12 +990,12 @@ export default function DashboardPage() {
               <div className="w-6 h-6 bg-amber-50 rounded-lg flex items-center justify-center">
                 <Package size={13} className="text-amber-600" />
               </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Best Selling Products</p>
+              <div>
+                <p className="text-xs font-bold text-gray-700">Sabse Zyada Bikne Wale</p>
+                <p className="text-[10px] text-gray-400">Ye products sabse zyada installment pe gaye</p>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/products')}
-              className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium"
-            >
+            <button onClick={() => navigate('/products')} className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
               Manage <ArrowRight size={12} />
             </button>
           </div>
@@ -1074,15 +1011,12 @@ export default function DashboardPage() {
                       <span className="text-xs font-semibold text-gray-800 truncate">{p.name}</span>
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <span className="text-xs font-bold text-gray-900">{p.count} sold</span>
+                      <span className="text-xs font-bold text-gray-900">{p.count} bikay</span>
                       <span className="text-[10px] text-gray-400 ml-2">{pkr(p.totalAmount)}</span>
                     </div>
                   </div>
                   <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-amber-400"
-                      style={{ width: `${pct}%` }}
-                    />
+                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
@@ -1091,51 +1025,188 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Recent installments — owner only */}
-      {isOwner && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-          <h2 className="font-semibold text-gray-900 text-sm">Recent Installments</h2>
-          <button onClick={() => navigate('/installments')}
-            className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
-            View all <ArrowRight size={13} />
-          </button>
-        </div>
+      {/* Advanced analytics widgets */}
+      {advanced && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {isLoading ? (
-          <RowSkeleton rows={4} />
-        ) : !data?.recentInstallments.length ? (
-          <div className="p-8 text-center text-sm text-gray-400">
-            No installments yet.{' '}
-            <button onClick={() => navigate('/installments')} className="text-blue-600 hover:underline">
-              Create one
+          {/* Cashflow Forecast */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
+                <Zap size={14} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-600">Aane Wala Paisa</p>
+                <p className="text-[10px] text-gray-400">Agli 30 din mein milne ki umeed</p>
+              </div>
+            </div>
+            <div className="mt-3">
+              <CashflowBar data={advanced.cashflowForecast} />
+            </div>
+          </div>
+
+          {/* Recovery Efficiency */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center">
+                <ShieldCheck size={14} className="text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-600">Recovery Rate</p>
+                <p className="text-[10px] text-gray-400">Overdue amount mein se kitna wapas aya</p>
+              </div>
+            </div>
+            {advanced.recovery.overdueCount === 0 ? (
+              <p className="text-xs text-emerald-600 font-semibold py-4 text-center">Koi overdue nahi — Alhamdulillah!</p>
+            ) : (
+              <>
+                <p className={`text-4xl font-extrabold mt-3 ${
+                  advanced.recovery.efficiency >= 70 ? 'text-emerald-600'
+                  : advanced.recovery.efficiency >= 40 ? 'text-amber-600'
+                  : 'text-red-500'
+                }`}>{advanced.recovery.efficiency}%</p>
+                <div className="mt-2 bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      advanced.recovery.efficiency >= 70 ? 'bg-emerald-500'
+                      : advanced.recovery.efficiency >= 40 ? 'bg-amber-400'
+                      : 'bg-red-500'
+                    }`}
+                    style={{ width: `${advanced.recovery.efficiency}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2 text-xs text-gray-400">
+                  <span>{pkr(advanced.recovery.totalCollected)} wapas aya</span>
+                  <span>{advanced.recovery.overdueCount} accounts</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">of {pkr(advanced.recovery.totalDue)} overdue tha</p>
+              </>
+            )}
+          </div>
+
+          {/* Staff Productivity */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-7 h-7 bg-violet-50 rounded-lg flex items-center justify-center">
+                <Users size={14} className="text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-600">Staff Performance</p>
+                <p className="text-[10px] text-gray-400">Pichle 30 din mein kisne kitna kaam kia</p>
+              </div>
+            </div>
+            {!advanced.staffProductivity.length ? (
+              <p className="text-xs text-gray-400 py-4 text-center">Is mahine koi payment record nahi</p>
+            ) : (
+              <div className="space-y-2 mt-3">
+                {advanced.staffProductivity.map((s) => {
+                  const maxCount = advanced.staffProductivity[0]?.count ?? 1;
+                  return (
+                    <div key={s.userId}>
+                      <div className="flex items-center justify-between text-xs mb-0.5">
+                        <span className="font-semibold text-gray-700 truncate max-w-35">{s.name}</span>
+                        <span className="text-gray-400 shrink-0 ml-2">{s.count} payments · {pkr(s.total)}</span>
+                      </div>
+                      <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div className="h-full rounded-full bg-violet-400" style={{ width: `${(s.count / maxCount) * 100}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-[10px] text-gray-300 mt-3">Payment audit logs se — approximate figures</p>
+          </div>
+
+          {/* Area Heatmap */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-7 h-7 bg-rose-50 rounded-lg flex items-center justify-center">
+                <MapPin size={14} className="text-rose-600" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-600">Area ke Hisab se</p>
+                <p className="text-[10px] text-gray-400">Konse ilaqe mein zyada problem hai</p>
+              </div>
+            </div>
+            {!advanced.areaHeatmap.length ? (
+              <p className="text-xs text-gray-400 py-4 text-center">Koi overdue customers nahi</p>
+            ) : (
+              <div className="space-y-2 mt-3">
+                {advanced.areaHeatmap.map((a) => {
+                  const maxTotal = advanced.areaHeatmap[0] ? advanced.areaHeatmap[0].overdueCount + advanced.areaHeatmap[0].defaultedCount : 1;
+                  return (
+                    <div key={a.city}>
+                      <div className="flex items-center justify-between text-xs mb-0.5">
+                        <span className="font-semibold text-gray-700 truncate max-w-35">{a.city}</span>
+                        <span className="text-gray-400 shrink-0 ml-2">
+                          {a.overdueCount > 0 && <span className="text-amber-600">{a.overdueCount} late</span>}
+                          {a.overdueCount > 0 && a.defaultedCount > 0 && <span className="mx-1 text-gray-300">·</span>}
+                          {a.defaultedCount > 0 && <span className="text-red-500">{a.defaultedCount} default</span>}
+                        </span>
+                      </div>
+                      <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden flex">
+                        <div className="h-full bg-amber-400" style={{ width: `${(a.overdueCount / maxTotal) * 100}%` }} />
+                        <div className="h-full bg-red-500"  style={{ width: `${(a.defaultedCount / maxTotal) * 100}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-[10px] text-gray-300 mt-3">Address ke akhri word se — approximate hai</p>
+          </div>
+
+        </div>
+      )}
+
+      {/* Recent Installments — owner only */}
+      {isOwner && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+            <div>
+              <h2 className="font-bold text-gray-900 text-sm">Nayi Installments</h2>
+              <p className="text-[10px] text-gray-400 mt-0.5">Haal hi mein shuru hue plans</p>
+            </div>
+            <button onClick={() => navigate('/installments')} className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
+              Sab dekho <ArrowRight size={13} />
             </button>
           </div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {data.recentInstallments.map((inst) => (
-              <div key={inst.id}
-                className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition cursor-pointer"
-                onClick={() => navigate('/installments')}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{inst.customerName}</p>
-                  <p className="text-xs text-gray-400 truncate">{inst.productName}</p>
-                </div>
-                <div className="flex items-center gap-3 ml-4">
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">{pkr(Number(inst.remaining))}</p>
-                    <p className="text-xs text-gray-400">remaining</p>
-                  </div>
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[inst.status]}`}>
-                    {inst.status.charAt(0) + inst.status.slice(1).toLowerCase()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>}
 
-      {/* Cash handover modal — staff submits physical cash to owner */}
+          {isLoading ? (
+            <RowSkeleton rows={4} />
+          ) : !data?.recentInstallments.length ? (
+            <div className="p-8 text-center text-sm text-gray-400">
+              Koi installment nahi.{' '}
+              <button onClick={() => navigate('/installments')} className="text-blue-600 hover:underline">Banao</button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {data.recentInstallments.map((inst) => (
+                <div key={inst.id}
+                  className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition cursor-pointer"
+                  onClick={() => navigate('/installments')}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{inst.customerName}</p>
+                    <p className="text-xs text-gray-400 truncate">{inst.productName}</p>
+                  </div>
+                  <div className="flex items-center gap-3 ml-4">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">{pkr(Number(inst.remaining))}</p>
+                      <p className="text-xs text-gray-400">baaki</p>
+                    </div>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[inst.status]}`}>
+                      {inst.status.charAt(0) + inst.status.slice(1).toLowerCase()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Cash Handover Modal (staff) ──────────────────────────── */}
       {showHandoverModal && !isOwner && (() => {
         const balance = Number(myBalance?.pendingBalance ?? 0);
         const amt     = Number(handoverAmount);
@@ -1143,32 +1214,24 @@ export default function DashboardPage() {
         return (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-              {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div>
                   <h3 className="font-bold text-gray-900">Cash Jama Karein</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Owner ko cash hand-off ka record</p>
                 </div>
-                <button
-                  onClick={() => setShowHandoverModal(false)}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition"
-                >
+                <button onClick={() => setShowHandoverModal(false)} className="p-1.5 hover:bg-gray-100 rounded-lg transition">
                   <X size={18} className="text-gray-500" />
                 </button>
               </div>
 
               <div className="p-5 space-y-4">
-                {/* System balance reference */}
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
                   <p className="text-[11px] text-gray-400 font-medium">System ka hisaab (collected − confirmed)</p>
                   <p className="text-xl font-black text-gray-900 mt-0.5">{pkr(balance)}</p>
                 </div>
 
-                {/* Amount input */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                    Actual Amount (PKR) *
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Actual Amount (PKR) *</label>
                   <input
                     type="number"
                     value={handoverAmount}
@@ -1184,11 +1247,8 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Note */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                    Note (optional)
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Note (optional)</label>
                   <textarea
                     value={handoverNote}
                     onChange={(e) => setHandoverNote(e.target.value)}
@@ -1199,7 +1259,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Action buttons */}
               <div className="flex gap-2 px-5 pb-5">
                 <button
                   onClick={() => setShowHandoverModal(false)}

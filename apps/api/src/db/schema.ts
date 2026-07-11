@@ -99,7 +99,9 @@ export const users = pgTable('users', {
   role: roleEnum('role').default('SELLER_STAFF').notNull(),
   sellerId: text('seller_id').references(() => sellers.id),
   permissions: json('permissions').$type<StaffPermissions>(),
-  frozenUntil: timestamp('frozen_until'),
+  frozenUntil:    timestamp('frozen_until'),
+  commissionRate: decimal('commission_rate', { precision: 5, scale: 2 }),  // per-staff override; null = use shop-wide rate
+  monthlySalary:  decimal('monthly_salary',  { precision: 12, scale: 2 }), // fixed salary PKR
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
   index('idx_users_seller').on(t.sellerId),
@@ -747,6 +749,38 @@ export const attendance = pgTable('attendance', {
 }, (t) => [
   index('idx_attendance_seller_date').on(t.sellerId, t.date),
   index('idx_attendance_user').on(t.userId),
+]);
+
+// ── Commission payment records (one per staff per month) ─────────────────────
+export const commissionPayments = pgTable('commission_payments', {
+  id:         text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:   text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  staffId:    text('staff_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  month:      text('month').notNull(),                                        // "2026-07"
+  amount:     decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  paidAt:     timestamp('paid_at', { withTimezone: true }).defaultNow().notNull(),
+  paidById:   text('paid_by_id').references(() => users.id, { onDelete: 'set null' }),
+  note:       text('note'),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('uniq_commission_staff_month').on(t.sellerId, t.staffId, t.month),
+  index('idx_commission_payments_seller').on(t.sellerId),
+]);
+
+// ── Salary payment records (one per staff per month) ─────────────────────────
+export const salaryPayments = pgTable('salary_payments', {
+  id:         text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:   text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  staffId:    text('staff_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  month:      text('month').notNull(),                                        // "2026-07"
+  amount:     decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  paidAt:     timestamp('paid_at', { withTimezone: true }).defaultNow().notNull(),
+  paidById:   text('paid_by_id').references(() => users.id, { onDelete: 'set null' }),
+  note:       text('note'),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('uniq_salary_staff_month').on(t.sellerId, t.staffId, t.month),
+  index('idx_salary_payments_seller').on(t.sellerId),
 ]);
 
 // ── SaaS Admin: manual payment logs (per shop) ────────────────────────────────
