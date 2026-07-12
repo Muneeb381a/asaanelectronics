@@ -154,7 +154,7 @@ export class StatsService {
 
     return {
       monthlyCollections,
-      collectionRate: { totalBilled, totalCollected, rate },
+      collectionRate: { totalBilled, totalCollected, totalOutstanding: totalRemaining, rate },
       agingBuckets: {
         current:    Number(a.current),
         days0_7:    Number(a.days0_7),
@@ -228,7 +228,7 @@ export class StatsService {
       };
     }
 
-    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth] = await Promise.all([
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth, completingSoon] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -436,6 +436,30 @@ export class StatsService {
           isNull(installments.deletedAt),
           isNull(customers.deletedAt),
         )),
+
+      // Installments completing soon (≤ 3 payments remaining)
+      db.execute<{ id: string; customer_name: string; customer_phone: string; product_name: string; remaining: string; monthly: string; payments_left: number }>(sql`
+        SELECT
+          i.id,
+          c.name  AS customer_name,
+          c.phone AS customer_phone,
+          p.name  AS product_name,
+          i.remaining::text,
+          i.monthly::text,
+          GREATEST(0, CEIL(i.remaining::numeric / NULLIF(i.monthly::numeric, 0)))::int AS payments_left
+        FROM installments i
+        INNER JOIN customers c ON c.id = i.customer_id
+        INNER JOIN products  p ON p.id = i.product_id
+        WHERE c.seller_id = ${sellerId}
+          AND i.status = 'ACTIVE'
+          AND i.deleted_at IS NULL
+          AND c.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          AND i.monthly::numeric > 0
+          AND CEIL(i.remaining::numeric / NULLIF(i.monthly::numeric, 0)) BETWEEN 1 AND 3
+        ORDER BY payments_left ASC, i.remaining::numeric ASC
+        LIMIT 10
+      `),
     ]);
 
     const budgetLimits = (sellerRow?.settings?.expenseBudgets ?? {}) as Partial<Record<string, number>>;
@@ -444,6 +468,7 @@ export class StatsService {
     const budgetAlertsCount = Object.entries(budgetLimits).filter(([cat, limit]) =>
       limit && limit > 0 && (spentByCat[cat] ?? 0) >= limit,
     ).length;
+    const monthExpenseTotal = Object.values(spentByCat).reduce((a, b) => a + b, 0);
 
     const fs = frequencyStats[0];
     return {
@@ -467,6 +492,16 @@ export class StatsService {
       newThisMonthValue:   Number(newThisMonth[0]?.totalValue ?? 0),
       completedThisMonthCount: Number(completedThisMonth[0]?.count ?? 0),
       completedThisMonthValue: Number(completedThisMonth[0]?.totalValue ?? 0),
+      monthExpenseTotal,
+      completingSoon: completingSoon.map((r) => ({
+        id:           r.id,
+        customerName: r.customer_name,
+        customerPhone: r.customer_phone,
+        productName:  r.product_name,
+        remaining:    Number(r.remaining),
+        monthly:      Number(r.monthly),
+        paymentsLeft: Number(r.payments_left),
+      })),
     };
   }
 
@@ -626,7 +661,7 @@ export class StatsService {
   }
 
   async getDailyBriefing(sellerId: string) {
-    const [rows, urgentRows] = await Promise.all([
+    const [rows, urgentRows, dueTodayRows] = await Promise.all([
       db.execute<{
         due_today:       number;
         due_tomorrow:    number;
@@ -732,6 +767,40 @@ export class StatsService {
         ORDER BY next_due ASC
         LIMIT 5
       `),
+
+      // Customers due exactly today (not overdue, not future)
+      db.execute<{ id: string; customer_name: string; customer_phone: string; monthly: string }>(sql`
+        WITH overdue_expr AS (
+          SELECT i.id, i.monthly,
+            c.name  AS customer_name,
+            c.phone AS customer_phone,
+            CASE WHEN i.payment_frequency = 'daily'
+              THEN i.start_date + (
+                (GREATEST(0, FLOOR(
+                  (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                  / NULLIF(i.monthly::numeric, 0)
+                )) + 1) || ' days'
+              )::interval
+              ELSE DATE_TRUNC('month', i.start_date + (
+                (GREATEST(0, FLOOR(
+                  (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                  / NULLIF(i.monthly::numeric, 0)
+                )) + 1) || ' months'
+              )::interval)::date + (i.payment_due_day - 1)
+            END AS next_due
+          FROM installments i
+          INNER JOIN customers c ON c.id = i.customer_id
+          WHERE c.seller_id = ${sellerId}
+            AND i.status = 'ACTIVE'
+            AND i.deleted_at IS NULL
+            AND c.deleted_at IS NULL
+        )
+        SELECT id, customer_name, customer_phone, monthly
+        FROM overdue_expr
+        WHERE DATE(next_due) = CURRENT_DATE
+        ORDER BY next_due ASC
+        LIMIT 20
+      `),
     ]);
 
     const r = rows[0] ?? { due_today: 0, due_tomorrow: 0, overdue_total: 0, promises_today: 0, collected_today: '0', defaulted_count: 0 };
@@ -748,6 +817,12 @@ export class StatsService {
         customerPhone: u.customer_phone,
         monthly:       Number(u.monthly),
         daysOverdue:   Number(u.days_overdue),
+      })),
+      dueTodayAccounts: dueTodayRows.map((u) => ({
+        id:            u.id,
+        customerName:  u.customer_name,
+        customerPhone: u.customer_phone,
+        monthly:       Number(u.monthly),
       })),
     };
   }

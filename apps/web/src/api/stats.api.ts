@@ -31,11 +31,21 @@ export interface Stats {
   newThisMonthValue: number;
   completedThisMonthCount: number;
   completedThisMonthValue: number;
+  monthExpenseTotal: number;
+  completingSoon: Array<{
+    id: string;
+    customerName: string;
+    customerPhone: string;
+    productName: string;
+    remaining: number;
+    monthly: number;
+    paymentsLeft: number;
+  }>;
 }
 
 export interface Reports {
   monthlyCollections: Array<{ month: string; label: string; total: number; installments: number; cashSales: number }>;
-  collectionRate: { totalBilled: number; totalCollected: number; rate: number };
+  collectionRate: { totalBilled: number; totalCollected: number; totalOutstanding: number; rate: number };
   agingBuckets: { current: number; days0_7: number; days8_30: number; days31_90: number; days90plus: number };
   topDebtors: Array<{ name: string; phone: string; remaining: number; count: number }>;
   topProducts: Array<{ name: string; totalAmount: number; count: number }>;
@@ -62,14 +72,22 @@ export interface UrgentAccount {
   daysOverdue:   number;
 }
 
+export interface DueTodayAccount {
+  id:            string;
+  customerName:  string;
+  customerPhone: string;
+  monthly:       number;
+}
+
 export interface DailyBriefing {
-  dueToday:       number;
-  dueTomorrow:    number;
-  overdueTotal:   number;
-  promisesToday:  number;
-  collectedToday: number;
-  defaultedCount: number;
-  urgentAccounts: UrgentAccount[];
+  dueToday:         number;
+  dueTomorrow:      number;
+  overdueTotal:     number;
+  promisesToday:    number;
+  collectedToday:   number;
+  defaultedCount:   number;
+  urgentAccounts:   UrgentAccount[];
+  dueTodayAccounts: DueTodayAccount[];
 }
 
 export const statsApi = {
