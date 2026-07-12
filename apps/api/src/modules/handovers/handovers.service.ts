@@ -163,7 +163,7 @@ export class HandoversService {
       FROM users u
       WHERE u.seller_id = ${sellerId}
         AND u.role = 'SELLER_STAFF'
-        AND u.is_active = TRUE
+        AND (u.frozen_until IS NULL OR u.frozen_until < NOW())
         ${staffFilter}
       ORDER BY "pendingBalance" DESC
     `);
