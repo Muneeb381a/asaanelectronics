@@ -117,29 +117,65 @@ export async function openBill(data: BillData) {
     color: { dark: '#0f172a', light: '#ffffff' },
   });
 
-  // Receipt: show max 6 rows — first 4 + ellipsis + last (keeps height within half-A4)
-  const MAX_ROWS = 6;
-  const visibleSchedule = schedule.length <= MAX_ROWS
-    ? schedule
-    : [...schedule.slice(0, 4), null, schedule[schedule.length - 1]];
+  // Schedule layout:
+  //  ≤ 12 installments → single column, all rows
+  //  13–36              → two columns side by side (fits on one page)
+  //  > 36               → two columns, first 18 + last row + "X more" note
+  function buildScheduleSection() {
+    function row(r: { month: number; due: string; amount: string; paid: boolean } | null, colspan = 4): string {
+      if (r === null) return `<tr><td colspan="${colspan}" style="padding:1px 6px;text-align:center;color:#94a3b8;font-size:8px;border-bottom:1px solid #f3f4f6">· · ·</td></tr>`;
+      return `<tr>
+        <td style="padding:2px 6px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:center;font-size:9px">${r.month}</td>
+        <td style="padding:2px 6px;color:#374151;border-bottom:1px solid #f3f4f6;font-size:9px">${r.due}</td>
+        <td style="padding:2px 6px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:600;color:#374151;font-size:9px">${r.amount}</td>
+        <td style="padding:2px 6px;text-align:center;border-bottom:1px solid #f3f4f6">
+          ${r.paid
+            ? '<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:20px;font-size:8px;font-weight:700">PAID</span>'
+            : '<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:20px;font-size:8px;font-weight:700">DUE</span>'
+          }
+        </td></tr>`;
+    }
+    const thead = `<thead><tr style="background:#0f172a">
+      <th style="padding:4px 6px;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:center;width:24px">#</th>
+      <th style="padding:4px 6px;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase">Due Date</th>
+      <th style="padding:4px 6px;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:right">Amount</th>
+      <th style="padding:4px 6px;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:center">Status</th>
+    </tr></thead>`;
 
-  const scheduleRows = visibleSchedule.map((r) => r === null ? `
-    <tr>
-      <td colspan="4" style="padding:2px 8px;text-align:center;color:#94a3b8;font-size:8.5px;border-bottom:1px solid #f3f4f6">
-        · · · ${schedule.length - 5} more installments · · ·
-      </td>
-    </tr>` : `
-    <tr>
-      <td style="padding:2px 8px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:center">${r.month}</td>
-      <td style="padding:2px 8px;color:#374151;border-bottom:1px solid #f3f4f6">${r.due}</td>
-      <td style="padding:2px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:600;color:#374151">${r.amount}</td>
-      <td style="padding:2px 8px;text-align:center;border-bottom:1px solid #f3f4f6">
-        ${r.paid
-          ? '<span style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:20px;font-size:8.5px;font-weight:700">PAID</span>'
-          : '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:20px;font-size:8.5px;font-weight:700">DUE</span>'
-        }
-      </td>
-    </tr>`).join('');
+    if (schedule.length <= 12) {
+      return `<div style="border:1px solid #e2e8f0;border-radius:5px;overflow:hidden;margin-bottom:5px">
+        <table style="width:100%;border-collapse:collapse">${thead}<tbody>${schedule.map((r) => row(r)).join('')}</tbody></table>
+      </div>`;
+    }
+
+    // Two-column layout
+    const MAX_PER_COL = 18;
+    const MAX_TOTAL   = MAX_PER_COL * 2;
+    let left: (typeof schedule[number] | null)[]  = [];
+    let right: (typeof schedule[number] | null)[] = [];
+    let hiddenCount = 0;
+
+    if (schedule.length <= MAX_TOTAL) {
+      const half = Math.ceil(schedule.length / 2);
+      left  = schedule.slice(0, half);
+      right = schedule.slice(half);
+    } else {
+      // show first (MAX_PER_COL - 1) + "..." + last on each side
+      hiddenCount = schedule.length - MAX_TOTAL;
+      left  = [...schedule.slice(0, MAX_PER_COL - 1), null, schedule[schedule.length - 2]];
+      right = [...schedule.slice(MAX_PER_COL - 1, MAX_TOTAL - 2), null, schedule[schedule.length - 1]];
+    }
+
+    const colTable = (rows: (typeof schedule[number] | null)[]) => `
+      <table style="width:100%;border-collapse:collapse">${thead}<tbody>${rows.map((r) => row(r)).join('')}</tbody></table>`;
+
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
+      <div style="border:1px solid #e2e8f0;border-radius:5px;overflow:hidden">${colTable(left)}</div>
+      <div style="border:1px solid #e2e8f0;border-radius:5px;overflow:hidden">${colTable(right)}</div>
+    </div>${hiddenCount > 0 ? `<p style="font-size:8px;color:#94a3b8;text-align:center;margin-bottom:4px">${hiddenCount} more installments not shown</p>` : ''}`;
+  }
+
+  const scheduleSection = buildScheduleSection();
 
   const murabahaLine = isMurabaha
     ? `<span style="font-size:9px;color:${isDaily ? '#9a3412' : '#065f46'};font-weight:700;margin-left:6px">${isDaily ? 'Dukaan-Dar' : 'Murabaha'}: Cost ${pkr(data.cashPrice!)} + Markup ${pkr(markup)}${markupPct ? ` (${markupPct}%)` : ''}</span>`
@@ -243,36 +279,45 @@ export async function openBill(data: BillData) {
     </div>` : ''}
 
     <!-- SCHEDULE -->
-    <div style="border:1px solid #e2e8f0;border-radius:5px;overflow:hidden;margin-bottom:6px">
-      <table style="width:100%;border-collapse:collapse;font-size:10px">
-        <thead>
-          <tr style="background:#0f172a">
-            <th style="padding:5px 8px;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:center;width:28px">#</th>
-            <th style="padding:5px 8px;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Due Date <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px;text-transform:none;letter-spacing:0">تاریخ</span></th>
-            <th style="padding:5px 8px;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:right">Amount <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px;text-transform:none;letter-spacing:0">رقم</span></th>
-            <th style="padding:5px 8px;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:center">Status</th>
-          </tr>
-        </thead>
-        <tbody>${scheduleRows}</tbody>
-      </table>
-    </div>
+    ${scheduleSection}
 
     ${payAccounts}
 
+    <!-- TERMS -->
+    <div style="background:#fafafa;border:1px solid #e2e8f0;border-radius:4px;padding:5px 8px;margin-bottom:6px;font-size:8px;color:#475569;line-height:1.5">
+      <span style="font-weight:700;color:#0f172a;font-size:8.5px">Terms &amp; Conditions · <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px;font-weight:400">شرائط و ضوابط</span></span><br/>
+      1. ${isDaily ? 'Daily' : 'Monthly'} installment of <strong>${pkr(data.monthly)}</strong> is due on the dates listed above. &nbsp;·&nbsp; قسط مقررہ تاریخ پر ادا کرنا لازمی ہے۔<br/>
+      2. Default of 2 or more installments entitles the seller to repossess the product without further notice. &nbsp;·&nbsp; دو یا زیادہ اقساط نہ دینے پر سامان واپس لیا جا سکتا ہے۔<br/>
+      3. Product remains property of ${data.shop.shopName} until full payment is received. &nbsp;·&nbsp; مکمل ادائیگی تک سامان دکاندار کی ملکیت رہے گا۔<br/>
+      4. Customer is responsible for the safety of the product from the date of delivery.
+    </div>
+
     <!-- SIGNATURES -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px">
-      <div style="border-top:1px solid #94a3b8;padding-top:4px;font-size:9px;color:#94a3b8;text-align:center">
-        Seller Signature &amp; Stamp · <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px">دستخط و مہر بائع</span>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:6px">
+      <div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 6px">
+        <div style="height:28px"></div>
+        <div style="border-top:1px solid #64748b;padding-top:3px;font-size:8px;color:#475569;text-align:center">
+          Seller / دکاندار<br/><span style="font-size:7.5px;color:#94a3b8">${data.shop.shopName}</span>
+        </div>
       </div>
-      <div style="border-top:1px solid #94a3b8;padding-top:4px;font-size:9px;color:#94a3b8;text-align:center">
-        Customer Signature · <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px">دستخط گاہک</span>
+      <div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 6px">
+        <div style="height:28px"></div>
+        <div style="border-top:1px solid #64748b;padding-top:3px;font-size:8px;color:#475569;text-align:center">
+          Customer / گاہک<br/><span style="font-size:7.5px;color:#94a3b8">${data.customer.name}</span>
+        </div>
+      </div>
+      <div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 6px">
+        <div style="height:28px"></div>
+        <div style="border-top:1px solid #64748b;padding-top:3px;font-size:8px;color:#475569;text-align:center">
+          Witness / گواہ<br/><span style="font-size:7.5px;color:#94a3b8">Name &amp; CNIC</span>
+        </div>
       </div>
     </div>
 
     <!-- FOOTER -->
-    <div style="margin-top:6px;padding-top:5px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:9px;color:#94a3b8">${data.shop.shopName} · ${data.shop.phone}</div>
-      <div style="font-size:9px;color:#94a3b8">Ref: ${data.installmentId.slice(0, 8).toUpperCase()} · ${fmtDate(new Date())}</div>
+    <div style="margin-top:5px;padding-top:4px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:8.5px;color:#94a3b8">${data.shop.shopName} · ${data.shop.phone}</div>
+      <div style="font-size:8.5px;color:#94a3b8">Ref: ${data.installmentId.slice(0, 8).toUpperCase()} · ${fmtDate(new Date())}</div>
     </div>
   </div>`; }
 
@@ -314,9 +359,9 @@ export async function openBill(data: BillData) {
   .status-PENDING{background:#fef3c7;color:#92400e}
 
   @media print{
-    @page{size:A4 portrait;margin:5mm 7mm}
+    @page{size:A4 portrait;margin:6mm 8mm}
     body{background:#fff;padding:0}
-    .inv{border:none;width:100%;max-height:135mm;overflow:hidden}
+    .inv{border:none;width:100%}
   }
 </style>
 </head>
