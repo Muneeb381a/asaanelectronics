@@ -22,12 +22,12 @@ const REF = refNo();
 function Field({ label, value, wide }: { label: string; value?: string | null; wide?: boolean }) {
   return (
     <div style={{ gridColumn: wide ? '1 / -1' : undefined }}>
-      <div style={{ fontSize: 8, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 3 }}>
+      <div style={{ fontSize: 7.5, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 }}>
         {label}
       </div>
       <div style={{
-        fontSize: 11, color: value ? '#0f172a' : '#cbd5e1', fontWeight: value ? 500 : 400,
-        borderBottom: '1px solid #e2e8f0', paddingBottom: 4, minHeight: 20,
+        fontSize: 10, color: value ? '#0f172a' : '#cbd5e1', fontWeight: value ? 500 : 400,
+        borderBottom: '1px solid #e2e8f0', paddingBottom: 3, minHeight: 18,
       }}>
         {value || '—'}
       </div>
@@ -37,9 +37,9 @@ function Field({ label, value, wide }: { label: string; value?: string | null; w
 
 function SectionHeader({ children, accent }: { children: React.ReactNode; accent: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-      <div style={{ width: 4, height: 18, borderRadius: 2, background: accent, flexShrink: 0 }} />
-      <div style={{ fontSize: 10, fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', letterSpacing: 1.2 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, marginTop: 4 }}>
+      <div style={{ width: 3, height: 16, borderRadius: 2, background: accent, flexShrink: 0 }} />
+      <div style={{ fontSize: 9, fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', letterSpacing: 1.1 }}>
         {children}
       </div>
       <div style={{ flex: 1, height: 1, background: '#f1f5f9' }} />
@@ -49,25 +49,26 @@ function SectionHeader({ children, accent }: { children: React.ReactNode; accent
 
 function SigBlock({ label, sub }: { label: string; sub?: string }) {
   return (
-    <div style={{ flex: 1 }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{
-        width: 48, height: 48, borderRadius: '50%', border: '1.5px dashed #cbd5e1',
+        width: 44, height: 44, borderRadius: '50%', border: '1.5px dashed #cbd5e1',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginBottom: 6, background: '#f8fafc',
+        marginBottom: 5, background: '#f8fafc',
       }}>
-        <div style={{ fontSize: 7, color: '#cbd5e1', textAlign: 'center', lineHeight: 1.4 }}>THUMB<br />PRINT</div>
+        <div style={{ fontSize: 6.5, color: '#cbd5e1', textAlign: 'center', lineHeight: 1.4 }}>THUMB<br />PRINT</div>
       </div>
-      <div style={{ borderBottom: '1.5px solid #334155', marginBottom: 5, height: 32 }} />
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#334155' }}>{label}</div>
-      {sub && <div style={{ fontSize: 8, color: '#94a3b8', marginTop: 1 }}>{sub}</div>}
-      <div style={{ fontSize: 8, color: '#94a3b8', marginTop: 3 }}>Date: ________________</div>
+      <div style={{ borderBottom: '1.5px solid #334155', marginBottom: 4, height: 28 }} />
+      <div style={{ fontSize: 9, fontWeight: 700, color: '#334155' }}>{label}</div>
+      {sub && <div style={{ fontSize: 7.5, color: '#64748b', marginTop: 1 }}>{sub}</div>}
+      <div style={{ fontSize: 7.5, color: '#94a3b8', marginTop: 3 }}>Date: ________________</div>
     </div>
   );
 }
 
 function DocImage({ src, label, wide }: { src: string; label: string; wide?: boolean }) {
   return (
-    <div style={{ textAlign: 'center' }}>
+    /* agr-no-print hides this section when printing — images take too much space */
+    <div className="agr-no-print" style={{ textAlign: 'center' }}>
       <img src={src} alt={label} style={{
         width: '100%', height: wide ? 180 : 130, objectFit: 'contain',
         background: '#f8fafc',
@@ -86,16 +87,24 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
     style.id = 'agreement-print-override';
     style.innerHTML = `
       @media print {
+        @page { size: A4 portrait; margin: 8mm 10mm; }
         body * { visibility: hidden !important; }
         #agreement-print-root, #agreement-print-root * { visibility: visible !important; }
         #agreement-print-root {
-          position: absolute !important; top: 0 !important; left: 0 !important;
+          /* static — NOT absolute — so content paginates correctly to next page */
+          position: static !important;
           width: 100% !important;
-          background: white !important; overflow: visible !important;
-          box-shadow: none !important; border-radius: 0 !important;
-          max-width: none !important; padding: 0 !important;
+          background: white !important;
+          overflow: visible !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          padding: 0 !important;
         }
         #agreement-action-bar { display: none !important; }
+        /* Hide document images so everything fits on one page */
+        .agr-no-print { display: none !important; }
+        /* Never split the signature section across pages */
+        .agr-sig-section { page-break-inside: avoid !important; break-inside: avoid !important; }
       }
     `;
     document.head.appendChild(style);
@@ -139,58 +148,56 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
           <div id="agreement-print-root" style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.35)' }}>
 
             {/* ══ HEADER ══ */}
-            <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)', padding: '24px 36px 0', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)', padding: '20px 32px 0', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-              <div style={{ position: 'absolute', top: 10, right: 60, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
                 <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: 'white', letterSpacing: 0.5, lineHeight: 1 }}>{shopName}</div>
-                  {shopAddress && <div style={{ fontSize: 10, color: '#93c5fd', marginTop: 5 }}>{shopAddress}</div>}
-                  <div style={{ fontSize: 10, color: '#93c5fd', marginTop: 2 }}>Tel: {shopPhone}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: 'white', letterSpacing: 0.5, lineHeight: 1 }}>{shopName}</div>
+                  {shopAddress && <div style={{ fontSize: 9.5, color: '#93c5fd', marginTop: 4 }}>{shopAddress}</div>}
+                  <div style={{ fontSize: 9.5, color: '#93c5fd', marginTop: 2 }}>Tel: {shopPhone}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'inline-block', background: '#2563eb', color: 'white', fontSize: 10, fontWeight: 800, padding: '4px 14px', borderRadius: 20, letterSpacing: 1, textTransform: 'uppercase' }}>
-                    Installment Agreement
+                  <div style={{ display: 'inline-block', background: '#2563eb', color: 'white', fontSize: 9.5, fontWeight: 800, padding: '4px 14px', borderRadius: 20, letterSpacing: 1, textTransform: 'uppercase' }}>
+                    Installment Agreement · اقساط نامہ
                   </div>
-                  <div style={{ fontSize: 9, color: '#64748b', marginTop: 7 }}>Ref No: <span style={{ color: '#93c5fd', fontWeight: 600 }}>{REF}</span></div>
-                  <div style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>Date: <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{fmtDate(new Date())}</span></div>
+                  <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 6 }}>Ref No: <span style={{ color: '#93c5fd', fontWeight: 600 }}>{REF}</span></div>
+                  <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>Date: <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{fmtDate(new Date())}</span></div>
                 </div>
               </div>
-              <div style={{ height: 4, background: 'linear-gradient(90deg, #f59e0b, #3b82f6, #f59e0b)', marginTop: 18, marginLeft: -36, marginRight: -36 }} />
+              <div style={{ height: 4, background: 'linear-gradient(90deg, #f59e0b, #3b82f6, #f59e0b)', marginTop: 16, marginLeft: -32, marginRight: -32 }} />
             </div>
 
             {/* ══ BODY ══ */}
-            <div style={{ padding: '24px 36px', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
+            <div style={{ padding: '20px 32px', fontFamily: "'Segoe UI', Arial, sans-serif" }}>
 
               {/* ── Customer Info ── */}
-              <div style={{ marginBottom: 20 }}>
-                <SectionHeader accent="#2563eb">Customer Information</SectionHeader>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                  {/* Photo */}
+              <div style={{ marginBottom: 16 }}>
+                <SectionHeader accent="#2563eb">Customer Information · گاہک کی معلومات</SectionHeader>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                   {customer.photoUrl && (
-                    <div style={{ flexShrink: 0, textAlign: 'center' }}>
-                      <img src={customer.photoUrl} alt="Customer" style={{ width: 80, height: 96, objectFit: 'cover', border: '2px solid #e2e8f0', borderRadius: 8 }} />
-                      <div style={{ fontSize: 7, color: '#94a3b8', marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Photo</div>
+                    <div className="agr-no-print" style={{ flexShrink: 0, textAlign: 'center' }}>
+                      <img src={customer.photoUrl} alt="Customer" style={{ width: 75, height: 90, objectFit: 'cover', border: '2px solid #e2e8f0', borderRadius: 8 }} />
+                      <div style={{ fontSize: 7, color: '#94a3b8', marginTop: 3, fontWeight: 600, textTransform: 'uppercase' }}>Photo</div>
                     </div>
                   )}
-                  <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 16px' }}>
-                    <Field label="Full Name"          value={customer.name} />
-                    <Field label="CNIC Number"        value={customer.cnicMasked} />
-                    <Field label="Mobile Number"      value={customer.phone} />
-                    <Field label="Father / Husband"   value={customer.fatherName} />
-                    <Field label="CNIC Expiry"        value={customer.cnicExpiry} />
-                    <Field label="Occupation"         value={customer.occupation} />
-                    <Field label="Home Address"       value={customer.address}       wide />
-                    <Field label="Office / Work"      value={customer.officeAddress} wide />
-                    <Field label="Employer / Company" value={customer.employer} />
-                    <Field label="Monthly Salary"     value={customer.salary ? `PKR ${Number(customer.salary).toLocaleString('en-PK')}` : null} />
+                  <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 14px' }}>
+                    <Field label="Full Name · پورا نام"        value={customer.name} />
+                    <Field label="CNIC Number · شناختی کارڈ"   value={customer.cnicMasked} />
+                    <Field label="Mobile · موبائل"              value={customer.phone} />
+                    <Field label="Father / Husband · والد / شوہر" value={customer.fatherName} />
+                    <Field label="CNIC Expiry · میعاد"          value={customer.cnicExpiry} />
+                    <Field label="Occupation · پیشہ"            value={customer.occupation} />
+                    <Field label="Home Address · گھر کا پتہ"    value={customer.address}       wide />
+                    <Field label="Office / Work · دفتر"         value={customer.officeAddress} wide />
+                    <Field label="Employer · ادارہ"             value={customer.employer} />
+                    <Field label="Monthly Salary · تنخواہ"      value={customer.salary ? `PKR ${Number(customer.salary).toLocaleString('en-PK')}` : null} />
                   </div>
                 </div>
               </div>
 
-              {/* ── CNIC Documents ── */}
+              {/* ── CNIC Documents (screen only) ── */}
               {hasCnic && (
-                <div style={{ marginBottom: 20 }}>
+                <div className="agr-no-print" style={{ marginBottom: 16 }}>
                   <SectionHeader accent="#0891b2">Identity Documents (CNIC)</SectionHeader>
                   <div style={{ display: 'grid', gridTemplateColumns: customer.cnicFrontUrl && customer.cnicBackUrl ? '1fr 1fr' : '1fr', gap: 12 }}>
                     {customer.cnicFrontUrl && <DocImage src={customer.cnicFrontUrl} label="CNIC — Front Side" />}
@@ -199,13 +206,13 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
                 </div>
               )}
 
-              {/* ── Blank Cheque ── */}
+              {/* ── Blank Cheque (screen only) ── */}
               {hasCheque && (
-                <div style={{ marginBottom: 20 }}>
+                <div className="agr-no-print" style={{ marginBottom: 16 }}>
                   <SectionHeader accent="#b45309">Security Cheque</SectionHeader>
                   <DocImage src={customer.blankChequeUrl!} label="Blank Cheque — Security" wide />
                   {(customer.chequeBank || customer.chequeAccountNo || customer.chequeNo) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 16px', marginTop: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 14px', marginTop: 10 }}>
                       <Field label="Bank Name"   value={customer.chequeBank} />
                       <Field label="Account No." value={customer.chequeAccountNo} />
                       <Field label="Cheque No."  value={customer.chequeNo} />
@@ -214,20 +221,32 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
                 </div>
               )}
 
+              {/* ── Cheque details in print (text only) ── */}
+              {hasCheque && (customer.chequeBank || customer.chequeAccountNo || customer.chequeNo) && (
+                <div style={{ marginBottom: 14 }}>
+                  <SectionHeader accent="#b45309">Security Cheque · ضمانتی چیک</SectionHeader>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 14px' }}>
+                    <Field label="Bank Name · بینک" value={customer.chequeBank} />
+                    <Field label="Account No."       value={customer.chequeAccountNo} />
+                    <Field label="Cheque No."        value={customer.chequeNo} />
+                  </div>
+                </div>
+              )}
+
               {/* ── Guarantor 1 ── */}
               {hasGuarantor1 && (
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 14 }}>
                   <SectionHeader accent="#7c3aed">
-                    Guarantor 1{customer.guarantorRelation ? ` — ${customer.guarantorRelation}` : ''}
+                    Guarantor 1 · ضامن ۱{customer.guarantorRelation ? ` — ${customer.guarantorRelation}` : ''}
                   </SectionHeader>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 16px', marginBottom: 10 }}>
-                    <Field label="Full Name"    value={customer.guarantorName} />
-                    <Field label="CNIC Number"  value={customer.guarantorCnic} />
-                    <Field label="Mobile Number" value={customer.guarantorPhone} />
-                    <Field label="Address" value={customer.guarantorAddress} wide />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 14px', marginBottom: 10 }}>
+                    <Field label="Full Name · نام"        value={customer.guarantorName} />
+                    <Field label="CNIC · شناختی کارڈ"     value={customer.guarantorCnic} />
+                    <Field label="Mobile · موبائل"         value={customer.guarantorPhone} />
+                    <Field label="Address · پتہ"           value={customer.guarantorAddress} wide />
                   </div>
                   {(customer.guarantorCnicFrontUrl || customer.guarantorCnicBackUrl) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: customer.guarantorCnicFrontUrl && customer.guarantorCnicBackUrl ? '1fr 1fr' : '1fr', gap: 10 }}>
+                    <div className="agr-no-print" style={{ display: 'grid', gridTemplateColumns: customer.guarantorCnicFrontUrl && customer.guarantorCnicBackUrl ? '1fr 1fr' : '1fr', gap: 10 }}>
                       {customer.guarantorCnicFrontUrl && <DocImage src={customer.guarantorCnicFrontUrl} label="Guarantor 1 CNIC — Front" />}
                       {customer.guarantorCnicBackUrl  && <DocImage src={customer.guarantorCnicBackUrl}  label="Guarantor 1 CNIC — Back" />}
                     </div>
@@ -237,18 +256,18 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
 
               {/* ── Guarantor 2 ── */}
               {hasGuarantor2 && (
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 14 }}>
                   <SectionHeader accent="#db2777">
-                    Guarantor 2{customer.guarantor2Relation ? ` — ${customer.guarantor2Relation}` : ''}
+                    Guarantor 2 · ضامن ۲{customer.guarantor2Relation ? ` — ${customer.guarantor2Relation}` : ''}
                   </SectionHeader>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 16px', marginBottom: 10 }}>
-                    <Field label="Full Name"    value={customer.guarantor2Name} />
-                    <Field label="CNIC Number"  value={customer.guarantor2Cnic} />
-                    <Field label="Mobile Number" value={customer.guarantor2Phone} />
-                    <Field label="Address" value={customer.guarantor2Address} wide />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 14px', marginBottom: 10 }}>
+                    <Field label="Full Name · نام"        value={customer.guarantor2Name} />
+                    <Field label="CNIC · شناختی کارڈ"     value={customer.guarantor2Cnic} />
+                    <Field label="Mobile · موبائل"         value={customer.guarantor2Phone} />
+                    <Field label="Address · پتہ"           value={customer.guarantor2Address} wide />
                   </div>
                   {(customer.guarantor2CnicFrontUrl || customer.guarantor2CnicBackUrl) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: customer.guarantor2CnicFrontUrl && customer.guarantor2CnicBackUrl ? '1fr 1fr' : '1fr', gap: 10 }}>
+                    <div className="agr-no-print" style={{ display: 'grid', gridTemplateColumns: customer.guarantor2CnicFrontUrl && customer.guarantor2CnicBackUrl ? '1fr 1fr' : '1fr', gap: 10 }}>
                       {customer.guarantor2CnicFrontUrl && <DocImage src={customer.guarantor2CnicFrontUrl} label="Guarantor 2 CNIC — Front" />}
                       {customer.guarantor2CnicBackUrl  && <DocImage src={customer.guarantor2CnicBackUrl}  label="Guarantor 2 CNIC — Back" />}
                     </div>
@@ -257,43 +276,45 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
               )}
 
               {/* ── Terms ── */}
-              <div style={{ marginBottom: 24, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px' }}>
-                <div style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                  Terms &amp; Conditions
+              <div style={{ marginBottom: 18, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 8.5, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 7 }}>
+                  Terms &amp; Conditions · شرائط و ضوابط
                 </div>
-                <ol style={{ margin: 0, paddingLeft: 14, fontSize: 9.5, color: '#64748b', lineHeight: 1.9 }}>
-                  <li>The customer agrees to pay monthly installments on or before the due date without delay.</li>
-                  <li>In case of default exceeding 30 days, the guarantors shall be jointly and severally liable for all outstanding amounts.</li>
-                  <li>The product remains the sole property of <strong style={{ color: '#334155' }}>{shopName}</strong> until full and final payment is received.</li>
-                  <li>Any damage, loss, or theft of the product while installments are pending is the sole responsibility of the buyer.</li>
-                  <li>The blank cheque provided as security may be presented to the bank upon default without further notice.</li>
-                  <li>Early full settlement is permitted; any markup adjustment is at the sole discretion of {shopName}.</li>
-                  <li>By signing below, all parties confirm they have read, understood, and agreed to these terms.</li>
+                <ol style={{ margin: 0, paddingLeft: 14, fontSize: 9, color: '#64748b', lineHeight: 1.85 }}>
+                  <li>The customer agrees to pay installments on time on the due dates as agreed. &nbsp;·&nbsp; گاہک مقررہ تاریخ پر قسط ادا کرنے کا پابند ہے۔</li>
+                  <li>Default exceeding 30 days makes guarantors jointly liable for all outstanding dues. &nbsp;·&nbsp; 30 دن تاخیر پر ضامن بھی ذمہ دار ہوں گے۔</li>
+                  <li>The product remains property of <strong style={{ color: '#334155' }}>{shopName}</strong> until full payment is received. &nbsp;·&nbsp; مکمل ادائیگی تک سامان دکاندار کی ملکیت ہے۔</li>
+                  <li>Any damage or loss of the product is the buyer's sole responsibility. &nbsp;·&nbsp; سامان کا نقصان گاہک کی ذمہ داری ہے۔</li>
+                  <li>The blank cheque provided may be presented to the bank upon default without notice. &nbsp;·&nbsp; ڈیفالٹ پر چیک بینک میں جمع کرایا جا سکتا ہے۔</li>
+                  <li>Early settlement is permitted; markup adjustment at {shopName}'s discretion. &nbsp;·&nbsp; قبل از وقت ادائیگی کی اجازت ہے۔</li>
+                  <li>By signing, all parties confirm they have read and agreed to these terms. &nbsp;·&nbsp; دستخط سے تمام فریق شرائط سے متفق ہوتے ہیں۔</li>
                 </ol>
               </div>
 
               {/* ── Signatures ── */}
-              <SectionHeader accent="#059669">Authorized Signatures</SectionHeader>
-              <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
-                <SigBlock label="Customer" sub={customer.name} />
-                {hasGuarantor1 && <SigBlock label="Guarantor 1" sub={customer.guarantorName ?? undefined} />}
-                {hasGuarantor2 && <SigBlock label="Guarantor 2" sub={customer.guarantor2Name ?? undefined} />}
-                <SigBlock label="Seller / Staff" />
-                <SigBlock label="Shop Owner" sub={shopName} />
+              <div className="agr-sig-section">
+                <SectionHeader accent="#059669">Authorized Signatures · دستخط</SectionHeader>
+                <div style={{ display: 'flex', gap: 18, marginBottom: 20 }}>
+                  <SigBlock label="Customer · گاہک" sub={customer.name} />
+                  {hasGuarantor1 && <SigBlock label="Guarantor 1 · ضامن ۱" sub={customer.guarantorName ?? undefined} />}
+                  {hasGuarantor2 && <SigBlock label="Guarantor 2 · ضامن ۲" sub={customer.guarantor2Name ?? undefined} />}
+                  <SigBlock label="Seller / Staff · عملہ" />
+                  <SigBlock label="Shop Owner · مالک" sub={shopName} />
+                </div>
               </div>
 
               {/* ── Footer ── */}
-              <div style={{ borderTop: '2px solid #f1f5f9', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ borderTop: '2px solid #f1f5f9', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: 6, background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: 12, height: 12, borderRadius: 3, border: '2px solid #3b82f6' }} />
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, border: '2px solid #3b82f6' }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: '#0f172a' }}>{shopName}</div>
-                    <div style={{ fontSize: 8, color: '#94a3b8' }}>Official Installment Agreement</div>
+                    <div style={{ fontSize: 8.5, fontWeight: 700, color: '#0f172a' }}>{shopName}</div>
+                    <div style={{ fontSize: 7.5, color: '#94a3b8' }}>Official Installment Agreement</div>
                   </div>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: 8, color: '#94a3b8' }}>
+                <div style={{ textAlign: 'right', fontSize: 7.5, color: '#94a3b8' }}>
                   <div>Ref: {REF}</div>
                   <div>Generated: {fmtDateTime(new Date())}</div>
                 </div>
