@@ -381,8 +381,9 @@ export class StaffService {
   // ── Collections Report ────────────────────────────────────────────────────────
 
   async collections(sellerId: string, from: string, to: string) {
-    const fromDate = new Date(from + 'T00:00:00.000Z');
-    const toDate   = new Date(to   + 'T23:59:59.999Z');
+    // Use PKT (UTC+5) local midnight so Pakistani morning payments aren't missed
+    const fromDate = new Date(from + 'T00:00:00.000+05:00');
+    const toDate   = new Date(to   + 'T23:59:59.999+05:00');
 
     // All staff for this seller (even those with zero collections show up)
     const allStaff = await db

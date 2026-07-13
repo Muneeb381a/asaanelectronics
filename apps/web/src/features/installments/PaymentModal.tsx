@@ -580,6 +580,31 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                 </p>
               </div>
 
+              {isOwner && staff.length > 0 && (
+                <div className="bg-violet-50 border border-violet-200 rounded-xl px-3 py-2.5">
+                  <label className="block text-xs font-semibold text-violet-700 mb-1.5">
+                    Kisne collect kiya?
+                    <span className="ml-1 font-normal text-violet-400">(collection report ke liye zaroor bharein)</span>
+                  </label>
+                  <select
+                    value={collectedBy}
+                    onChange={(e) => setCollectedBy(e.target.value)}
+                    className="w-full border border-violet-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white">
+                    <option value="">— Owner ne collect kiya —</option>
+                    {staff.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {!isOwner && (
+                <div className="flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2 text-xs text-violet-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
+                  This payment will be recorded under your name
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Method</label>
                 <div className="flex flex-wrap gap-1.5">
@@ -606,28 +631,6 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                   className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
-              {!isOwner && (
-                <div className="flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2 text-xs text-violet-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
-                  This payment will be recorded under your name
-                </div>
-              )}
-
-              {isOwner && staff.length > 0 && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Collected by (optional)</label>
-                  <select
-                    value={collectedBy}
-                    onChange={(e) => setCollectedBy(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                    <option value="">— Owner collected —</option>
-                    {staff.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Proof / Receipt (optional)</label>

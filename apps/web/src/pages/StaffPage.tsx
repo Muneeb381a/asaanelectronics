@@ -1702,7 +1702,10 @@ const METHOD_COLOR: Record<string, string> = {
 };
 
 function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  const y  = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const dy = String(d.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${dy}`;
 }
 
 // ── Collections Section ────────────────────────────────────────────────────────
