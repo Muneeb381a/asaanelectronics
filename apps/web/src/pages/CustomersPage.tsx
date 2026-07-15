@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
@@ -1590,6 +1591,7 @@ export default function CustomersPage() {
   const isOwner = user?.role === 'SELLER_OWNER';
   const userPerms = user?.permissions as Record<string, boolean> | null | undefined;
   const canAssignAvo = isOwner || !!userPerms?.canVerifyCustomers;
+  const location = useLocation();
   const [modal, setModal] = useState<Modal>(null);
   const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
   const [assignAvoFor, setAssignAvoFor] = useState<Customer | null>(null);
@@ -1617,6 +1619,17 @@ export default function CustomersPage() {
     setCommittedSearch(search.trim());
     setPage(1);
   }
+
+  // Global search: open customer drawer directly when navigated here with openCustomerId state
+  const openCustomerId = (location.state as { openCustomerId?: string } | null)?.openCustomerId;
+  useEffect(() => {
+    if (!openCustomerId) return;
+    customersApi.getOne(openCustomerId)
+      .then((c) => setHistoryCustomer(c))
+      .catch(() => {});
+    // Clear the state so pressing Back doesn't re-open the drawer
+    window.history.replaceState({}, '');
+  }, [openCustomerId]);
 
   useEffect(() => { setPage(1); }, [committedSearch, lifecycle, verifFilter, tagFilter, sortBy, sortDir, limit]);
 

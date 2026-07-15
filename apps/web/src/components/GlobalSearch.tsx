@@ -88,7 +88,10 @@ export default function GlobalSearch({ open, onClose }: Props) {
   const isCnicQuery = /^\d{13}$/.test(debouncedQ.replace(/-/g, ''));
   const bureauEmpty = !isFetching && isCnicQuery && data != null && (data.bureau?.length ?? 0) === 0;
 
-  const go = useCallback((path: string) => { navigate(path); onClose(); }, [navigate, onClose]);
+  const go = useCallback((path: string, state?: Record<string, string>) => {
+    navigate(path, state ? { state } : undefined);
+    onClose();
+  }, [navigate, onClose]);
 
   if (!open) return null;
 
@@ -142,7 +145,7 @@ export default function GlobalSearch({ open, onClose }: Props) {
                   {data!.customers.map((c) => (
                     <button
                       key={c.id}
-                      onClick={() => go(`/customers/${c.id}`)}
+                      onClick={() => go('/customers', { openCustomerId: c.id })}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-indigo-50 transition-colors group text-left"
                     >
                       <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-sm font-semibold shrink-0">
@@ -181,7 +184,7 @@ export default function GlobalSearch({ open, onClose }: Props) {
                   {data!.installments.map((inst) => (
                     <button
                       key={inst.id}
-                      onClick={() => go(`/installments/${inst.id}`)}
+                      onClick={() => go('/customers', { openCustomerId: inst.customerId })}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-emerald-50 transition-colors group text-left"
                     >
                       <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
