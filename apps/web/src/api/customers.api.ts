@@ -54,6 +54,7 @@ export interface Customer {
   referredById: string | null;
   isBlacklisted: boolean;
   blacklistReason: string | null;
+  fileNumber: string | null;
   paymentGrade?: 'A' | 'B' | 'C' | 'D';
   paymentGradeLabel?: string;
   installmentSummary?: {

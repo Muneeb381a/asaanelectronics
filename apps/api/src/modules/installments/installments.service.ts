@@ -55,9 +55,12 @@ export class InstallmentsService {
     }
     if (search) {
       const cleanSearch = search.trim().replace(/-/g, '');
+      const rawSearch = search.trim();
       const conds: SQL[] = [
         ilike(customers.name,  `%${cleanSearch}%`),
         ilike(customers.phone, `%${cleanSearch}%`),
+        ilike(customers.fileNumber, `${cleanSearch}%`),
+        ilike(installments.invoiceNumber, `%${rawSearch}%`),
       ];
       // If input is longer than 11 digits (e.g. typed with country code or extra chars),
       // also try the first 10/11 digits so partial phone matches still work.
@@ -111,6 +114,7 @@ export class InstallmentsService {
           paymentFrequency:  installments.paymentFrequency,
           paymentDueDay:     installments.paymentDueDay,
           customerArea:      customers.area,
+          customerFileNumber: customers.fileNumber,
           isOverdue: sql<boolean>`(
             ${installments.status} = 'ACTIVE' AND (
               CASE WHEN ${installments.paymentFrequency} = 'daily'
@@ -172,7 +176,8 @@ export class InstallmentsService {
         profitMarkup:      installments.profitMarkup,
         paymentFrequency:  installments.paymentFrequency,
         paymentDueDay:     installments.paymentDueDay,
-        customerArea:      customers.area,
+        customerArea:       customers.area,
+        customerFileNumber: customers.fileNumber,
         pausedUntil:       installments.pausedUntil,
         pauseReason:       installments.pauseReason,
         isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
@@ -641,7 +646,7 @@ export class InstallmentsService {
     return { imported, customersCreated, customersLinked, productsCreated, errors };
   }
 
-  async dueSheet(sellerId: string) {
+  async dueSheet(sellerId: string, staffUserId?: string) {
     const rows = await db.execute<{
       id: string; monthly: string; remaining: string; months: number;
       payment_frequency: string; start_date: string; payment_due_day: number;
@@ -660,6 +665,7 @@ export class InstallmentsService {
         AND i.status = 'ACTIVE'
         AND i.deleted_at IS NULL
         AND c.deleted_at IS NULL
+        ${staffUserId ? sql`AND c.created_by_user_id = ${staffUserId}` : sql``}
       LIMIT 2000
     `);
 

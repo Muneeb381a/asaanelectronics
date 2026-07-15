@@ -196,6 +196,7 @@ export const customers = pgTable(
     blacklistReason: text('blacklist_reason'),
     blacklistedAt:   timestamp('blacklisted_at'),
     blacklistedBy:   text('blacklisted_by').references(() => users.id, { onDelete: 'set null' }),
+    fileNumber: text('file_number'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),
     deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),

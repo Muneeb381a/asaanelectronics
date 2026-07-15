@@ -236,6 +236,7 @@ export class CustomersService {
         tags: customers.tags,
         isBlacklisted:   customers.isBlacklisted,
         blacklistReason: customers.blacklistReason,
+        fileNumber: customers.fileNumber,
         riskScore,
         lifecycleStage: lifecycleSQL,
       }).from(customers).where(where).limit(limit).offset((page - 1) * limit)
@@ -576,60 +577,74 @@ export class CustomersService {
     if (existingPhone) throw new AppError(`Phone number already registered to customer ${existingPhone.cnicMasked}`, 409);
     if (dupDoc) throw new AppError(`Duplicate document detected — this image is already linked to customer ${dupDoc.cnicMasked}. Possible fraud.`, 409);
 
-    const [customer] = await db
-      .insert(customers)
-      .values({
-        sellerId,
-        name: body.name,
-        cnicHash: hash,
-        cnicMasked: maskCnic(body.cnic),
-        phone: body.phone,
-        fatherName: body.fatherName,
-        cnicExpiry: body.cnicExpiry,
-        address: body.address,
-        area: body.area,
-        officeAddress: body.officeAddress,
-        salary: body.salary?.toString(),
-        occupation: body.occupation,
-        employer: body.employer,
-        guarantorName: body.guarantorName,
-        guarantorPhone: body.guarantorPhone,
-        guarantorCnic: body.guarantorCnic,
-        guarantorAddress: body.guarantorAddress,
-        guarantorRelation: body.guarantorRelation,
-        guarantorCnicFrontUrl: body.guarantorCnicFrontUrl,
-        guarantorCnicBackUrl: body.guarantorCnicBackUrl,
-        guarantor2Name: body.guarantor2Name,
-        guarantor2Phone: body.guarantor2Phone,
-        guarantor2Cnic: body.guarantor2Cnic,
-        guarantor2Address: body.guarantor2Address,
-        guarantor2Relation: body.guarantor2Relation,
-        guarantor2CnicFrontUrl: body.guarantor2CnicFrontUrl,
-        guarantor2CnicBackUrl: body.guarantor2CnicBackUrl,
-        photoUrl: body.photoUrl,
-        cnicFrontUrl: body.cnicFrontUrl,
-        cnicBackUrl: body.cnicBackUrl,
-        blankChequeUrl: body.blankChequeUrl,
-        chequeBank: body.chequeBank,
-        chequeAccountNo: body.chequeAccountNo,
-        chequeNo: body.chequeNo,
-        cnicFrontHash: body.cnicFrontHash,
-        cnicBackHash: body.cnicBackHash,
-        blankChequeHash: body.blankChequeHash,
-        customerType: body.customerType ?? 'regular',
-        shopName: body.shopName,
-        shopAddress: body.shopAddress,
-        businessType: body.businessType,
-        guarantorShopName: body.guarantorShopName,
-        guarantorShopAddress: body.guarantorShopAddress,
-        guarantor2ShopName: body.guarantor2ShopName,
-        guarantor2ShopAddress: body.guarantor2ShopAddress,
-        dob: body.dob,
-        referredById: body.referredById ?? null,
-        createdByUserId,
-      })
-      .returning();
-    return customer;
+    const customer = await db.transaction(async (tx) => {
+      // Advisory lock prevents concurrent file-number generation for same seller
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sellerId}))`);
+
+      const [{ nextSeq }] = await tx.execute<{ nextSeq: number }>(sql`
+        SELECT COALESCE(MAX(CAST(file_number AS INTEGER)), 0) + 1 AS "nextSeq"
+        FROM customers
+        WHERE seller_id = ${sellerId}
+      `);
+      const fileNumber = String(nextSeq).padStart(4, '0');
+
+      const [row] = await tx
+        .insert(customers)
+        .values({
+          sellerId,
+          name: body.name,
+          cnicHash: hash,
+          cnicMasked: maskCnic(body.cnic),
+          phone: body.phone,
+          fatherName: body.fatherName,
+          cnicExpiry: body.cnicExpiry,
+          address: body.address,
+          area: body.area,
+          officeAddress: body.officeAddress,
+          salary: body.salary?.toString(),
+          occupation: body.occupation,
+          employer: body.employer,
+          guarantorName: body.guarantorName,
+          guarantorPhone: body.guarantorPhone,
+          guarantorCnic: body.guarantorCnic,
+          guarantorAddress: body.guarantorAddress,
+          guarantorRelation: body.guarantorRelation,
+          guarantorCnicFrontUrl: body.guarantorCnicFrontUrl,
+          guarantorCnicBackUrl: body.guarantorCnicBackUrl,
+          guarantor2Name: body.guarantor2Name,
+          guarantor2Phone: body.guarantor2Phone,
+          guarantor2Cnic: body.guarantor2Cnic,
+          guarantor2Address: body.guarantor2Address,
+          guarantor2Relation: body.guarantor2Relation,
+          guarantor2CnicFrontUrl: body.guarantor2CnicFrontUrl,
+          guarantor2CnicBackUrl: body.guarantor2CnicBackUrl,
+          photoUrl: body.photoUrl,
+          cnicFrontUrl: body.cnicFrontUrl,
+          cnicBackUrl: body.cnicBackUrl,
+          blankChequeUrl: body.blankChequeUrl,
+          chequeBank: body.chequeBank,
+          chequeAccountNo: body.chequeAccountNo,
+          chequeNo: body.chequeNo,
+          cnicFrontHash: body.cnicFrontHash,
+          cnicBackHash: body.cnicBackHash,
+          blankChequeHash: body.blankChequeHash,
+          customerType: body.customerType ?? 'regular',
+          shopName: body.shopName,
+          shopAddress: body.shopAddress,
+          businessType: body.businessType,
+          guarantorShopName: body.guarantorShopName,
+          guarantorShopAddress: body.guarantorShopAddress,
+          guarantor2ShopName: body.guarantor2ShopName,
+          guarantor2ShopAddress: body.guarantor2ShopAddress,
+          dob: body.dob,
+          referredById: body.referredById ?? null,
+          createdByUserId,
+          fileNumber,
+        })
+        .returning();
+      return row;
+    });
+    return customer!;
   }
 
   async update(id: string, sellerId: string, body: UpdateBody) {

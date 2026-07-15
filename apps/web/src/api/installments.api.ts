@@ -25,9 +25,10 @@ export interface Installment {
   profitMarkup:     string | null;
   paymentFrequency: string | null;
   paymentDueDay:    number;
-  customerArea:     string | null;
-  pausedUntil:      string | null;
-  pauseReason:      string | null;
+  customerArea:       string | null;
+  customerFileNumber: string | null;
+  pausedUntil:        string | null;
+  pauseReason:        string | null;
 }
 
 interface ListResponse {

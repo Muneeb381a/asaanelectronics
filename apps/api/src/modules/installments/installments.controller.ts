@@ -44,7 +44,16 @@ export async function getInstallment(req: AuthRequest, res: Response) {
 }
 
 export async function getDueSheet(req: AuthRequest, res: Response) {
-  success(res, await svc.dueSheet(req.user!.sellerId!));
+  let staffUserId: string | undefined;
+  if (req.user!.role !== 'SELLER_OWNER') {
+    const member = await db.query.users.findFirst({
+      where: eq(users.id, req.user!.userId),
+      columns: { permissions: true },
+    });
+    const canViewAll = member?.permissions?.canViewAllInstallments ?? true;
+    if (!canViewAll) staffUserId = req.user!.userId;
+  }
+  success(res, await svc.dueSheet(req.user!.sellerId!, staffUserId));
 }
 
 export async function getCollectionSchedule(req: AuthRequest, res: Response) {

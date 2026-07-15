@@ -161,6 +161,9 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
                     Installment Agreement · اقساط نامہ
                   </div>
                   <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 6 }}>Ref No: <span style={{ color: '#93c5fd', fontWeight: 600 }}>{REF}</span></div>
+                  {customer.fileNumber && (
+                    <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>File No: <span style={{ color: '#fbbf24', fontWeight: 700, fontFamily: 'monospace' }}>#{customer.fileNumber}</span></div>
+                  )}
                   <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>Date: <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{fmtDate(new Date())}</span></div>
                 </div>
               </div>
@@ -182,8 +185,9 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
                   )}
                   <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 14px' }}>
                     <Field label="Full Name · پورا نام"        value={customer.name} />
-                    <Field label="CNIC Number · شناختی کارڈ"   value={customer.cnicMasked} />
+                    <Field label="File No · فائل نمبر"         value={customer.fileNumber ? `#${customer.fileNumber}` : null} />
                     <Field label="Mobile · موبائل"              value={customer.phone} />
+                    <Field label="CNIC Number · شناختی کارڈ"   value={customer.cnicMasked} />
                     <Field label="Father / Husband · والد / شوہر" value={customer.fatherName} />
                     <Field label="CNIC Expiry · میعاد"          value={customer.cnicExpiry} />
                     <Field label="Occupation · پیشہ"            value={customer.occupation} />

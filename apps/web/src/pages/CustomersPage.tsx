@@ -829,6 +829,9 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-bold text-gray-900">{customer.name}</h2>
+                {customer.fileNumber && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 font-mono">#{customer.fileNumber}</span>
+                )}
                 {customer.customerType === 'dukaan-dar' && (
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">Dukaan-Dar</span>
                 )}
@@ -1831,6 +1834,9 @@ export default function CustomersPage() {
                         >
                           {c.name}
                         </button>
+                        {c.fileNumber && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 font-mono">#{c.fileNumber}</span>
+                        )}
                         {c.customerType === 'dukaan-dar' && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">DD</span>
                         )}
@@ -1928,6 +1934,9 @@ export default function CustomersPage() {
                           >
                             {c.name}
                           </button>
+                          {c.fileNumber && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 whitespace-nowrap font-mono">#{c.fileNumber}</span>
+                          )}
                           {c.customerType === 'dukaan-dar' && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 whitespace-nowrap">Dukaan-Dar</span>
                           )}

@@ -1670,6 +1670,9 @@ export default function InstallmentsPage() {
                       <div className="flex-1 min-w-0 mr-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="font-semibold text-gray-900 text-sm leading-snug">{inst.customerName}</p>
+                          {inst.customerFileNumber && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 font-mono">#{inst.customerFileNumber}</span>
+                          )}
                           <Badge status={inst.status} paused={!!inst.pausedUntil} />
                           {isDaily && (
                             <span className="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700">Daily</span>
@@ -1812,7 +1815,12 @@ export default function InstallmentsPage() {
                 {data.data.map((inst: Installment) => (
                   <tr key={inst.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{inst.customerName}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-medium text-gray-900">{inst.customerName}</p>
+                        {inst.customerFileNumber && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 whitespace-nowrap font-mono">#{inst.customerFileNumber}</span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <p className="text-xs text-gray-400">{inst.customerPhone}</p>
                         {inst.paymentFrequency === 'daily' && (
