@@ -1127,11 +1127,23 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               <CardSkeleton /><CardSkeleton /><CardSkeleton />
             </div>
           ) : !installments.length ? (
-            <div className="text-center py-12">
-              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <CreditCard size={20} className="text-gray-300" />
+            <div className="flex flex-col items-center justify-center py-14 px-4 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-200 flex items-center justify-center mb-4">
+                <CreditCard size={26} className="text-blue-300" />
               </div>
-              <p className="text-sm text-gray-400">No purchases yet for this customer.</p>
+              <p className="text-sm font-semibold text-gray-700 mb-1">Koi installment nahi mili</p>
+              <p className="text-xs text-gray-400 mb-5 max-w-[220px]">
+                Is customer ne abhi tak koi product installment par nahi liya.
+              </p>
+              {canAddInstallmentInDrawer && (
+                <button
+                  onClick={() => setShowNewInstallment(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition shadow-sm shadow-blue-200"
+                >
+                  <CreditCard size={14} />
+                  New Installment banao
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">

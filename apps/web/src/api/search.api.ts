@@ -7,6 +7,7 @@ export type SearchCustomer = {
   area: string | null;
   cnicMasked: string;
   isBlacklisted: boolean;
+  fileNumber: string | null;
   lifecycleStage: string;
 };
 
@@ -22,6 +23,7 @@ export type SearchInstallment = {
   customerName: string;
   customerPhone: string;
   customerId: string;
+  customerFileNumber: string | null;
   productName: string;
 };
 

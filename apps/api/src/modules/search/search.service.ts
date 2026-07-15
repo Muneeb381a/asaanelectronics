@@ -12,11 +12,14 @@ export class SearchService {
     const isCnic  = /^\d{13}$/.test(clean);
     const isPhone = /^\d{10,13}$/.test(clean);
 
+    const isFileNum = /^\d{1,4}$/.test(clean);
+
     // ── Customers (own shop) ──────────────────────────────────────────────────
     const custConds = [
       ilike(customers.name, `%${clean}%`),
     ];
-    if (isPhone) custConds.push(ilike(customers.phone, `%${clean}%`));
+    if (isPhone)   custConds.push(ilike(customers.phone, `%${clean}%`));
+    if (isFileNum) custConds.push(ilike(customers.fileNumber, `${clean}%`));
     if (isCnic) {
       const [hmac, legacy] = hashCnicBoth(clean);
       custConds.push(eq(customers.cnicHash, hmac));
@@ -27,8 +30,9 @@ export class SearchService {
     const instConds = [
       ilike(customers.name, `%${clean}%`),
     ];
-    if (isPhone) instConds.push(ilike(customers.phone, `%${clean}%`));
-    if (isImei)  instConds.push(ilike(installments.imeiNumber, `%${clean}%`));
+    if (isPhone)   instConds.push(ilike(customers.phone, `%${clean}%`));
+    if (isImei)    instConds.push(ilike(installments.imeiNumber, `%${clean}%`));
+    if (isFileNum) instConds.push(ilike(customers.fileNumber, `${clean}%`));
     if (/^INV-/i.test(q.trim())) instConds.push(ilike(installments.invoiceNumber, `%${q.trim()}%`));
 
     // ── Products (own shop) ───────────────────────────────────────────────────
@@ -44,6 +48,7 @@ export class SearchService {
         area:           customers.area,
         cnicMasked:     customers.cnicMasked,
         isBlacklisted:  customers.isBlacklisted,
+        fileNumber:     customers.fileNumber,
         verificationStatus: customers.verificationStatus,
         lifecycleStage: sql<string>`COALESCE(
           (
@@ -73,10 +78,11 @@ export class SearchService {
         status:           installments.status,
         imeiNumber:       installments.imeiNumber,
         paymentFrequency: installments.paymentFrequency,
-        customerName:     customers.name,
-        customerPhone:    customers.phone,
-        customerId:       customers.id,
-        productName:      sql<string>`(SELECT p.name FROM products p WHERE p.id = ${installments.productId})`,
+        customerName:       customers.name,
+        customerPhone:      customers.phone,
+        customerId:         customers.id,
+        customerFileNumber: customers.fileNumber,
+        productName:        sql<string>`(SELECT p.name FROM products p WHERE p.id = ${installments.productId})`,
       }).from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .where(and(

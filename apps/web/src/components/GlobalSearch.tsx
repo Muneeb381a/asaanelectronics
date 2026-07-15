@@ -7,13 +7,23 @@ import {
 } from 'lucide-react';
 import { searchApi, type SearchResults } from '../api/search.api.ts';
 
-const STATUS_COLOR: Record<string, string> = {
-  ACTIVE:    'bg-green-100 text-green-700',
-  COMPLETED: 'bg-blue-100 text-blue-700',
-  DEFAULTED: 'bg-red-100 text-red-700',
-  PENDING:   'bg-yellow-100 text-yellow-700',
-  CANCELLED: 'bg-gray-100 text-gray-600',
-  CLOSED:    'bg-gray-100 text-gray-600',
+const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
+  ACTIVE:    { label: 'Active',    cls: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+  COMPLETED: { label: 'Complete',  cls: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500'    },
+  DEFAULTED: { label: 'Default',   cls: 'bg-red-100 text-red-700',         dot: 'bg-red-500'     },
+  PENDING:   { label: 'Pending',   cls: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-400'   },
+  CANCELLED: { label: 'Cancelled', cls: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-300'    },
+  CLOSED:    { label: 'Closed',    cls: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-300'    },
+};
+
+const LIFECYCLE_META: Record<string, { label: string; cls: string }> = {
+  LEAD:     { label: 'Lead',     cls: 'bg-slate-100 text-slate-500'    },
+  VERIFIED: { label: 'Verified', cls: 'bg-blue-100 text-blue-700'      },
+  ACTIVE:   { label: 'Active',   cls: 'bg-emerald-100 text-emerald-700'},
+  AT_RISK:  { label: 'At Risk',  cls: 'bg-amber-100 text-amber-700'    },
+  DEFAULT:  { label: 'Default',  cls: 'bg-red-100 text-red-700'        },
+  CLOSED:   { label: 'Closed',   cls: 'bg-gray-100 text-gray-500'      },
+  REPEAT:   { label: 'Repeat',   cls: 'bg-violet-100 text-violet-700'  },
 };
 
 function pkr(v: string | number) {
@@ -138,74 +148,129 @@ export default function GlobalSearch({ open, onClose }: Props) {
               {/* Customers */}
               {(data?.customers.length ?? 0) > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                  <div className="flex items-center gap-2 px-4 pt-3 pb-2">
                     <Users className="w-3.5 h-3.5 text-indigo-500" />
-                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Customers</span>
+                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Customers</span>
+                    <span className="ml-auto text-[10px] text-gray-400">{data!.customers.length} result{data!.customers.length !== 1 ? 's' : ''}</span>
                   </div>
-                  {data!.customers.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => go('/customers', { openCustomerId: c.id })}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-indigo-50 transition-colors group text-left"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-sm font-semibold shrink-0">
-                        {c.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-800 truncate">{c.name}</span>
-                          {c.isBlacklisted && (
-                            <AlertOctagon className="w-3.5 h-3.5 text-red-500 shrink-0" aria-label="Blacklisted" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5 flex-wrap">
-                          <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>
-                          {c.area && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.area}</span>}
-                          {c.cnicMasked && (
-                            <span className="flex items-center gap-1 font-mono text-[10px] text-gray-400">
-                              <CreditCard className="w-3 h-3" />{c.cnicMasked}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-400 shrink-0" />
-                    </button>
-                  ))}
+                  <div className="px-3 pb-2 space-y-1">
+                    {data!.customers.map((c) => {
+                      const lm = LIFECYCLE_META[c.lifecycleStage] ?? LIFECYCLE_META['LEAD']!;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => go('/customers', { openCustomerId: c.id })}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-indigo-50 active:bg-indigo-100 transition-colors group text-left border border-transparent hover:border-indigo-100"
+                        >
+                          {/* Avatar */}
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm" style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
+                            {c.name.charAt(0).toUpperCase()}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                              <span className="text-sm font-semibold text-gray-900 truncate">{c.name}</span>
+                              {c.fileNumber && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 border border-indigo-200 font-mono shrink-0">#{c.fileNumber}</span>
+                              )}
+                              {c.isBlacklisted && (
+                                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 border border-red-200 shrink-0">
+                                  <AlertOctagon className="w-2.5 h-2.5" />DO NOT SELL
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${lm.cls}`}>{lm.label}</span>
+                              <span className="text-xs text-gray-500 flex items-center gap-1">
+                                <Phone className="w-2.5 h-2.5 text-gray-400" />{c.phone}
+                              </span>
+                              {c.area && (
+                                <span className="text-xs text-gray-400 flex items-center gap-1">
+                                  <MapPin className="w-2.5 h-2.5" />{c.area}
+                                </span>
+                              )}
+                              <span className="text-[10px] font-mono text-gray-400">{c.cnicMasked}</span>
+                            </div>
+                          </div>
+
+                          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 shrink-0 transition-colors" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* Installments */}
               {(data?.installments.length ?? 0) > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                  <div className="flex items-center gap-2 px-4 pt-3 pb-2">
                     <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Installments</span>
+                    <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Installments</span>
+                    <span className="ml-auto text-[10px] text-gray-400">{data!.installments.length} result{data!.installments.length !== 1 ? 's' : ''}</span>
                   </div>
-                  {data!.installments.map((inst) => (
-                    <button
-                      key={inst.id}
-                      onClick={() => go('/customers', { openCustomerId: inst.customerId })}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-emerald-50 transition-colors group text-left"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                        <CreditCard className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-800 truncate">{inst.customerName}</span>
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${STATUS_COLOR[inst.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {inst.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
-                          <span>{inst.productName}</span>
-                          <span>Remaining: {pkr(inst.remaining)}</span>
-                          {inst.invoiceNumber && <span className="text-indigo-500">{inst.invoiceNumber}</span>}
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-400 shrink-0" />
-                    </button>
-                  ))}
+                  <div className="px-3 pb-2 space-y-1">
+                    {data!.installments.map((inst) => {
+                      const sm = STATUS_META[inst.status] ?? STATUS_META['PENDING']!;
+                      const total = Number(inst.totalAmount);
+                      const remaining = Number(inst.remaining);
+                      const pct = total > 0 ? Math.round(((total - remaining) / total) * 100) : 0;
+                      const isDaily = inst.paymentFrequency === 'daily';
+                      return (
+                        <button
+                          key={inst.id}
+                          onClick={() => go('/customers', { openCustomerId: inst.customerId })}
+                          className="w-full px-3 py-2.5 rounded-xl hover:bg-emerald-50 active:bg-emerald-100 transition-colors group text-left border border-transparent hover:border-emerald-100"
+                        >
+                          {/* Row 1: name + badges + status */}
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                              <span className="text-sm font-semibold text-gray-900 truncate">{inst.customerName}</span>
+                              {inst.customerFileNumber && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 border border-indigo-200 font-mono shrink-0">#{inst.customerFileNumber}</span>
+                              )}
+                              {isDaily && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 border border-orange-200 shrink-0">Daily</span>
+                              )}
+                            </div>
+                            <span className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${sm.cls}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${sm.dot} shrink-0`} />
+                              {sm.label}
+                            </span>
+                          </div>
+
+                          {/* Row 2: product + invoice */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs text-gray-600 font-medium truncate">{inst.productName}</span>
+                            {inst.invoiceNumber && (
+                              <span className="text-[10px] text-indigo-400 font-mono shrink-0">{inst.invoiceNumber}</span>
+                            )}
+                            {inst.imeiNumber && (
+                              <span className="text-[10px] text-gray-400 font-mono shrink-0 truncate">IMEI: {inst.imeiNumber}</span>
+                            )}
+                          </div>
+
+                          {/* Row 3: amounts + progress */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+                                <span>Baki: <span className={`font-bold ${remaining > 0 ? 'text-orange-500' : 'text-emerald-600'}`}>{pkr(remaining)}</span></span>
+                                <span className="font-mono">{pct}% paid</span>
+                              </div>
+                              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-1 rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-500 shrink-0 transition-colors" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
