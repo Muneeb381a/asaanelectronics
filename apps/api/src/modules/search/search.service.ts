@@ -12,14 +12,11 @@ export class SearchService {
     const isCnic  = /^\d{13}$/.test(clean);
     const isPhone = /^\d{10,13}$/.test(clean);
 
-    const isFileNum = /^\d{1,4}$/.test(clean);
-
     // ── Customers (own shop) ──────────────────────────────────────────────────
     const custConds = [
       ilike(customers.name, `%${clean}%`),
     ];
-    if (isPhone)   custConds.push(ilike(customers.phone, `%${clean}%`));
-    if (isFileNum) custConds.push(ilike(customers.fileNumber, `${clean}%`));
+    if (isPhone) custConds.push(ilike(customers.phone, `%${clean}%`));
     if (isCnic) {
       const [hmac, legacy] = hashCnicBoth(clean);
       custConds.push(eq(customers.cnicHash, hmac));
@@ -30,9 +27,8 @@ export class SearchService {
     const instConds = [
       ilike(customers.name, `%${clean}%`),
     ];
-    if (isPhone)   instConds.push(ilike(customers.phone, `%${clean}%`));
-    if (isImei)    instConds.push(ilike(installments.imeiNumber, `%${clean}%`));
-    if (isFileNum) instConds.push(ilike(customers.fileNumber, `${clean}%`));
+    if (isPhone) instConds.push(ilike(customers.phone, `%${clean}%`));
+    if (isImei)  instConds.push(ilike(installments.imeiNumber, `%${clean}%`));
     if (/^INV-/i.test(q.trim())) instConds.push(ilike(installments.invoiceNumber, `%${q.trim()}%`));
 
     // ── Products (own shop) ───────────────────────────────────────────────────
