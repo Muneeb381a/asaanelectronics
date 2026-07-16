@@ -23,7 +23,7 @@ const URGENCY = {
 };
 
 export default function CollectionSheetPage() {
-  const [days,       setDays]       = useState(0);
+  const [days,       setDays]       = useState(7);
   const [areaFilter, setAreaFilter] = useState('');
   const [collapsed,  setCollapsed]  = useState<Set<string>>(new Set());
 
@@ -104,9 +104,9 @@ export default function CollectionSheetPage() {
             <div className="flex items-center gap-2 flex-wrap">
               {/* Window buttons */}
               {([
-                { label: 'Overdue + Today', value: 0 },
-                { label: '+ 3 Days',        value: 3 },
-                { label: '+ 7 Days',        value: 7 },
+                { label: '7 Din',    value: 7 },
+                { label: '3 Din',    value: 3 },
+                { label: 'Sirf Aaj', value: 0 },
               ] as const).map((opt) => (
                 <button
                   key={opt.value}
