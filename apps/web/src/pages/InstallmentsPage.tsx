@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck, AlertOctagon } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck, AlertOctagon, AlertTriangle, Users } from 'lucide-react';
+import { staffApi } from '../api/staff.api.ts';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import EditInstallmentModal from '../components/EditInstallmentModal.tsx';
@@ -1186,14 +1187,23 @@ function BatchReminderModal({ shopName, onClose }: { shopName: string; onClose: 
 
 function BulkPaymentModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
+  const { user } = useAuthStore();
+  const isOwner = user?.role === 'SELLER_OWNER';
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [collectedBy, setCollectedBy] = useState('');
 
   const { data: sheet = [], isLoading } = useQuery({
     queryKey: ['due-sheet'],
     queryFn:  installmentsApi.dueSheet,
     staleTime: 30_000,
+  });
+
+  const { data: staff = [] } = useQuery({
+    queryKey: ['staff'],
+    queryFn: staffApi.list,
+    enabled: isOwner,
   });
 
   const toggle = (id: string, monthly: number) => {
@@ -1210,6 +1220,7 @@ function BulkPaymentModal({ onClose }: { onClose: () => void }) {
         installmentId: r.id,
         amount: Number(amounts[r.id]) || r.monthly,
         method,
+        ...(isOwner && collectedBy ? { collectedBy } : {}),
       }))
     ),
     onSuccess: (result) => {
@@ -1238,8 +1249,8 @@ function BulkPaymentModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
 
-        {/* Method selector */}
-        <div className="px-5 py-3 border-b border-gray-100 shrink-0">
+        {/* Method + Collector */}
+        <div className="px-5 py-3 border-b border-gray-100 shrink-0 space-y-3">
           <div className="flex gap-1.5 flex-wrap">
             {METHODS.map((m) => (
               <button key={m} onClick={() => setMethod(m)}
@@ -1248,6 +1259,40 @@ function BulkPaymentModal({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
+
+          {isOwner && staff.length > 0 && (() => {
+            const isCash = method === 'CASH';
+            const missing = isCash && !collectedBy;
+            return (
+              <div className={`rounded-xl px-3 py-2.5 border transition-colors ${missing ? 'bg-amber-50 border-amber-300' : 'bg-violet-50 border-violet-200'}`}>
+                <label className={`flex items-center gap-1.5 text-xs font-semibold mb-1.5 ${missing ? 'text-amber-700' : 'text-violet-700'}`}>
+                  <Users size={13} />
+                  Kisne collect kiya?
+                  {missing && (
+                    <span className="ml-auto flex items-center gap-1 font-normal text-amber-600">
+                      <AlertTriangle size={11} /> zaroor bharein
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={collectedBy}
+                  onChange={(e) => setCollectedBy(e.target.value)}
+                  className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white border transition-colors ${missing ? 'border-amber-300 focus:ring-amber-400 text-amber-800' : 'border-violet-200 focus:ring-violet-400'}`}
+                >
+                  <option value="">— Owner / Khud ne collect kiya —</option>
+                  {staff.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                {missing && (
+                  <p className="text-[11px] text-amber-600 mt-1.5 flex items-start gap-1">
+                    <AlertTriangle size={11} className="shrink-0 mt-0.5" />
+                    Agar employee ne field se collect kiya tha toh naam select karo
+                  </p>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* List */}
