@@ -400,7 +400,7 @@ function ProfileEditModal({ member, onClose }: { member: StaffMember; onClose: (
   );
 }
 
-function StaffCard({ member }: { member: StaffMember }) {
+function StaffCard({ member, balance }: { member: StaffMember; balance?: import('../api/handovers.api.ts').StaffBalance }) {
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === 'SELLER_OWNER';
@@ -408,9 +408,12 @@ function StaffCard({ member }: { member: StaffMember }) {
   const staffType = detectStaffType(perms);
   const initials = member.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const frozen = isMemberFrozen(member);
-  const [showFreeze,  setShowFreeze]  = useState(false);
+  const [showFreeze,    setShowFreeze]    = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+  const [showProfile,   setShowProfile]   = useState(false);
+  const [showReceive,   setShowReceive]   = useState(false);
+
+  const pendingCash = balance ? Number(balance.pendingBalance) : 0;
 
   const { mutate: remove, isPending: isRemoving } = useMutation({
     mutationFn: () => staffApi.remove(member.id),
@@ -539,8 +542,44 @@ function StaffCard({ member }: { member: StaffMember }) {
         )}
       </div>
 
+      {/* Cash in Hand — owner only, shown when employee has unclaimed cash */}
+      {isOwner && balance && pendingCash >= 1 && (
+        <div className={`mt-3 rounded-xl border px-3 py-2.5 ${balance.pendingHandover ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                Cash in Hand
+              </p>
+              <p className={`text-base font-black leading-tight ${balance.pendingHandover ? 'text-amber-700' : 'text-emerald-700'}`}>
+                {pkr(pendingCash)}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                Collected: {pkr(Number(balance.totalCollected))} · Confirmed: {pkr(Number(balance.totalConfirmed))}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowReceive(true)}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
+            >
+              <Banknote size={13} /> Cash Li
+            </button>
+          </div>
+          {balance.pendingHandover && (
+            <p className="text-[10px] text-amber-600 mt-1.5 flex items-center gap-1">
+              <Clock size={10} /> Staff ne {pkr(Number(balance.pendingHandover.handedAmount))} submit kiya — confirm karein
+            </p>
+          )}
+        </div>
+      )}
+
       {showFreeze   && <FreezeModal member={member} onClose={() => setShowFreeze(false)} />}
       {showProfile  && <ProfileEditModal member={member} onClose={() => setShowProfile(false)} />}
+      {showReceive  && balance && (
+        <DirectReceiveModal
+          target={balance}
+          onClose={() => setShowReceive(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={removeConfirm}
@@ -1952,6 +1991,15 @@ export default function StaffPage() {
     queryFn: staffApi.list,
   });
 
+  const { data: balances = [] } = useQuery({
+    queryKey: ['handover-balances'],
+    queryFn: handoversApi.pendingBalances,
+    staleTime: 30_000,
+    enabled: isOwner,
+  });
+
+  const balanceMap = new Map(balances.map((b) => [b.staffId, b]));
+
   return (
     <div className="px-4 py-5 sm:p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -1982,7 +2030,7 @@ export default function StaffPage() {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {staff.map((m) => <StaffCard key={m.id} member={m} />)}
+          {staff.map((m) => <StaffCard key={m.id} member={m} balance={balanceMap.get(m.id)} />)}
         </div>
       )}
 
