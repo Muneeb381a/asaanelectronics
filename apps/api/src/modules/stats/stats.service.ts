@@ -228,7 +228,7 @@ export class StatsService {
       };
     }
 
-    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth, completingSoon] = await Promise.all([
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth, completingSoon, monthInstTarget] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -460,6 +460,59 @@ export class StatsService {
         ORDER BY payments_left ASC, i.remaining::numeric ASC
         LIMIT 10
       `),
+
+      // This month's expected installment collection (target)
+      db.execute<{ target: string }>(sql`
+        WITH bounds AS (
+          SELECT
+            DATE_TRUNC('month', NOW() AT TIME ZONE 'Asia/Karachi')::date AS ms,
+            (DATE_TRUNC('month', NOW() AT TIME ZONE 'Asia/Karachi') + INTERVAL '1 month')::date AS me
+        )
+        SELECT COALESCE(SUM(contrib), 0)::text AS target FROM (
+          -- Monthly installments whose next payment falls in this calendar month
+          SELECT i.monthly::numeric AS contrib
+          FROM installments i
+          INNER JOIN customers c ON c.id = i.customer_id
+          WHERE c.seller_id = ${sellerId}
+            AND i.status = 'ACTIVE'
+            AND i.payment_frequency = 'monthly'
+            AND i.deleted_at IS NULL
+            AND c.deleted_at IS NULL
+            AND DATE_TRUNC('month',
+              (DATE_TRUNC('month', i.start_date + (
+                (GREATEST(0, FLOOR(
+                  (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                  / NULLIF(i.monthly::numeric, 0)
+                )) + 1) || ' months'
+              )::interval)::date + (i.payment_due_day - 1))::timestamp
+            ) = (SELECT ms::timestamp FROM bounds)
+
+          UNION ALL
+
+          -- Daily installments: (days due in this month) × daily rate
+          SELECT GREATEST(0,
+            LEAST((SELECT me FROM bounds), (i.start_date + (i.months || ' days')::interval)::date) -
+            GREATEST((SELECT ms FROM bounds), (i.start_date + (
+              GREATEST(0, FLOOR(
+                (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                / NULLIF(i.monthly::numeric, 0)
+              )) + 1) || ' days')::interval)::date
+          ) * i.monthly::numeric AS contrib
+          FROM installments i
+          INNER JOIN customers c ON c.id = i.customer_id
+          WHERE c.seller_id = ${sellerId}
+            AND i.status = 'ACTIVE'
+            AND i.payment_frequency = 'daily'
+            AND i.deleted_at IS NULL
+            AND c.deleted_at IS NULL
+            AND (i.start_date + (i.months || ' days')::interval)::date > (SELECT ms FROM bounds)
+            AND (i.start_date + (
+              GREATEST(0, FLOOR(
+                (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                / NULLIF(i.monthly::numeric, 0)
+              )) + 1) || ' days')::interval < (SELECT me FROM bounds)::timestamp
+        ) t
+      `),
     ]);
 
     const budgetLimits = (sellerRow?.settings?.expenseBudgets ?? {}) as Partial<Record<string, number>>;
@@ -502,6 +555,7 @@ export class StatsService {
         monthly:      Number(r.monthly),
         paymentsLeft: Number(r.payments_left),
       })),
+      monthInstTarget: Number((monthInstTarget[0] as { target: string } | undefined)?.target ?? 0),
     };
   }
 

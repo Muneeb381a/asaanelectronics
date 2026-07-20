@@ -32,6 +32,7 @@ export interface Stats {
   completedThisMonthCount: number;
   completedThisMonthValue: number;
   monthExpenseTotal: number;
+  monthInstTarget: number;
   completingSoon: Array<{
     id: string;
     customerName: string;

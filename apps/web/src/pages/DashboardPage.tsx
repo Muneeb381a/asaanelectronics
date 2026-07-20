@@ -502,6 +502,80 @@ export default function DashboardPage() {
         </div>
       ))}
 
+      {/* ── Owner: This Month's Installment Target vs Received ─── */}
+      {isOwner && data && data.monthInstTarget > 0 && (() => {
+        const target   = data.monthInstTarget;
+        const received = data.monthCollections;
+        const pct      = Math.min(100, target > 0 ? Math.round((received / target) * 100) : 0);
+        const gap      = target - received;
+        const isAhead  = received >= target;
+        const barColor = pct >= 90 ? 'bg-emerald-400' : pct >= 60 ? 'bg-amber-400' : 'bg-red-400';
+        const now      = new Date();
+        const daysInMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const dayOfMonth    = now.getDate();
+        const timePct       = Math.round((dayOfMonth / daysInMonth) * 100);
+        return (
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+                  <Target size={18} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Is Mahine Ki Target</p>
+                  <p className="text-[10px] text-gray-400">Installment collection — {now.toLocaleDateString('en-PK', { month: 'long', year: 'numeric' })}</p>
+                </div>
+              </div>
+              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${isAhead ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                {pct}%
+              </span>
+            </div>
+
+            {/* Numbers row */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-gray-50 rounded-xl px-4 py-3">
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Target</p>
+                <p className="text-lg font-black text-gray-800 leading-none">{pkrShort(target)}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{pkr(target)}</p>
+              </div>
+              <div className={`rounded-xl px-4 py-3 ${isAhead ? 'bg-emerald-50' : 'bg-blue-50'}`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${isAhead ? 'text-emerald-500' : 'text-blue-400'}`}>Receive Hua</p>
+                <p className={`text-lg font-black leading-none ${isAhead ? 'text-emerald-700' : 'text-blue-700'}`}>{pkrShort(received)}</p>
+                <p className={`text-[10px] mt-0.5 ${isAhead ? 'text-emerald-400' : 'text-blue-400'}`}>{pkr(received)}</p>
+              </div>
+            </div>
+
+            {/* Progress bar — collection vs target */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] text-gray-400">
+                <span>Collection progress</span>
+                <span className="font-semibold">{pct}% of target</span>
+              </div>
+              <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${barColor}`}
+                  style={{ width: `${pct}%` }}
+                />
+                {/* Time elapsed marker */}
+                <div
+                  className="absolute top-0 h-full w-px bg-gray-400/60"
+                  style={{ left: `${timePct}%` }}
+                  title={`Mahine ka ${timePct}% guzar gaya`}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-semibold ${isAhead ? 'text-emerald-600' : 'text-orange-600'}`}>
+                  {isAhead
+                    ? `+${pkrShort(received - target)} target se zyada`
+                    : `${pkrShort(gap)} abhi baaki hai`}
+                </span>
+                <span className="text-[10px] text-gray-400">{timePct}% mahina guzra</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Owner: Total Outstanding Receivables ────────────────── */}
       {isOwner && reports && (() => {
         const outstanding = reports.collectionRate.totalOutstanding;
