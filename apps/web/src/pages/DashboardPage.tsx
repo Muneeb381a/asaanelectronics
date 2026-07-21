@@ -447,12 +447,10 @@ export default function DashboardPage() {
                 {pkrShort(todayTotal)}
               </p>
               <p className="text-[10px] text-gray-500 mt-1">{pkr(todayTotal)}</p>
-              {data && (data.todayCashSales > 0 || data.todayCollections > 0) && (
-                <div className="flex gap-3 mt-2">
-                  <span className="text-[10px] text-gray-400">Inst: <span className="text-gray-300 font-medium">{pkrShort(data.todayCollections)}</span></span>
-                  <span className="text-[10px] text-gray-400">Cash: <span className="text-gray-300 font-medium">{pkrShort(data.todayCashSales)}</span></span>
-                </div>
-              )}
+              <div className="flex gap-3 mt-2">
+                <span className="text-[10px] text-gray-400">Inst: <span className={`font-medium ${(data?.todayCollections ?? 0) > 0 ? 'text-gray-300' : 'text-gray-600'}`}>{pkrShort(data?.todayCollections ?? 0)}</span></span>
+                <span className="text-[10px] text-gray-400">Sale: <span className={`font-medium ${(data?.todayCashSales ?? 0) > 0 ? 'text-gray-300' : 'text-gray-600'}`}>{pkrShort(data?.todayCashSales ?? 0)}</span></span>
+              </div>
             </div>
             {/* This Month */}
             <div>
@@ -461,13 +459,17 @@ export default function DashboardPage() {
                 {pkrShort(monthTotal)}
               </p>
               <p className="text-[10px] text-gray-500 mt-1">{pkr(monthTotal)}</p>
+              <div className="flex gap-3 mt-2">
+                <span className="text-[10px] text-gray-400">Inst: <span className={`font-medium ${(data?.monthCollections ?? 0) > 0 ? 'text-gray-300' : 'text-gray-600'}`}>{pkrShort(data?.monthCollections ?? 0)}</span></span>
+                <span className="text-[10px] text-gray-400">Sale: <span className={`font-medium ${(data?.monthCashSales ?? 0) > 0 ? 'text-gray-300' : 'text-gray-600'}`}>{pkrShort(data?.monthCashSales ?? 0)}</span></span>
+              </div>
               {momChange !== null && (
-                <div className="flex items-center gap-1 mt-2">
+                <div className="flex items-center gap-1 mt-1.5">
                   {momChange >= 0
                     ? <TrendingUp size={11} className="text-emerald-400" />
                     : <TrendingDown size={11} className="text-red-400" />}
                   <span className={`text-[10px] font-semibold ${momChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {Math.abs(momChange)}% {momChange >= 0 ? 'zyada' : 'kam'} — pichle mahine se
+                    {Math.abs(momChange)}% {momChange >= 0 ? 'zyada' : 'kam'} pichle mahine se
                   </span>
                 </div>
               )}
@@ -503,12 +505,12 @@ export default function DashboardPage() {
       ))}
 
       {/* ── Owner: This Month's Installment Target vs Received ─── */}
-      {isOwner && data && data.monthInstTarget > 0 && (() => {
+      {isOwner && data && (() => {
         const target   = data.monthInstTarget;
         const received = data.monthCollections;
-        const pct      = Math.min(100, target > 0 ? Math.round((received / target) * 100) : 0);
+        const pct      = Math.min(100, target > 0 ? Math.round((received / target) * 100) : received > 0 ? 100 : 0);
         const gap      = target - received;
-        const isAhead  = received >= target;
+        const isAhead  = target > 0 ? received >= target : false;
         const barColor = pct >= 90 ? 'bg-emerald-400' : pct >= 60 ? 'bg-amber-400' : 'bg-red-400';
         const now      = new Date();
         const daysInMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -526,52 +528,64 @@ export default function DashboardPage() {
                   <p className="text-[10px] text-gray-400">Installment collection — {now.toLocaleDateString('en-PK', { month: 'long', year: 'numeric' })}</p>
                 </div>
               </div>
-              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${isAhead ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
-                {pct}%
+              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                target === 0 ? 'bg-gray-100 text-gray-500'
+                : isAhead ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-orange-100 text-orange-700'
+              }`}>
+                {target === 0 ? 'N/A' : `${pct}%`}
               </span>
             </div>
 
-            {/* Numbers row */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Target</p>
-                <p className="text-lg font-black text-gray-800 leading-none">{pkrShort(target)}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{pkr(target)}</p>
-              </div>
-              <div className={`rounded-xl px-4 py-3 ${isAhead ? 'bg-emerald-50' : 'bg-blue-50'}`}>
-                <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${isAhead ? 'text-emerald-500' : 'text-blue-400'}`}>Receive Hua</p>
-                <p className={`text-lg font-black leading-none ${isAhead ? 'text-emerald-700' : 'text-blue-700'}`}>{pkrShort(received)}</p>
-                <p className={`text-[10px] mt-0.5 ${isAhead ? 'text-emerald-400' : 'text-blue-400'}`}>{pkr(received)}</p>
-              </div>
-            </div>
+            {target === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-3">
+                Is mahine koi installment due nahi — ya active plans nahi hain
+              </p>
+            ) : (
+              <>
+                {/* Numbers row */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-gray-50 rounded-xl px-4 py-3">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Expected</p>
+                    <p className="text-lg font-black text-gray-800 leading-none">{pkrShort(target)}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{pkr(target)}</p>
+                  </div>
+                  <div className={`rounded-xl px-4 py-3 ${isAhead ? 'bg-emerald-50' : 'bg-blue-50'}`}>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${isAhead ? 'text-emerald-500' : 'text-blue-400'}`}>Installments Aaye</p>
+                    <p className={`text-lg font-black leading-none ${isAhead ? 'text-emerald-700' : 'text-blue-700'}`}>{pkrShort(received)}</p>
+                    <p className={`text-[10px] mt-0.5 ${isAhead ? 'text-emerald-400' : 'text-blue-400'}`}>{pkr(received)}</p>
+                  </div>
+                </div>
 
-            {/* Progress bar — collection vs target */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] text-gray-400">
-                <span>Collection progress</span>
-                <span className="font-semibold">{pct}% of target</span>
-              </div>
-              <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${barColor}`}
-                  style={{ width: `${pct}%` }}
-                />
-                {/* Time elapsed marker */}
-                <div
-                  className="absolute top-0 h-full w-px bg-gray-400/60"
-                  style={{ left: `${timePct}%` }}
-                  title={`Mahine ka ${timePct}% guzar gaya`}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-[10px] font-semibold ${isAhead ? 'text-emerald-600' : 'text-orange-600'}`}>
-                  {isAhead
-                    ? `+${pkrShort(received - target)} target se zyada`
-                    : `${pkrShort(gap)} abhi baaki hai`}
-                </span>
-                <span className="text-[10px] text-gray-400">{timePct}% mahina guzra</span>
-              </div>
-            </div>
+                {/* Progress bar — collection vs target */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] text-gray-400">
+                    <span>Collection progress</span>
+                    <span className="font-semibold">{pct}% of target</span>
+                  </div>
+                  <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${barColor}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                    {/* Time elapsed marker */}
+                    <div
+                      className="absolute top-0 h-full w-px bg-gray-400/60"
+                      style={{ left: `${timePct}%` }}
+                      title={`Mahine ka ${timePct}% guzar gaya`}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-semibold ${isAhead ? 'text-emerald-600' : 'text-orange-600'}`}>
+                      {isAhead
+                        ? `+${pkrShort(received - target)} target se zyada`
+                        : `${pkrShort(gap)} abhi baaki hai`}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{timePct}% mahina guzra</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         );
       })()}
@@ -630,7 +644,6 @@ export default function DashboardPage() {
         const expenses = data.monthExpenseTotal ?? 0;
         const profit   = income - expenses;
         const isProfit = profit >= 0;
-        if (income === 0 && expenses === 0) return null;
         return (
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
             <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-3 border-b border-gray-50">
@@ -645,25 +658,29 @@ export default function DashboardPage() {
             <div className="grid grid-cols-3 divide-x divide-gray-100">
               <div className="px-4 py-3 text-center">
                 <p className="text-[10px] text-gray-400 mb-0.5">Income</p>
-                <p className="text-base font-black text-gray-900">{pkrShort(income)}</p>
-                <p className="text-[9px] text-gray-400">collections + cash</p>
+                <p className={`text-base font-black ${income > 0 ? 'text-gray-900' : 'text-gray-400'}`}>{income > 0 ? pkrShort(income) : '—'}</p>
+                <p className="text-[9px] text-gray-400">inst + cash sale</p>
               </div>
               <div className="px-4 py-3 text-center">
                 <p className="text-[10px] text-gray-400 mb-0.5">Kharcha</p>
-                <p className="text-base font-black text-red-600">{pkrShort(expenses)}</p>
+                <p className={`text-base font-black ${expenses > 0 ? 'text-red-600' : 'text-gray-400'}`}>{expenses > 0 ? pkrShort(expenses) : '—'}</p>
                 <p className="text-[9px] text-gray-400">is mahine expenses</p>
               </div>
               <div className="px-4 py-3 text-center">
                 <p className="text-[10px] text-gray-400 mb-0.5">Net {isProfit ? 'Faida' : 'Nuqsan'}</p>
-                <p className={`text-base font-black ${isProfit ? 'text-emerald-600' : 'text-red-500'}`}>{pkrShort(Math.abs(profit))}</p>
-                <p className={`text-[9px] ${isProfit ? 'text-emerald-400' : 'text-red-400'}`}>{isProfit ? 'Alhamdulillah' : 'Dhyan dein'}</p>
+                <p className={`text-base font-black ${income === 0 && expenses === 0 ? 'text-gray-400' : isProfit ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {income === 0 && expenses === 0 ? '—' : pkrShort(Math.abs(profit))}
+                </p>
+                <p className={`text-[9px] ${income === 0 && expenses === 0 ? 'text-gray-300' : isProfit ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {income === 0 && expenses === 0 ? 'Koi data nahi' : isProfit ? 'Alhamdulillah' : 'Dhyan dein'}
+                </p>
               </div>
             </div>
-            {expenses > 0 && (
+            {(income > 0 || expenses > 0) && (
               <div className="px-4 pb-3">
                 <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden flex">
-                  <div className="h-full bg-emerald-400 rounded-l-full" style={{ width: `${Math.min((income / Math.max(income, expenses)) * 100, 100)}%` }} />
-                  <div className="h-full bg-red-400" style={{ width: `${Math.min((expenses / Math.max(income, expenses)) * 100, 100)}%` }} />
+                  <div className="h-full bg-emerald-400 rounded-l-full" style={{ width: `${Math.min((income / Math.max(income, expenses, 1)) * 100, 100)}%` }} />
+                  <div className="h-full bg-red-400" style={{ width: `${Math.min((expenses / Math.max(income, expenses, 1)) * 100, 100)}%` }} />
                 </div>
                 <div className="flex justify-between mt-1">
                   <span className="text-[9px] text-emerald-500 font-medium">Income</span>
