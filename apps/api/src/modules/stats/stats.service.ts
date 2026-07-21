@@ -490,13 +490,14 @@ export class StatsService {
           UNION ALL
 
           -- Daily installments: (days due in this month) × daily rate
+          -- Note: parens around (CALC + 1) || ' days' are required so || binds before +
           SELECT GREATEST(0,
             LEAST((SELECT me FROM bounds), (i.start_date + (i.months || ' days')::interval)::date) -
             GREATEST((SELECT ms FROM bounds), (i.start_date + (
-              GREATEST(0, FLOOR(
+              (GREATEST(0, FLOOR(
                 (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
                 / NULLIF(i.monthly::numeric, 0)
-              )) + 1) || ' days')::interval)::date
+              )) + 1) || ' days')::interval)::date)
           ) * i.monthly::numeric AS contrib
           FROM installments i
           INNER JOIN customers c ON c.id = i.customer_id
@@ -507,10 +508,10 @@ export class StatsService {
             AND c.deleted_at IS NULL
             AND (i.start_date + (i.months || ' days')::interval)::date > (SELECT ms FROM bounds)
             AND (i.start_date + (
-              GREATEST(0, FLOOR(
+              (GREATEST(0, FLOOR(
                 (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
                 / NULLIF(i.monthly::numeric, 0)
-              )) + 1) || ' days')::interval < (SELECT me FROM bounds)::timestamp
+              )) + 1) || ' days')::interval) < (SELECT me FROM bounds)::timestamp
         ) t
       `),
     ]);
