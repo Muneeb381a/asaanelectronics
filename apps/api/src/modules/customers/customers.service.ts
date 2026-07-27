@@ -636,7 +636,7 @@ export class CustomersService {
           guarantorShopAddress: body.guarantorShopAddress,
           guarantor2ShopName: body.guarantor2ShopName,
           guarantor2ShopAddress: body.guarantor2ShopAddress,
-          dob: body.dob,
+          dob: body.dob || undefined,
           referredById: body.referredById ?? null,
           createdByUserId,
           fileNumber,
