@@ -64,7 +64,8 @@ export class HandoversService {
       SELECT COALESCE(SUM(p.amount), 0) AS total
       FROM payments p
       JOIN installments i ON i.id = p.installment_id
-      WHERE i.seller_id = ${sellerId}
+      JOIN customers c ON c.id = i.customer_id
+      WHERE c.seller_id = ${sellerId}
         AND p.collected_by = ${staffId}
         AND p.paid_on >= ${todayStart}
         AND p.deleted_at IS NULL
@@ -98,8 +99,9 @@ export class HandoversService {
             SELECT SUM(p.amount)
             FROM payments p
             JOIN installments i ON i.id = p.installment_id
+            JOIN customers c ON c.id = i.customer_id
             WHERE p.collected_by = u.id
-              AND i.seller_id = ${sellerId}
+              AND c.seller_id = ${sellerId}
               AND p.deleted_at IS NULL
               AND p.method = 'CASH'
           ), 0)
@@ -124,8 +126,9 @@ export class HandoversService {
             SELECT SUM(p.amount)
             FROM payments p
             JOIN installments i ON i.id = p.installment_id
+            JOIN customers c ON c.id = i.customer_id
             WHERE p.collected_by = u.id
-              AND i.seller_id = ${sellerId}
+              AND c.seller_id = ${sellerId}
               AND p.deleted_at IS NULL
               AND p.method = 'CASH'
           ), 0)
