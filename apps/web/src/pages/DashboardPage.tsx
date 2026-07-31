@@ -228,12 +228,15 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
   );
 }
 
+type DashTab = 'aaj' | 'mahine' | 'portfolio' | 'reports';
+
 export default function DashboardPage() {
   const user     = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const isOwner  = user?.role === 'SELLER_OWNER';
   const queryClient = useQueryClient();
 
+  const [activeTab, setActiveTab]                 = useState<DashTab>('aaj');
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [handoverAmount, setHandoverAmount]       = useState('');
   const [handoverNote, setHandoverNote]           = useState('');
@@ -333,26 +336,54 @@ export default function DashboardPage() {
 
   const hasAnalytics = !!(reports?.topDebtors.length || reports?.topProducts.length || advanced);
 
-  return (
-    <div className="px-4 py-5 sm:p-6 max-w-5xl mx-auto space-y-5">
+  const DASH_TABS: { key: DashTab; label: string }[] = [
+    { key: 'aaj',       label: 'Aaj' },
+    { key: 'mahine',    label: 'Is Mahine' },
+    { key: 'portfolio', label: 'Portfolio' },
+    ...(isOwner ? [{ key: 'reports' as DashTab, label: 'Reports' }] : []),
+  ];
 
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-400">{today}</p>
-          <h1 className="text-2xl font-bold text-gray-900 mt-0.5">
-            {greeting()}, {user?.name.split(' ')[0]}
-          </h1>
+  return (
+    <div className="max-w-5xl mx-auto">
+
+      {/* ── Sticky header + tab bar ── */}
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+        <div className="px-4 pt-4 pb-0 sm:px-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] text-gray-400">{today}</p>
+              <h1 className="text-lg font-bold text-gray-900 leading-tight">
+                {greeting()}, {user?.name.split(' ')[0]}
+              </h1>
+            </div>
+            {isOwner && (
+              <button
+                onClick={() => navigate('/reports')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold transition"
+              >
+                <BarChart3 size={13} /> Reports
+              </button>
+            )}
+          </div>
+          <div className="flex overflow-x-auto scrollbar-none -mb-px">
+            {DASH_TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all shrink-0 ${
+                  activeTab === t.key
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
-        {isOwner && (
-          <button
-            onClick={() => navigate('/reports')}
-            className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline font-medium mt-1"
-          >
-            <BarChart3 size={13} /> Full analytics
-          </button>
-        )}
       </div>
+
+      <div className="px-4 py-4 sm:px-6 space-y-4">
 
       {/* ── Quick actions strip ──────────────────────────────────── */}
       {(() => {
@@ -504,6 +535,9 @@ export default function DashboardPage() {
         </div>
       ))}
 
+      {/* ── Is Mahine tab ─── */}
+      {activeTab === 'mahine' && (<>
+
       {/* ── Owner: This Month's Installment Target vs Received ─── */}
       {isOwner && data && (() => {
         const target   = data.monthInstTarget;
@@ -590,6 +624,10 @@ export default function DashboardPage() {
         );
       })()}
 
+      </>)}
+      {/* ── Portfolio tab: receivables ─── */}
+      {activeTab === 'portfolio' && (<>
+
       {/* ── Owner: Total Outstanding Receivables ────────────────── */}
       {isOwner && reports && (() => {
         const outstanding = reports.collectionRate.totalOutstanding;
@@ -637,6 +675,10 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+
+      </>)}
+      {/* ── Is Mahine tab: P&L ─── */}
+      {activeTab === 'mahine' && (<>
 
       {/* ── Owner: Monthly P&L ──────────────────────────────────── */}
       {isOwner && data && (() => {
@@ -691,6 +733,8 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+
+      </>)}
 
       {/* ── Owner: Cash in Field ─────────────────────────────────── */}
       {isOwner && (() => {
@@ -747,9 +791,8 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* ═══════════════════════════════════════════════════════════
-          SECTION: Aaj Ka Kaam
-      ═══════════════════════════════════════════════════════════ */}
+      {/* ═══════ AAJ TAB ═══════ */}
+      {activeTab === 'aaj' && (<>
       <SectionDivider icon={<ClipboardList size={14} />} title="Aaj Ka Kaam" sub="Ye cheezein aaj handle karni hain" />
 
       {/* Daily Briefing — urgency hierarchy: 2 big + 3 small */}
@@ -1000,10 +1043,10 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* ═══════════════════════════════════════════════════════════
-          SECTION: Portfolio Ki Sehat
-      ═══════════════════════════════════════════════════════════ */}
-      {isOwner && <SectionDivider icon={<BarChart3 size={14} />} title="Portfolio Ki Sehat" sub="Sare plans aur collections ka overview" />}
+      </>)}
+      {/* ═══════ PORTFOLIO TAB ═══════ */}
+      {activeTab === 'portfolio' && (<>
+      <SectionDivider icon={<BarChart3 size={14} />} title="Portfolio Ki Sehat" sub="Sare plans aur collections ka overview" />
 
       {/* Monthly vs Daily split */}
       {data && (data.monthlyActiveCount > 0 || data.dailyActiveCount > 0) && (() => {
@@ -1139,15 +1182,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          SECTION: Is Mahine Ka Haal
-      ═══════════════════════════════════════════════════════════ */}
-      {isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
+      </>)}
+      {/* ═══════ IS MAHINE TAB: new/completed ═══════ */}
+      {activeTab === 'mahine' && isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
         <SectionDivider icon={<Calendar size={14} />} title="Is Mahine Ka Haal" sub="Naye plans aur poore hue accounts" />
       )}
 
       {/* New Business + Completed */}
-      {isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
+      {activeTab === 'mahine' && isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2">
@@ -1178,7 +1220,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Completing Soon ──────────────────────────────────────── */}
-      {isOwner && data && data.completingSoon.length > 0 && (
+      {activeTab === 'aaj' && isOwner && data && data.completingSoon.length > 0 && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-gray-50">
             <div className="flex items-center gap-2">
@@ -1233,7 +1275,7 @@ export default function DashboardPage() {
       {/* ── Alerts ──────────────────────────────────────────────── */}
 
       {/* Low stock */}
-      {lowStock.length > 0 && (
+      {activeTab === 'aaj' && lowStock.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -1266,7 +1308,7 @@ export default function DashboardPage() {
       )}
 
       {/* Upcoming Birthdays */}
-      {birthdays.length > 0 && (
+      {activeTab === 'aaj' && birthdays.length > 0 && (
         <div className="bg-pink-50 border border-pink-200 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -1314,15 +1356,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          SECTION: Tafseeli Report
-      ═══════════════════════════════════════════════════════════ */}
-      {isOwner && hasAnalytics && (
+      {/* ═══════ REPORTS TAB ═══════ */}
+      {activeTab === 'reports' && isOwner && hasAnalytics && (
         <SectionDivider icon={<BarChart3 size={14} />} title="Tafseeli Report" sub="Gehri nazar — weekly check karein" />
       )}
 
       {/* Top Debtors */}
-      {isOwner && reports && reports.topDebtors.length > 0 && (
+      {activeTab === 'reports' && isOwner && reports && reports.topDebtors.length > 0 && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-gray-50">
             <div className="flex items-center gap-2">
@@ -1371,7 +1411,7 @@ export default function DashboardPage() {
       )}
 
       {/* Top Products */}
-      {isOwner && reports && reports.topProducts.length > 0 && (
+      {activeTab === 'reports' && isOwner && reports && reports.topProducts.length > 0 && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-gray-50">
             <div className="flex items-center gap-2">
@@ -1414,7 +1454,7 @@ export default function DashboardPage() {
       )}
 
       {/* Advanced analytics widgets */}
-      {advanced && (
+      {activeTab === 'reports' && advanced && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* Cashflow Forecast */}
@@ -1549,7 +1589,7 @@ export default function DashboardPage() {
       )}
 
       {/* Recent Installments — owner only */}
-      {isOwner && (
+      {activeTab === 'reports' && isOwner && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
             <div>

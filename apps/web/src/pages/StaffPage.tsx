@@ -1981,10 +1981,13 @@ function CollectionsSection() {
   );
 }
 
+type PageTab = 'team' | 'agent' | 'haazri' | 'finance' | 'collections';
+
 export default function StaffPage() {
   const { user } = useAuthStore();
-  const isOwner = user?.role === 'SELLER_OWNER';
-  const [showAdd, setShowAdd] = useState(false);
+  const isOwner  = user?.role === 'SELLER_OWNER';
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [activeTab,  setActiveTab]  = useState<PageTab>('team');
 
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ['staff'],
@@ -1998,51 +2001,107 @@ export default function StaffPage() {
     enabled: isOwner,
   });
 
-  const balanceMap = new Map(balances.map((b) => [b.staffId, b]));
+  const balanceMap   = new Map(balances.map((b) => [b.staffId, b]));
+  const pendingCount = balances.filter((b) => b.pendingHandover).length;
+
+  const tabs: { key: PageTab; label: string; icon: React.ReactNode; ownerOnly?: boolean }[] = [
+    { key: 'team',        label: 'Team',       icon: <Shield size={14} /> },
+    { key: 'agent',       label: 'Agent',      icon: <Wallet size={14} /> },
+    { key: 'haazri',      label: 'Haazri',     icon: <CalendarCheck size={14} /> },
+    ...(isOwner ? [
+      { key: 'finance' as PageTab,     label: 'Finance',    icon: <Banknote size={14} />, ownerOnly: true },
+      { key: 'collections' as PageTab, label: 'Collections', icon: <BarChart2 size={14} />, ownerOnly: true },
+    ] : []),
+  ];
 
   return (
-    <div className="px-4 py-5 sm:p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Staff</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{staff.length} member{staff.length !== 1 ? 's' : ''}</p>
+    <div className="max-w-5xl mx-auto">
+
+      {/* ── Sticky header + tabs ── */}
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 pt-5 pb-0 sm:px-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Staff</h1>
+            <p className="text-xs text-gray-400 mt-0.5">{staff.length} member{staff.length !== 1 ? 's' : ''}</p>
+          </div>
+          {isOwner && activeTab === 'team' && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-95 transition shadow-sm shadow-blue-200"
+            >
+              <UserPlus size={14} /> Add Staff
+            </button>
+          )}
         </div>
-        {isOwner && (
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition shadow-sm shadow-blue-200"
-          >
-            <UserPlus size={15} />
-            Add Staff
-          </button>
-        )}
+
+        {/* Tab bar */}
+        <div className="flex gap-1 overflow-x-auto scrollbar-none -mb-px">
+          {tabs.map((t) => {
+            const active = activeTab === t.key;
+            const hasBadge = t.key === 'agent' && pendingCount > 0;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all shrink-0 ${
+                  active
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                {t.icon}
+                {t.label}
+                {hasBadge && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <CardSkeleton key={i} className="h-64" />)}
-        </div>
-      ) : staff.length === 0 ? (
-        <EmptyState
-          icon={<Shield size={32} />}
-          title="No staff members yet"
-          description={isOwner ? 'Add your first employee to get started' : undefined}
-        />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {staff.map((m) => <StaffCard key={m.id} member={m} balance={balanceMap.get(m.id)} />)}
-        </div>
-      )}
+      {/* ── Tab content ── */}
+      <div className="px-4 py-5 sm:px-6 space-y-5">
 
-      <HandoversSection />
+        {/* TEAM */}
+        {activeTab === 'team' && (
+          isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => <CardSkeleton key={i} className="h-64" />)}
+            </div>
+          ) : staff.length === 0 ? (
+            <EmptyState
+              icon={<Shield size={32} />}
+              title="No staff members yet"
+              description={isOwner ? 'Add your first employee to get started' : undefined}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {staff.map((m) => <StaffCard key={m.id} member={m} balance={balanceMap.get(m.id)} />)}
+            </div>
+          )
+        )}
 
-      <AttendanceSection isOwner={isOwner} />
+        {/* AGENT — Cash Handover */}
+        {activeTab === 'agent' && <HandoversSection />}
 
-      {isOwner && <CommissionSection />}
+        {/* HAAZRI */}
+        {activeTab === 'haazri' && <AttendanceSection isOwner={isOwner} />}
 
-      {isOwner && <SalarySection />}
+        {/* FINANCE */}
+        {activeTab === 'finance' && isOwner && (
+          <>
+            <CommissionSection />
+            <SalarySection />
+          </>
+        )}
 
-      {isOwner && <CollectionsSection />}
+        {/* COLLECTIONS */}
+        {activeTab === 'collections' && isOwner && <CollectionsSection />}
+
+      </div>
 
       {showAdd && <AddStaffModal onClose={() => setShowAdd(false)} />}
     </div>
