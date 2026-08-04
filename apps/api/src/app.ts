@@ -44,6 +44,7 @@ import broadcastsRoutes        from './modules/broadcasts/broadcasts.routes.js';
 
 const app = express();
 
+app.set('trust proxy', 1); // Vercel / any reverse proxy sets X-Forwarded-For
 app.use(helmet());
 const allowedOrigins = env.CORS_ORIGIN.split(',').map(o => o.trim());
 app.use(cors({
