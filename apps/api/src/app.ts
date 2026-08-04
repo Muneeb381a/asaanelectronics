@@ -51,8 +51,8 @@ app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
     if (allowedOrigins.includes(origin)) return cb(null, true);
-    // allow any Vercel preview deployment for this project
-    if (origin.match(/^https:\/\/assaan[a-z0-9-]*\.vercel\.app$/)) return cb(null, true);
+    // allow production frontend + any Vercel preview deployments for this project
+    if (origin.match(/^https:\/\/(web-red-six-12|assaan[a-z0-9-]*)\.vercel\.app$/)) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
