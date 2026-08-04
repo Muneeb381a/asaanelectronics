@@ -54,7 +54,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '500kb' }));
 
 // ── Rate limiters ─────────────────────────────────────────────────────────
 import { paymentLimiter } from './middleware/limiters.js';
