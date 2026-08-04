@@ -49,7 +49,10 @@ app.use(helmet());
 const allowedOrigins = env.CORS_ORIGIN.split(',').map(o => o.trim());
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    // allow any Vercel preview deployment for this project
+    if (origin.match(/^https:\/\/assaan[a-z0-9-]*\.vercel\.app$/)) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
