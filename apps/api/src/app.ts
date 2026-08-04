@@ -83,7 +83,9 @@ const authLimiter = safeLimit(rateLimit({
 const apiLimiter = safeLimit(rateLimit({
   windowMs: 60_000, max: 300,
   standardHeaders: true, legacyHeaders: false,
-  skip: (req) => req.path === '/health',
+  // import is authenticated (requireOwner) so skip rate-limit; it also avoids
+  // serverless in-memory store issues on long-running requests.
+  skip: (req) => req.path === '/health' || req.path === '/installments/import',
   validate: { xForwardedForHeader: false },
 }));
 

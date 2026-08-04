@@ -545,109 +545,151 @@ export class InstallmentsService {
     let productsCreated  = 0;
     const errors: Array<{ row: number; message: string }> = [];
 
-    // In-memory caches so same phone/product within one import batch reuses created records
-    const customerCache = new Map<string, string>(); // phone → customerId
-    const productCache  = new Map<string, string>(); // lower(name) → productId
-
+    // ── Phase 1: Validate dates upfront ──────────────────────────────────
+    type VRow = { row: ImportInstallmentRow; rowNum: number; phoneKey: string; productKey: string; startDate: Date };
+    const vRows: VRow[] = [];
     for (const [i, row] of rows.entries()) {
-      const rowNum = i + 2; // +2: row 1 = header, +1 for 1-based
-      try {
-        const startDate = new Date(row.startDate);
-        if (isNaN(startDate.getTime())) throw new AppError('Invalid start date — use YYYY-MM-DD format', 400);
-
-        // ── 1. Upsert customer by phone ─────────────────────────────────────
-        const phoneKey = normalizePhone(row.phone.trim());
-        let customerId = customerCache.get(phoneKey);
-
-        if (!customerId) {
-          const existing = await db
-            .select({ id: customers.id })
-            .from(customers)
-            .where(and(eq(customers.sellerId, sellerId), eq(customers.phone, phoneKey), isNull(customers.deletedAt)))
-            .limit(1);
-
-          if (existing.length > 0) {
-            customerId = existing[0]!.id;
-            customersLinked++;
-          } else {
-            const cnicRaw = row.cnic?.trim() || `IMPORT-${randomUUID()}`;
-            const [cnicHash] = hashCnicBoth(cnicRaw);
-            const cnicMasked = row.cnic?.trim() ? maskCnic(row.cnic.trim()) : 'XXXXX-XXXXXXX-X';
-
-            const [newCust] = await db
-              .insert(customers)
-              .values({ sellerId, name: row.customerName.trim(), phone: phoneKey, area: row.area?.trim() || null, cnicHash, cnicMasked, createdByUserId })
-              .returning({ id: customers.id });
-            customerId = newCust!.id;
-            customersCreated++;
-          }
-          customerCache.set(phoneKey, customerId);
-        }
-
-        // ── 2. Upsert product by name (case-insensitive) ────────────────────
-        const productKey = row.productName.trim().toLowerCase();
-        let productId = productCache.get(productKey);
-
-        if (!productId) {
-          const existing = await db
-            .select({ id: products.id })
-            .from(products)
-            .where(and(eq(products.sellerId, sellerId), ilike(products.name, row.productName.trim())))
-            .limit(1);
-
-          if (existing.length > 0) {
-            productId = existing[0]!.id;
-          } else {
-            const [newProd] = await db
-              .insert(products)
-              .values({ sellerId, name: row.productName.trim(), price: String(row.totalAmount), stock: 0 })
-              .returning({ id: products.id });
-            productId = newProd!.id;
-            productsCreated++;
-          }
-          productCache.set(productKey, productId);
-        }
-
-        // ── 3. Dedup check — skip if identical installment already exists ──
-        const dup = await db
-          .select({ id: installments.id })
-          .from(installments)
-          .where(and(
-            eq(installments.customerId, customerId),
-            eq(installments.productId, productId),
-            eq(installments.totalAmount, String(row.totalAmount)),
-            eq(installments.downPayment, String(row.downPayment)),
-            eq(installments.startDate, startDate),
-            isNull(installments.deletedAt),
-          ))
-          .limit(1);
-
-        if (dup.length > 0) {
-          errors.push({ row: rowNum, message: `Duplicate — installment for ${row.customerName} (${row.productName}) on this start date already exists` });
-          continue;
-        }
-
-        // ── 4. Insert installment (no stock decrement — historical data) ────
-        const remaining = row.remaining !== undefined ? row.remaining : row.totalAmount - row.downPayment;
-
-        await db.insert(installments).values({
-          customerId,
-          productId,
-          totalAmount:      String(row.totalAmount),
-          downPayment:      String(row.downPayment),
-          remaining:        String(remaining),
-          monthly:          String(row.monthly),
-          months:           row.months,
-          startDate,
-          status:           row.status ?? 'ACTIVE',
-          imeiNumber:       row.imeiNumber?.trim() || null,
-          paymentFrequency: 'monthly',
-        });
-
-        imported++;
-      } catch (e: unknown) {
-        errors.push({ row: rowNum, message: e instanceof AppError ? e.message : 'Unexpected error' });
+      const rowNum = i + 2;
+      const startDate = new Date(row.startDate);
+      if (isNaN(startDate.getTime())) {
+        errors.push({ row: rowNum, message: 'Invalid start date — use YYYY-MM-DD format' });
+        continue;
       }
+      vRows.push({ row, rowNum, phoneKey: normalizePhone(row.phone.trim()), productKey: row.productName.trim().toLowerCase(), startDate });
+    }
+    if (vRows.length === 0) return { imported, customersCreated, customersLinked, productsCreated, errors };
+
+    // ── Phase 2: Batch-resolve customers (1 query + 1 insert if needed) ──
+    const uniquePhones = [...new Set(vRows.map(r => r.phoneKey))];
+    const existingCusts = await db
+      .select({ id: customers.id, phone: customers.phone })
+      .from(customers)
+      .where(and(eq(customers.sellerId, sellerId), inArray(customers.phone, uniquePhones), isNull(customers.deletedAt)));
+
+    const customerCache = new Map<string, string>(); // phone → customerId
+    for (const c of existingCusts) {
+      customerCache.set(c.phone, c.id);
+      customersLinked++;
+    }
+
+    const missingPhones = uniquePhones.filter(p => !customerCache.has(p));
+    if (missingPhones.length > 0) {
+      // Use first row per phone for name/CNIC/area
+      const firstRowByPhone = new Map<string, VRow>();
+      for (const vr of vRows) {
+        if (!firstRowByPhone.has(vr.phoneKey)) firstRowByPhone.set(vr.phoneKey, vr);
+      }
+      const insertValues = missingPhones.map(phone => {
+        const vr = firstRowByPhone.get(phone)!;
+        const cnicRaw = vr.row.cnic?.trim() || `IMPORT-${randomUUID()}`;
+        const [cnicHash] = hashCnicBoth(cnicRaw);
+        const cnicMasked = vr.row.cnic?.trim() ? maskCnic(vr.row.cnic.trim()) : 'XXXXX-XXXXXXX-X';
+        return { sellerId, name: vr.row.customerName.trim(), phone, area: vr.row.area?.trim() || null, cnicHash, cnicMasked, createdByUserId };
+      });
+      const newCusts = await db.insert(customers).values(insertValues).returning({ id: customers.id, phone: customers.phone });
+      for (const c of newCusts) {
+        customerCache.set(c.phone, c.id);
+        customersCreated++;
+      }
+    }
+
+    // ── Phase 3: Batch-resolve products (1 query + 1 insert if needed) ───
+    const uniqueProductKeys = [...new Set(vRows.map(r => r.productKey))];
+    const existingProds = await db
+      .select({ id: products.id, name: products.name })
+      .from(products)
+      .where(and(
+        eq(products.sellerId, sellerId),
+        or(...uniqueProductKeys.map(k => ilike(products.name, k)))!,
+      ));
+
+    const productCache = new Map<string, string>(); // lower(name) → productId
+    for (const p of existingProds) {
+      productCache.set(p.name.toLowerCase(), p.id);
+    }
+
+    const missingProductKeys = uniqueProductKeys.filter(k => !productCache.has(k));
+    if (missingProductKeys.length > 0) {
+      const firstRowByProduct = new Map<string, VRow>();
+      for (const vr of vRows) {
+        if (!firstRowByProduct.has(vr.productKey)) firstRowByProduct.set(vr.productKey, vr);
+      }
+      const insertValues = missingProductKeys.map(key => {
+        const vr = firstRowByProduct.get(key)!;
+        return { sellerId, name: vr.row.productName.trim(), price: String(vr.row.totalAmount), stock: 0 };
+      });
+      const newProds = await db.insert(products).values(insertValues).returning({ id: products.id, name: products.name });
+      for (const p of newProds) {
+        productCache.set(p.name.toLowerCase(), p.id);
+        productsCreated++;
+      }
+    }
+
+    // ── Phase 4: Resolve IDs for each row ────────────────────────────────
+    type RRow = VRow & { customerId: string; productId: string };
+    const rRows: RRow[] = [];
+    for (const vr of vRows) {
+      const customerId = customerCache.get(vr.phoneKey);
+      const productId  = productCache.get(vr.productKey);
+      if (!customerId || !productId) {
+        errors.push({ row: vr.rowNum, message: 'Could not resolve customer or product' });
+        continue;
+      }
+      rRows.push({ ...vr, customerId, productId });
+    }
+    if (rRows.length === 0) {
+      if (imported > 0) clearSellerStatsCache(sellerId);
+      return { imported, customersCreated, customersLinked, productsCreated, errors };
+    }
+
+    // ── Phase 5: Batch dup-check (1 query, compare in memory) ────────────
+    const allCustIds = [...new Set(rRows.map(r => r.customerId))];
+    const allProdIds = [...new Set(rRows.map(r => r.productId))];
+    const existingInsts = await db
+      .select({ customerId: installments.customerId, productId: installments.productId,
+                totalAmount: installments.totalAmount, downPayment: installments.downPayment,
+                startDate: installments.startDate })
+      .from(installments)
+      .where(and(inArray(installments.customerId, allCustIds), inArray(installments.productId, allProdIds), isNull(installments.deletedAt)));
+
+    const toDateKey = (d: Date | string) => {
+      const dt = typeof d === 'string' ? new Date(d) : d;
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    };
+    const normAmt = (v: string | number) => parseFloat(String(v)).toFixed(2);
+    const dupSet = new Set(existingInsts.map(i =>
+      `${i.customerId}:${i.productId}:${normAmt(i.totalAmount)}:${normAmt(i.downPayment)}:${toDateKey(i.startDate)}`
+    ));
+
+    // ── Phase 6: Collect valid rows, then batch-insert installments ───────
+    type InstValue = typeof installments.$inferInsert;
+    const toInsert: InstValue[] = [];
+
+    for (const rr of rRows) {
+      const dupKey = `${rr.customerId}:${rr.productId}:${normAmt(rr.row.totalAmount)}:${normAmt(rr.row.downPayment)}:${toDateKey(rr.startDate)}`;
+      if (dupSet.has(dupKey)) {
+        errors.push({ row: rr.rowNum, message: `Duplicate — installment for ${rr.row.customerName} (${rr.row.productName}) on this start date already exists` });
+        continue;
+      }
+      const remaining = rr.row.remaining !== undefined ? rr.row.remaining : rr.row.totalAmount - rr.row.downPayment;
+      toInsert.push({
+        customerId:       rr.customerId,
+        productId:        rr.productId,
+        totalAmount:      String(rr.row.totalAmount),
+        downPayment:      String(rr.row.downPayment),
+        remaining:        String(remaining),
+        monthly:          String(rr.row.monthly),
+        months:           rr.row.months,
+        startDate:        rr.startDate,
+        status:           rr.row.status ?? 'ACTIVE',
+        imeiNumber:       rr.row.imeiNumber?.trim() || null,
+        paymentFrequency: 'monthly',
+      });
+      imported++;
+    }
+
+    if (toInsert.length > 0) {
+      await db.insert(installments).values(toInsert);
     }
 
     if (imported > 0) clearSellerStatsCache(sellerId);
