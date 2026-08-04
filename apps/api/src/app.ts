@@ -64,6 +64,7 @@ import { paymentLimiter } from './middleware/limiters.js';
 const authLimiter = rateLimit({
   windowMs: 15 * 60_000, max: 30,
   standardHeaders: true, legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 // General API: 300/min (raised — auth/payment have their own guards)
@@ -71,6 +72,7 @@ const apiLimiter = rateLimit({
   windowMs: 60_000, max: 300,
   standardHeaders: true, legacyHeaders: false,
   skip: (req) => req.path === '/health',
+  validate: { xForwardedForHeader: false },
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true }));

@@ -5,6 +5,7 @@ export const loginLimiter = rateLimit({
   windowMs: 15 * 60_000, max: 10,
   skipSuccessfulRequests: true,
   standardHeaders: true, legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { success: false, data: null, error: 'Too many login attempts. Try again in 15 minutes.' },
 });
 
@@ -12,5 +13,6 @@ export const loginLimiter = rateLimit({
 export const paymentLimiter = rateLimit({
   windowMs: 60_000, max: 30,
   standardHeaders: true, legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { success: false, data: null, error: 'Payment rate limit exceeded. Please slow down.' },
 });
