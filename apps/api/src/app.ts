@@ -62,21 +62,30 @@ app.use(express.json({ limit: '500kb' }));
 
 // ── Rate limiters ─────────────────────────────────────────────────────────
 import { paymentLimiter } from './middleware/limiters.js';
+import type { RequestHandler } from 'express';
+
+// Wrap any rate-limiter so an unhandled async error goes to next(err) instead
+// of crashing the serverless function (which would close the socket with no headers).
+function safeLimit(limiter: RequestHandler): RequestHandler {
+  return (req, res, next) => {
+    Promise.resolve(limiter(req, res, next)).catch(next);
+  };
+}
 
 // General auth (register, refresh, forgot-password, etc.): 30/15 min
-const authLimiter = rateLimit({
+const authLimiter = safeLimit(rateLimit({
   windowMs: 15 * 60_000, max: 30,
   standardHeaders: true, legacyHeaders: false,
   validate: { xForwardedForHeader: false },
-});
+}));
 
 // General API: 300/min (raised — auth/payment have their own guards)
-const apiLimiter = rateLimit({
+const apiLimiter = safeLimit(rateLimit({
   windowMs: 60_000, max: 300,
   standardHeaders: true, legacyHeaders: false,
   skip: (req) => req.path === '/health',
   validate: { xForwardedForHeader: false },
-});
+}));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

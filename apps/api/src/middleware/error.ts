@@ -23,10 +23,16 @@ function pgErrorMessage(code: string): { status: number; message: string } | nul
 
 export function errorMiddleware(
   err: Error & { code?: string },
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ) {
+  // Guarantee CORS headers on every error response so the browser can read the status code
+  const origin = req.headers.origin;
+  if (origin && !res.getHeader('Access-Control-Allow-Origin')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({ success: false, data: null, error: err.message });
   }
