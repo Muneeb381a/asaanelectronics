@@ -1710,6 +1710,8 @@ export default function DashboardPage() {
         );
       })()}
 
+      </div>{/* closes px-4 py-4 content div */}
+
       {/* Owner: Cash Receive Modal */}
       {receiveTarget && (
         <CashReceiveModal target={receiveTarget} onClose={() => setReceiveTarget(null)} />
