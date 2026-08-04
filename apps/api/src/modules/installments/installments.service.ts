@@ -10,6 +10,14 @@ import { fsm } from '../../utils/fsm.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
 
+// Normalise Pakistani phone numbers to 11-digit local format (03xxxxxxxxx)
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('92') && digits.length === 12) return '0' + digits.slice(2);
+  if (digits.startsWith('0092') && digits.length === 14) return '0' + digits.slice(4);
+  return digits;
+}
+
 type CreateBody = {
   customerId:        string;
   productId:         string;
@@ -548,7 +556,7 @@ export class InstallmentsService {
         if (isNaN(startDate.getTime())) throw new AppError('Invalid start date — use YYYY-MM-DD format', 400);
 
         // ── 1. Upsert customer by phone ─────────────────────────────────────
-        const phoneKey = row.phone.trim();
+        const phoneKey = normalizePhone(row.phone.trim());
         let customerId = customerCache.get(phoneKey);
 
         if (!customerId) {
