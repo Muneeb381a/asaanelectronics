@@ -2263,7 +2263,6 @@ export default function InstallmentsPage() {
             invalidate();
             void qc.invalidateQueries({ queryKey: ['customers'] });
             void qc.invalidateQueries({ queryKey: ['customers-lifecycle-counts'] });
-            setShowImport(false);
           }}
         />
       )}

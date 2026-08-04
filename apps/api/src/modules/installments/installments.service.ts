@@ -555,7 +555,7 @@ export class InstallmentsService {
           const existing = await db
             .select({ id: customers.id })
             .from(customers)
-            .where(and(eq(customers.sellerId, sellerId), eq(customers.phone, phoneKey)))
+            .where(and(eq(customers.sellerId, sellerId), eq(customers.phone, phoneKey), isNull(customers.deletedAt)))
             .limit(1);
 
           if (existing.length > 0) {
