@@ -5,6 +5,9 @@ import { Toaster } from 'react-hot-toast';
 import App from './App.tsx';
 import './index.css';
 
+// Auto-reload when a lazy chunk is missing after a new deployment
+window.addEventListener('vite:preloadError', () => window.location.reload());
+
 // Register service worker for PWA / offline support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
