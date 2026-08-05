@@ -123,6 +123,7 @@ export class InstallmentsService {
           paymentDueDay:     installments.paymentDueDay,
           customerArea:      customers.area,
           customerFileNumber: customers.fileNumber,
+          customerPhotoUrl:  customers.photoUrl,
           isOverdue: sql<boolean>`(
             ${installments.status} = 'ACTIVE' AND (
               CASE WHEN ${installments.paymentFrequency} = 'daily'
@@ -186,6 +187,7 @@ export class InstallmentsService {
         paymentDueDay:     installments.paymentDueDay,
         customerArea:       customers.area,
         customerFileNumber: customers.fileNumber,
+        customerPhotoUrl:   customers.photoUrl,
         pausedUntil:       installments.pausedUntil,
         pauseReason:       installments.pauseReason,
         isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (

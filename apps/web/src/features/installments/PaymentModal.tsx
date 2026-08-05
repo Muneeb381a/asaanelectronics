@@ -288,7 +288,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
       const bd: BillData = {
         shop:             { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
-        customer:         { name: freshInst.customerName, phone: freshInst.customerPhone, area: freshInst.customerArea },
+        customer:         { name: freshInst.customerName, phone: freshInst.customerPhone, area: freshInst.customerArea, photoUrl: freshInst.customerPhotoUrl },
         product:          freshInst.productName,
         totalAmount:      freshInst.totalAmount,
         downPayment:      freshInst.downPayment,

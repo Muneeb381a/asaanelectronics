@@ -10,7 +10,7 @@ export interface BillPaymentAccount {
 
 export interface BillData {
   shop: { shopName: string; phone: string; address?: string | null };
-  customer: { name: string; phone: string; cnic?: string; area?: string | null };
+  customer: { name: string; phone: string; cnic?: string; area?: string | null; photoUrl?: string | null };
   product: string;
   totalAmount: string | number;
   downPayment: string | number;
@@ -187,138 +187,182 @@ export async function openBill(data: BillData) {
       ${data.paymentAccounts.map((a) => `<span style="margin-right:10px;color:#0f172a"><strong>${a.type}${a.bankName ? ` (${a.bankName})` : ''}</strong>: ${a.accountNumber} · ${a.accountTitle}</span>`).join('')}
     </div>` : '';
 
-  // Single invoice HTML — used twice (customer copy + shop copy)
+  // Customer avatar: photo or initials fallback
+  const initials = data.customer.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const avatarColors = ['#4f46e5','#0891b2','#059669','#d97706','#dc2626','#7c3aed'];
+  const avatarBg = avatarColors[data.customer.name.charCodeAt(0) % avatarColors.length];
+  const customerAvatar = data.customer.photoUrl
+    ? `<img src="${data.customer.photoUrl}" alt="${data.customer.name}"
+         style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.25);flex-shrink:0;display:block"/>`
+    : `<div style="width:60px;height:60px;border-radius:50%;background:${avatarBg};border:3px solid rgba(255,255,255,.25);
+         flex-shrink:0;display:flex;align-items:center;justify-content:center;
+         font-size:22px;font-weight:800;color:#fff;letter-spacing:-1px">${initials}</div>`;
+
+  const pctPaid = data.paymentSummary && data.paymentSummary.totalMonths > 0
+    ? Math.round((data.paymentSummary.paidMonths / data.paymentSummary.totalMonths) * 100) : 0;
+  const pendingMonths = data.paymentSummary
+    ? data.paymentSummary.totalMonths - data.paymentSummary.paidMonths : 0;
+
+  // Single invoice HTML
   function invoiceCopy(copyLabel: string) { return `
   <div class="inv">
-    <!-- HEADER -->
+
+    <!-- ═══ HEADER BAND ═══ -->
     <div class="hdr">
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:900;color:#fff;line-height:1">${data.shop.shopName}</div>
-        <div style="font-size:9.5px;color:#93c5fd;margin-top:2px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
-        ${isDaily ? '<span style="font-size:9px;font-weight:700;background:#fed7aa;color:#9a3412;padding:1px 7px;border-radius:20px;margin-top:4px;display:inline-block">Dukaan-Dar Daily</span>'
-          : isMurabaha ? '<span style="font-size:9px;font-weight:700;background:#d1fae5;color:#065f46;padding:1px 7px;border-radius:20px;margin-top:4px;display:inline-block">Murabaha</span>' : ''}
+        <div style="font-size:15px;font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.1">${data.shop.shopName}</div>
+        <div style="font-size:9px;color:#93c5fd;margin-top:3px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
+        <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap">
+          ${isDaily ? '<span class="pill pill-orange">Dukaan-Dar Daily</span>' : isMurabaha ? '<span class="pill pill-green">Murabaha</span>' : ''}
+          ${copyLabel ? `<span class="pill pill-gray">${copyLabel}</span>` : ''}
+        </div>
       </div>
-      <div style="text-align:right;flex-shrink:0;margin:0 10px">
-        <div style="font-size:13px;font-weight:900;color:#60a5fa">INVOICE <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px">اقساط نامہ</span></div>
-        <div style="font-size:11px;font-weight:700;color:#fff;margin-top:1px">${invoiceNo}</div>
-        <div style="font-size:9px;color:#475569;margin-top:1px">${printDate}</div>
-        <div style="font-size:9px;color:#64748b;margin-top:1px">${copyLabel}</div>
+      <div style="text-align:center;flex-shrink:0;margin:0 12px">
+        <div style="font-size:11px;font-weight:800;color:#60a5fa;letter-spacing:1.5px">INVOICE</div>
+        <div style="font-size:13px;font-weight:900;color:#fff;margin-top:1px;font-family:monospace;letter-spacing:.5px">${invoiceNo}</div>
+        <div style="font-size:8.5px;color:#94a3b8;margin-top:3px">${printDate}</div>
+        <div style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px;color:#7dd3fc;margin-top:2px;direction:rtl">اقساط نامہ</div>
       </div>
       <div style="flex-shrink:0">
-        <img src="${qrDataUrl}" width="58" height="58" style="border:1px solid rgba(255,255,255,.2);border-radius:4px;display:block" alt="QR"/>
+        <img src="${qrDataUrl}" width="62" height="62"
+          style="border:2px solid rgba(255,255,255,.2);border-radius:6px;display:block;background:#fff;padding:2px" alt="QR"/>
+        <div style="font-size:6.5px;color:#64748b;text-align:center;margin-top:2px">Scan to verify</div>
       </div>
     </div>
 
-    <!-- INFO GRID: customer | product | dates | duration -->
-    <div style="display:grid;grid-template-columns:2fr 2fr 1.5fr 1.5fr;gap:5px;margin-bottom:6px">
-      <div class="ic">
-        <span class="il">Customer · گاہک</span>
-        <span class="iv">${data.customer.name}</span>
-        <span class="is">${data.customer.phone}${data.customer.cnic ? ` · ${data.customer.cnic}` : ''}</span>
-        ${data.customer.area ? `<span class="is">📍 ${data.customer.area}</span>` : ''}
+    <!-- ═══ CUSTOMER CARD ═══ -->
+    <div class="customer-card">
+      <div style="display:flex;align-items:center;gap:12px">
+        ${customerAvatar}
+        <div style="min-width:0;flex:1">
+          <div style="font-size:7px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:3px">Customer · گاہک</div>
+          <div style="font-size:15px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1">${data.customer.name}</div>
+          <div style="font-size:10px;color:#93c5fd;margin-top:3px">${data.customer.phone}${data.customer.cnic ? ` · <span style="font-family:monospace">${data.customer.cnic}</span>` : ''}</div>
+          ${data.customer.area ? `<div style="font-size:9px;color:#7dd3fc;margin-top:2px">📍 ${data.customer.area}</div>` : ''}
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+          <span class="status-badge-lg status-${data.status}">${data.status}</span>
+          <div style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;direction:rtl">${STATUS_UR[data.status] ?? ''}</div>
+        </div>
       </div>
+    </div>
+
+    <!-- ═══ PRODUCT + DATES ROW ═══ -->
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px;margin-bottom:6px">
       <div class="ic">
         <span class="il">Product · مصنوعہ</span>
         <span class="iv">${data.product}</span>
-        ${data.imeiNumber ? `<span class="is" style="font-family:monospace;font-size:9px">IMEI: ${data.imeiNumber}</span>` : ''}
-        <span class="is"><span class="status-badge status-${data.status}">${data.status}</span> <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px;color:#64748b">${STATUS_UR[data.status] ?? ''}</span></span>
+        ${data.imeiNumber ? `<span class="is" style="font-family:monospace;font-size:8.5px;color:#6366f1">IMEI: ${data.imeiNumber}</span>` : ''}
+        ${murabahaLine}
       </div>
       <div class="ic">
-        <span class="il">Start Date</span>
+        <span class="il">Start Date · آغاز</span>
         <span class="iv">${startDate}</span>
-        <span class="il" style="margin-top:4px">End Date</span>
+        <span class="il" style="margin-top:4px">End Date · اختتام</span>
         <span class="iv">${endDate}</span>
       </div>
       <div class="ic">
         <span class="il">Duration · مدت</span>
         <span class="iv">${data.months} ${isDaily ? 'days · دن' : 'months · ماہ'}</span>
         <span class="il" style="margin-top:4px">${isDaily ? 'Daily · روزانہ' : 'Monthly · ماہانہ'}</span>
-        <span class="iv">${pkr(data.monthly)}</span>
+        <span class="iv" style="color:#1d4ed8">${pkr(data.monthly)}</span>
       </div>
     </div>
 
-    <!-- AMOUNTS STRIP -->
+    <!-- ═══ AMOUNTS STRIP ═══ -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:6px">
       <div class="ac">
         <span class="al">Total · کل قیمت</span>
         <span class="av">${pkr(data.totalAmount)}</span>
-        ${murabahaLine ? `<span style="font-size:8.5px;color:#64748b;margin-top:1px;display:block">${pkr(data.cashPrice!)}+${pkr(markup)}</span>` : ''}
+        ${isMurabaha ? `<span style="font-size:8px;color:#94a3b8;display:block;margin-top:1px">${pkr(data.cashPrice!)}+${pkr(markup)}</span>` : ''}
       </div>
       <div class="ac">
         <span class="al">Down · پیشگی</span>
         <span class="av">${pkr(data.downPayment)}</span>
       </div>
       <div class="ac hl">
-        <span class="al" style="color:rgba(255,255,255,.7)">${isDaily ? 'Daily · روزانہ' : 'Monthly · ماہانہ'}</span>
-        <span class="av" style="color:#fff">${pkr(data.monthly)}</span>
+        <span class="al">${isDaily ? 'Daily · روزانہ' : 'Monthly · ماہانہ'}</span>
+        <span class="av">${pkr(data.monthly)}</span>
       </div>
       <div class="ac rm">
-        <span class="al" style="color:#b45309">Remaining · باقی</span>
-        <span class="av" style="color:#92400e">${pkr(data.remaining)}</span>
+        <span class="al">Remaining · باقی</span>
+        <span class="av">${pkr(data.remaining)}</span>
       </div>
     </div>
 
     ${data.paymentSummary ? `
-    <!-- PAYMENT PROGRESS -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px">
-      <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:4px;padding:5px 7px;text-align:center">
-        <span style="display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#1e40af;margin-bottom:1px">This Payment · یہ قسط</span>
-        <span style="display:block;font-size:14px;font-weight:800;color:#1e40af">Month #${data.paymentSummary.currentMonth}</span>
-        <span style="display:block;font-size:8px;color:#3b82f6">of ${data.paymentSummary.totalMonths} ${data.paymentFrequency === 'daily' ? 'days' : 'months'}</span>
+    <!-- ═══ PAYMENT PROGRESS BAND ═══ -->
+    <div class="progress-band">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">
+        <div class="prog-card prog-blue">
+          <span class="prog-label">${isDaily ? 'This Day · یہ دن' : 'This Month · یہ ماہ'}</span>
+          <span class="prog-num">#${data.paymentSummary.currentMonth}</span>
+          <span class="prog-sub">of ${data.paymentSummary.totalMonths} ${isDaily ? 'days' : 'months'}</span>
+        </div>
+        <div class="prog-card prog-green">
+          <span class="prog-label">Paid · ادا شدہ</span>
+          <span class="prog-num">${data.paymentSummary.paidMonths}</span>
+          <span class="prog-sub">${isDaily ? 'days' : 'months'} complete</span>
+        </div>
+        <div class="prog-card prog-amber">
+          <span class="prog-label">Pending · باقی</span>
+          <span class="prog-num">${pendingMonths}</span>
+          <span class="prog-sub">${isDaily ? 'days' : 'months'} left</span>
+        </div>
       </div>
-      <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:4px;padding:5px 7px;text-align:center">
-        <span style="display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#065f46;margin-bottom:1px">Paid · ادا شدہ</span>
-        <span style="display:block;font-size:14px;font-weight:800;color:#065f46">${data.paymentSummary.paidMonths}</span>
-        <span style="display:block;font-size:8px;color:#059669">${data.paymentFrequency === 'daily' ? 'days' : 'months'} paid</span>
+      <div style="background:rgba(0,0,0,.15);border-radius:20px;height:8px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#34d399,#10b981);height:100%;width:${pctPaid}%;border-radius:20px;transition:width .3s"></div>
       </div>
-      <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;padding:5px 7px;text-align:center">
-        <span style="display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#92400e;margin-bottom:1px">Pending · باقی</span>
-        <span style="display:block;font-size:14px;font-weight:800;color:#92400e">${data.paymentSummary.totalMonths - data.paymentSummary.paidMonths}</span>
-        <span style="display:block;font-size:8px;color:#b45309">${data.paymentFrequency === 'daily' ? 'days' : 'months'} left</span>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <span style="font-size:8px;color:#34d399;font-weight:700">${data.paymentSummary.paidMonths} paid (${pctPaid}%)</span>
+        <span style="font-size:8px;color:rgba(255,255,255,.4)">${data.paymentSummary.totalMonths} total ${isDaily ? 'days' : 'months'}</span>
       </div>
     </div>` : ''}
 
-    <!-- SCHEDULE -->
+    <!-- ═══ SCHEDULE ═══ -->
     ${scheduleSection}
 
     ${payAccounts}
 
-    <!-- TERMS -->
-    <div style="background:#fafafa;border:1px solid #e2e8f0;border-radius:4px;padding:5px 8px;margin-bottom:6px;font-size:8px;color:#475569;line-height:1.5">
-      <span style="font-weight:700;color:#0f172a;font-size:8.5px">Terms &amp; Conditions · <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px;font-weight:400">شرائط و ضوابط</span></span><br/>
-      1. ${isDaily ? 'Daily' : 'Monthly'} installment of <strong>${pkr(data.monthly)}</strong> is due on the dates listed above. &nbsp;·&nbsp; قسط مقررہ تاریخ پر ادا کرنا لازمی ہے۔<br/>
-      2. Default of 2 or more installments entitles the seller to repossess the product without further notice. &nbsp;·&nbsp; دو یا زیادہ اقساط نہ دینے پر سامان واپس لیا جا سکتا ہے۔<br/>
-      3. Product remains property of ${data.shop.shopName} until full payment is received. &nbsp;·&nbsp; مکمل ادائیگی تک سامان دکاندار کی ملکیت رہے گا۔<br/>
-      4. Customer is responsible for the safety of the product from the date of delivery.
+    <!-- ═══ TERMS ═══ -->
+    <div style="background:#fafbff;border:1px solid #e2e8f0;border-left:3px solid #6366f1;border-radius:0 4px 4px 0;padding:6px 9px;margin-bottom:6px;font-size:8px;color:#475569;line-height:1.6">
+      <div style="font-weight:700;color:#0f172a;font-size:8.5px;margin-bottom:3px">Terms &amp; Conditions · <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:10px;font-weight:400">شرائط و ضوابط</span></div>
+      1. ${isDaily ? 'Daily' : 'Monthly'} installment of <strong>${pkr(data.monthly)}</strong> is due on the dates listed. &nbsp;·&nbsp; قسط مقررہ تاریخ پر ادا کرنا لازمی ہے۔<br/>
+      2. Default of 2+ installments entitles seller to repossess product without notice. &nbsp;·&nbsp; دو اقساط نہ دینے پر سامان واپس لیا جا سکتا ہے۔<br/>
+      3. Product remains property of <strong>${data.shop.shopName}</strong> until full payment received.
     </div>
 
-    <!-- SIGNATURES -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:6px">
-      <div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 6px">
-        <div style="height:28px"></div>
-        <div style="border-top:1px solid #64748b;padding-top:3px;font-size:8px;color:#475569;text-align:center">
-          Seller / دکاندار<br/><span style="font-size:7.5px;color:#94a3b8">${data.shop.shopName}</span>
-        </div>
+    <!-- ═══ SIGNATURES ═══ -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:6px">
+      ${[
+        { label: 'Seller / دکاندار', sub: data.shop.shopName },
+        { label: 'Customer / گاہک', sub: data.customer.name },
+        { label: 'Witness / گواہ', sub: 'Name & CNIC' },
+      ].map(s => `
+        <div style="border:1px solid #e2e8f0;border-radius:6px;padding:6px;background:#f8fafc">
+          <div style="height:30px"></div>
+          <div style="border-top:1px solid #94a3b8;padding-top:4px;font-size:8px;color:#475569;text-align:center">
+            ${s.label}<br/><span style="font-size:7px;color:#94a3b8">${s.sub}</span>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <!-- ═══ FOOTER ═══ -->
+    <div style="padding-top:5px;border-top:2px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:9px;font-weight:700;color:#1e3a5f">${data.shop.shopName}</div>
+        <div style="font-size:8px;color:#94a3b8">${data.shop.phone}</div>
       </div>
-      <div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 6px">
-        <div style="height:28px"></div>
-        <div style="border-top:1px solid #64748b;padding-top:3px;font-size:8px;color:#475569;text-align:center">
-          Customer / گاہک<br/><span style="font-size:7.5px;color:#94a3b8">${data.customer.name}</span>
-        </div>
+      <div style="text-align:center">
+        <div style="font-size:7.5px;color:#c7d2fe;font-weight:700;letter-spacing:1px">ASSAAN ELECTRONICS</div>
+        <div style="font-size:7px;color:#e2e8f0">آسان اقساط · Easy Installments</div>
       </div>
-      <div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 6px">
-        <div style="height:28px"></div>
-        <div style="border-top:1px solid #64748b;padding-top:3px;font-size:8px;color:#475569;text-align:center">
-          Witness / گواہ<br/><span style="font-size:7.5px;color:#94a3b8">Name &amp; CNIC</span>
-        </div>
+      <div style="text-align:right">
+        <div style="font-size:8px;color:#94a3b8">Ref: ${data.installmentId.slice(0, 8).toUpperCase()}</div>
+        <div style="font-size:8px;color:#94a3b8">${fmtDate(new Date())}</div>
       </div>
     </div>
 
-    <!-- FOOTER -->
-    <div style="margin-top:5px;padding-top:4px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:8.5px;color:#94a3b8">${data.shop.shopName} · ${data.shop.phone}</div>
-      <div style="font-size:8.5px;color:#94a3b8">Ref: ${data.installmentId.slice(0, 8).toUpperCase()} · ${fmtDate(new Date())}</div>
-    </div>
   </div>`; }
 
   const html = `<!DOCTYPE html>
@@ -326,42 +370,75 @@ export async function openBill(data: BillData) {
 <head>
 <meta charset="UTF-8"/>
 <title>${invoiceNo}</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;display:flex;justify-content:center}
+  body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#e8edf5;padding:20px;display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
 
-  .inv{background:#fff;width:680px;padding:13px 16px;font-size:10.5px;color:#374151;border:1px solid #e2e8f0}
+  .inv{background:#fff;width:700px;padding:14px 16px;font-size:10.5px;color:#374151;border-radius:8px;box-shadow:0 4px 24px rgba(15,23,42,.12);overflow:hidden}
 
-  .hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:4px 4px 0 0;margin:-13px -16px 9px}
-  .ur{font-family:'Noto Nastaliq Urdu',serif;direction:rtl}
+  /* ── Header ── */
+  .hdr{display:flex;align-items:center;gap:10px;padding:11px 14px 9px;
+    background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);
+    border-radius:6px 6px 0 0;margin:-14px -16px 10px;position:relative;overflow:hidden}
+  .hdr::before{content:'';position:absolute;top:-20px;right:80px;width:120px;height:120px;
+    background:rgba(255,255,255,.04);border-radius:50%}
+  .hdr::after{content:'';position:absolute;bottom:-30px;left:40px;width:80px;height:80px;
+    background:rgba(96,165,250,.08);border-radius:50%}
 
-  .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;overflow:hidden}
-  .il{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:1px}
-  .iv{display:block;font-size:10.5px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .is{display:block;font-size:9px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* ── Pills ── */
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:8.5px;font-weight:700;letter-spacing:.3px}
+  .pill-orange{background:#fed7aa;color:#9a3412}
+  .pill-green{background:#d1fae5;color:#065f46}
+  .pill-gray{background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15)}
 
-  .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;text-align:center}
-  .ac.hl{background:#1d4ed8;border-color:#1d4ed8}
-  .ac.rm{background:#fffbeb;border-color:#fcd34d}
-  .al{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8;margin-bottom:1px}
-  .ac.hl .al{color:rgba(255,255,255,.65)}
-  .ac.rm .al{color:#b45309}
-  .av{display:block;font-size:11.5px;font-weight:800;color:#0f172a}
-  .ac.hl .av{color:#fff}
-  .ac.rm .av{color:#92400e}
+  /* ── Customer card ── */
+  .customer-card{background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border-radius:7px;padding:10px 14px;margin-bottom:8px;position:relative;overflow:hidden}
+  .customer-card::before{content:'';position:absolute;top:-15px;right:-15px;width:90px;height:90px;background:rgba(255,255,255,.05);border-radius:50%}
 
-  .status-badge{display:inline-block;padding:1px 5px;border-radius:20px;font-size:8.5px;font-weight:700}
+  /* ── Status badge large ── */
+  .status-badge-lg{display:inline-block;padding:3px 10px;border-radius:20px;font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
   .status-ACTIVE{background:#d1fae5;color:#065f46}
   .status-COMPLETED{background:#dbeafe;color:#1e40af}
   .status-DEFAULTED{background:#fee2e2;color:#991b1b}
   .status-CANCELLED,.status-CLOSED{background:#f1f5f9;color:#64748b}
   .status-PENDING{background:#fef3c7;color:#92400e}
 
+  /* ── Info cells ── */
+  .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:5px 7px;overflow:hidden}
+  .il{display:block;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:2px}
+  .iv{display:block;font-size:10.5px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .is{display:block;font-size:8.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+
+  /* ── Amount cards ── */
+  .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:6px 8px;text-align:center}
+  .ac.hl{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#1d4ed8}
+  .ac.rm{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fcd34d}
+  .al{display:block;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:2px}
+  .ac.hl .al{color:rgba(255,255,255,.7)}
+  .ac.rm .al{color:#b45309}
+  .av{display:block;font-size:12px;font-weight:800;color:#0f172a}
+  .ac.hl .av{color:#fff}
+  .ac.rm .av{color:#92400e}
+
+  /* ── Progress band ── */
+  .progress-band{background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:7px;padding:10px 12px;margin-bottom:7px}
+  .prog-card{border-radius:6px;padding:6px 4px;text-align:center;border:1px solid rgba(255,255,255,.1)}
+  .prog-blue{background:rgba(59,130,246,.2)}
+  .prog-green{background:rgba(16,185,129,.2)}
+  .prog-amber{background:rgba(245,158,11,.2)}
+  .prog-label{display:block;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:rgba(255,255,255,.55);margin-bottom:2px}
+  .prog-num{display:block;font-size:18px;font-weight:900;line-height:1.1}
+  .prog-blue .prog-num{color:#60a5fa}
+  .prog-green .prog-num{color:#34d399}
+  .prog-amber .prog-num{color:#fbbf24}
+  .prog-sub{display:block;font-size:7.5px;color:rgba(255,255,255,.4);margin-top:1px}
+
   @media print{
     @page{size:A4 portrait;margin:6mm 8mm}
-    body{background:#fff;padding:0}
-    .inv{border:none;width:100%}
+    body{background:#fff;padding:0;display:block}
+    .inv{border-radius:0;box-shadow:none;width:100%}
+    .hdr{border-radius:0}
   }
 </style>
 </head>
