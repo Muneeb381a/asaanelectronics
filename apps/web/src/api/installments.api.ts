@@ -27,6 +27,7 @@ export interface Installment {
   paymentDueDay:    number;
   customerArea:       string | null;
   customerFileNumber: string | null;
+  customerPhotoUrl:   string | null;
   pausedUntil:        string | null;
   pauseReason:        string | null;
 }
