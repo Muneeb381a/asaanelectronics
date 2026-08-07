@@ -358,6 +358,8 @@ export interface SinglePaymentReceiptData {
   periodDueDate?: Date | null;
   daysLate?: number;
   monthly?: number;
+  totalAmount?: number;
+  remaining?: number;
 }
 
 export function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
@@ -500,6 +502,17 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#e8edf5;paddin
     <div class="ic">
       <span class="il">Collected By</span>
       <span class="iv" style="color:#7c3aed">${d.collectorName}</span>
+    </div>` : ''}
+    ${d.totalAmount ? `
+    <div class="ic">
+      <span class="il">Total Amount · کل رقم</span>
+      <span class="iv" style="color:#059669">${pkr(d.totalAmount)}</span>
+    </div>` : ''}
+    ${d.remaining !== undefined ? `
+    <div class="ic">
+      <span class="il">Pending · باقی رقم</span>
+      <span class="iv" style="color:${(d.remaining ?? 0) <= 0 ? '#059669' : '#d97706'}">${pkr(d.remaining ?? 0)}</span>
+      ${(d.remaining ?? 0) <= 0 ? `<span class="is" style="color:#059669">✓ Paid off</span>` : ''}
     </div>` : ''}
     ${d.note ? `
     <div class="ic" style="grid-column:1/-1">

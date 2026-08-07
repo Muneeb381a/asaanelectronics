@@ -814,6 +814,8 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                               periodDueDate:    p.periodDue ?? null,
                               daysLate:         p.late,
                               monthly:          Number(freshInst.monthly),
+                              totalAmount:      Number(freshInst.totalAmount),
+                              remaining:        Number(freshInst.remaining),
                             })}
                             title="Print receipt"
                             className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded transition">
