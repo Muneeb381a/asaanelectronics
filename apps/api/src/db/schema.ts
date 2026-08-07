@@ -828,6 +828,114 @@ export const superAdminAuditLogs = pgTable('super_admin_audit_logs', {
   index('idx_super_admin_audit_created').on(t.createdAt),
 ]);
 
+// ── Vehicle Finance ───────────────────────────────────────────────────────────
+
+export const vehicleTypeEnum = pgEnum('vehicle_type', [
+  'BIKE', 'RICKSHAW', 'LOADER_RICKSHAW', 'ELECTRIC_BIKE', 'ELECTRIC_RICKSHAW',
+]);
+
+export const vehicleConditionEnum = pgEnum('vehicle_condition', ['NEW', 'USED']);
+
+export const vehicleStockStatusEnum = pgEnum('vehicle_stock_status', [
+  'AVAILABLE', 'RESERVED', 'SOLD_INSTALLMENT', 'SOLD_CASH',
+]);
+
+export const vehicleStock = pgTable('vehicle_stock', {
+  id:                 text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:           text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  vehicleType:        vehicleTypeEnum('vehicle_type').notNull(),
+  brand:              text('brand').notNull(),
+  model:              text('model').notNull(),
+  year:               integer('year'),
+  color:              text('color'),
+  engineNumber:       text('engine_number').notNull(),
+  chassisNumber:      text('chassis_number').notNull(),
+  registrationNumber: text('registration_number'),
+  condition:          vehicleConditionEnum('condition').default('NEW').notNull(),
+  purchasePrice:      decimal('purchase_price', { precision: 12, scale: 2 }),
+  sellingPrice:       decimal('selling_price',  { precision: 12, scale: 2 }),
+  status:             vehicleStockStatusEnum('status').default('AVAILABLE').notNull(),
+  supplierName:       text('supplier_name'),
+  notes:              text('notes'),
+  photoUrl:           text('photo_url'),
+  purchasedAt:        date('purchased_at'),
+  soldAt:             timestamp('sold_at'),
+  createdAt:          timestamp('created_at').defaultNow().notNull(),
+  updatedAt:          timestamp('updated_at').defaultNow().notNull(),
+  deletedAt:          timestamp('deleted_at'),
+  deletedBy:          text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+}, (t) => [
+  index('idx_vehicle_stock_seller').on(t.sellerId),
+  index('idx_vehicle_stock_status').on(t.sellerId, t.status),
+  index('idx_vehicle_stock_type').on(t.sellerId, t.vehicleType),
+  index('idx_vehicle_stock_deleted').on(t.sellerId, t.deletedAt),
+  uniqueIndex('uq_vehicle_engine_seller').on(t.sellerId, t.engineNumber),
+  uniqueIndex('uq_vehicle_chassis_seller').on(t.sellerId, t.chassisNumber),
+]);
+
+export const vehicleInstallments = pgTable('vehicle_installments', {
+  id:                text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:          text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  vehicleId:         text('vehicle_id').notNull().references(() => vehicleStock.id),
+  customerId:        text('customer_id').notNull().references(() => customers.id),
+  guarantorName:     text('guarantor_name'),
+  guarantorPhone:    text('guarantor_phone'),
+  guarantorCnic:     text('guarantor_cnic'),
+  guarantorAddress:  text('guarantor_address'),
+  guarantorRelation: text('guarantor_relation'),
+  guarantor2Name:    text('guarantor2_name'),
+  guarantor2Phone:   text('guarantor2_phone'),
+  guarantor2Cnic:    text('guarantor2_cnic'),
+  guarantor2Address: text('guarantor2_address'),
+  totalAmount:       decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+  downPayment:       decimal('down_payment', { precision: 12, scale: 2 }).notNull(),
+  remaining:         decimal('remaining',    { precision: 12, scale: 2 }).notNull(),
+  monthly:           decimal('monthly',      { precision: 12, scale: 2 }).notNull(),
+  months:            integer('months').notNull(),
+  startDate:         timestamp('start_date').notNull(),
+  paymentFrequency:  text('payment_frequency').default('monthly').notNull(),
+  paymentDueDay:     integer('payment_due_day').default(10).notNull(),
+  invoiceNumber:     text('invoice_number'),
+  status:            installmentStatusEnum('status').default('PENDING').notNull(),
+  notes:             text('notes'),
+  createdAt:         timestamp('created_at').defaultNow().notNull(),
+  completedAt:       timestamp('completed_at'),
+  deletedAt:         timestamp('deleted_at'),
+  deletedBy:         text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+}, (t) => [
+  index('idx_vi_seller').on(t.sellerId),
+  index('idx_vi_customer').on(t.customerId),
+  index('idx_vi_vehicle').on(t.vehicleId),
+  index('idx_vi_status').on(t.sellerId, t.status),
+  index('idx_vi_deleted').on(t.sellerId, t.deletedAt),
+  index('idx_vi_seller_del_created').on(t.sellerId, t.deletedAt, t.createdAt),
+]);
+
+export const vehiclePayments = pgTable('vehicle_payments', {
+  id:                   text('id').primaryKey().$defaultFn(() => randomUUID()),
+  vehicleInstallmentId: text('vehicle_installment_id').notNull().references(() => vehicleInstallments.id),
+  sellerId:             text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  amount:               decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  method:               paymentMethodEnum('method').notNull(),
+  paidOn:               timestamp('paid_on').defaultNow().notNull(),
+  note:                 text('note'),
+  collectedBy:          text('collected_by').references(() => users.id, { onDelete: 'set null' }),
+  receiptNumber:        text('receipt_number'),
+  periodDue:            date('period_due'),
+  daysLate:             integer('days_late').default(0).notNull(),
+  proofImageUrl:        text('proof_image_url'),
+  deletedAt:            timestamp('deleted_at'),
+  deletedBy:            text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+  deletedReason:        text('deleted_reason'),
+  createdAt:            timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_vp_installment').on(t.vehicleInstallmentId),
+  index('idx_vp_seller').on(t.sellerId),
+  index('idx_vp_paid_on').on(t.paidOn),
+  index('idx_vp_inst_deleted').on(t.vehicleInstallmentId, t.deletedAt),
+  index('idx_vp_collected_by').on(t.collectedBy, t.paidOn),
+]);
+
 // ── SaaS Admin: broadcast announcements ───────────────────────────────────────
 export const adminBroadcasts = pgTable('admin_broadcasts', {
   id:         text('id').primaryKey().$defaultFn(() => randomUUID()),
