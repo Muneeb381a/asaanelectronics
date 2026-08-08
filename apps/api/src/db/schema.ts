@@ -830,6 +830,14 @@ export const superAdminAuditLogs = pgTable('super_admin_audit_logs', {
 
 // ── Vehicle Finance ───────────────────────────────────────────────────────────
 
+export const letterStatusEnum = pgEnum('letter_status', [
+  'NONE', 'FIRST_NOTICE', 'SECOND_NOTICE', 'LEGAL_NOTICE', 'FILED',
+]);
+
+export const biometricStatusEnum = pgEnum('biometric_status', [
+  'PENDING', 'SELLER_DONE', 'BUYER_DONE', 'COMPLETED', 'NOT_REQUIRED',
+]);
+
 export const vehicleTypeEnum = pgEnum('vehicle_type', [
   'BIKE', 'RICKSHAW', 'LOADER_RICKSHAW', 'ELECTRIC_BIKE', 'ELECTRIC_RICKSHAW',
 ]);
@@ -897,6 +905,10 @@ export const vehicleInstallments = pgTable('vehicle_installments', {
   paymentDueDay:     integer('payment_due_day').default(10).notNull(),
   invoiceNumber:     text('invoice_number'),
   status:            installmentStatusEnum('status').default('PENDING').notNull(),
+  letterStatus:      letterStatusEnum('letter_status').default('NONE').notNull(),
+  letterSentAt:      timestamp('letter_sent_at'),
+  biometricStatus:   biometricStatusEnum('biometric_status').default('PENDING').notNull(),
+  biometricDoneAt:   timestamp('biometric_done_at'),
   notes:             text('notes'),
   createdAt:         timestamp('created_at').defaultNow().notNull(),
   completedAt:       timestamp('completed_at'),

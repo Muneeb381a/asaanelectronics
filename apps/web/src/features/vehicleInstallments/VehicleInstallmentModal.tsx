@@ -9,6 +9,7 @@ import { useAuthStore } from '../../store/auth.store.ts';
 import {
   vehicleInstallmentsApi,
   type VehicleInstallment, type RecordVehiclePaymentInput,
+  type LetterStatus, type BiometricStatus,
 } from '../../api/vehicleInstallments.api.ts';
 import { sellersApi } from '../../api/sellers.api.ts';
 import { staffApi } from '../../api/staff.api.ts';
@@ -27,6 +28,52 @@ const METHOD_LABELS: Record<string, string> = {
 
 const pkr = (n: number | string) =>
   'PKR ' + Number(n).toLocaleString('en-PK', { minimumFractionDigits: 0 });
+
+const LETTER_LABELS: Record<LetterStatus, string> = {
+  NONE:          'None',
+  FIRST_NOTICE:  '1st Notice',
+  SECOND_NOTICE: '2nd Notice',
+  LEGAL_NOTICE:  'Legal Notice',
+  FILED:         'Case Filed',
+};
+const LETTER_COLORS: Record<LetterStatus, string> = {
+  NONE:          'bg-gray-100 text-gray-500',
+  FIRST_NOTICE:  'bg-amber-100 text-amber-700',
+  SECOND_NOTICE: 'bg-orange-100 text-orange-700',
+  LEGAL_NOTICE:  'bg-red-100 text-red-700',
+  FILED:         'bg-red-600 text-white',
+};
+
+const BIOMETRIC_LABELS: Record<BiometricStatus, string> = {
+  PENDING:      'Pending',
+  SELLER_DONE:  'Seller Done',
+  BUYER_DONE:   'Buyer Done',
+  COMPLETED:    'Completed ✓',
+  NOT_REQUIRED: 'N/A',
+};
+const BIOMETRIC_COLORS: Record<BiometricStatus, string> = {
+  PENDING:      'bg-gray-100 text-gray-500',
+  SELLER_DONE:  'bg-blue-100 text-blue-700',
+  BUYER_DONE:   'bg-indigo-100 text-indigo-700',
+  COMPLETED:    'bg-green-100 text-green-700',
+  NOT_REQUIRED: 'bg-slate-100 text-slate-500',
+};
+
+function LetterStatusBadge({ status }: { status: LetterStatus }) {
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${LETTER_COLORS[status]}`}>
+      {LETTER_LABELS[status]}
+    </span>
+  );
+}
+
+function BiometricStatusBadge({ status }: { status: BiometricStatus }) {
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${BIOMETRIC_COLORS[status]}`}>
+      {BIOMETRIC_LABELS[status]}
+    </span>
+  );
+}
 
 function calcNextDueDate(inst: VehicleInstallment): Date | null {
   if (inst.status !== 'ACTIVE') return null;
@@ -117,6 +164,13 @@ export default function VehicleInstallmentModal({ installmentId, onClose, onUpda
     mutationFn: (paymentId: string) => vehicleInstallmentsApi.deletePayment(installmentId, paymentId),
     onSuccess: () => { toast.success('Payment reversed'); refetch(); setConfirmAction(null); },
     onError: (e) => { toast.error(getErrorMessage(e)); setConfirmAction(null); },
+  });
+
+  const fieldsMut = useMutation({
+    mutationFn: (body: { letterStatus?: LetterStatus; biometricStatus?: BiometricStatus }) =>
+      vehicleInstallmentsApi.updateFields(installmentId, body),
+    onSuccess: () => { toast.success('Updated'); refetch(); },
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const handlePaySubmit = (e: React.FormEvent) => {
@@ -294,6 +348,62 @@ export default function VehicleInstallmentModal({ installmentId, onClose, onUpda
                     <span className="font-semibold text-gray-700">Notes: </span>{inst.notes}
                   </div>
                 )}
+
+                {/* ── Letter Status ── */}
+                <div className="border border-red-200 bg-red-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-xs font-bold text-red-700 uppercase tracking-wide">Letter / Notice Status</div>
+                      <div className="text-[10px] text-red-400 mt-0.5">Default notice tracking</div>
+                    </div>
+                    <LetterStatusBadge status={inst.letterStatus} />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['NONE', 'FIRST_NOTICE', 'SECOND_NOTICE', 'LEGAL_NOTICE', 'FILED'] as LetterStatus[]).map((s) => (
+                      <button key={s}
+                        onClick={() => fieldsMut.mutate({ letterStatus: s })}
+                        disabled={inst.letterStatus === s || fieldsMut.isPending}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition ${
+                          inst.letterStatus === s
+                            ? 'bg-red-600 text-white border-red-600'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-red-400 hover:text-red-600 disabled:opacity-50'
+                        }`}>
+                        {LETTER_LABELS[s]}
+                      </button>
+                    ))}
+                  </div>
+                  {inst.letterSentAt && inst.letterStatus !== 'NONE' && (
+                    <div className="text-[10px] text-red-400 mt-2">Sent: {fmtDate(inst.letterSentAt)}</div>
+                  )}
+                </div>
+
+                {/* ── Biometric Status ── */}
+                <div className="border border-violet-200 bg-violet-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-xs font-bold text-violet-700 uppercase tracking-wide">Biometric / Transfer Status</div>
+                      <div className="text-[10px] text-violet-400 mt-0.5">NADRA · e-Sahulat · Excise Punjab</div>
+                    </div>
+                    <BiometricStatusBadge status={inst.biometricStatus} />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['PENDING', 'SELLER_DONE', 'BUYER_DONE', 'COMPLETED', 'NOT_REQUIRED'] as BiometricStatus[]).map((s) => (
+                      <button key={s}
+                        onClick={() => fieldsMut.mutate({ biometricStatus: s })}
+                        disabled={inst.biometricStatus === s || fieldsMut.isPending}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition ${
+                          inst.biometricStatus === s
+                            ? 'bg-violet-600 text-white border-violet-600'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-violet-400 hover:text-violet-600 disabled:opacity-50'
+                        }`}>
+                        {BIOMETRIC_LABELS[s]}
+                      </button>
+                    ))}
+                  </div>
+                  {inst.biometricDoneAt && inst.biometricStatus === 'COMPLETED' && (
+                    <div className="text-[10px] text-violet-400 mt-2">Completed: {fmtDate(inst.biometricDoneAt)}</div>
+                  )}
+                </div>
               </div>
             )}
 

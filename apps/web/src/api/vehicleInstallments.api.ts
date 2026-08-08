@@ -3,6 +3,8 @@ import type { VehicleType, VehicleCondition } from './vehicleStock.api.ts';
 
 export type VehicleInstallmentStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED';
 export type PaymentMethod = 'CASH' | 'BANK' | 'JAZZCASH' | 'EASYPAISA' | 'OTHER';
+export type LetterStatus = 'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED';
+export type BiometricStatus = 'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED';
 
 export interface VehicleInstallment {
   id:                  string;
@@ -19,6 +21,10 @@ export interface VehicleInstallment {
   paymentDueDay:       number;
   invoiceNumber:       string | null;
   status:              VehicleInstallmentStatus;
+  letterStatus:        LetterStatus;
+  letterSentAt:        string | null;
+  biometricStatus:     BiometricStatus;
+  biometricDoneAt:     string | null;
   notes:               string | null;
   createdAt:           string;
   completedAt:         string | null;
@@ -141,6 +147,9 @@ export const vehicleInstallmentsApi = {
 
   cancel: (id: string) =>
     api.patch<{ data: VehicleInstallment }>(`/vehicle-installments/${id}/cancel`).then(unwrap<VehicleInstallment>),
+
+  updateFields: (id: string, body: { letterStatus?: LetterStatus; biometricStatus?: BiometricStatus }) =>
+    api.patch<{ data: VehicleInstallment }>(`/vehicle-installments/${id}/fields`, body).then(unwrap<VehicleInstallment>),
 
   delete: (id: string) =>
     api.delete(`/vehicle-installments/${id}`),

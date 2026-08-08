@@ -18,7 +18,7 @@ const ContactPage           = lazy(() => import('../pages/ContactPage.tsx'));
 const DashboardPage         = lazy(() => import('../pages/DashboardPage.tsx'));
 const ProductsPage          = lazy(() => import('../pages/ProductsPage.tsx'));
 const CustomersPage         = lazy(() => import('../pages/CustomersPage.tsx'));
-const InstallmentsPage      = lazy(() => import('../pages/InstallmentsPage.tsx'));
+const InstallmentsPage      = lazy(() => import('../pages/InstallmentsContainerPage.tsx'));
 const ReportsPage           = lazy(() => import('../pages/ReportsPage.tsx'));
 const StaffPage             = lazy(() => import('../pages/StaffPage.tsx'));
 const VerificationQueuePage = lazy(() => import('../pages/VerificationQueuePage.tsx'));
@@ -45,7 +45,6 @@ const CashFlowPage          = lazy(() => import('../pages/CashFlowPage.tsx'));
 const CollectionSheetPage   = lazy(() => import('../pages/CollectionSheetPage.tsx'));
 const AgreementPage         = lazy(() => import('../pages/AgreementPage.tsx'));
 const VehicleStockPage      = lazy(() => import('../pages/VehicleStockPage.tsx'));
-const VehicleInstallmentsPage = lazy(() => import('../pages/VehicleInstallmentsPage.tsx'));
 
 // ── Fallback loader ────────────────────────────────────────────────────────────
 function PageLoader() {
@@ -162,7 +161,6 @@ export const router = createBrowserRouter([
       { path: '/cashflow',          element: <SellerOwnerGuard><S><CashFlowPage /></S></SellerOwnerGuard> },
       { path: '/collection-sheet',  element: <SellerOwnerGuard><S><CollectionSheetPage /></S></SellerOwnerGuard> },
       { path: '/vehicle-stock',         element: <SellerOwnerGuard><S><VehicleStockPage /></S></SellerOwnerGuard> },
-      { path: '/vehicle-installments',  element: <PermGuard perm={['canAddInstallment', 'canRecordPayment']}><S><VehicleInstallmentsPage /></S></PermGuard> },
       { path: '/verifications',    element: <S><VerificationQueuePage /></S> },
     ],
   },

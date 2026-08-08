@@ -49,3 +49,7 @@ export async function deleteVehiclePayment(req: AuthRequest, res: Response) {
     req.params['paymentId']!, req.params['id']!, req.user!.sellerId!, req.user!.userId!, reason,
   ));
 }
+
+export async function updateVehicleInstallmentFields(req: AuthRequest, res: Response) {
+  success(res, await svc.updateFields(req.params['id']!, req.user!.sellerId!, req.body));
+}

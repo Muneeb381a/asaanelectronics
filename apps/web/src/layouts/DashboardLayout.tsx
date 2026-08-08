@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart, FileDown, Smartphone, Building2,
-  ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays, ClipboardList, Car, Bike,
+  ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays, ClipboardList, Car,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -21,7 +21,6 @@ const allNavItems = [
   { to: '/products',     label: 'Products',     icon: Package,         end: undefined as boolean | undefined, perm: 'canManageProducts' as string | string[] },
   { to: '/customers',    label: 'Customers',    icon: Users,           end: undefined as boolean | undefined, perm: ['canAddCustomer', 'canAddInstallment', 'canRecordPayment'] as string | string[] },
   { to: '/installments',        label: 'Installments',        icon: CreditCard,  end: undefined as boolean | undefined, perm: ['canAddInstallment', 'canRecordPayment'] as string | string[] },
-  { to: '/vehicle-installments', label: 'Vehicle Finance',   icon: Bike,        end: undefined as boolean | undefined, perm: ['canAddInstallment', 'canRecordPayment'] as string | string[] },
   { to: '/cash-sales',  label: 'Cash Sales',  icon: ShoppingCart,    end: undefined as boolean | undefined, perm: 'canMakeCashSales' as string | string[] },
   { to: '/expenses',    label: 'Expenses',    icon: Receipt,         end: undefined as boolean | undefined, perm: 'canRecordExpense' as string | string[] },
   { to: '/returns',     label: 'Returns',     icon: RotateCcw,       end: undefined as boolean | undefined, perm: 'canManageReturns' as string | string[] },

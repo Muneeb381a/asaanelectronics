@@ -6,6 +6,7 @@ import {
   createVehicleInstallment, recordVehiclePayment,
   defaultVehicleInstallment, cancelVehicleInstallment,
   deleteVehicleInstallment, deleteVehiclePayment,
+  updateVehicleInstallmentFields,
 } from './vehicleInstallments.controller.js';
 
 const router = Router();
@@ -16,6 +17,7 @@ router.get('/',                   listVehicleInstallments);
 router.get('/:id',                getVehicleInstallment);
 router.post('/',                  requirePermission('canAddInstallment'), createVehicleInstallment);
 router.post('/:id/payment',       requirePermission('canRecordPayment'),  recordVehiclePayment);
+router.patch('/:id/fields',       requirePermission('canRecordPayment'), updateVehicleInstallmentFields);
 router.patch('/:id/default',      requireOwner, defaultVehicleInstallment);
 router.patch('/:id/cancel',       requireOwner, cancelVehicleInstallment);
 router.delete('/:id',             requireOwner, deleteVehicleInstallment);

@@ -5,6 +5,7 @@ import { Plus, Search, X, ChevronLeft, ChevronRight, Car, AlertTriangle } from '
 import {
   vehicleInstallmentsApi,
   type VehicleInstallment, type CreateVehicleInstallmentInput, type VehicleInstallmentStatus,
+  type LetterStatus, type BiometricStatus,
 } from '../api/vehicleInstallments.api.ts';
 import { vehicleStockApi, type VehicleType } from '../api/vehicleStock.api.ts';
 import { customersApi } from '../api/customers.api.ts';
@@ -17,6 +18,35 @@ const VEHICLE_TYPE_ICONS: Record<VehicleType, string> = {
   BIKE: '🏍️', RICKSHAW: '🛺', LOADER_RICKSHAW: '🚛',
   ELECTRIC_BIKE: '⚡🏍️', ELECTRIC_RICKSHAW: '⚡🛺',
 };
+
+const LETTER_COLORS: Record<LetterStatus, string> = {
+  NONE:          'bg-gray-100 text-gray-400',
+  FIRST_NOTICE:  'bg-amber-100 text-amber-700',
+  SECOND_NOTICE: 'bg-orange-100 text-orange-700',
+  LEGAL_NOTICE:  'bg-red-100 text-red-700',
+  FILED:         'bg-red-600 text-white',
+};
+const LETTER_ABBR: Record<LetterStatus, string> = {
+  NONE: '—', FIRST_NOTICE: '1st', SECOND_NOTICE: '2nd', LEGAL_NOTICE: 'Legal', FILED: 'Filed',
+};
+
+const BIO_COLORS: Record<BiometricStatus, string> = {
+  PENDING:      'bg-gray-100 text-gray-400',
+  SELLER_DONE:  'bg-blue-100 text-blue-700',
+  BUYER_DONE:   'bg-indigo-100 text-indigo-700',
+  COMPLETED:    'bg-green-100 text-green-700',
+  NOT_REQUIRED: 'bg-slate-100 text-slate-400',
+};
+const BIO_ABBR: Record<BiometricStatus, string> = {
+  PENDING: 'Pending', SELLER_DONE: 'Seller✓', BUYER_DONE: 'Buyer✓', COMPLETED: 'Done✓', NOT_REQUIRED: 'N/A',
+};
+
+function LetterBadge({ status }: { status: LetterStatus }) {
+  return <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${LETTER_COLORS[status]}`}>{LETTER_ABBR[status]}</span>;
+}
+function BioBadge({ status }: { status: BiometricStatus }) {
+  return <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${BIO_COLORS[status]}`}>{BIO_ABBR[status]}</span>;
+}
 
 const STATUS_STYLES: Record<VehicleInstallmentStatus, string> = {
   PENDING:   'bg-amber-100 text-amber-700',
@@ -216,16 +246,18 @@ export default function VehicleInstallmentsPage() {
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Monthly</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Remaining</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Next Due</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Letter</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Bio</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}><td colSpan={6} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td></tr>
+                  <tr key={i}><td colSpan={8} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td></tr>
                 ))
               ) : data?.data.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-12 text-center">
+                <tr><td colSpan={8} className="px-4 py-12 text-center">
                   <div className="text-3xl mb-2">🛺</div>
                   <p className="text-gray-500 text-sm">No vehicle installments yet</p>
                   <button onClick={() => setShowCreate(true)} className="mt-2 text-violet-600 text-sm font-medium hover:underline">Create first one</button>
@@ -254,6 +286,12 @@ export default function VehicleInstallmentsPage() {
                           {isOverdue && '⚠ '}{fmtDate(nextDue)}
                         </span>
                       ) : <span className="text-xs text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <LetterBadge status={inst.letterStatus} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <BioBadge status={inst.biometricStatus} />
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[inst.status]}`}>

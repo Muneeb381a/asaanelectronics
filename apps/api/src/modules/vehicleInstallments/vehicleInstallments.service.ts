@@ -105,6 +105,10 @@ export class VehicleInstallmentsService {
         paymentDueDay:       vehicleInstallments.paymentDueDay,
         invoiceNumber:       vehicleInstallments.invoiceNumber,
         status:              vehicleInstallments.status,
+        letterStatus:        vehicleInstallments.letterStatus,
+        letterSentAt:        vehicleInstallments.letterSentAt,
+        biometricStatus:     vehicleInstallments.biometricStatus,
+        biometricDoneAt:     vehicleInstallments.biometricDoneAt,
         notes:               vehicleInstallments.notes,
         createdAt:           vehicleInstallments.createdAt,
         completedAt:         vehicleInstallments.completedAt,
@@ -193,6 +197,10 @@ export class VehicleInstallmentsService {
       paymentDueDay:        vehicleInstallments.paymentDueDay,
       invoiceNumber:        vehicleInstallments.invoiceNumber,
       status:               vehicleInstallments.status,
+      letterStatus:         vehicleInstallments.letterStatus,
+      letterSentAt:         vehicleInstallments.letterSentAt,
+      biometricStatus:      vehicleInstallments.biometricStatus,
+      biometricDoneAt:      vehicleInstallments.biometricDoneAt,
       notes:                vehicleInstallments.notes,
       createdAt:            vehicleInstallments.createdAt,
       completedAt:          vehicleInstallments.completedAt,
@@ -518,5 +526,35 @@ export class VehicleInstallmentsService {
       clearSellerStatsCache(sellerId);
       return { reversed: true };
     });
+  }
+
+  async updateFields(
+    id: string,
+    sellerId: string,
+    body: {
+      letterStatus?:   'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED';
+      biometricStatus?: 'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED';
+    },
+  ) {
+    const [existing] = await db.select({ id: vehicleInstallments.id })
+      .from(vehicleInstallments)
+      .where(and(eq(vehicleInstallments.id, id), eq(vehicleInstallments.sellerId, sellerId), isNull(vehicleInstallments.deletedAt)));
+    if (!existing) throw new AppError('Vehicle installment not found', 404);
+
+    const patch: Record<string, unknown> = {};
+    if (body.letterStatus !== undefined) {
+      patch.letterStatus  = body.letterStatus;
+      patch.letterSentAt  = body.letterStatus === 'NONE' ? null : new Date();
+    }
+    if (body.biometricStatus !== undefined) {
+      patch.biometricStatus = body.biometricStatus;
+      patch.biometricDoneAt = body.biometricStatus === 'COMPLETED' ? new Date() : null;
+    }
+
+    const [updated] = await db.update(vehicleInstallments)
+      .set(patch)
+      .where(eq(vehicleInstallments.id, id))
+      .returning();
+    return updated;
   }
 }
