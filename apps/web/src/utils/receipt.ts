@@ -392,43 +392,38 @@ export function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
     : `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:20px;background:#dcfce7;border:1px solid #86efac;color:#166534;font-size:9px;font-weight:700">✓ On Time</span>`;
 
   const progressSection = hasProg ? `
-  <div style="margin:0 20px;border-top:1px solid #f1f5f9;padding:10px 0">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <div style="display:flex;align-items:baseline;gap:5px">
-        <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8">${freq}</span>
-        <span style="font-size:20px;font-weight:900;color:#1d4ed8;line-height:1">${paidInst}</span>
-        <span style="font-size:11px;color:#cbd5e1;font-weight:600">/ ${totalInst}</span>
-        ${d.periodDueDate ? `<span style="font-size:8.5px;color:#64748b">· Due ${fmtDate(d.periodDueDate)}</span>` : ''}
+  <div style="margin:0 18px;border-top:1px solid #f1f5f9;padding:7px 0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+      <div style="display:flex;align-items:baseline;gap:4px">
+        <span style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8">${freq}</span>
+        <span style="font-size:18px;font-weight:900;color:#1d4ed8;line-height:1">${paidInst}</span>
+        <span style="font-size:10px;color:#cbd5e1;font-weight:600">/ ${totalInst}</span>
+        ${d.periodDueDate ? `<span style="font-size:8px;color:#64748b">· Due ${fmtDate(d.periodDueDate)}</span>` : ''}
       </div>
       <div style="text-align:right">
-        <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:2px">Balance</div>
-        <div style="font-size:12px;font-weight:800;color:${(d.remaining ?? 0) <= 0 ? '#16a34a' : '#d97706'}">${pkr(d.remaining ?? 0)}</div>
+        <span style="font-size:8px;font-weight:700;color:#2563eb">${pct}% · ${paidInst} paid · ${pendingInst} left</span>
       </div>
     </div>
-    <div style="background:#e2e8f0;border-radius:6px;height:6px;overflow:hidden;margin-bottom:4px">
+    <div style="background:#e2e8f0;border-radius:6px;height:5px;overflow:hidden">
       <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#3b82f6,#1d4ed8);border-radius:6px"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between">
-      <span style="font-size:8px;font-weight:700;color:#2563eb">${pct}% complete · ${paidInst} paid</span>
-      <span style="font-size:8px;color:#94a3b8">${pendingInst} ${isDaily ? 'days' : 'months'} left</span>
     </div>
   </div>` : '';
 
   const extraRow = (d.collectorName || d.note || d.monthly) ? `
-  <div style="margin:0 20px;border-top:1px solid #f1f5f9;padding:8px 0;display:flex;gap:14px;flex-wrap:wrap">
-    ${d.monthly ? `<div style="font-size:9px;color:#374151"><span style="color:#94a3b8">${isDaily ? 'Daily' : 'Monthly'} Qist: </span><span style="font-weight:700">${pkr(d.monthly)}</span></div>` : ''}
-    ${d.collectorName ? `<div style="font-size:9px;color:#374151"><span style="color:#94a3b8">Collected by: </span><span style="font-weight:700;color:#7c3aed">${d.collectorName}</span></div>` : ''}
-    ${d.note ? `<div style="font-size:9px;color:#374151;width:100%"><span style="color:#94a3b8">Note: </span><span style="font-weight:600">${d.note}</span></div>` : ''}
+  <div style="margin:0 18px;border-top:1px solid #f1f5f9;padding:6px 0;display:flex;gap:12px;flex-wrap:wrap">
+    ${d.monthly ? `<div style="font-size:8.5px;color:#374151"><span style="color:#94a3b8">${isDaily ? 'Daily' : 'Monthly'} Qist: </span><span style="font-weight:700">${pkr(d.monthly)}</span></div>` : ''}
+    ${d.collectorName ? `<div style="font-size:8.5px;color:#374151"><span style="color:#94a3b8">Collected by: </span><span style="font-weight:700;color:#7c3aed">${d.collectorName}</span></div>` : ''}
+    ${d.note ? `<div style="font-size:8.5px;color:#374151;width:100%"><span style="color:#94a3b8">Note: </span><span style="font-weight:600">${d.note}</span></div>` : ''}
   </div>` : '';
 
   const css = `
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#dde3f0;padding:20px;display:flex;justify-content:center;align-items:flex-start}
-.card{background:#fff;width:500px;border-radius:12px;overflow:hidden;box-shadow:0 4px 28px rgba(0,0,0,.13)}
+.card{background:#fff;width:520px;border-radius:12px;overflow:hidden;box-shadow:0 4px 28px rgba(0,0,0,.13)}
 @media print{
-  @page{size:148mm 210mm;margin:5mm 7mm}
+  @page{size:210mm 148mm;margin:4mm 6mm}
   body{background:#fff;padding:0;display:block}
-  .card{border-radius:0;box-shadow:none;width:100%}
+  .card{border-radius:0;box-shadow:none;width:100%;font-size:90%}
 }`;
 
   const html = `<!DOCTYPE html>
@@ -438,57 +433,57 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#dde3f0;paddin
 <div class="card">
 
   <!-- TOP ACCENT -->
-  <div style="height:5px;background:linear-gradient(90deg,#1e3a8a 0%,#2563eb 55%,#60a5fa 100%)"></div>
+  <div style="height:4px;background:linear-gradient(90deg,#1e3a8a 0%,#2563eb 55%,#60a5fa 100%)"></div>
 
   <!-- HEADER -->
-  <div style="padding:14px 20px 12px;display:flex;justify-content:space-between;align-items:flex-start">
+  <div style="padding:9px 18px 8px;display:flex;justify-content:space-between;align-items:flex-start">
     <div>
-      <div style="font-size:15px;font-weight:900;color:#0f172a;letter-spacing:-.3px;line-height:1">${d.shopName}</div>
-      ${d.shopPhone ? `<div style="font-size:9px;color:#64748b;margin-top:3px">${d.shopPhone}</div>` : ''}
+      <div style="font-size:14px;font-weight:900;color:#0f172a;letter-spacing:-.3px;line-height:1">${d.shopName}</div>
+      ${d.shopPhone ? `<div style="font-size:8.5px;color:#64748b;margin-top:2px">${d.shopPhone}</div>` : ''}
     </div>
     <div style="text-align:right">
-      <div style="font-size:7.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#2563eb">Payment Receipt</div>
-      ${d.receiptNumber ? `<div style="font-size:8.5px;font-family:monospace;color:#94a3b8;margin-top:2px">${d.receiptNumber}</div>` : ''}
-      <div style="font-size:9px;font-weight:600;color:#475569;margin-top:3px">${dateStr}</div>
-      <div style="font-size:8px;color:#94a3b8;margin-top:1px">${timeStr}</div>
+      <div style="font-size:7px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#2563eb">Payment Receipt</div>
+      ${d.receiptNumber ? `<div style="font-size:8px;font-family:monospace;color:#94a3b8;margin-top:2px">${d.receiptNumber}</div>` : ''}
+      <div style="font-size:8.5px;font-weight:600;color:#475569;margin-top:2px">${dateStr}</div>
+      <div style="font-size:7.5px;color:#94a3b8;margin-top:1px">${timeStr}</div>
     </div>
   </div>
 
   <!-- CUSTOMER -->
-  <div style="margin:0 20px;border-top:1px solid #f1f5f9;padding:10px 0;display:flex;align-items:center;gap:12px">
-    <div style="width:40px;height:40px;border-radius:50%;background:${avatarBg};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;letter-spacing:-.5px">${initials}</div>
+  <div style="margin:0 18px;border-top:1px solid #f1f5f9;padding:7px 0;display:flex;align-items:center;gap:10px">
+    <div style="width:36px;height:36px;border-radius:50%;background:${avatarBg};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;letter-spacing:-.5px">${initials}</div>
     <div style="min-width:0;flex:1">
-      <div style="font-size:7px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#94a3b8;margin-bottom:2px">Customer · گاہک</div>
-      <div style="font-size:14px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${d.customerName}</div>
-      ${d.customerPhone ? `<div style="font-size:9px;color:#64748b;margin-top:2px">${d.customerPhone}</div>` : ''}
+      <div style="font-size:6.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#94a3b8;margin-bottom:1px">Customer · گاہک</div>
+      <div style="font-size:13px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${d.customerName}</div>
+      ${d.customerPhone ? `<div style="font-size:8.5px;color:#64748b;margin-top:1px">${d.customerPhone}</div>` : ''}
     </div>
-    ${(d.remaining ?? 0) <= 0 ? `<div style="flex-shrink:0;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:7px;font-weight:700;color:#166534;letter-spacing:.5px">FULLY</div><div style="font-size:7px;font-weight:700;color:#166534;letter-spacing:.5px">PAID</div></div>` : ''}
+    ${(d.remaining ?? 0) <= 0 ? `<div style="flex-shrink:0;background:#dcfce7;border:1px solid #86efac;border-radius:7px;padding:3px 9px;text-align:center"><div style="font-size:6.5px;font-weight:700;color:#166534;letter-spacing:.5px;line-height:1.4">FULLY PAID ✓</div></div>` : ''}
   </div>
 
   <!-- AMOUNT HERO -->
-  <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);padding:16px 20px 14px;text-align:center">
-    <div style="font-size:7px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:5px">Amount Paid · ادا کردہ رقم</div>
-    <div style="line-height:1;margin-bottom:10px">
-      <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.5);vertical-align:top;margin-top:5px;display:inline-block;margin-right:3px">PKR</span>
-      <span style="font-size:40px;font-weight:900;color:#fff;letter-spacing:-1.5px">${numFmt(d.amountPaid)}</span>
+  <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);padding:11px 18px 10px;text-align:center">
+    <div style="font-size:6.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:4px">Amount Paid · ادا کردہ رقم</div>
+    <div style="line-height:1;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.5);vertical-align:top;margin-top:4px;display:inline-block;margin-right:2px">PKR</span>
+      <span style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-1.5px">${numFmt(d.amountPaid)}</span>
     </div>
-    <div style="display:flex;justify-content:center;align-items:center;gap:8px">
-      <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 13px;border-radius:20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.9);font-size:9.5px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
+    <div style="display:flex;justify-content:center;align-items:center;gap:7px">
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 11px;border-radius:20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.9);font-size:9px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
       ${d.periodDueDate !== undefined || isLate ? statusChip : ''}
     </div>
   </div>
 
-  <!-- INFO ROW: product + date -->
-  <div style="margin:0 20px;border-top:1px solid #f1f5f9;padding:10px 0;display:grid;grid-template-columns:1fr 1fr;gap:4px">
+  <!-- INFO ROW: product + balance -->
+  <div style="margin:0 18px;border-top:1px solid #f1f5f9;padding:7px 0;display:grid;grid-template-columns:1fr 1fr;gap:4px">
     <div>
-      <div style="font-size:7px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Product · مصنوعہ</div>
-      <div style="font-size:10.5px;font-weight:700;color:#0f172a;line-height:1.35">${d.productName}</div>
-      ${d.invoiceNumber ? `<div style="font-size:8px;font-family:monospace;color:#94a3b8;margin-top:1px">${d.invoiceNumber}</div>` : ''}
+      <div style="font-size:6.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#94a3b8;margin-bottom:2px">Product · مصنوعہ</div>
+      <div style="font-size:10px;font-weight:700;color:#0f172a;line-height:1.3">${d.productName}</div>
+      ${d.invoiceNumber ? `<div style="font-size:7.5px;font-family:monospace;color:#94a3b8;margin-top:1px">${d.invoiceNumber}</div>` : ''}
     </div>
     <div style="text-align:right">
-      <div style="font-size:7px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Balance · باقی رقم</div>
-      <div style="font-size:13px;font-weight:800;color:${(d.remaining ?? 0) <= 0 ? '#16a34a' : '#d97706'}">${pkr(d.remaining ?? 0)}</div>
-      ${d.totalAmount ? `<div style="font-size:8px;color:#94a3b8;margin-top:1px">of ${pkr(d.totalAmount)}</div>` : ''}
+      <div style="font-size:6.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#94a3b8;margin-bottom:2px">Balance · باقی رقم</div>
+      <div style="font-size:12px;font-weight:800;color:${(d.remaining ?? 0) <= 0 ? '#16a34a' : '#d97706'}">${pkr(d.remaining ?? 0)}</div>
+      ${d.totalAmount ? `<div style="font-size:7.5px;color:#94a3b8;margin-top:1px">of ${pkr(d.totalAmount)}</div>` : ''}
     </div>
   </div>
 
@@ -499,12 +494,12 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#dde3f0;paddin
   ${extraRow}
 
   <!-- FOOTER -->
-  <div style="margin:0;border-top:2px dashed #e2e8f0;padding:9px 20px;display:flex;justify-content:space-between;align-items:center;background:#fafbff">
+  <div style="margin:0;border-top:2px dashed #e2e8f0;padding:7px 18px;display:flex;justify-content:space-between;align-items:center;background:#fafbff">
     <div>
-      <div style="font-size:10px;font-weight:800;color:#1e3a8a">${d.shopName}</div>
-      ${d.shopPhone ? `<div style="font-size:8px;color:#94a3b8;margin-top:1px">${d.shopPhone}</div>` : ''}
+      <div style="font-size:9.5px;font-weight:800;color:#1e3a8a">${d.shopName}</div>
+      ${d.shopPhone ? `<div style="font-size:7.5px;color:#94a3b8;margin-top:1px">${d.shopPhone}</div>` : ''}
     </div>
-    <div style="font-size:9px;font-weight:600;color:#64748b;letter-spacing:.3px">شکریہ · Thank You 🙏</div>
+    <div style="font-size:8.5px;font-weight:600;color:#64748b;letter-spacing:.3px">شکریہ · Thank You 🙏</div>
   </div>
 
 </div>
@@ -512,7 +507,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#dde3f0;paddin
 </body>
 </html>`;
 
-  openPrint(html, 600, 680);
+  openPrint(html, 600, 560);
 }
 
 // A4 CSS for full-page reports
