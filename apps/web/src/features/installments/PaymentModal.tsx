@@ -11,11 +11,11 @@ import { fmtDate } from '../../utils/dateFormat.ts';
 import { api } from '../../api/client.ts';
 import { RowSkeleton } from '../../components/ui/Skeleton.tsx';
 import { getErrorMessage } from '../../utils/error.ts';
-import { openBill, type BillData } from '../../utils/bill.ts';
 import {
   installmentWhatsappUrl,
   openSinglePaymentReceipt,
   type InstallmentReceiptData,
+  type SinglePaymentReceiptData,
 } from '../../utils/receipt.ts';
 import TransferModal from './TransferModal.tsx';
 
@@ -95,7 +95,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [tab, setTab] = useState<'pay' | 'history' | 'settle'>('pay');
   const [showTransfer, setShowTransfer] = useState(false);
   const [receiptData, setReceiptData] = useState<InstallmentReceiptData | null>(null);
-  const [billPayload, setBillPayload] = useState<BillData | null>(null);
+  const [singlePayload, setSinglePayload] = useState<SinglePaymentReceiptData | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Edit payment state
@@ -286,30 +286,34 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
         daysAdvance,
       };
 
-      const bd: BillData = {
-        shop:             { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
-        customer:         { name: freshInst.customerName, phone: freshInst.customerPhone, area: freshInst.customerArea, photoUrl: freshInst.customerPhotoUrl },
-        product:          freshInst.productName,
-        totalAmount:      freshInst.totalAmount,
-        downPayment:      freshInst.downPayment,
-        monthly:          freshInst.monthly,
-        months:           freshInst.months,
-        remaining:        data.remaining,
-        status:           data.completed ? 'COMPLETED' : freshInst.status,
-        startDate:        freshInst.startDate,
-        installmentId:    freshInst.id,
-        invoiceNumber:    freshInst.invoiceNumber,
-        imeiNumber:       freshInst.imeiNumber,
-        cashPrice:        freshInst.cashPrice,
-        profitMarkup:     freshInst.profitMarkup,
-        murabahaMode:     seller?.murabahaMode,
-        paymentFrequency: freshInst.paymentFrequency,
-        paymentSummary:   { currentMonth, paidMonths: paidInstallments, totalMonths: totalInstallments },
+      const sp: SinglePaymentReceiptData = {
+        shopName:          seller?.shopName ?? '',
+        shopPhone:         seller?.phone,
+        customerName:      freshInst.customerName,
+        customerPhone:     freshInst.customerPhone,
+        customerPhotoUrl:  freshInst.customerPhotoUrl,
+        productName:       freshInst.productName,
+        invoiceNumber:     freshInst.invoiceNumber,
+        receiptNumber:     data.payment.receiptNumber,
+        amountPaid:        Number(data.payment.amount),
+        method:            data.payment.method,
+        paidOn:            data.payment.paidOn,
+        note:              data.payment.note,
+        collectorName:     data.payment.collectorName,
+        periodNum:         currentMonth,
+        paymentFrequency:  freshInst.paymentFrequency,
+        periodDueDate:     new Date(periodDueDateStr),
+        daysLate,
+        monthly:           Number(freshInst.monthly),
+        totalAmount:       Number(freshInst.totalAmount),
+        remaining:         data.remaining,
+        totalInstallments,
+        paidInstallments,
       };
 
       setReceiptData(receiptPayload);
-      setBillPayload(bd);
-      void openBill(bd);
+      setSinglePayload(sp);
+      openSinglePaymentReceipt(sp);
     },
   });
 
@@ -531,7 +535,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
             <div className="flex gap-3 w-full">
               <button
-                onClick={() => { if (billPayload) void openBill(billPayload); }}
+                onClick={() => { if (singlePayload) openSinglePaymentReceipt(singlePayload); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
               >
                 <Printer size={15} /> Print
