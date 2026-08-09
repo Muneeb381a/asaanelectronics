@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createProductSchema, type CreateProductInput } from '@assaan/shared';
 import type { Product } from '../../api/products.api.ts';
+import { productsApi } from '../../api/products.api.ts';
 import { suppliersApi } from '../../api/suppliers.api.ts';
 
 interface Props {
@@ -13,7 +14,8 @@ interface Props {
   product?: Product;
 }
 
-const CATEGORIES = ['Refrigerator', 'AC', 'Washing Machine', 'TV', 'Mobile', 'Laptop', 'Generator', 'Other'];
+const VEHICLE_CATEGORIES = ['Bike', 'Rickshaw', 'Loader Rickshaw', 'Electric Bike', 'Electric Rickshaw'];
+const DEFAULT_CATEGORIES = ['Refrigerator', 'AC', 'Washing Machine', 'TV', 'Mobile', 'Laptop', 'Generator'];
 
 function Field({ label, optional, error, children }: {
   label: string; optional?: boolean; error?: string; children: React.ReactNode;
@@ -42,8 +44,18 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
     defaultValues: { stock: 0, ...defaultValues },
   });
 
-  const [purchasePrice, cashPrice, installmentPrice] = useWatch({ control, name: ['purchasePrice', 'price', 'installmentPrice'] });
+  const [purchasePrice, cashPrice, installmentPrice, category] = useWatch({
+    control,
+    name: ['purchasePrice', 'price', 'installmentPrice', 'category'],
+  });
+
   const { data: suppliers = [] } = useQuery({ queryKey: ['suppliers'], queryFn: suppliersApi.list, staleTime: 5 * 60_000 });
+  const { data: existingCategories = [] } = useQuery({
+    queryKey: ['product-categories'],
+    queryFn: productsApi.getCategories,
+    staleTime: 60_000,
+  });
+
   const markup = cashPrice && installmentPrice && installmentPrice > cashPrice
     ? installmentPrice - cashPrice
     : null;
@@ -53,6 +65,9 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
     ? Math.round(((cashPrice - purchasePrice) / cashPrice) * 100)
     : null;
 
+  const allCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...existingCategories])).sort();
+  const isVehicle = category ? VEHICLE_CATEGORIES.includes(category) : false;
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Field label="Product Name" error={errors.name?.message}>
@@ -61,10 +76,16 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Category" optional>
-          <select {...register('category')} className={inputCls}>
-            <option value="">Select…</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <input
+            {...register('category')}
+            list="category-list"
+            placeholder="Select or type new…"
+            className={inputCls}
+          />
+          <datalist id="category-list">
+            {allCategories.map((c) => <option key={c} value={c} />)}
+            {VEHICLE_CATEGORIES.map((c) => <option key={c} value={c} />)}
+          </datalist>
         </Field>
         <Field label="Brand" optional>
           <input {...register('brand')} placeholder="e.g. Samsung" className={inputCls} />
@@ -114,6 +135,35 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
           <input type="number" {...register('warrantyMonths', { valueAsNumber: true })} placeholder="e.g. 12" className={inputCls} />
         </Field>
       </div>
+
+      {isVehicle && (
+        <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 space-y-3">
+          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Vehicle Details</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Engine Number" optional>
+              <input {...register('engineNumber')} placeholder="e.g. JC85E-1234567" className={inputCls} />
+            </Field>
+            <Field label="Chassis Number" optional>
+              <input {...register('chassisNumber')} placeholder="e.g. JS1GX71A1Y2100001" className={inputCls} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Registration Number" optional>
+              <input {...register('registrationNumber')} placeholder="e.g. LHR-1234" className={inputCls} />
+            </Field>
+            <Field label="Model Year" optional>
+              <input type="number" {...register('modelYear', { valueAsNumber: true })} placeholder="e.g. 2023" className={inputCls} />
+            </Field>
+          </div>
+          <Field label="Condition" optional>
+            <select {...register('vehicleCondition')} className={inputCls}>
+              <option value="">Select…</option>
+              <option value="NEW">New</option>
+              <option value="USED">Used</option>
+            </select>
+          </Field>
+        </div>
+      )}
 
       <Field label="Product Photo URL" optional>
         <input {...register('photoUrl')} placeholder="https://…" type="url" className={inputCls} />

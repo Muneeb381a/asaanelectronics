@@ -16,6 +16,11 @@ export const createProductSchema = z.object({
   warrantyMonths:   z.number().int().min(0).optional(),
   description:      z.string().max(1000).optional(),
   supplierId:       z.string().optional(),
+  engineNumber:       z.string().max(50).optional(),
+  chassisNumber:      z.string().max(50).optional(),
+  registrationNumber: z.string().max(50).optional(),
+  vehicleCondition:   z.enum(['NEW', 'USED']).optional(),
+  modelYear:          z.number().int().min(1970).max(2030).optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

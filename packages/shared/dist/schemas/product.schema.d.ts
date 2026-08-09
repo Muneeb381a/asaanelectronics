@@ -15,6 +15,11 @@ export declare const createProductSchema: z.ZodObject<{
     warrantyMonths: z.ZodOptional<z.ZodNumber>;
     description: z.ZodOptional<z.ZodString>;
     supplierId: z.ZodOptional<z.ZodString>;
+    engineNumber: z.ZodOptional<z.ZodString>;
+    chassisNumber: z.ZodOptional<z.ZodString>;
+    registrationNumber: z.ZodOptional<z.ZodString>;
+    vehicleCondition: z.ZodOptional<z.ZodEnum<["NEW", "USED"]>>;
+    modelYear: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     price: number;
@@ -31,6 +36,11 @@ export declare const createProductSchema: z.ZodObject<{
     warrantyMonths?: number | undefined;
     description?: string | undefined;
     supplierId?: string | undefined;
+    engineNumber?: string | undefined;
+    chassisNumber?: string | undefined;
+    registrationNumber?: string | undefined;
+    vehicleCondition?: "NEW" | "USED" | undefined;
+    modelYear?: number | undefined;
 }, {
     name: string;
     price: number;
@@ -47,6 +57,11 @@ export declare const createProductSchema: z.ZodObject<{
     warrantyMonths?: number | undefined;
     description?: string | undefined;
     supplierId?: string | undefined;
+    engineNumber?: string | undefined;
+    chassisNumber?: string | undefined;
+    registrationNumber?: string | undefined;
+    vehicleCondition?: "NEW" | "USED" | undefined;
+    modelYear?: number | undefined;
 }>;
 export declare const updateProductSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
@@ -64,6 +79,11 @@ export declare const updateProductSchema: z.ZodObject<{
     warrantyMonths: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     description: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     supplierId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    engineNumber: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    chassisNumber: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    registrationNumber: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    vehicleCondition: z.ZodOptional<z.ZodOptional<z.ZodEnum<["NEW", "USED"]>>>;
+    modelYear: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
     photoUrl?: string | undefined;
@@ -80,6 +100,11 @@ export declare const updateProductSchema: z.ZodObject<{
     warrantyMonths?: number | undefined;
     description?: string | undefined;
     supplierId?: string | undefined;
+    engineNumber?: string | undefined;
+    chassisNumber?: string | undefined;
+    registrationNumber?: string | undefined;
+    vehicleCondition?: "NEW" | "USED" | undefined;
+    modelYear?: number | undefined;
 }, {
     name?: string | undefined;
     photoUrl?: string | undefined;
@@ -96,6 +121,11 @@ export declare const updateProductSchema: z.ZodObject<{
     warrantyMonths?: number | undefined;
     description?: string | undefined;
     supplierId?: string | undefined;
+    engineNumber?: string | undefined;
+    chassisNumber?: string | undefined;
+    registrationNumber?: string | undefined;
+    vehicleCondition?: "NEW" | "USED" | undefined;
+    modelYear?: number | undefined;
 }>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

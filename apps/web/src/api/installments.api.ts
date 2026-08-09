@@ -30,6 +30,11 @@ export interface Installment {
   customerPhotoUrl:   string | null;
   pausedUntil:        string | null;
   pauseReason:        string | null;
+  productCategory:    string | null;
+  letterStatus:       'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED' | null;
+  letterSentAt:       string | null;
+  biometricStatus:    'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED' | null;
+  biometricDoneAt:    string | null;
 }
 
 interface ListResponse {
@@ -142,6 +147,9 @@ export const installmentsApi = {
 
   collectionSchedule: (days: number = 7) =>
     api.get<{ data: CollectionSchedule }>('/installments/collection-schedule', { params: { days } }).then(unwrap<CollectionSchedule>),
+
+  updateFields: (id: string, body: { letterStatus?: string; biometricStatus?: string }) =>
+    api.patch<{ data: Installment }>(`/installments/${id}/fields`, body).then(unwrap<Installment>),
 };
 
 export interface TransferResult {

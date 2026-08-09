@@ -124,6 +124,9 @@ export class InstallmentsService {
           customerArea:      customers.area,
           customerFileNumber: customers.fileNumber,
           customerPhotoUrl:  customers.photoUrl,
+          productCategory:   products.category,
+          letterStatus:      installments.letterStatus,
+          biometricStatus:   installments.biometricStatus,
           isOverdue: sql<boolean>`(
             ${installments.status} = 'ACTIVE' AND (
               CASE WHEN ${installments.paymentFrequency} = 'daily'
@@ -190,6 +193,11 @@ export class InstallmentsService {
         customerPhotoUrl:   customers.photoUrl,
         pausedUntil:       installments.pausedUntil,
         pauseReason:       installments.pauseReason,
+        productCategory:   products.category,
+        letterStatus:      installments.letterStatus,
+        letterSentAt:      installments.letterSentAt,
+        biometricStatus:   installments.biometricStatus,
+        biometricDoneAt:   installments.biometricDoneAt,
         isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
           CASE WHEN ${installments.paymentFrequency} = 'daily'
             THEN (${installments.startDate} + (${installments.months} || ' days')::interval) < now()
@@ -1061,5 +1069,39 @@ export class InstallmentsService {
       ORDER BY days_overdue DESC, i.remaining::numeric DESC
       LIMIT 500
     `);
+  }
+
+  async updateFields(
+    id: string,
+    sellerId: string,
+    body: {
+      letterStatus?:   'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED';
+      biometricStatus?: 'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED';
+    },
+  ) {
+    const [existing] = await db
+      .select({ id: installments.id })
+      .from(installments)
+      .innerJoin(customers, eq(installments.customerId, customers.id))
+      .where(and(eq(installments.id, id), eq(customers.sellerId, sellerId), isNull(installments.deletedAt)));
+    if (!existing) throw new AppError('Installment not found', 404);
+
+    const patch: Record<string, unknown> = {};
+    if (body.letterStatus !== undefined) {
+      patch.letterStatus = body.letterStatus;
+      patch.letterSentAt = body.letterStatus === 'NONE' ? null : new Date();
+    }
+    if (body.biometricStatus !== undefined) {
+      patch.biometricStatus = body.biometricStatus;
+      patch.biometricDoneAt = body.biometricStatus === 'COMPLETED' ? new Date() : null;
+    }
+    if (Object.keys(patch).length === 0) throw new AppError('No fields to update', 400);
+
+    const [updated] = await db
+      .update(installments)
+      .set(patch)
+      .where(eq(installments.id, id))
+      .returning();
+    return updated;
   }
 }

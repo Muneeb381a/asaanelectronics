@@ -1,7 +1,9 @@
 import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck, Receipt, ArrowRightLeft, AlertTriangle, Users } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck, Receipt, ArrowRightLeft, AlertTriangle, Users, FileText, Fingerprint } from 'lucide-react';
+
+const VEHICLE_CATEGORIES = ['Bike', 'Rickshaw', 'Loader Rickshaw', 'Electric Bike', 'Electric Rickshaw'];
 import { useAuthStore } from '../../store/auth.store.ts';
 import { installmentsApi, type Installment } from '../../api/installments.api.ts';
 import { paymentsApi, type PaymentMethod } from '../../api/payments.api.ts';
@@ -108,6 +110,17 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [reversalId, setReversalId] = useState<string | null>(null);
   const [reversalReason, setReversalReason] = useState('');
   const setDeleteConfirmId = (id: string | null) => { setReversalId(id); if (!id) setReversalReason(''); };
+
+  const fieldsMutation = useMutation({
+    mutationFn: (body: { letterStatus?: string; biometricStatus?: string }) =>
+      installmentsApi.updateFields(inst.id, body),
+    onSuccess: (updated) => {
+      qc.setQueryData(['installment-single', inst.id], updated);
+      void qc.invalidateQueries({ queryKey: ['installments'] });
+      toast.success('Updated');
+    },
+    onError: () => toast.error('Failed to update'),
+  });
 
   const { data: seller } = useQuery({
     queryKey: ['seller-me'],
@@ -662,6 +675,56 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                   className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              {VEHICLE_CATEGORIES.includes(freshInst.productCategory ?? '') && (
+                <div className="border border-indigo-100 bg-indigo-50 rounded-xl p-3 space-y-3">
+                  <p className="text-xs font-semibold text-indigo-700 flex items-center gap-1.5">
+                    <FileText size={13} /> Vehicle Tracking
+                  </p>
+                  <div>
+                    <p className="text-[11px] text-gray-500 mb-1.5">Letter Status</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(['NONE', 'FIRST_NOTICE', 'SECOND_NOTICE', 'LEGAL_NOTICE', 'FILED'] as const).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          disabled={fieldsMutation.isPending}
+                          onClick={() => fieldsMutation.mutate({ letterStatus: s })}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition disabled:opacity-50 ${
+                            freshInst.letterStatus === s
+                              ? s === 'FILED' ? 'bg-red-600 text-white border-red-600'
+                                : s === 'LEGAL_NOTICE' ? 'bg-orange-500 text-white border-orange-500'
+                                : 'bg-indigo-600 text-white border-indigo-600'
+                              : 'text-gray-600 border-gray-200 hover:border-indigo-300 bg-white'
+                          }`}>
+                          {s === 'NONE' ? 'None' : s === 'FIRST_NOTICE' ? '1st Notice' : s === 'SECOND_NOTICE' ? '2nd Notice' : s === 'LEGAL_NOTICE' ? 'Legal' : 'Filed'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-500 mb-1.5 flex items-center gap-1"><Fingerprint size={11} /> Biometric Status</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(['PENDING', 'SELLER_DONE', 'BUYER_DONE', 'COMPLETED', 'NOT_REQUIRED'] as const).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          disabled={fieldsMutation.isPending}
+                          onClick={() => fieldsMutation.mutate({ biometricStatus: s })}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition disabled:opacity-50 ${
+                            freshInst.biometricStatus === s
+                              ? s === 'COMPLETED' ? 'bg-emerald-600 text-white border-emerald-600'
+                                : s === 'NOT_REQUIRED' ? 'bg-gray-500 text-white border-gray-500'
+                                : 'bg-indigo-600 text-white border-indigo-600'
+                              : 'text-gray-600 border-gray-200 hover:border-indigo-300 bg-white'
+                          }`}>
+                          {s === 'PENDING' ? 'Pending' : s === 'SELLER_DONE' ? 'Seller Done' : s === 'BUYER_DONE' ? 'Buyer Done' : s === 'COMPLETED' ? 'Completed' : 'Not Req.'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Proof / Receipt (optional)</label>

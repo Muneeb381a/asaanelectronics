@@ -41,8 +41,6 @@ import tradeInsRoutes          from './modules/tradeIns/tradeIns.routes.js';
 import repossessionsRoutes     from './modules/repossessions/repossessions.routes.js';
 import searchRoutes            from './modules/search/search.routes.js';
 import broadcastsRoutes        from './modules/broadcasts/broadcasts.routes.js';
-import vehicleStockRoutes      from './modules/vehicleStock/vehicleStock.routes.js';
-import vehicleInstallmentsRoutes from './modules/vehicleInstallments/vehicleInstallments.routes.js';
 
 const app = express();
 
@@ -130,8 +128,6 @@ app.use('/api/trade-ins',          tradeInsRoutes);
 app.use('/api/repossessions',      repossessionsRoutes);
 app.use('/api/search',             searchRoutes);
 app.use('/api/broadcasts',            broadcastsRoutes);
-app.use('/api/vehicle-stock',         vehicleStockRoutes);
-app.use('/api/vehicle-installments',  vehicleInstallmentsRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
 app.use(errorMiddleware);

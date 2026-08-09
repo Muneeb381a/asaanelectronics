@@ -272,3 +272,8 @@ export async function transferInstallment(req: AuthRequest, res: Response) {
     ...auditCtx(req),
   }).catch(console.error);
 }
+
+
+export async function updateInstallmentFields(req: AuthRequest, res: Response) {
+  success(res, await svc.updateFields(req.params['id']!, req.user!.sellerId!, req.body));
+}

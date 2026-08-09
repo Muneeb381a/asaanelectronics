@@ -9,6 +9,10 @@ import type { CreateProductInput } from '@assaan/shared';
 const svc   = new ProductsService();
 const audit = new AuditService();
 
+export async function getCategories(req: AuthRequest, res: Response) {
+  success(res, await svc.getCategories(req.user!.sellerId!));
+}
+
 export async function listProducts(req: AuthRequest, res: Response) {
   const page = Math.max(1, Number(req.query['page']) || 1);
   const limit = Math.min(Math.max(1, Number(req.query['limit']) || 20), 100);

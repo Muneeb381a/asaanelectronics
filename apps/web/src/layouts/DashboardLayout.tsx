@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, ChevronRight, BarChart3,
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck, RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart, FileDown, Smartphone, Building2,
-  ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays, ClipboardList, Car,
+  ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays, ClipboardList,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -160,8 +160,7 @@ export default function DashboardLayout() {
           { to: '/cashflow',          label: 'Cash Flow',      icon: CalendarDays,   end: undefined },
           { to: '/collection-sheet',  label: 'Field Sheet',    icon: ClipboardList,  end: undefined },
           { to: '/exports',       label: 'Exports',       icon: FileDown,        end: undefined },
-          { to: '/vehicle-stock',  label: 'Vehicle Stock', icon: Car,             end: undefined },
-          { to: '/trade-ins',     label: 'Trade-Ins',     icon: ArrowLeftRight,  end: undefined },
+{ to: '/trade-ins',     label: 'Trade-Ins',     icon: ArrowLeftRight,  end: undefined },
           { to: '/repossessions', label: 'Repossessions', icon: AlertOctagon,    end: undefined },
           { to: '/guarantors',    label: 'Guarantors',    icon: Shield,          end: undefined },
           { to: '/settings',      label: 'Settings',      icon: Settings,        end: undefined },

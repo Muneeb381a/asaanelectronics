@@ -9,7 +9,7 @@ import {
   approveInstallment, closeInstallment, importInstallments, updateInstallment,
   getDueSheet, getCollectionSchedule, waiverInstallment, getSettlement,
   pauseInstallment, unpauseInstallment,
-  listOverdueWithStage, transferInstallment,
+  listOverdueWithStage, transferInstallment, updateInstallmentFields,
 } from './installments.controller.js';
 
 const router = Router();
@@ -33,6 +33,7 @@ router.patch('/:id/reschedule', requireOwner, rescheduleInstallment);
 router.patch('/:id/waiver',     requireOwner, waiverInstallment);
 router.patch('/:id/pause',      requireOwner, pauseInstallment);
 router.patch('/:id/transfer',   requireOwner, transferInstallment);
+router.patch('/:id/fields',     requirePermission('canRecordPayment'), updateInstallmentFields);
 router.delete('/:id/pause',     requireOwner, unpauseInstallment);
 router.delete('/:id',           requireOwner, deleteInstallment);
 

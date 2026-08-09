@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, isNull, isNotNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { products, installments } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -65,6 +65,15 @@ export class ProductsService {
       .set({ deletedAt: new Date(), deletedBy })
       .where(and(eq(products.id, id), eq(products.sellerId, sellerId)));
     return existing;
+  }
+
+  async getCategories(sellerId: string) {
+    const rows = await db
+      .selectDistinct({ category: products.category })
+      .from(products)
+      .where(and(eq(products.sellerId, sellerId), isNull(products.deletedAt), isNotNull(products.category)))
+      .orderBy(asc(products.category));
+    return rows.map((r) => r.category).filter(Boolean) as string[];
   }
 
   async getIntelligence(sellerId: string) {

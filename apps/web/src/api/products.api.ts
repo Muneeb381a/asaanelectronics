@@ -19,6 +19,11 @@ export interface Product {
   description: string | null;
   sellerId: string;
   supplierId: string | null;
+  engineNumber: string | null;
+  chassisNumber: string | null;
+  registrationNumber: string | null;
+  vehicleCondition: 'NEW' | 'USED' | null;
+  modelYear: number | null;
 }
 
 interface ListResponse {
@@ -60,4 +65,7 @@ export const productsApi = {
 
   getValuation: () =>
     api.get<{ data: { totalStockValue: number; totalSaleValue: number; potentialProfit: number; productsWithCost: number; totalProducts: number; totalUnits: number } }>('/products/valuation').then((r) => r.data.data),
+
+  getCategories: () =>
+    api.get<{ data: string[] }>('/products/categories').then((r) => r.data.data),
 };
