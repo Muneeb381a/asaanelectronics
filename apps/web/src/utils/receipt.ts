@@ -365,88 +365,69 @@ export interface SinglePaymentReceiptData {
 }
 
 export function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
-  const isDaily    = d.paymentFrequency === 'daily';
-  const freq       = isDaily ? 'Din' : 'Maah';
+  const isDaily   = d.paymentFrequency === 'daily';
+  const freq      = isDaily ? 'Day' : 'Month';
   const paidOnDate = new Date(d.paidOn);
-  const dateStr    = paidOnDate.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-  const timeStr    = paidOnDate.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
-  const isLate     = (d.daysLate ?? 0) > 0;
+  const dateStr   = paidOnDate.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr   = paidOnDate.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const isLate    = (d.daysLate ?? 0) > 0;
 
-  // Installment progress counts
-  const hasProg      = d.totalInstallments !== undefined && d.totalInstallments > 0;
-  const totalInst    = d.totalInstallments ?? 0;
-  const paidInst     = d.paidInstallments ?? d.periodNum ?? 0;
-  const pendingInst  = Math.max(0, totalInst - paidInst);
-  const pct          = totalInst > 0 ? Math.round((paidInst / totalInst) * 100) : 0;
+  const hasProg    = (d.totalInstallments ?? 0) > 0;
+  const totalInst  = d.totalInstallments ?? 0;
+  const paidInst   = d.paidInstallments ?? d.periodNum ?? 0;
+  const pendingInst = Math.max(0, totalInst - paidInst);
+  const pct        = totalInst > 0 ? Math.round((paidInst / totalInst) * 100) : 0;
 
-  // Customer avatar
-  const initials   = d.customerName.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-  const avatarColors = ['#4f46e5','#0891b2','#059669','#d97706','#dc2626','#7c3aed'];
-  const avatarBg   = avatarColors[d.customerName.charCodeAt(0) % avatarColors.length];
-  const avatar     = d.customerPhotoUrl
-    ? `<img src="${d.customerPhotoUrl}" alt="${d.customerName}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.3);flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,.3)"/>`
-    : `<div style="width:72px;height:72px;border-radius:50%;background:${avatarBg};border:3px solid rgba(255,255,255,.3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:800;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.3)">${initials}</div>`;
+  function numFmt(n: number) { return n.toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
+
+  const initials  = d.customerName.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const avatarPalette = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#7c3aed','#0f766e'];
+  const avatarBg  = avatarPalette[d.customerName.charCodeAt(0) % avatarPalette.length];
 
   const METHOD_ICONS: Record<string,string> = { CASH:'💵', BANK:'🏦', JAZZCASH:'📱', EASYPAISA:'💚', OTHER:'💳' };
   const methodIcon = METHOD_ICONS[d.method] ?? '💳';
 
-  const lateChip = isLate
-    ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;border:1px solid #fca5a5;border-radius:30px;padding:4px 12px;font-size:9px;font-weight:700;color:#991b1b">⚠️ ${d.daysLate} din late</span>`
-    : `<span style="display:inline-flex;align-items:center;gap:4px;background:#d1fae5;border:1px solid #6ee7b7;border-radius:30px;padding:4px 12px;font-size:9px;font-weight:700;color:#065f46">✓ On time</span>`;
-
-  // Amount formatting without PKR prefix for the hero (we add it separately)
-  function numFmt(n: number) { return n.toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
+  const statusChip = isLate
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:20px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;font-size:9px;font-weight:700">⚠ ${d.daysLate}d Late</span>`
+    : `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:20px;background:#dcfce7;border:1px solid #86efac;color:#166534;font-size:9px;font-weight:700">✓ On Time</span>`;
 
   const progressSection = hasProg ? `
-    <div style="padding:14px 22px;background:#f8fafc;border-bottom:1px solid #e8ecf4">
-      <div style="font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#94a3b8;margin-bottom:10px">Installment Progress · اقساط کی تفصیل</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
-        <div style="border-radius:10px;padding:10px 8px;text-align:center;background:#d1fae5;border:1px solid #6ee7b7">
-          <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#065f46;margin-bottom:3px">Ada · ادا</div>
-          <div style="font-size:24px;font-weight:900;color:#059669;line-height:1">${paidInst}</div>
-          <div style="font-size:8px;color:#6ee7b7;margin-top:2px">of ${totalInst}</div>
-        </div>
-        <div style="border-radius:10px;padding:10px 8px;text-align:center;background:#fef3c7;border:1px solid #fcd34d">
-          <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#92400e;margin-bottom:3px">Baqi · باقی</div>
-          <div style="font-size:24px;font-weight:900;color:#b45309;line-height:1">${pendingInst}</div>
-          <div style="font-size:8px;color:#fcd34d;margin-top:2px">${isDaily ? 'days' : 'months'} left</div>
-        </div>
-        <div style="border-radius:10px;padding:10px 8px;text-align:center;background:#dbeafe;border:1px solid #93c5fd">
-          <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#1e40af;margin-bottom:3px">Total · کل</div>
-          <div style="font-size:24px;font-weight:900;color:#1d4ed8;line-height:1">${totalInst}</div>
-          <div style="font-size:8px;color:#93c5fd;margin-top:2px">${isDaily ? 'days' : 'months'}</div>
-        </div>
+  <div style="margin:0 20px;border-top:1px solid #f1f5f9;padding:10px 0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <div style="display:flex;align-items:baseline;gap:5px">
+        <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8">${freq}</span>
+        <span style="font-size:20px;font-weight:900;color:#1d4ed8;line-height:1">${paidInst}</span>
+        <span style="font-size:11px;color:#cbd5e1;font-weight:600">/ ${totalInst}</span>
+        ${d.periodDueDate ? `<span style="font-size:8.5px;color:#64748b">· Due ${fmtDate(d.periodDueDate)}</span>` : ''}
       </div>
-      <div style="background:#e2e8f0;border-radius:20px;height:8px;overflow:hidden">
-        <div style="background:linear-gradient(90deg,#10b981,#059669);height:100%;width:${pct}%;border-radius:20px"></div>
+      <div style="text-align:right">
+        <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:2px">Balance</div>
+        <div style="font-size:12px;font-weight:800;color:${(d.remaining ?? 0) <= 0 ? '#16a34a' : '#d97706'}">${pkr(d.remaining ?? 0)}</div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px">
-        <span style="font-size:8px;font-weight:600;color:#059669">${paidInst} paid · ${pct}%</span>
-        <span style="font-size:8px;color:#94a3b8">${totalInst} total ${isDaily ? 'days' : 'months'}</span>
-      </div>
-    </div>` : '';
+    </div>
+    <div style="background:#e2e8f0;border-radius:6px;height:6px;overflow:hidden;margin-bottom:4px">
+      <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#3b82f6,#1d4ed8);border-radius:6px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between">
+      <span style="font-size:8px;font-weight:700;color:#2563eb">${pct}% complete · ${paidInst} paid</span>
+      <span style="font-size:8px;color:#94a3b8">${pendingInst} ${isDaily ? 'days' : 'months'} left</span>
+    </div>
+  </div>` : '';
 
-  const periodSection = d.periodDueDate ? `
-    <div style="margin:0 22px 0;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;border-radius:0 0 10px 10px;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <div>
-        <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#1e40af;margin-bottom:2px">📅 ${freq} ki Tarikh</div>
-        <div style="font-size:11px;font-weight:800;color:#1e3a8a">${fmtDate(d.periodDueDate)}</div>
-      </div>
-      ${d.periodNum !== undefined ? `
-      <div style="text-align:center">
-        <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#1e40af;margin-bottom:2px">${freq} #</div>
-        <div style="font-size:20px;font-weight:900;color:#1d4ed8;line-height:1">${d.periodNum}</div>
-      </div>` : ''}
-      <div>${lateChip}</div>
-    </div>` : '';
+  const extraRow = (d.collectorName || d.note || d.monthly) ? `
+  <div style="margin:0 20px;border-top:1px solid #f1f5f9;padding:8px 0;display:flex;gap:14px;flex-wrap:wrap">
+    ${d.monthly ? `<div style="font-size:9px;color:#374151"><span style="color:#94a3b8">${isDaily ? 'Daily' : 'Monthly'} Qist: </span><span style="font-weight:700">${pkr(d.monthly)}</span></div>` : ''}
+    ${d.collectorName ? `<div style="font-size:9px;color:#374151"><span style="color:#94a3b8">Collected by: </span><span style="font-weight:700;color:#7c3aed">${d.collectorName}</span></div>` : ''}
+    ${d.note ? `<div style="font-size:9px;color:#374151;width:100%"><span style="color:#94a3b8">Note: </span><span style="font-weight:600">${d.note}</span></div>` : ''}
+  </div>` : '';
 
   const css = `
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:linear-gradient(150deg,#0f172a 0%,#1e1b4b 50%,#1e3a8a 100%);min-height:100vh;padding:24px;display:flex;justify-content:center;align-items:flex-start}
-.card{background:#fff;width:460px;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.05)}
+body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#dde3f0;padding:20px;display:flex;justify-content:center;align-items:flex-start}
+.card{background:#fff;width:500px;border-radius:12px;overflow:hidden;box-shadow:0 4px 28px rgba(0,0,0,.13)}
 @media print{
-  @page{size:A5 portrait;margin:4mm 5mm}
-  body{background:#fff;padding:0;display:block;min-height:auto}
+  @page{size:148mm 210mm;margin:5mm 7mm}
+  body{background:#fff;padding:0;display:block}
   .card{border-radius:0;box-shadow:none;width:100%}
 }`;
 
@@ -456,113 +437,74 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:linear-gradien
 <body>
 <div class="card">
 
-  <!-- ══ HEADER: shop + date ══ -->
-  <div style="padding:18px 22px 0;background:linear-gradient(150deg,#0f172a 0%,#1e1b4b 45%,#1e3a8a 100%);position:relative;overflow:hidden">
-    <div style="position:absolute;top:-40px;right:-30px;width:180px;height:180px;background:rgba(99,102,241,.1);border-radius:50%"></div>
-    <div style="position:absolute;bottom:-20px;left:-10px;width:110px;height:110px;background:rgba(96,165,250,.07);border-radius:50%"></div>
+  <!-- TOP ACCENT -->
+  <div style="height:5px;background:linear-gradient(90deg,#1e3a8a 0%,#2563eb 55%,#60a5fa 100%)"></div>
 
-    <!-- shop row -->
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;position:relative;z-index:1">
-      <div>
-        <div style="font-size:16px;font-weight:900;color:#fff;letter-spacing:.3px;line-height:1">${d.shopName}</div>
-        ${d.shopPhone ? `<div style="font-size:9px;color:#93c5fd;margin-top:3px">${d.shopPhone}</div>` : ''}
-      </div>
-      <div style="text-align:right">
-        <div style="display:inline-block;padding:2px 10px;border-radius:30px;font-size:8px;font-weight:700;letter-spacing:1.2px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.15);text-transform:uppercase;margin-bottom:4px">✦ Receipt · قبض</div>
-        ${d.receiptNumber ? `<div style="font-size:10px;font-weight:700;color:#c7d2fe;font-family:monospace">${d.receiptNumber}</div>` : ''}
-        <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${dateStr}</div>
-        <div style="font-size:8.5px;color:#64748b;margin-top:1px">${timeStr}</div>
-      </div>
+  <!-- HEADER -->
+  <div style="padding:14px 20px 12px;display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <div style="font-size:15px;font-weight:900;color:#0f172a;letter-spacing:-.3px;line-height:1">${d.shopName}</div>
+      ${d.shopPhone ? `<div style="font-size:9px;color:#64748b;margin-top:3px">${d.shopPhone}</div>` : ''}
     </div>
-
-    <!-- customer row -->
-    <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;padding-bottom:18px">
-      ${avatar}
-      <div style="min-width:0;flex:1">
-        <div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:3px">Customer · گاہک</div>
-        <div style="font-size:19px;font-weight:900;color:#fff;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.customerName}</div>
-        ${d.customerPhone ? `<div style="font-size:10px;color:#93c5fd;margin-top:4px">${d.customerPhone}</div>` : ''}
-      </div>
+    <div style="text-align:right">
+      <div style="font-size:7.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#2563eb">Payment Receipt</div>
+      ${d.receiptNumber ? `<div style="font-size:8.5px;font-family:monospace;color:#94a3b8;margin-top:2px">${d.receiptNumber}</div>` : ''}
+      <div style="font-size:9px;font-weight:600;color:#475569;margin-top:3px">${dateStr}</div>
+      <div style="font-size:8px;color:#94a3b8;margin-top:1px">${timeStr}</div>
     </div>
   </div>
 
-  <!-- ══ AMOUNT HERO ══ -->
-  <div style="padding:16px 22px 14px;background:linear-gradient(135deg,#0f172a,#1e3a5f);text-align:center">
-    <div style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:6px">Amount Paid · ادا کردہ رقم</div>
-    <div style="line-height:1;margin-bottom:8px">
-      <span style="font-size:16px;font-weight:600;vertical-align:top;margin-top:6px;display:inline-block;color:rgba(255,255,255,.55);margin-right:3px">PKR</span>
-      <span style="font-size:42px;font-weight:900;color:#fff;letter-spacing:-2px">${numFmt(d.amountPaid)}</span>
+  <!-- CUSTOMER -->
+  <div style="margin:0 20px;border-top:1px solid #f1f5f9;padding:10px 0;display:flex;align-items:center;gap:12px">
+    <div style="width:40px;height:40px;border-radius:50%;background:${avatarBg};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;letter-spacing:-.5px">${initials}</div>
+    <div style="min-width:0;flex:1">
+      <div style="font-size:7px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#94a3b8;margin-bottom:2px">Customer · گاہک</div>
+      <div style="font-size:14px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${d.customerName}</div>
+      ${d.customerPhone ? `<div style="font-size:9px;color:#64748b;margin-top:2px">${d.customerPhone}</div>` : ''}
     </div>
-    <div style="display:flex;align-items:center;justify-content:center;gap:10px">
-      <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:30px;padding:4px 14px;font-size:10px;font-weight:600;color:rgba(255,255,255,.85)">${methodIcon} ${mLabel(d.method)}</span>
-      ${d.periodDueDate !== undefined ? lateChip : ''}
+    ${(d.remaining ?? 0) <= 0 ? `<div style="flex-shrink:0;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:7px;font-weight:700;color:#166534;letter-spacing:.5px">FULLY</div><div style="font-size:7px;font-weight:700;color:#166534;letter-spacing:.5px">PAID</div></div>` : ''}
+  </div>
+
+  <!-- AMOUNT HERO -->
+  <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);padding:16px 20px 14px;text-align:center">
+    <div style="font-size:7px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:5px">Amount Paid · ادا کردہ رقم</div>
+    <div style="line-height:1;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.5);vertical-align:top;margin-top:5px;display:inline-block;margin-right:3px">PKR</span>
+      <span style="font-size:40px;font-weight:900;color:#fff;letter-spacing:-1.5px">${numFmt(d.amountPaid)}</span>
+    </div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:8px">
+      <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 13px;border-radius:20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.9);font-size:9.5px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
+      ${d.periodDueDate !== undefined || isLate ? statusChip : ''}
     </div>
   </div>
 
-  <!-- ══ AMOUNT BREAKDOWN: 3-col strip ══ -->
-  <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;background:#fff;border-bottom:1px solid #e8ecf4">
-    <div style="padding:12px 14px;text-align:center">
-      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#94a3b8;margin-bottom:4px">Paid Today</div>
-      <div style="font-size:13px;font-weight:800;color:#059669">${pkr(d.amountPaid)}</div>
+  <!-- INFO ROW: product + date -->
+  <div style="margin:0 20px;border-top:1px solid #f1f5f9;padding:10px 0;display:grid;grid-template-columns:1fr 1fr;gap:4px">
+    <div>
+      <div style="font-size:7px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Product · مصنوعہ</div>
+      <div style="font-size:10.5px;font-weight:700;color:#0f172a;line-height:1.35">${d.productName}</div>
+      ${d.invoiceNumber ? `<div style="font-size:8px;font-family:monospace;color:#94a3b8;margin-top:1px">${d.invoiceNumber}</div>` : ''}
     </div>
-    <div style="background:#e8ecf4"></div>
-    <div style="padding:12px 14px;text-align:center">
-      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#94a3b8;margin-bottom:4px">Balance · باقی</div>
-      <div style="font-size:13px;font-weight:800;color:${(d.remaining ?? 0) <= 0 ? '#059669' : '#b45309'}">${pkr(d.remaining ?? 0)}</div>
-      ${(d.remaining ?? 0) <= 0 ? `<div style="font-size:8px;color:#059669;margin-top:1px">✓ Fully Paid</div>` : ''}
-    </div>
-    <div style="background:#e8ecf4"></div>
-    <div style="padding:12px 14px;text-align:center">
-      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#94a3b8;margin-bottom:4px">Total · کل</div>
-      <div style="font-size:13px;font-weight:800;color:#1d4ed8">${d.totalAmount ? pkr(d.totalAmount) : '—'}</div>
+    <div style="text-align:right">
+      <div style="font-size:7px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Balance · باقی رقم</div>
+      <div style="font-size:13px;font-weight:800;color:${(d.remaining ?? 0) <= 0 ? '#16a34a' : '#d97706'}">${pkr(d.remaining ?? 0)}</div>
+      ${d.totalAmount ? `<div style="font-size:8px;color:#94a3b8;margin-top:1px">of ${pkr(d.totalAmount)}</div>` : ''}
     </div>
   </div>
 
-  <!-- ══ INSTALLMENT PROGRESS ══ -->
+  <!-- INSTALLMENT PROGRESS -->
   ${progressSection}
 
-  <!-- ══ PERIOD DUE ══ -->
-  ${periodSection}
+  <!-- EXTRA INFO (qist/collector/note) -->
+  ${extraRow}
 
-  <!-- ══ DETAILS GRID ══ -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:12px 22px 8px">
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px">
-      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:3px">Product · مصنوعہ</div>
-      <div style="font-size:10px;font-weight:700;color:#0f172a;line-height:1.3">${d.productName}</div>
-      ${d.invoiceNumber ? `<div style="font-size:8.5px;color:#64748b;font-family:monospace;margin-top:2px">${d.invoiceNumber}</div>` : ''}
-    </div>
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px">
-      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:3px">Payment Date · تاریخ</div>
-      <div style="font-size:10px;font-weight:700;color:#0f172a">${dateStr}</div>
-      <div style="font-size:8.5px;color:#64748b;margin-top:1px">${timeStr}</div>
-    </div>
-    ${d.monthly ? `
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px">
-      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#1e40af;margin-bottom:3px">${isDaily ? 'Daily' : 'Monthly'} Qist</div>
-      <div style="font-size:10px;font-weight:700;color:#1d4ed8">${pkr(d.monthly)}</div>
-    </div>` : ''}
-    ${d.collectorName ? `
-    <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 10px">
-      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#6d28d9;margin-bottom:3px">Collected By</div>
-      <div style="font-size:10px;font-weight:700;color:#7c3aed">${d.collectorName}</div>
-    </div>` : ''}
-    ${d.note ? `
-    <div style="grid-column:1/-1;background:#fefce8;border:1px solid #fef08a;border-radius:8px;padding:8px 10px">
-      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#a16207;margin-bottom:3px">Note · نوٹ</div>
-      <div style="font-size:9.5px;font-weight:600;color:#713f12;line-height:1.4">${d.note}</div>
-    </div>` : ''}
-  </div>
-
-  <!-- ══ FOOTER ══ -->
-  <div style="padding:10px 22px 14px;margin-top:4px;border-top:2px dashed #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:#fafbff">
+  <!-- FOOTER -->
+  <div style="margin:0;border-top:2px dashed #e2e8f0;padding:9px 20px;display:flex;justify-content:space-between;align-items:center;background:#fafbff">
     <div>
-      <div style="font-size:11px;font-weight:800;color:#1e3a5f">${d.shopName}</div>
-      ${d.shopPhone ? `<div style="font-size:8.5px;color:#94a3b8;margin-top:1px">${d.shopPhone}</div>` : ''}
+      <div style="font-size:10px;font-weight:800;color:#1e3a8a">${d.shopName}</div>
+      ${d.shopPhone ? `<div style="font-size:8px;color:#94a3b8;margin-top:1px">${d.shopPhone}</div>` : ''}
     </div>
-    <div style="text-align:center">
-      <div style="font-size:14px">🙏</div>
-      <div style="font-size:8px;font-weight:700;letter-spacing:.5px;color:#94a3b8">شکریہ · THANK YOU</div>
-    </div>
+    <div style="font-size:9px;font-weight:600;color:#64748b;letter-spacing:.3px">شکریہ · Thank You 🙏</div>
   </div>
 
 </div>
@@ -570,7 +512,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:linear-gradien
 </body>
 </html>`;
 
-  openPrint(html, 620, 820);
+  openPrint(html, 600, 680);
 }
 
 // A4 CSS for full-page reports
