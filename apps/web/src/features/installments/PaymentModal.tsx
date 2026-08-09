@@ -326,7 +326,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
       setReceiptData(receiptPayload);
       setSinglePayload(sp);
-      openSinglePaymentReceipt(sp);
+      void openSinglePaymentReceipt(sp);
     },
   });
 
@@ -548,7 +548,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
 
             <div className="flex gap-3 w-full">
               <button
-                onClick={() => { if (singlePayload) openSinglePaymentReceipt(singlePayload); }}
+                onClick={() => { if (singlePayload) void openSinglePaymentReceipt(singlePayload); }}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
               >
                 <Printer size={15} /> Print
@@ -862,7 +862,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                               className="text-[11px] text-blue-500 hover:underline mr-1">Proof</a>
                           )}
                           <button
-                            onClick={() => openSinglePaymentReceipt({
+                            onClick={() => void openSinglePaymentReceipt({
                               shopName:          seller?.shopName ?? 'Receipt',
                               shopPhone:         seller?.phone,
                               customerName:      freshInst.customerName,

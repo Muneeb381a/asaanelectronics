@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 import { fmtDate, fmtDateTime } from './dateFormat.ts';
 
 export interface InstallmentReceiptData {
@@ -364,7 +365,7 @@ export interface SinglePaymentReceiptData {
   paidInstallments?: number;
 }
 
-export function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
+export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
   const isDaily    = d.paymentFrequency === 'daily';
   const freq       = isDaily ? 'Day' : 'Month';
   const paidOnDate = new Date(d.paidOn);
@@ -372,7 +373,6 @@ export function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
   const timeStr    = paidOnDate.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
   const isLate     = (d.daysLate ?? 0) > 0;
   const isFullyPaid = (d.remaining ?? 1) <= 0;
-
   const hasProg    = (d.totalInstallments ?? 0) > 0;
   const totalInst  = d.totalInstallments ?? 0;
   const paidInst   = d.paidInstallments ?? d.periodNum ?? 0;
@@ -381,144 +381,157 @@ export function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
 
   function numFmt(n: number) { return n.toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
 
+  // ── Customer avatar ─────────────────────────────────────────────────────────
+  const AVATAR_COLORS = ['#1E3A8A','#0F766E','#7C2D12','#4C1D95','#1F2937','#064E3B','#7F1D1D'];
+  const avatarBg  = AVATAR_COLORS[(d.customerName.charCodeAt(0) ?? 65) % AVATAR_COLORS.length];
+  const initials  = d.customerName.trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase();
+  const photoHtml = d.customerPhotoUrl
+    ? `<img src="${d.customerPhotoUrl}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid #E5E7EB;flex-shrink:0;display:block"/>`
+    : `<div style="width:54px;height:54px;border-radius:50%;background:${avatarBg};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff">${initials}</div>`;
+
+  // ── QR code ─────────────────────────────────────────────────────────────────
+  const qrText = [d.shopName, d.customerName, d.invoiceNumber ?? d.receiptNumber, `PKR ${numFmt(d.amountPaid)}`, dateStr].filter(Boolean).join(' | ');
+  let qrDataUrl = '';
+  try {
+    qrDataUrl = await QRCode.toDataURL(qrText, { width: 90, margin: 1, color: { dark: '#0F1F3D', light: '#FFFFFF' } });
+  } catch (_) { /* skip on failure */ }
+  const qrHtml = qrDataUrl
+    ? `<img src="${qrDataUrl}" style="width:72px;height:72px;flex-shrink:0;display:block;image-rendering:pixelated"/>`
+    : '';
+
   const METHOD_ICONS: Record<string,string> = { CASH:'💵', BANK:'🏦', JAZZCASH:'📱', EASYPAISA:'💚', OTHER:'💳' };
   const methodIcon = METHOD_ICONS[d.method] ?? '💳';
 
-  // ── row helper ──────────────────────────────────────────────────────────────
-  function detailRow(label: string, value: string, opts: { mono?: boolean; badge?: string; last?: boolean } = {}) {
-    const valStyle = [
-      'font-size:10.5px;font-weight:600;color:#111827;text-align:right',
-      opts.mono ? 'font-family:monospace;letter-spacing:.3px' : '',
-    ].filter(Boolean).join(';');
-    const badge = opts.badge
-      ? `<span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:8px;font-weight:700;background:#DCFCE7;color:#166534;border:1px solid #86EFAC">${opts.badge}</span>`
-      : '';
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px${opts.last ? '' : ';border-bottom:1px solid #F3F4F6'}">
-      <span style="font-size:10px;color:#6B7280;flex-shrink:0;margin-right:12px">${label}</span>
-      <span style="${valStyle}">${value}${badge}</span>
+  // ── Grid cell helper — 2-col layout, compact ────────────────────────────────
+  function gc(label: string, value: string, opts: { mono?: boolean; span?: boolean } = {}) {
+    return `<div style="background:#fff;padding:7px 12px${opts.span ? ';grid-column:1/-1' : ''}">
+      <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9CA3AF;margin-bottom:3px">${label}</div>
+      <div style="font-size:10px;font-weight:600;color:#111827;line-height:1.3;word-break:break-all${opts.mono ? ';font-family:monospace;font-size:8.5px;letter-spacing:.2px' : ''}">${value}</div>
     </div>`;
   }
 
-  const lateOrOnTime = isLate
-    ? `<span style="padding:2px 9px;border-radius:20px;background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;font-size:8px;font-weight:700">⚠ ${d.daysLate}d Late</span>`
-    : `<span style="padding:2px 9px;border-radius:20px;background:#DCFCE7;border:1px solid #86EFAC;color:#166534;font-size:8px;font-weight:700">✓ On Time</span>`;
+  // 3 rows × 2 cols = 6 cells (replaces 8 single-col rows — saves ~120px / 32mm)
+  const detailCells = [
+    gc('Product', d.productName),
+    gc('Date', dateStr),
+    d.invoiceNumber ? gc('Invoice', d.invoiceNumber, { mono: true }) : gc('Receipt', d.receiptNumber ?? '—', { mono: true }),
+    gc('Time', timeStr),
+    gc('Method', `${methodIcon} ${mLabel(d.method)}`),
+    d.collectorName
+      ? gc('Collected By', d.collectorName)
+      : d.monthly
+        ? gc(`${isDaily ? 'Daily' : 'Monthly'} Qist`, `PKR ${numFmt(d.monthly)}`)
+        : '<div style="background:#fff;padding:7px 12px"></div>',
+    ...(d.note ? [gc('Note', d.note, { span: true })] : []),
+  ].join('');
 
-  // Build transaction detail rows
-  const rows = [
-    detailRow('Customer', d.customerName),
-    d.customerPhone ? detailRow('Phone', d.customerPhone) : '',
-    detailRow('Product', d.productName),
-    d.invoiceNumber ? detailRow('Invoice No.', d.invoiceNumber, { mono: true }) : '',
-    d.receiptNumber ? detailRow('Receipt No.', d.receiptNumber, { mono: true }) : '',
-    detailRow('Date', `${dateStr} · ${timeStr}`),
-    detailRow('Method', `${methodIcon} ${mLabel(d.method)}`),
-    detailRow('Status', isFullyPaid ? 'Fully Paid' : 'Paid', { badge: isFullyPaid ? '✓ COMPLETE' : undefined, last: true }),
-  ].filter(Boolean).join('');
+  // ── Late / on-time badge ────────────────────────────────────────────────────
+  const timeBadge = isLate
+    ? `<span style="padding:3px 10px;border-radius:20px;background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;font-size:8px;font-weight:700">⚠ ${d.daysLate}d Late</span>`
+    : `<span style="padding:3px 10px;border-radius:20px;background:#DCFCE7;border:1px solid #86EFAC;color:#166534;font-size:8px;font-weight:700">✓ On Time</span>`;
 
-  // Installment summary rows
-  const instRows = hasProg ? [
-    detailRow(`${freq} No.`, `${paidInst} of ${totalInst}`),
-    d.periodDueDate ? detailRow('Period Due', fmtDate(d.periodDueDate)) : '',
-    detailRow('Paid This Time', pkr(d.amountPaid)),
-    d.monthly ? detailRow(`${isDaily ? 'Daily' : 'Monthly'} Qist`, pkr(d.monthly)) : '',
-    detailRow('Balance Remaining', pkr(d.remaining ?? 0), { last: true }),
-  ].filter(Boolean).join('') : '';
+  // ── Installment progress — inline, no extra rows ────────────────────────────
+  const instSection = hasProg ? `
+  <div style="padding:8px 14px 10px;border-top:1px solid #F3F4F6">
+    <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#9CA3AF;margin-bottom:6px">${isDaily ? 'Daily' : 'Monthly'} Installment Progress</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+      <span style="font-size:10.5px;font-weight:700;color:#0F1F3D">${freq} ${paidInst} <span style="font-size:9px;font-weight:400;color:#9CA3AF">of ${totalInst}</span></span>
+      <span style="font-size:9px;font-weight:600;color:#6B7280">${pct}% · ${pendingInst} remaining</span>
+    </div>
+    <div style="background:#E5E7EB;border-radius:4px;height:5px;overflow:hidden;margin-bottom:6px">
+      <div style="width:${pct}%;height:100%;background:#0F1F3D;border-radius:4px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between">
+      <span style="font-size:8.5px;color:#6B7280">Balance: <strong style="color:${isFullyPaid ? '#16A34A' : '#D97706'}">PKR ${numFmt(d.remaining ?? 0)}</strong></span>
+      ${d.periodDueDate ? `<span style="font-size:8.5px;color:#6B7280">Due: <strong style="color:#111827">${fmtDate(d.periodDueDate)}</strong></span>` : ''}
+    </div>
+  </div>` : '';
 
   const css = `
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:#E8EDF4;padding:20px;display:flex;justify-content:center}
-.rc{background:#fff;width:400px;border-radius:6px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:#E8EDF4;padding:16px;display:flex;flex-direction:column;align-items:center}
+.rc{background:#fff;width:760px;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+.cut{width:760px;display:flex;align-items:center;gap:8px;margin-top:6px;color:#9CA3AF;font-size:9px;user-select:none}
+.cut-line{flex:1;border-top:1.5px dashed #CBD5E1}
 @media print{
-  @page{size:148mm 210mm;margin:7mm 8mm}
+  @page{size:A4 portrait;margin:0}
   body{background:#fff;padding:0;display:block}
-  .rc{border-radius:0;box-shadow:none;width:100%}
+  .rc{box-shadow:none;width:100%}
+  .cut{display:flex;width:100%;padding:4px 8mm}
 }`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"/><title>Payment Receipt</title><style>${css}</style></head>
+<head><meta charset="utf-8"/><title>Receipt${d.receiptNumber ? ` · ${d.receiptNumber}` : ''}</title><style>${css}</style></head>
 <body>
 <div class="rc">
 
-  <!-- ── HEADER BAR ───────────────────────────────── -->
-  <div style="background:#0F1F3D;padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
+  <!-- HEADER: dark navy bar -->
+  <div style="background:#0F1F3D;padding:9px 16px;display:flex;justify-content:space-between;align-items:center">
     <div>
-      <div style="font-size:13px;font-weight:800;color:#fff;letter-spacing:-.2px;line-height:1">${d.shopName}</div>
-      ${d.shopPhone ? `<div style="font-size:8px;color:rgba(255,255,255,.5);margin-top:3px">${d.shopPhone}</div>` : ''}
+      <div style="font-size:14px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-.2px">${d.shopName}</div>
+      ${d.shopPhone ? `<div style="font-size:8.5px;color:rgba(255,255,255,.42);margin-top:2px">${d.shopPhone}</div>` : ''}
     </div>
     <div style="text-align:right">
-      <div style="font-size:7px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:rgba(255,255,255,.45)">Payment Receipt</div>
-      ${d.receiptNumber ? `<div style="font-size:8.5px;font-family:monospace;color:rgba(255,255,255,.55);margin-top:4px">${d.receiptNumber}</div>` : ''}
+      <div style="font-size:7px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.32)">PAYMENT RECEIPT</div>
+      ${d.receiptNumber ? `<div style="font-size:8.5px;font-family:monospace;color:rgba(255,255,255,.48);margin-top:3px">${d.receiptNumber}</div>` : ''}
     </div>
   </div>
 
-  <!-- ── SUCCESS INDICATOR ────────────────────────── -->
-  <div style="padding:14px 18px 0;display:flex;align-items:center;gap:12px">
-    <div style="width:38px;height:38px;border-radius:50%;background:#DCFCE7;border:2px solid #86EFAC;flex-shrink:0;display:flex;align-items:center;justify-content:center">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3.5 9L7.5 13L14.5 5.5" stroke="#16A34A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </div>
+  <!-- CUSTOMER STRIP: photo + info + QR -->
+  <div style="padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #F3F4F6">
+    ${photoHtml}
     <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:700;color:#111827">Payment Successful</div>
-      <div style="font-size:8.5px;color:#6B7280;margin-top:2px">${dateStr} · ${timeStr}</div>
+      <div style="font-size:13px;font-weight:800;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${d.customerName}</div>
+      ${d.customerPhone ? `<div style="font-size:8.5px;color:#6B7280;margin-top:2px">${d.customerPhone}</div>` : ''}
+      ${d.invoiceNumber ? `<div style="font-size:8px;font-family:monospace;color:#9CA3AF;margin-top:2px">${d.invoiceNumber}</div>` : ''}
+      <div style="font-size:8px;color:#9CA3AF;margin-top:2px">${dateStr} · ${timeStr}</div>
     </div>
-    ${isLate ? lateOrOnTime : (d.periodDueDate !== undefined ? lateOrOnTime : '')}
+    ${qrHtml}
   </div>
 
-  <!-- ── AMOUNT HERO ───────────────────────────────── -->
-  <div style="margin:14px 18px;background:#F0F5FF;border:1px solid #DBEAFE;border-radius:8px;padding:14px 18px;text-align:center">
-    <div style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:#6B7280;margin-bottom:6px">Amount Paid</div>
-    <div style="line-height:1;margin-bottom:10px">
-      <span style="font-size:12px;font-weight:600;color:#6B7280;vertical-align:top;margin-top:6px;display:inline-block;margin-right:3px">PKR</span>
-      <span style="font-size:34px;font-weight:900;color:#0F1F3D;letter-spacing:-1px;font-variant-numeric:tabular-nums">${numFmt(d.amountPaid)}</span>
+  <!-- AMOUNT HERO: light blue tinted block -->
+  <div style="padding:11px 16px;background:#F0F5FF;border-bottom:1px solid #DBEAFE">
+    <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#6B7280;margin-bottom:4px;text-align:center">Amount Paid</div>
+    <div style="text-align:center;line-height:1;margin-bottom:9px">
+      <span style="font-size:11px;font-weight:600;color:#6B7280;vertical-align:top;margin-top:4px;display:inline-block;margin-right:2px">PKR</span>
+      <span style="font-size:30px;font-weight:900;color:#0F1F3D;letter-spacing:-1.5px;font-variant-numeric:tabular-nums">${numFmt(d.amountPaid)}</span>
     </div>
-    <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 13px;border-radius:20px;background:#0F1F3D;color:#fff;font-size:9px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
+    <div style="display:flex;justify-content:center;gap:6px;align-items:center;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;background:#0F1F3D;color:#fff;font-size:9px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
+      ${(d.periodDueDate !== undefined || isLate) ? timeBadge : ''}
+      ${isFullyPaid ? `<span style="padding:4px 12px;border-radius:20px;background:#DCFCE7;border:1px solid #86EFAC;color:#166534;font-size:9px;font-weight:700">✓ Fully Paid</span>` : ''}
+    </div>
   </div>
 
-  <!-- ── TRANSACTION DETAILS ──────────────────────── -->
-  <div style="margin:0 18px 14px;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden">
-    <div style="padding:7px 14px;background:#F9FAFB;border-bottom:1px solid #E5E7EB">
-      <span style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#9CA3AF">Transaction Details</span>
-    </div>
-    ${rows}
+  <!-- DETAIL GRID: 2 columns, saves vertical space vs single-column rows -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#F3F4F6;border-bottom:1px solid #F3F4F6">
+    ${detailCells}
   </div>
 
-  ${hasProg ? `
-  <!-- ── INSTALLMENT SUMMARY ──────────────────────── -->
-  <div style="margin:0 18px 14px;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden">
-    <div style="padding:7px 14px;background:#F9FAFB;border-bottom:1px solid #E5E7EB">
-      <span style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#9CA3AF">Installment Summary</span>
-    </div>
-    <div style="padding:10px 14px;border-bottom:1px solid #F3F4F6">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:10px;font-weight:700;color:#0F1F3D">${freq} ${paidInst} <span style="font-weight:400;color:#9CA3AF">of ${totalInst}</span></span>
-        <span style="font-size:9px;font-weight:600;color:#0F1F3D">${pct}%</span>
-      </div>
-      <div style="background:#E5E7EB;border-radius:4px;height:6px;overflow:hidden;margin-bottom:4px">
-        <div style="width:${pct}%;height:100%;background:#0F1F3D;border-radius:4px"></div>
-      </div>
-      <div style="font-size:8px;color:#9CA3AF">${paidInst} paid · ${pendingInst} ${isDaily ? 'days' : 'months'} remaining</div>
-    </div>
-    ${instRows}
-  </div>` : ''}
+  <!-- INSTALLMENT PROGRESS -->
+  ${instSection}
 
-  ${d.collectorName ? `<div style="margin:0 18px 10px;font-size:9px;color:#6B7280">Collected by: <span style="font-weight:700;color:#111827">${d.collectorName}</span></div>` : ''}
-  ${d.note ? `<div style="margin:0 18px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:8px 12px;font-size:9.5px;color:#78350F"><span style="font-weight:700">Note:</span> ${d.note}</div>` : ''}
-
-  <!-- ── FOOTER ────────────────────────────────────── -->
-  <div style="border-top:1px solid #F3F4F6;padding:10px 18px;display:flex;justify-content:space-between;align-items:center;background:#FAFAFA">
-    <div style="font-size:8px;color:#9CA3AF;line-height:1.5">
-      <div style="font-weight:600;color:#6B7280">${d.shopName}</div>
-      System-generated receipt
+  <!-- FOOTER -->
+  <div style="padding:7px 16px;display:flex;justify-content:space-between;align-items:center;background:#FAFAFA;border-top:1px solid #F3F4F6">
+    <div>
+      <div style="font-size:9px;font-weight:700;color:#374151">${d.shopName}</div>
+      <div style="font-size:7.5px;color:#9CA3AF;margin-top:1px">System-generated · No signature required</div>
     </div>
-    <div style="font-size:9px;font-weight:600;color:#6B7280">شکریہ · Thank You 🙏</div>
+    <div style="text-align:right">
+      <div style="font-size:10px;font-weight:600;color:#6B7280">شکریہ 🙏</div>
+      <div style="font-size:7.5px;color:#9CA3AF">Thank You</div>
+    </div>
   </div>
 
 </div>
+<!-- Cut guide — visible on screen, prints below receipt on A4 -->
+<div class="cut"><div class="cut-line"></div><span>✂ cut here</span><div class="cut-line"></div></div>
 <script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
 
-  openPrint(html, 560, 760);
+  openPrint(html, 820, 640);
 }
 
 // A4 CSS for full-page reports
