@@ -20,6 +20,8 @@ export declare const createProductSchema: z.ZodObject<{
     registrationNumber: z.ZodOptional<z.ZodString>;
     vehicleCondition: z.ZodOptional<z.ZodEnum<["NEW", "USED"]>>;
     modelYear: z.ZodOptional<z.ZodNumber>;
+    letterStatus: z.ZodOptional<z.ZodEnum<["NONE", "FIRST_NOTICE", "SECOND_NOTICE", "LEGAL_NOTICE", "FILED"]>>;
+    biometricStatus: z.ZodOptional<z.ZodEnum<["PENDING", "SELLER_DONE", "BUYER_DONE", "COMPLETED", "NOT_REQUIRED"]>>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     price: number;
@@ -41,6 +43,8 @@ export declare const createProductSchema: z.ZodObject<{
     registrationNumber?: string | undefined;
     vehicleCondition?: "NEW" | "USED" | undefined;
     modelYear?: number | undefined;
+    letterStatus?: "NONE" | "FIRST_NOTICE" | "SECOND_NOTICE" | "LEGAL_NOTICE" | "FILED" | undefined;
+    biometricStatus?: "PENDING" | "COMPLETED" | "SELLER_DONE" | "BUYER_DONE" | "NOT_REQUIRED" | undefined;
 }, {
     name: string;
     price: number;
@@ -62,6 +66,8 @@ export declare const createProductSchema: z.ZodObject<{
     registrationNumber?: string | undefined;
     vehicleCondition?: "NEW" | "USED" | undefined;
     modelYear?: number | undefined;
+    letterStatus?: "NONE" | "FIRST_NOTICE" | "SECOND_NOTICE" | "LEGAL_NOTICE" | "FILED" | undefined;
+    biometricStatus?: "PENDING" | "COMPLETED" | "SELLER_DONE" | "BUYER_DONE" | "NOT_REQUIRED" | undefined;
 }>;
 export declare const updateProductSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
@@ -84,6 +90,8 @@ export declare const updateProductSchema: z.ZodObject<{
     registrationNumber: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     vehicleCondition: z.ZodOptional<z.ZodOptional<z.ZodEnum<["NEW", "USED"]>>>;
     modelYear: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    letterStatus: z.ZodOptional<z.ZodOptional<z.ZodEnum<["NONE", "FIRST_NOTICE", "SECOND_NOTICE", "LEGAL_NOTICE", "FILED"]>>>;
+    biometricStatus: z.ZodOptional<z.ZodOptional<z.ZodEnum<["PENDING", "SELLER_DONE", "BUYER_DONE", "COMPLETED", "NOT_REQUIRED"]>>>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
     photoUrl?: string | undefined;
@@ -105,6 +113,8 @@ export declare const updateProductSchema: z.ZodObject<{
     registrationNumber?: string | undefined;
     vehicleCondition?: "NEW" | "USED" | undefined;
     modelYear?: number | undefined;
+    letterStatus?: "NONE" | "FIRST_NOTICE" | "SECOND_NOTICE" | "LEGAL_NOTICE" | "FILED" | undefined;
+    biometricStatus?: "PENDING" | "COMPLETED" | "SELLER_DONE" | "BUYER_DONE" | "NOT_REQUIRED" | undefined;
 }, {
     name?: string | undefined;
     photoUrl?: string | undefined;
@@ -126,6 +136,8 @@ export declare const updateProductSchema: z.ZodObject<{
     registrationNumber?: string | undefined;
     vehicleCondition?: "NEW" | "USED" | undefined;
     modelYear?: number | undefined;
+    letterStatus?: "NONE" | "FIRST_NOTICE" | "SECOND_NOTICE" | "LEGAL_NOTICE" | "FILED" | undefined;
+    biometricStatus?: "PENDING" | "COMPLETED" | "SELLER_DONE" | "BUYER_DONE" | "NOT_REQUIRED" | undefined;
 }>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
