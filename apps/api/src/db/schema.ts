@@ -267,6 +267,8 @@ export const products = pgTable('products', {
   registrationNumber: text('registration_number'),
   vehicleCondition:   text('vehicle_condition'),
   modelYear:          integer('model_year'),
+  letterStatus:       letterStatusEnum('letter_status'),
+  biometricStatus:    biometricStatusEnum('biometric_status'),
   deletedAt: timestamp('deleted_at'),
   deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [

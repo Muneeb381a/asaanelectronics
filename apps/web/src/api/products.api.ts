@@ -24,6 +24,8 @@ export interface Product {
   registrationNumber: string | null;
   vehicleCondition: 'NEW' | 'USED' | null;
   modelYear: number | null;
+  letterStatus:    'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED' | null;
+  biometricStatus: 'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED' | null;
 }
 
 interface ListResponse {

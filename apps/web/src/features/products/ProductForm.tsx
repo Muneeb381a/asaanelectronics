@@ -162,6 +162,28 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
               <option value="USED">Used</option>
             </select>
           </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Biometric Transfer" optional>
+              <select {...register('biometricStatus')} className={inputCls}>
+                <option value="">Not set</option>
+                <option value="PENDING">Pending (باقی)</option>
+                <option value="SELLER_DONE">Seller Done (دکاندار نے کیا)</option>
+                <option value="BUYER_DONE">Buyer Done (خریدار نے کیا)</option>
+                <option value="COMPLETED">Completed (مکمل)</option>
+                <option value="NOT_REQUIRED">Not Required</option>
+              </select>
+            </Field>
+            <Field label="Notice / Letter Status" optional>
+              <select {...register('letterStatus')} className={inputCls}>
+                <option value="">None</option>
+                <option value="NONE">None (کوئی نہیں)</option>
+                <option value="FIRST_NOTICE">1st Notice</option>
+                <option value="SECOND_NOTICE">2nd Notice</option>
+                <option value="LEGAL_NOTICE">Legal Notice</option>
+                <option value="FILED">Case Filed</option>
+              </select>
+            </Field>
+          </div>
         </div>
       )}
 
