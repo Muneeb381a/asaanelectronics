@@ -22,5 +22,6 @@ export const createProductSchema = z.object({
     modelYear: z.number().int().min(1970).max(2030).optional(),
     letterStatus: z.enum(['NONE', 'FIRST_NOTICE', 'SECOND_NOTICE', 'LEGAL_NOTICE', 'FILED']).optional(),
     biometricStatus: z.enum(['PENDING', 'SELLER_DONE', 'BUYER_DONE', 'COMPLETED', 'NOT_REQUIRED']).optional(),
+    vehicleFileLocation: z.enum(['WITH_SHOP', 'WITH_CUSTOMER', 'WITH_RTO', 'WITH_NADRA', 'IN_TRANSFER', 'WITH_COURT', 'WITH_POLICE']).optional(),
 });
 export const updateProductSchema = createProductSchema.partial();

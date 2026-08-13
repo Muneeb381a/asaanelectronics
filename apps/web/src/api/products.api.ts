@@ -24,8 +24,9 @@ export interface Product {
   registrationNumber: string | null;
   vehicleCondition: 'NEW' | 'USED' | null;
   modelYear: number | null;
-  letterStatus:    'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED' | null;
-  biometricStatus: 'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED' | null;
+  letterStatus:        'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED' | null;
+  biometricStatus:     'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED' | null;
+  vehicleFileLocation: 'WITH_SHOP' | 'WITH_CUSTOMER' | 'WITH_RTO' | 'WITH_NADRA' | 'IN_TRANSFER' | 'WITH_COURT' | 'WITH_POLICE' | null;
 }
 
 interface ListResponse {

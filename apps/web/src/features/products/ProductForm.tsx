@@ -162,6 +162,18 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
               <option value="USED">Used</option>
             </select>
           </Field>
+          <Field label="File / Document Location" optional>
+            <select {...register('vehicleFileLocation')} className={inputCls}>
+              <option value="">Not set</option>
+              <option value="WITH_SHOP">دکان میں — Shop k paas hai</option>
+              <option value="WITH_CUSTOMER">گاہک کے پاس — Customer k paas hai</option>
+              <option value="WITH_RTO">RTO / Excise Office mein</option>
+              <option value="WITH_NADRA">NADRA Office mein</option>
+              <option value="IN_TRANSFER">Transfer process mein</option>
+              <option value="WITH_COURT">عدالت میں — Court mein</option>
+              <option value="WITH_POLICE">Police Station mein</option>
+            </select>
+          </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Biometric Transfer" optional>
               <select {...register('biometricStatus')} className={inputCls}>

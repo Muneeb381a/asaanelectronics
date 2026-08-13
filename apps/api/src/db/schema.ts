@@ -47,6 +47,9 @@ export const letterStatusEnum = pgEnum('letter_status', [
 export const biometricStatusEnum = pgEnum('biometric_status', [
   'PENDING', 'SELLER_DONE', 'BUYER_DONE', 'COMPLETED', 'NOT_REQUIRED',
 ]);
+export const vehicleFileLocationEnum = pgEnum('vehicle_file_location', [
+  'WITH_SHOP', 'WITH_CUSTOMER', 'WITH_RTO', 'WITH_NADRA', 'IN_TRANSFER', 'WITH_COURT', 'WITH_POLICE',
+]);
 
 export const sellers = pgTable('sellers', {
   id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
@@ -267,8 +270,9 @@ export const products = pgTable('products', {
   registrationNumber: text('registration_number'),
   vehicleCondition:   text('vehicle_condition'),
   modelYear:          integer('model_year'),
-  letterStatus:       letterStatusEnum('letter_status'),
-  biometricStatus:    biometricStatusEnum('biometric_status'),
+  letterStatus:        letterStatusEnum('letter_status'),
+  biometricStatus:     biometricStatusEnum('biometric_status'),
+  vehicleFileLocation: vehicleFileLocationEnum('vehicle_file_location'),
   deletedAt: timestamp('deleted_at'),
   deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [

@@ -574,8 +574,9 @@ export default function ProductsPage() {
                   registrationNumber: modal.product.registrationNumber ?? undefined,
                   vehicleCondition:   modal.product.vehicleCondition   ?? undefined,
                   modelYear:          modal.product.modelYear          ?? undefined,
-                  biometricStatus:    modal.product.biometricStatus    ?? undefined,
-                  letterStatus:       modal.product.letterStatus       ?? undefined,
+                  biometricStatus:     modal.product.biometricStatus     ?? undefined,
+                  letterStatus:        modal.product.letterStatus        ?? undefined,
+                  vehicleFileLocation: modal.product.vehicleFileLocation ?? undefined,
                 } : undefined}
                 isPending={isPending}
                 onCancel={() => setModal(null)}
