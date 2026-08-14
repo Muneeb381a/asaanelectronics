@@ -147,6 +147,9 @@ export default function CashSalesPage() {
         amount:   result.amount,
         method:   result.method,
         imeiNumber: result.imeiNumber,
+        chassisNumber:      selectedProd?.chassisNumber,
+        engineNumber:       selectedProd?.engineNumber,
+        registrationNumber: selectedProd?.registrationNumber,
         note:     result.note,
         soldAt:   result.createdAt,
         saleId:   result.id,
@@ -202,9 +205,16 @@ export default function CashSalesPage() {
     setLastSale(null);
   }
 
+  const isVehicleProduct = !!selectedProd?.chassisNumber;
+
   function selectProduct(p: Product) {
     setSelectedProd(p);
-    setForm((f) => ({ ...f, amount: String(Number(p.price).toFixed(0)), quantity: 1 }));
+    setForm((f) => ({
+      ...f,
+      amount: String(Number(p.price).toFixed(0)),
+      quantity: 1,
+      imeiNumber: p.chassisNumber ?? '',
+    }));
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -652,43 +662,67 @@ export default function CashSalesPage() {
                     </div>
                   </div>
 
-                  {/* IMEI + Note */}
+                  {/* IMEI / Vehicle Identifiers + Note */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                        IMEI <span className="font-normal text-gray-400">(optional)</span>
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={15}
-                        value={form.imeiNumber}
-                        onChange={(e) => setForm((f) => ({ ...f, imeiNumber: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
-                        placeholder="15-digit IMEI"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition font-mono"
-                      />
-                      {debouncedImeiCS.length === 15 && (
-                        imeiCheckingCS ? (
-                          <p className="text-[10px] text-gray-400 mt-1">Checking…</p>
-                        ) : imeiLookupCS?.found ? (
-                          imeiLookupCS.unit!.status === 'available' ? (
-                            <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
-                              <CheckCircle2 size={10} /> Available{imeiLookupCS.unit!.productName ? ` — ${imeiLookupCS.unit!.productName}` : ''}
-                            </p>
-                          ) : imeiLookupCS.unit!.status === 'sold' ? (
-                            <p className="text-[10px] text-red-600 mt-1 flex items-center gap-1">
-                              <AlertTriangle size={10} /> Already sold to {imeiLookupCS.unit!.soldToName ?? 'another customer'}
-                            </p>
+                    {isVehicleProduct ? (
+                      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                        <p className="text-[10px] font-semibold text-indigo-700 uppercase tracking-wide mb-2">Vehicle IDs · گاڑی کے نمبر</p>
+                        <div className="space-y-1">
+                          <div>
+                            <p className="text-[10px] text-gray-500">Chassis</p>
+                            <p className="text-xs font-mono font-bold text-gray-900">{selectedProd?.chassisNumber ?? '—'}</p>
+                          </div>
+                          {selectedProd?.engineNumber && (
+                            <div>
+                              <p className="text-[10px] text-gray-500">Engine</p>
+                              <p className="text-xs font-mono font-bold text-gray-900">{selectedProd.engineNumber}</p>
+                            </div>
+                          )}
+                          {selectedProd?.registrationNumber && (
+                            <div>
+                              <p className="text-[10px] text-gray-500">Reg. No.</p>
+                              <p className="text-xs font-mono text-gray-700">{selectedProd.registrationNumber}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                          IMEI <span className="font-normal text-gray-400">(optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={15}
+                          value={form.imeiNumber}
+                          onChange={(e) => setForm((f) => ({ ...f, imeiNumber: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
+                          placeholder="15-digit IMEI"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition font-mono"
+                        />
+                        {debouncedImeiCS.length === 15 && (
+                          imeiCheckingCS ? (
+                            <p className="text-[10px] text-gray-400 mt-1">Checking…</p>
+                          ) : imeiLookupCS?.found ? (
+                            imeiLookupCS.unit!.status === 'available' ? (
+                              <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
+                                <CheckCircle2 size={10} /> Available{imeiLookupCS.unit!.productName ? ` — ${imeiLookupCS.unit!.productName}` : ''}
+                              </p>
+                            ) : imeiLookupCS.unit!.status === 'sold' ? (
+                              <p className="text-[10px] text-red-600 mt-1 flex items-center gap-1">
+                                <AlertTriangle size={10} /> Already sold to {imeiLookupCS.unit!.soldToName ?? 'another customer'}
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                                <AlertTriangle size={10} /> Status: {imeiLookupCS.unit!.status}
+                              </p>
+                            )
                           ) : (
-                            <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
-                              <AlertTriangle size={10} /> Status: {imeiLookupCS.unit!.status}
-                            </p>
+                            <p className="text-[10px] text-gray-400 mt-1">Not in inventory</p>
                           )
-                        ) : (
-                          <p className="text-[10px] text-gray-400 mt-1">Not in inventory</p>
-                        )
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                         Note <span className="font-normal text-gray-400">(optional)</span>

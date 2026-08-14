@@ -31,6 +31,9 @@ export interface Installment {
   pausedUntil:        string | null;
   pauseReason:        string | null;
   productCategory:    string | null;
+  chassisNumber:      string | null;
+  engineNumber:       string | null;
+  registrationNumber: string | null;
   letterStatus:       'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED' | null;
   letterSentAt:       string | null;
   biometricStatus:    'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED' | null;

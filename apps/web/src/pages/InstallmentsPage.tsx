@@ -1804,6 +1804,8 @@ export default function InstallmentsPage() {
                           cashPrice: inst.cashPrice, profitMarkup: inst.profitMarkup,
                           murabahaMode: shopData.murabahaMode, paymentFrequency: inst.paymentFrequency,
                           paymentAccounts: paymentAccountsData,
+                          chassisNumber: inst.chassisNumber, engineNumber: inst.engineNumber,
+                          registrationNumber: inst.registrationNumber,
                         })}
                         className="p-2 text-gray-400 hover:text-indigo-600 transition rounded-xl border border-gray-100">
                         <FileText size={15} />
@@ -1939,6 +1941,8 @@ export default function InstallmentsPage() {
                             cashPrice: inst.cashPrice, profitMarkup: inst.profitMarkup,
                             murabahaMode: shopData.murabahaMode, paymentFrequency: inst.paymentFrequency,
                             paymentAccounts: paymentAccountsData,
+                            chassisNumber: inst.chassisNumber, engineNumber: inst.engineNumber,
+                            registrationNumber: inst.registrationNumber,
                           })}
                           title="Bill"
                           className="p-2 text-gray-400 hover:text-indigo-600 transition rounded">

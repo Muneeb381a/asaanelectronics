@@ -22,6 +22,9 @@ export interface BillData {
   installmentId: string;
   invoiceNumber?: string | null;
   imeiNumber?: string | null;
+  chassisNumber?: string | null;
+  engineNumber?: string | null;
+  registrationNumber?: string | null;
   cashPrice?: string | number | null;
   profitMarkup?: string | number | null;
   murabahaMode?: boolean;
@@ -38,6 +41,9 @@ export interface CashSaleBillData {
   amount: string | number;
   method: string;
   imeiNumber?: string | null;
+  chassisNumber?: string | null;
+  engineNumber?: string | null;
+  registrationNumber?: string | null;
   note?: string | null;
   soldAt: string;
   saleId: string;
@@ -101,6 +107,7 @@ export async function openBill(data: BillData) {
   const markupPct  = isMurabaha && Number(data.cashPrice) > 0
     ? ((markup / Number(data.cashPrice)) * 100).toFixed(1) : null;
 
+  const isVehicle  = !!data.chassisNumber;
   const qrPayload  = [
     `INV:${invoiceNo}`,
     `SHOP:${data.shop.shopName}`,
@@ -109,7 +116,11 @@ export async function openBill(data: BillData) {
     `AMT:${Number(data.totalAmount).toFixed(0)}`,
     `REM:${Number(data.remaining).toFixed(0)}`,
     `ID:${data.installmentId.slice(0, 8).toUpperCase()}`,
-    ...(data.imeiNumber ? [`IMEI:${data.imeiNumber}`] : []),
+    ...(isVehicle ? [
+      `CHASSIS:${data.chassisNumber}`,
+      ...(data.engineNumber ? [`ENGINE:${data.engineNumber}`] : []),
+      ...(data.registrationNumber ? [`REG:${data.registrationNumber}`] : []),
+    ] : data.imeiNumber ? [`IMEI:${data.imeiNumber}`] : []),
   ].join('\n');
 
   const qrDataUrl = await QRCode.toDataURL(qrPayload, {
@@ -252,7 +263,11 @@ export async function openBill(data: BillData) {
       <div class="ic">
         <span class="il">Product · مصنوعہ</span>
         <span class="iv">${data.product}</span>
-        ${data.imeiNumber ? `<span class="is" style="font-family:monospace;font-size:8.5px;color:#6366f1">IMEI: ${data.imeiNumber}</span>` : ''}
+        ${isVehicle ? `
+          <span class="is" style="font-family:monospace;font-size:8.5px;color:#6366f1">Chassis: ${data.chassisNumber}</span>
+          ${data.engineNumber ? `<span class="is" style="font-family:monospace;font-size:8.5px;color:#6366f1">Engine: ${data.engineNumber}</span>` : ''}
+          ${data.registrationNumber ? `<span class="is" style="font-family:monospace;font-size:8.5px;color:#6366f1">Reg: ${data.registrationNumber}</span>` : ''}
+        ` : data.imeiNumber ? `<span class="is" style="font-family:monospace;font-size:8.5px;color:#6366f1">IMEI: ${data.imeiNumber}</span>` : ''}
         ${murabahaLine}
       </div>
       <div class="ic">
@@ -571,6 +586,7 @@ export async function openCashSaleBill(data: CashSaleBillData) {
   const saleDate  = fmtDate(data.soldAt);
   const method    = METHOD_LABELS[data.method] ?? data.method;
 
+  const isVehicleCS = !!data.chassisNumber;
   const qrPayload = [
     `SALE:${invoiceNo}`,
     `SHOP:${data.shop.shopName}`,
@@ -578,7 +594,11 @@ export async function openCashSaleBill(data: CashSaleBillData) {
     `PROD:${data.product}`,
     `AMT:${Number(data.amount).toFixed(0)}`,
     `MTH:${data.method}`,
-    ...(data.imeiNumber ? [`IMEI:${data.imeiNumber}`] : []),
+    ...(isVehicleCS ? [
+      `CHASSIS:${data.chassisNumber}`,
+      ...(data.engineNumber ? [`ENGINE:${data.engineNumber}`] : []),
+      ...(data.registrationNumber ? [`REG:${data.registrationNumber}`] : []),
+    ] : data.imeiNumber ? [`IMEI:${data.imeiNumber}`] : []),
   ].join('\n');
 
   const qrDataUrl = await QRCode.toDataURL(qrPayload, {
@@ -646,7 +666,11 @@ export async function openCashSaleBill(data: CashSaleBillData) {
     <div class="ic">
       <span class="il">Product · مصنوعہ</span>
       <span class="iv">${data.product}</span>
-      ${data.imeiNumber ? `<span class="is" style="font-family:monospace;font-size:9px">IMEI: ${data.imeiNumber}</span>` : ''}
+      ${isVehicleCS ? `
+        <span class="is" style="font-family:monospace;font-size:9px;color:#6366f1">Chassis: ${data.chassisNumber}</span>
+        ${data.engineNumber ? `<span class="is" style="font-family:monospace;font-size:9px;color:#6366f1">Engine: ${data.engineNumber}</span>` : ''}
+        ${data.registrationNumber ? `<span class="is" style="font-family:monospace;font-size:9px;color:#6366f1">Reg: ${data.registrationNumber}</span>` : ''}
+      ` : data.imeiNumber ? `<span class="is" style="font-family:monospace;font-size:9px">IMEI: ${data.imeiNumber}</span>` : ''}
       ${data.quantity > 1 ? `<span class="is">Qty · تعداد: ${data.quantity}</span>` : ''}
     </div>
   </div>

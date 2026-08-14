@@ -18,7 +18,7 @@ const formSchema = z.object({
   downPayment:       z.number({ invalid_type_error: 'Required' }).min(0),
   months:            z.number().int().min(1).max(1095),
   startDate:         z.string().min(1, 'Required'),
-  imeiNumber:        z.string().max(20).optional(),
+  imeiNumber:        z.string().max(100).optional(),
   cashPrice:         z.number({ invalid_type_error: 'Required' }).positive().optional(),
   profitMarkup:      z.number({ invalid_type_error: 'Required' }).min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
@@ -340,8 +340,16 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       } else {
         setValue('totalAmount', price);
       }
+      // Auto-fill chassis number for vehicle products
+      if (p.chassisNumber) {
+        setValue('imeiNumber', p.chassisNumber);
+      } else {
+        setValue('imeiNumber', '');
+      }
     }
   }
+
+  const isVehicleProduct = !!selectedProduct?.chassisNumber;
 
   const effectiveTotal = showMurabaha ? ((cashPrice ?? 0) + (profitMarkup ?? 0)) : (totalAmount || 0);
 
@@ -898,42 +906,66 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
         </div>
       )}
 
-      {/* IMEI number */}
-      <div>
-        <Label>IMEI Number <span className="text-gray-400 font-normal">(optional — for phones)</span></Label>
-        <input
-          type="text"
-          inputMode="numeric"
-          maxLength={15}
-          placeholder="15-digit IMEI (dial *#06# on device)"
-          {...register('imeiNumber')}
-          className={inp}
-        />
-        {/* Real-time IMEI status */}
-        {debouncedImei.length === 15 && (
-          imeiChecking ? (
-            <p className="text-[11px] text-gray-400 mt-1">Checking availability…</p>
-          ) : imeiLookup?.found ? (
-            imeiLookup.unit!.status === 'available' ? (
-              <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
-                <CheckCircle2 size={11} /> Available in inventory
-                {imeiLookup.unit!.productName && ` — ${imeiLookup.unit!.productName}`}
-              </p>
-            ) : imeiLookup.unit!.status === 'sold' ? (
-              <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
-                <AlertTriangle size={11} /> Already sold to {imeiLookup.unit!.soldToName ?? 'another customer'} — this sale will be blocked
-              </p>
+      {/* IMEI / Vehicle Identifiers */}
+      {isVehicleProduct ? (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+          <p className="text-[10px] font-semibold text-indigo-700 uppercase tracking-wide mb-2">Vehicle Identifiers · گاڑی کے نمبر</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] text-gray-500 mb-0.5">Chassis Number</p>
+              <p className="text-sm font-mono font-bold text-gray-900">{selectedProduct?.chassisNumber ?? '—'}</p>
+            </div>
+            {selectedProduct?.engineNumber && (
+              <div>
+                <p className="text-[10px] text-gray-500 mb-0.5">Engine Number</p>
+                <p className="text-sm font-mono font-bold text-gray-900">{selectedProduct.engineNumber}</p>
+              </div>
+            )}
+            {selectedProduct?.registrationNumber && (
+              <div className="col-span-2">
+                <p className="text-[10px] text-gray-500 mb-0.5">Registration No.</p>
+                <p className="text-sm font-mono text-gray-700">{selectedProduct.registrationNumber}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Label>IMEI Number <span className="text-gray-400 font-normal">(optional — for phones)</span></Label>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={15}
+            placeholder="15-digit IMEI (dial *#06# on device)"
+            {...register('imeiNumber')}
+            className={inp}
+          />
+          {/* Real-time IMEI status */}
+          {debouncedImei.length === 15 && (
+            imeiChecking ? (
+              <p className="text-[11px] text-gray-400 mt-1">Checking availability…</p>
+            ) : imeiLookup?.found ? (
+              imeiLookup.unit!.status === 'available' ? (
+                <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
+                  <CheckCircle2 size={11} /> Available in inventory
+                  {imeiLookup.unit!.productName && ` — ${imeiLookup.unit!.productName}`}
+                </p>
+              ) : imeiLookup.unit!.status === 'sold' ? (
+                <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle size={11} /> Already sold to {imeiLookup.unit!.soldToName ?? 'another customer'} — this sale will be blocked
+                </p>
+              ) : (
+                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle size={11} /> Unit is marked as {imeiLookup.unit!.status} in inventory
+                </p>
+              )
             ) : (
-              <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
-                <AlertTriangle size={11} /> Unit is marked as {imeiLookup.unit!.status} in inventory
-              </p>
+              <p className="text-[11px] text-gray-400 mt-1">Not in inventory — will be recorded as new unit</p>
             )
-          ) : (
-            <p className="text-[11px] text-gray-400 mt-1">Not in inventory — will be recorded as new unit</p>
-          )
-        )}
-        {!debouncedImei.length && <p className="text-[11px] text-gray-400 mt-1">Dial *#06# on the device to find IMEI</p>}
-      </div>
+          )}
+          {!debouncedImei.length && <p className="text-[11px] text-gray-400 mt-1">Dial *#06# on the device to find IMEI</p>}
+        </div>
+      )}
 
       <Divider />
 
