@@ -81,6 +81,7 @@ export class ProductUnitsService {
         ? or(
             ilike(productUnits.imei, `%${search}%`),
             ilike(productUnits.imei2, `%${search}%`),
+            ilike(productUnits.serialNumber, `%${search}%`),
             ilike(productUnits.soldToName, `%${search}%`),
           )
         : undefined,
@@ -92,8 +93,10 @@ export class ProductUnitsService {
       db
         .select({
           id:            productUnits.id,
+          serialType:    productUnits.serialType,
           imei:          productUnits.imei,
           imei2:         productUnits.imei2,
+          serialNumber:  productUnits.serialNumber,
           color:         productUnits.color,
           storageGb:     productUnits.storageGb,
           condition:     productUnits.condition,
@@ -141,8 +144,10 @@ export class ProductUnitsService {
     const unit = await db
       .select({
         id:           productUnits.id,
+        serialType:   productUnits.serialType,
         imei:         productUnits.imei,
         imei2:        productUnits.imei2,
+        serialNumber: productUnits.serialNumber,
         color:        productUnits.color,
         storageGb:    productUnits.storageGb,
         condition:    productUnits.condition,
@@ -169,17 +174,31 @@ export class ProductUnitsService {
   }
 
   async create(sellerId: string, body: CreateProductUnitInput) {
-    const existing = await db.query.productUnits.findFirst({
-      where: and(eq(productUnits.imei, body.imei), eq(productUnits.sellerId, sellerId), isNull(productUnits.deletedAt)),
-      columns: { id: true },
-    });
-    if (existing) throw new AppError(`IMEI ${body.imei} is already registered in your inventory`, 409);
+    const isImei = body.serialType === 'imei';
+
+    if (isImei && body.imei) {
+      const existing = await db.query.productUnits.findFirst({
+        where: and(eq(productUnits.imei, body.imei), eq(productUnits.sellerId, sellerId), isNull(productUnits.deletedAt)),
+        columns: { id: true },
+      });
+      if (existing) throw new AppError(`IMEI ${body.imei} is already registered in your inventory`, 409);
+    }
+
+    if (!isImei && body.serialNumber) {
+      const existing = await db.query.productUnits.findFirst({
+        where: and(eq(productUnits.serialNumber, body.serialNumber), eq(productUnits.sellerId, sellerId), isNull(productUnits.deletedAt)),
+        columns: { id: true },
+      });
+      if (existing) throw new AppError(`Serial number ${body.serialNumber} is already registered in your inventory`, 409);
+    }
 
     const [unit] = await db.insert(productUnits).values({
       sellerId,
+      serialType:    body.serialType,
       productId:     body.productId ?? null,
-      imei:          body.imei,
-      imei2:         body.imei2 ?? null,
+      imei:          isImei ? (body.imei ?? null) : null,
+      imei2:         isImei ? (body.imei2 ?? null) : null,
+      serialNumber:  !isImei ? (body.serialNumber ?? null) : null,
       color:         body.color ?? null,
       storageGb:     body.storageGb ?? null,
       condition:     body.condition,

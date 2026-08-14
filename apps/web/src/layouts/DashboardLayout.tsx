@@ -24,7 +24,7 @@ const allNavItems = [
   { to: '/cash-sales',  label: 'Cash Sales',  icon: ShoppingCart,    end: undefined as boolean | undefined, perm: 'canMakeCashSales' as string | string[] },
   { to: '/expenses',    label: 'Expenses',    icon: Receipt,         end: undefined as boolean | undefined, perm: 'canRecordExpense' as string | string[] },
   { to: '/returns',     label: 'Returns',     icon: RotateCcw,       end: undefined as boolean | undefined, perm: 'canManageReturns' as string | string[] },
-  { to: '/imei',        label: 'IMEI',        icon: Smartphone,      end: undefined as boolean | undefined, perm: '__owner__' as string | string[] },
+  { to: '/imei',        label: 'Serials',     icon: Package,         end: undefined as boolean | undefined, perm: '__owner__' as string | string[] },
   { to: '/suppliers',   label: 'Suppliers',   icon: Building2,       end: undefined as boolean | undefined, perm: '__owner__' as string | string[] },
 ];
 

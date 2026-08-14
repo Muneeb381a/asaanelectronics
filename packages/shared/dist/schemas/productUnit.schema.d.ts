@@ -1,8 +1,10 @@
 import { z } from 'zod';
 export declare const imeiField: z.ZodEffects<z.ZodString, string, string>;
-export declare const createProductUnitSchema: z.ZodObject<{
-    imei: z.ZodEffects<z.ZodString, string, string>;
+export declare const createProductUnitSchema: z.ZodEffects<z.ZodObject<{
+    serialType: z.ZodDefault<z.ZodEnum<["imei", "serial", "chassis_engine"]>>;
+    imei: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
     imei2: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
+    serialNumber: z.ZodOptional<z.ZodString>;
     productId: z.ZodOptional<z.ZodString>;
     color: z.ZodOptional<z.ZodString>;
     storageGb: z.ZodOptional<z.ZodNumber>;
@@ -10,21 +12,47 @@ export declare const createProductUnitSchema: z.ZodObject<{
     purchasePrice: z.ZodOptional<z.ZodNumber>;
     notes: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    imei: string;
+    serialType: "serial" | "imei" | "chassis_engine";
     condition: "new" | "refurbished";
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
     notes?: string | undefined;
+    imei?: string | undefined;
     imei2?: string | undefined;
+    serialNumber?: string | undefined;
     storageGb?: number | undefined;
 }, {
-    imei: string;
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
     notes?: string | undefined;
+    imei?: string | undefined;
+    serialType?: "serial" | "imei" | "chassis_engine" | undefined;
     imei2?: string | undefined;
+    serialNumber?: string | undefined;
+    storageGb?: number | undefined;
+    condition?: "new" | "refurbished" | undefined;
+}>, {
+    serialType: "serial" | "imei" | "chassis_engine";
+    condition: "new" | "refurbished";
+    productId?: string | undefined;
+    color?: string | undefined;
+    purchasePrice?: number | undefined;
+    notes?: string | undefined;
+    imei?: string | undefined;
+    imei2?: string | undefined;
+    serialNumber?: string | undefined;
+    storageGb?: number | undefined;
+}, {
+    productId?: string | undefined;
+    color?: string | undefined;
+    purchasePrice?: number | undefined;
+    notes?: string | undefined;
+    imei?: string | undefined;
+    serialType?: "serial" | "imei" | "chassis_engine" | undefined;
+    imei2?: string | undefined;
+    serialNumber?: string | undefined;
     storageGb?: number | undefined;
     condition?: "new" | "refurbished" | undefined;
 }>;

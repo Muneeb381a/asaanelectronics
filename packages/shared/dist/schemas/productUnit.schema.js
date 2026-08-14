@@ -17,15 +17,17 @@ export const imeiField = z
     .regex(/^\d{15}$/, 'IMEI must be exactly 15 digits')
     .refine(luhnCheck, 'Invalid IMEI (Luhn checksum failed — check for typos)');
 export const createProductUnitSchema = z.object({
-    imei: imeiField,
+    serialType: z.enum(['imei', 'serial', 'chassis_engine']).default('imei'),
+    imei: imeiField.optional(),
     imei2: imeiField.optional(),
+    serialNumber: z.string().max(100).optional(),
     productId: z.string().optional(),
     color: z.string().max(50).optional(),
     storageGb: z.number().int().positive().optional(),
     condition: z.enum(['new', 'refurbished']).default('new'),
     purchasePrice: z.number().positive().optional(),
     notes: z.string().max(500).optional(),
-});
+}).refine((d) => (d.serialType === 'imei' ? !!d.imei : !!d.serialNumber), { message: 'Provide IMEI for phone units, or serialNumber for other units' });
 export const bulkCreateProductUnitsSchema = z.object({
     imeis: z.array(imeiField).min(1).max(100),
     productId: z.string().optional(),

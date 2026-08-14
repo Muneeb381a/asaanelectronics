@@ -1,13 +1,16 @@
 import { api } from './client.ts';
 
-export type UnitStatus = 'available' | 'sold' | 'defective' | 'returned';
+export type UnitStatus    = 'available' | 'sold' | 'defective' | 'returned';
 export type UnitCondition = 'new' | 'refurbished';
-export type PtaStatus = 'approved' | 'non_pta' | 'unknown';
+export type PtaStatus     = 'approved' | 'non_pta' | 'unknown';
+export type SerialType    = 'imei' | 'serial' | 'chassis_engine';
 
 export interface ProductUnit {
   id:            string;
-  imei:          string;
+  serialType:    SerialType;
+  imei:          string | null;
   imei2:         string | null;
+  serialNumber:  string | null;
   color:         string | null;
   storageGb:     number | null;
   condition:     UnitCondition;
@@ -39,8 +42,10 @@ export interface ImeiLookupResult {
 }
 
 export interface CreateUnitBody {
-  imei:          string;
+  serialType?:   SerialType;
+  imei?:         string;
   imei2?:        string;
+  serialNumber?: string;
   productId?:    string;
   color?:        string;
   storageGb?:    number;
