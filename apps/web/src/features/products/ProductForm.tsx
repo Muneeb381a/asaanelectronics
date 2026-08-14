@@ -109,10 +109,11 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
     return pairs.map((pair, pi) =>
       pair.length === 2 ? (
         <div key={pi} className="grid grid-cols-2 gap-3">
-          {pair.map((f) => <TemplateField key={f.key} field={f} register={register} />)}
+          {pair.map((f) => <TemplateField key={f.key} field={f} register={register as any} />)}
         </div>
       ) : (
-        <TemplateField key={pair[0]!.key} field={pair[0]!} register={register} />
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <TemplateField key={pair[0]!.key} field={pair[0]!} register={register as any} />
       )
     );
   };
