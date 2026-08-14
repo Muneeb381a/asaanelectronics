@@ -40,7 +40,8 @@ import suppliersRoutes         from './modules/suppliers/suppliers.routes.js';
 import tradeInsRoutes          from './modules/tradeIns/tradeIns.routes.js';
 import repossessionsRoutes     from './modules/repossessions/repossessions.routes.js';
 import searchRoutes            from './modules/search/search.routes.js';
-import broadcastsRoutes        from './modules/broadcasts/broadcasts.routes.js';
+import broadcastsRoutes           from './modules/broadcasts/broadcasts.routes.js';
+import categoryTemplatesRoutes    from './modules/categoryTemplates/categoryTemplates.routes.js';
 
 const app = express();
 
@@ -128,6 +129,7 @@ app.use('/api/trade-ins',          tradeInsRoutes);
 app.use('/api/repossessions',      repossessionsRoutes);
 app.use('/api/search',             searchRoutes);
 app.use('/api/broadcasts',            broadcastsRoutes);
+app.use('/api/category-templates',    categoryTemplatesRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
 app.use(errorMiddleware);

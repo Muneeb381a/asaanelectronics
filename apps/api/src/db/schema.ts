@@ -51,6 +51,17 @@ export const vehicleFileLocationEnum = pgEnum('vehicle_file_location', [
   'WITH_SHOP', 'WITH_CUSTOMER', 'WITH_RTO', 'WITH_NADRA', 'IN_TRANSFER', 'WITH_COURT', 'WITH_POLICE',
 ]);
 
+export type FieldDefinitionOption = { value: string; label: string };
+export type FieldDefinition = {
+  key: string;
+  column?: string;
+  label: string;
+  type: 'text' | 'number' | 'select' | 'boolean';
+  options?: FieldDefinitionOption[];
+  placeholder?: string;
+  required?: boolean;
+};
+
 export const sellers = pgTable('sellers', {
   id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
   shopName:      text('shop_name').notNull(),
@@ -273,12 +284,24 @@ export const products = pgTable('products', {
   letterStatus:        letterStatusEnum('letter_status'),
   biometricStatus:     biometricStatusEnum('biometric_status'),
   vehicleFileLocation: vehicleFileLocationEnum('vehicle_file_location'),
+  attributes: json('attributes').$type<Record<string, unknown>>(),
   deletedAt: timestamp('deleted_at'),
   deletedBy: text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
 }, (t) => [
   index('idx_products_seller').on(t.sellerId),
   index('idx_products_name').on(t.sellerId, t.name),
   index('idx_products_seller_deleted').on(t.sellerId, t.deletedAt),
+]);
+
+export const categoryTemplates = pgTable('category_templates', {
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId: text('seller_id').notNull().references(() => sellers.id),
+  categoryName: text('category_name').notNull(),
+  fields: json('fields').notNull().$type<FieldDefinition[]>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('idx_category_templates_seller_cat').on(t.sellerId, t.categoryName),
+  index('idx_category_templates_seller').on(t.sellerId),
 ]);
 
 export const installments = pgTable('installments', {

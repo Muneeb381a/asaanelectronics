@@ -577,6 +577,7 @@ export default function ProductsPage() {
                   biometricStatus:     modal.product.biometricStatus     ?? undefined,
                   letterStatus:        modal.product.letterStatus        ?? undefined,
                   vehicleFileLocation: modal.product.vehicleFileLocation ?? undefined,
+                  attributes:          modal.product.attributes          ?? undefined,
                 } : undefined}
                 isPending={isPending}
                 onCancel={() => setModal(null)}

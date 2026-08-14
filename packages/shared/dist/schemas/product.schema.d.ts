@@ -23,6 +23,7 @@ export declare const createProductSchema: z.ZodObject<{
     letterStatus: z.ZodOptional<z.ZodEnum<["NONE", "FIRST_NOTICE", "SECOND_NOTICE", "LEGAL_NOTICE", "FILED"]>>;
     biometricStatus: z.ZodOptional<z.ZodEnum<["PENDING", "SELLER_DONE", "BUYER_DONE", "COMPLETED", "NOT_REQUIRED"]>>;
     vehicleFileLocation: z.ZodOptional<z.ZodEnum<["WITH_SHOP", "WITH_CUSTOMER", "WITH_RTO", "WITH_NADRA", "IN_TRANSFER", "WITH_COURT", "WITH_POLICE"]>>;
+    attributes: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     price: number;
@@ -47,6 +48,7 @@ export declare const createProductSchema: z.ZodObject<{
     letterStatus?: "NONE" | "FIRST_NOTICE" | "SECOND_NOTICE" | "LEGAL_NOTICE" | "FILED" | undefined;
     biometricStatus?: "PENDING" | "COMPLETED" | "SELLER_DONE" | "BUYER_DONE" | "NOT_REQUIRED" | undefined;
     vehicleFileLocation?: "WITH_SHOP" | "WITH_CUSTOMER" | "WITH_RTO" | "WITH_NADRA" | "IN_TRANSFER" | "WITH_COURT" | "WITH_POLICE" | undefined;
+    attributes?: Record<string, unknown> | undefined;
 }, {
     name: string;
     price: number;
@@ -71,6 +73,7 @@ export declare const createProductSchema: z.ZodObject<{
     letterStatus?: "NONE" | "FIRST_NOTICE" | "SECOND_NOTICE" | "LEGAL_NOTICE" | "FILED" | undefined;
     biometricStatus?: "PENDING" | "COMPLETED" | "SELLER_DONE" | "BUYER_DONE" | "NOT_REQUIRED" | undefined;
     vehicleFileLocation?: "WITH_SHOP" | "WITH_CUSTOMER" | "WITH_RTO" | "WITH_NADRA" | "IN_TRANSFER" | "WITH_COURT" | "WITH_POLICE" | undefined;
+    attributes?: Record<string, unknown> | undefined;
 }>;
 export declare const updateProductSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
@@ -96,6 +99,7 @@ export declare const updateProductSchema: z.ZodObject<{
     letterStatus: z.ZodOptional<z.ZodOptional<z.ZodEnum<["NONE", "FIRST_NOTICE", "SECOND_NOTICE", "LEGAL_NOTICE", "FILED"]>>>;
     biometricStatus: z.ZodOptional<z.ZodOptional<z.ZodEnum<["PENDING", "SELLER_DONE", "BUYER_DONE", "COMPLETED", "NOT_REQUIRED"]>>>;
     vehicleFileLocation: z.ZodOptional<z.ZodOptional<z.ZodEnum<["WITH_SHOP", "WITH_CUSTOMER", "WITH_RTO", "WITH_NADRA", "IN_TRANSFER", "WITH_COURT", "WITH_POLICE"]>>>;
+    attributes: z.ZodOptional<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
     photoUrl?: string | undefined;
@@ -120,6 +124,7 @@ export declare const updateProductSchema: z.ZodObject<{
     letterStatus?: "NONE" | "FIRST_NOTICE" | "SECOND_NOTICE" | "LEGAL_NOTICE" | "FILED" | undefined;
     biometricStatus?: "PENDING" | "COMPLETED" | "SELLER_DONE" | "BUYER_DONE" | "NOT_REQUIRED" | undefined;
     vehicleFileLocation?: "WITH_SHOP" | "WITH_CUSTOMER" | "WITH_RTO" | "WITH_NADRA" | "IN_TRANSFER" | "WITH_COURT" | "WITH_POLICE" | undefined;
+    attributes?: Record<string, unknown> | undefined;
 }, {
     name?: string | undefined;
     photoUrl?: string | undefined;
@@ -144,6 +149,7 @@ export declare const updateProductSchema: z.ZodObject<{
     letterStatus?: "NONE" | "FIRST_NOTICE" | "SECOND_NOTICE" | "LEGAL_NOTICE" | "FILED" | undefined;
     biometricStatus?: "PENDING" | "COMPLETED" | "SELLER_DONE" | "BUYER_DONE" | "NOT_REQUIRED" | undefined;
     vehicleFileLocation?: "WITH_SHOP" | "WITH_CUSTOMER" | "WITH_RTO" | "WITH_NADRA" | "IN_TRANSFER" | "WITH_COURT" | "WITH_POLICE" | undefined;
+    attributes?: Record<string, unknown> | undefined;
 }>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

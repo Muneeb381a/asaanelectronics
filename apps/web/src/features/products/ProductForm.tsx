@@ -2,9 +2,11 @@ import { useForm, useWatch } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createProductSchema, type CreateProductInput } from '@assaan/shared';
+import type { FieldDefinitionInput } from '@assaan/shared';
 import type { Product } from '../../api/products.api.ts';
 import { productsApi } from '../../api/products.api.ts';
 import { suppliersApi } from '../../api/suppliers.api.ts';
+import { categoryTemplatesApi } from '../../api/categoryTemplates.api.ts';
 
 interface Props {
   defaultValues?: Partial<CreateProductInput>;
@@ -13,9 +15,6 @@ interface Props {
   onCancel: () => void;
   product?: Product;
 }
-
-const VEHICLE_CATEGORIES = ['Bike', 'Rickshaw', 'Loader Rickshaw', 'Electric Bike', 'Electric Rickshaw'];
-const DEFAULT_CATEGORIES = ['Refrigerator', 'AC', 'Washing Machine', 'TV', 'Mobile', 'Laptop', 'Generator'];
 
 function Field({ label, optional, error, children }: {
   label: string; optional?: boolean; error?: string; children: React.ReactNode;
@@ -32,6 +31,31 @@ function Field({ label, optional, error, children }: {
 }
 
 const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition';
+
+function TemplateField({ field, register }: { field: FieldDefinitionInput; register: ReturnType<typeof useForm>['register'] }) {
+  const path = field.column ?? `attributes.${field.key}`;
+  const reg = field.type === 'number'
+    ? register(path as any, { valueAsNumber: true })
+    : register(path as any);
+
+  return (
+    <Field label={field.label} optional={!field.required}>
+      {field.type === 'select' ? (
+        <select {...register(path as any)} className={inputCls}>
+          <option value="">Select…</option>
+          {field.options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      ) : (
+        <input
+          {...reg}
+          type={field.type === 'number' ? 'number' : 'text'}
+          placeholder={field.placeholder ?? ''}
+          className={inputCls}
+        />
+      )}
+    </Field>
+  );
+}
 
 export default function ProductForm({ defaultValues, onSubmit, isPending, onCancel }: Props) {
   const {
@@ -56,6 +80,13 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
     staleTime: 60_000,
   });
 
+  const { data: templateFields } = useQuery({
+    queryKey: ['category-template', category],
+    queryFn: () => categoryTemplatesApi.getByCategory(category!),
+    enabled: !!category && category.trim().length > 0,
+    staleTime: 5 * 60_000,
+  });
+
   const markup = cashPrice && installmentPrice && installmentPrice > cashPrice
     ? installmentPrice - cashPrice
     : null;
@@ -65,8 +96,25 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
     ? Math.round(((cashPrice - purchasePrice) / cashPrice) * 100)
     : null;
 
-  const allCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...existingCategories])).sort();
-  const isVehicle = category ? VEHICLE_CATEGORIES.includes(category) : false;
+  const allCategories = Array.from(new Set([...existingCategories])).sort();
+
+  const hasTemplate = !!templateFields && templateFields.length > 0;
+
+  const renderTemplateFields = (fields: FieldDefinitionInput[]) => {
+    const pairs: FieldDefinitionInput[][] = [];
+    for (let i = 0; i < fields.length; i += 2) {
+      pairs.push(fields.slice(i, i + 2));
+    }
+    return pairs.map((pair, pi) =>
+      pair.length === 2 ? (
+        <div key={pi} className="grid grid-cols-2 gap-3">
+          {pair.map((f) => <TemplateField key={f.key} field={f} register={register} />)}
+        </div>
+      ) : (
+        <TemplateField key={pair[0]!.key} field={pair[0]!} register={register} />
+      )
+    );
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -84,7 +132,6 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
           />
           <datalist id="category-list">
             {allCategories.map((c) => <option key={c} value={c} />)}
-            {VEHICLE_CATEGORIES.map((c) => <option key={c} value={c} />)}
           </datalist>
         </Field>
         <Field label="Brand" optional>
@@ -136,66 +183,12 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
         </Field>
       </div>
 
-      {isVehicle && (
-        <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 space-y-3">
-          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Vehicle Details</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Engine Number" optional>
-              <input {...register('engineNumber')} placeholder="e.g. JC85E-1234567" className={inputCls} />
-            </Field>
-            <Field label="Chassis Number" optional>
-              <input {...register('chassisNumber')} placeholder="e.g. JS1GX71A1Y2100001" className={inputCls} />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Registration Number" optional>
-              <input {...register('registrationNumber')} placeholder="e.g. LHR-1234" className={inputCls} />
-            </Field>
-            <Field label="Model Year" optional>
-              <input type="number" {...register('modelYear', { valueAsNumber: true })} placeholder="e.g. 2023" className={inputCls} />
-            </Field>
-          </div>
-          <Field label="Condition" optional>
-            <select {...register('vehicleCondition')} className={inputCls}>
-              <option value="">Select…</option>
-              <option value="NEW">New</option>
-              <option value="USED">Used</option>
-            </select>
-          </Field>
-          <Field label="File / Document Location" optional>
-            <select {...register('vehicleFileLocation')} className={inputCls}>
-              <option value="">Not set</option>
-              <option value="WITH_SHOP">دکان میں — Shop k paas hai</option>
-              <option value="WITH_CUSTOMER">گاہک کے پاس — Customer k paas hai</option>
-              <option value="WITH_RTO">RTO / Excise Office mein</option>
-              <option value="WITH_NADRA">NADRA Office mein</option>
-              <option value="IN_TRANSFER">Transfer process mein</option>
-              <option value="WITH_COURT">عدالت میں — Court mein</option>
-              <option value="WITH_POLICE">Police Station mein</option>
-            </select>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Biometric Transfer" optional>
-              <select {...register('biometricStatus')} className={inputCls}>
-                <option value="">Not set</option>
-                <option value="PENDING">Pending (باقی)</option>
-                <option value="SELLER_DONE">Seller Done (دکاندار نے کیا)</option>
-                <option value="BUYER_DONE">Buyer Done (خریدار نے کیا)</option>
-                <option value="COMPLETED">Completed (مکمل)</option>
-                <option value="NOT_REQUIRED">Not Required</option>
-              </select>
-            </Field>
-            <Field label="Notice / Letter Status" optional>
-              <select {...register('letterStatus')} className={inputCls}>
-                <option value="">None</option>
-                <option value="NONE">None (کوئی نہیں)</option>
-                <option value="FIRST_NOTICE">1st Notice</option>
-                <option value="SECOND_NOTICE">2nd Notice</option>
-                <option value="LEGAL_NOTICE">Legal Notice</option>
-                <option value="FILED">Case Filed</option>
-              </select>
-            </Field>
-          </div>
+      {hasTemplate && (
+        <div className="border border-indigo-100 bg-indigo-50 rounded-xl p-4 space-y-3">
+          <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">
+            {category} Details
+          </p>
+          {renderTemplateFields(templateFields!)}
         </div>
       )}
 

@@ -10,3 +10,4 @@ export * from './schemas/staff.schema.js';
 export * from './schemas/verification.schema.js';
 export * from './schemas/cashSale.schema.js';
 export * from './schemas/productUnit.schema.js';
+export * from './schemas/categoryTemplate.schema.js';

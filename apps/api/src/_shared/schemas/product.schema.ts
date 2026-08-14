@@ -14,6 +14,7 @@ export const createProductSchema = z.object({
   warrantyMonths: z.number().int().min(0).optional(),
   description: z.string().optional(),
   supplierId:  z.string().optional(),
+  attributes:  z.record(z.string(), z.unknown()).optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();
