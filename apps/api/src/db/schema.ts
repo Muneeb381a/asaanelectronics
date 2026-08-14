@@ -703,6 +703,21 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   index('idx_sup_inv_date').on(t.invoiceDate),
 ]);
 
+// ── Supplier Invoice Lines ────────────────────────────────────────────────────
+export const supplierInvoiceLines = pgTable('supplier_invoice_lines', {
+  id:          text('id').primaryKey().$defaultFn(() => randomUUID()),
+  invoiceId:   text('invoice_id').notNull().references(() => supplierInvoices.id, { onDelete: 'cascade' }),
+  sellerId:    text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  productId:   text('product_id').references(() => products.id, { onDelete: 'set null' }),
+  productName: text('product_name').notNull(),
+  quantity:    integer('quantity').notNull().default(1),
+  unitPrice:   decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
+  notes:       text('notes'),
+}, (t) => [
+  index('idx_sup_inv_lines_invoice').on(t.invoiceId),
+  index('idx_sup_inv_lines_seller').on(t.sellerId),
+]);
+
 // ── Trade-Ins ─────────────────────────────────────────────────────────────────
 export const tradeIns = pgTable('trade_ins', {
   id:            text('id').primaryKey().$defaultFn(() => randomUUID()),

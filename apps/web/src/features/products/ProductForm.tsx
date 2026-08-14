@@ -32,7 +32,8 @@ function Field({ label, optional, error, children }: {
 
 const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition';
 
-function TemplateField({ field, register }: { field: FieldDefinitionInput; register: ReturnType<typeof useForm>['register'] }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TemplateField({ field, register }: { field: FieldDefinitionInput; register: (...args: any[]) => any }) {
   const path = field.column ?? `attributes.${field.key}`;
   const reg = field.type === 'number'
     ? register(path as any, { valueAsNumber: true })

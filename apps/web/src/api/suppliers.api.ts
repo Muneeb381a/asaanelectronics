@@ -14,6 +14,14 @@ export interface Supplier {
   outstanding:  number;
 }
 
+export interface SupplierInvoiceLine {
+  id:          string;
+  productId:   string | null;
+  productName: string;
+  quantity:    number;
+  unitPrice:   number;
+}
+
 export interface SupplierInvoice {
   id:          string;
   supplierId:  string;
@@ -24,6 +32,15 @@ export interface SupplierInvoice {
   description: string;
   invoiceDate: string;
   createdAt:   string;
+  lines:       SupplierInvoiceLine[];
+}
+
+export interface CreateInvoiceLine {
+  productId?:  string;
+  productName: string;
+  quantity:    number;
+  unitPrice:   number;
+  notes?:      string;
 }
 
 export interface PnLData {
@@ -59,7 +76,13 @@ export const suppliersApi = {
   listInvoices: (supplierId: string) =>
     api.get<{ data: SupplierInvoice[] }>(`/suppliers/${supplierId}/invoices`).then(unwrap<SupplierInvoice[]>),
 
-  createInvoice: (supplierId: string, body: { totalAmount: number; paidAmount?: number; description: string; invoiceDate: string }) =>
+  createInvoice: (supplierId: string, body: {
+    totalAmount?: number;
+    paidAmount?: number;
+    description?: string;
+    invoiceDate: string;
+    lines?: CreateInvoiceLine[];
+  }) =>
     api.post<{ data: SupplierInvoice }>(`/suppliers/${supplierId}/invoices`, body).then(unwrap<SupplierInvoice>),
 
   updateInvoicePaid: (supplierId: string, invoiceId: string, paidAmount: number) =>
