@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useId } from 'react';
+import { useState, useCallback, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -57,11 +57,9 @@ function pkr(n: number) {
   return n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
-const LETTER_OPTIONS = ['NONE','FIRST_NOTICE','SECOND_NOTICE','LEGAL_NOTICE','FILED'] as const;
-const BIO_OPTIONS    = ['PENDING','SELLER_DONE','BUYER_DONE','COMPLETED','NOT_REQUIRED'] as const;
-const FILE_OPTIONS   = ['WITH_SHOP','WITH_CUSTOMER','WITH_RTO','WITH_NADRA','IN_TRANSFER','WITH_COURT','WITH_POLICE'] as const;
-const PTA_OPTIONS    = ['APPROVED','NON_PTA','UNKNOWN'] as const;
-const STORAGE_OPTIONS= ['2','4','6','8','12','16','32','64','128','256','512'] as const;
+const LETTER_OPTIONS  = ['NONE','FIRST_NOTICE','SECOND_NOTICE','LEGAL_NOTICE','FILED'] as const;
+const BIO_OPTIONS     = ['PENDING','SELLER_DONE','BUYER_DONE','COMPLETED','NOT_REQUIRED'] as const;
+const STORAGE_OPTIONS = ['2','4','6','8','12','16','32','64','128','256','512'] as const;
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 

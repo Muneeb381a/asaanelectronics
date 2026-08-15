@@ -6,7 +6,7 @@ import {
   TrendingUp, TrendingDown, CreditCard, AlertTriangle,
   Calendar, Package, ArrowRight, BarChart3,
   MapPin, Users, ShieldCheck, Zap, ShoppingCart, Bell, Target, Gift,
-  Clock, PhoneCall, Banknote, XOctagon,
+  Clock, PhoneCall, Banknote,
   Wallet, CheckCircle, Send, X, Landmark,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
@@ -153,7 +153,7 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
           <button onClick={onClose} className="flex-1 py-2.5 text-sm font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition">Cancel</button>
           <button onClick={() => mutation.mutate()} disabled={!amount || Number(amount) < 0 || mutation.isPending}
             className="flex-1 py-2.5 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5">
-            {mutation.isPending ? 'Processingâ€¦' : <><CheckCircle size={14} /> Cash Li            </>)}
+            {mutation.isPending ? 'Processing…' : <><CheckCircle size={14} /> Cash Li</>}
           </button>
         </div>
       </div>
@@ -1435,7 +1435,7 @@ export default function DashboardPage() {
                   className="flex-1 py-2.5 text-sm font-black text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition">Cancel</button>
                 <button disabled={!handoverAmount || amt <= 0 || submitHandover.isPending} onClick={() => submitHandover.mutate()}
                   className="flex-1 py-2.5 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl transition flex items-center justify-center gap-1.5">
-                  {submitHandover.isPending ? <span className="animate-pulse">Jama ho raha hai...</span> : <><Send size={13} /> Jama Karein            </>)}
+                  {submitHandover.isPending ? <span className="animate-pulse">Jama ho raha hai...</span> : <><Send size={13} /> Jama Karein</>}
                 </button>
               </div>
             </div>
