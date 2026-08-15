@@ -558,7 +558,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
                   {actions.map((a) => (
                     <button key={a.to} onClick={() => navigate(a.to)}
-                      className="flex flex-col items-center gap-2 py-4 lg:py-5 rounded-2xl bg-white ring-1 ring-slate-200 hover:ring-slate-300 hover:shadow-md shadow-sm transition-all">
+                      className="flex flex-col items-center gap-1.5 py-3 lg:py-4 rounded-2xl bg-white ring-1 ring-slate-200 hover:ring-slate-300 hover:shadow-md shadow-sm transition-all">
                       <div className={`w-10 h-10 ${a.bg} rounded-xl flex items-center justify-center`}>
                         <a.icon size={18} className={a.color} />
                       </div>
@@ -583,56 +583,89 @@ export default function DashboardPage() {
             {/* ══════ AAJ TAB ══════ */}
             {activeTab === 'aaj' && (<>
 
-            <div className="flex items-center gap-2.5">
-              <div className="w-1 h-5 bg-blue-600 rounded-full shrink-0" />
-              <p className="text-sm font-black text-slate-800">Aaj Ka Kaam</p>
-              <p className="text-[11px] text-slate-400">&mdash; ye cheezein aaj handle karni hain</p>
-            </div>
-
             {briefing && (
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-                <button
-                  className={`text-left p-5 rounded-2xl shadow-sm ring-1 transition-all ${
-                    briefing.dueToday > 0 ? 'bg-blue-600 ring-blue-500/30 hover:bg-blue-700 shadow-blue-200' : 'bg-white ring-slate-200'
-                  }`}
-                  onClick={() => briefing.dueToday > 0 && setShowDueToday((v) => !v)}>
-                  <Clock size={20} className={`mb-3 ${briefing.dueToday > 0 ? 'text-blue-200' : 'text-slate-300'}`} />
-                  <p className={`text-4xl xl:text-5xl font-black tabular-nums leading-none ${briefing.dueToday > 0 ? 'text-white' : 'text-slate-300'}`}>
-                    {briefing.dueToday}
-                  </p>
-                  <p className={`text-sm font-black mt-2 ${briefing.dueToday > 0 ? 'text-blue-100' : 'text-slate-500'}`}>Aaj Due</p>
-                  <p className={`text-[11px] mt-0.5 ${briefing.dueToday > 0 ? 'text-blue-200' : 'text-slate-400'}`}>
-                    {briefing.dueToday > 0 ? (showDueToday ? 'Chhupao ▲' : 'Naam dekho ▼') : 'Koi nahi'}
-                  </p>
-                </button>
-
-                <div className={`p-5 rounded-2xl shadow-sm ring-1 ${briefing.overdueTotal > 0 ? 'bg-rose-600 ring-rose-500/30 shadow-rose-200' : 'bg-white ring-slate-200'}`}>
-                  <AlertTriangle size={20} className={`mb-3 ${briefing.overdueTotal > 0 ? 'text-rose-200' : 'text-slate-300'}`} />
-                  <p className={`text-4xl xl:text-5xl font-black tabular-nums leading-none ${briefing.overdueTotal > 0 ? 'text-white' : 'text-slate-300'}`}>
-                    {briefing.overdueTotal}
-                  </p>
-                  <p className={`text-sm font-black mt-2 ${briefing.overdueTotal > 0 ? 'text-rose-100' : 'text-slate-500'}`}>Late Hain</p>
-                  <p className={`text-[11px] mt-0.5 ${briefing.overdueTotal > 0 ? 'text-rose-200' : 'text-slate-400'}`}>
-                    {briefing.overdueTotal > 0 ? 'Foran call karo' : 'Sab time pe'}
-                  </p>
+              <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Aaj Ka Hisaab</p>
+                  </div>
+                  {briefing.dueTomorrow > 0 && (
+                    <span className="text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-lg">
+                      +{briefing.dueTomorrow} kal due
+                    </span>
+                  )}
                 </div>
+                <div className="grid grid-cols-2 divide-x divide-y divide-slate-100">
+                  <button
+                    onClick={() => briefing.dueToday > 0 && setShowDueToday((v) => !v)}
+                    className={`flex items-center gap-3 p-4 text-left transition-colors ${
+                      briefing.dueToday > 0 ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'
+                    }`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      briefing.dueToday > 0 ? 'bg-blue-600' : 'bg-slate-100'
+                    }`}>
+                      <Clock size={16} className={briefing.dueToday > 0 ? 'text-white' : 'text-slate-400'} />
+                    </div>
+                    <div>
+                      <p className={`text-2xl lg:text-3xl font-black tabular-nums leading-none ${
+                        briefing.dueToday > 0 ? 'text-blue-700' : 'text-slate-300'
+                      }`}>{briefing.dueToday}</p>
+                      <p className={`text-[11px] font-bold mt-0.5 ${briefing.dueToday > 0 ? 'text-slate-700' : 'text-slate-400'}`}>Aaj Due</p>
+                      <p className={`text-[10px] mt-0.5 ${briefing.dueToday > 0 ? 'text-blue-500' : 'text-slate-300'}`}>
+                        {briefing.dueToday > 0 ? (showDueToday ? 'Chhupao ▲' : 'Naam dekho ▼') : 'koi nahi'}
+                      </p>
+                    </div>
+                  </button>
 
-                <div className={`p-5 rounded-2xl shadow-sm ring-1 ${todayTotal > 0 ? 'bg-white ring-emerald-200' : 'bg-white ring-slate-200'}`}>
-                  <Banknote size={20} className={`mb-3 ${todayTotal > 0 ? 'text-emerald-500' : 'text-slate-300'}`} />
-                  <p className={`text-2xl xl:text-3xl font-black tabular-nums leading-none ${todayTotal > 0 ? 'text-emerald-700' : 'text-slate-300'}`}>
-                    {pkrShort(todayTotal)}
-                  </p>
-                  <p className={`text-sm font-black mt-2 ${todayTotal > 0 ? 'text-slate-700' : 'text-slate-500'}`}>Aaj Mila</p>
-                  <p className={`text-[11px] mt-0.5 ${todayTotal > 0 ? 'text-slate-400' : 'text-slate-300'}`}>cash + inst</p>
-                </div>
+                  <div className={`flex items-center gap-3 p-4 ${briefing.overdueTotal > 0 ? 'bg-rose-50/40' : ''}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      briefing.overdueTotal > 0 ? 'bg-rose-600' : 'bg-slate-100'
+                    }`}>
+                      <AlertTriangle size={16} className={briefing.overdueTotal > 0 ? 'text-white' : 'text-slate-400'} />
+                    </div>
+                    <div>
+                      <p className={`text-2xl lg:text-3xl font-black tabular-nums leading-none ${
+                        briefing.overdueTotal > 0 ? 'text-rose-700' : 'text-slate-300'
+                      }`}>{briefing.overdueTotal}</p>
+                      <p className={`text-[11px] font-bold mt-0.5 ${briefing.overdueTotal > 0 ? 'text-slate-700' : 'text-slate-400'}`}>Late Hain</p>
+                      <p className={`text-[10px] mt-0.5 ${briefing.overdueTotal > 0 ? 'text-rose-500' : 'text-slate-300'}`}>
+                        {briefing.overdueTotal > 0 ? 'call karo' : 'sab theek'}
+                      </p>
+                    </div>
+                  </div>
 
-                <div className={`p-5 rounded-2xl shadow-sm ring-1 ${briefing.promisesToday > 0 ? 'bg-white ring-amber-200' : 'bg-white ring-slate-200'}`}>
-                  <Bell size={20} className={`mb-3 ${briefing.promisesToday > 0 ? 'text-amber-500' : 'text-slate-300'}`} />
-                  <p className={`text-4xl xl:text-5xl font-black tabular-nums leading-none ${briefing.promisesToday > 0 ? 'text-amber-700' : 'text-slate-300'}`}>
-                    {briefing.promisesToday}
-                  </p>
-                  <p className={`text-sm font-black mt-2 ${briefing.promisesToday > 0 ? 'text-slate-700' : 'text-slate-500'}`}>Waday</p>
-                  <p className={`text-[11px] mt-0.5 ${briefing.promisesToday > 0 ? 'text-slate-400' : 'text-slate-300'}`}>aaj follow karein</p>
+                  <div className={`flex items-center gap-3 p-4 ${todayTotal > 0 ? 'bg-emerald-50/40' : ''}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      todayTotal > 0 ? 'bg-emerald-600' : 'bg-slate-100'
+                    }`}>
+                      <Banknote size={16} className={todayTotal > 0 ? 'text-white' : 'text-slate-400'} />
+                    </div>
+                    <div>
+                      <p className={`text-xl lg:text-2xl font-black tabular-nums leading-none ${
+                        todayTotal > 0 ? 'text-emerald-700' : 'text-slate-300'
+                      }`}>{todayTotal > 0 ? pkrShort(todayTotal) : '0'}</p>
+                      <p className={`text-[11px] font-bold mt-0.5 ${todayTotal > 0 ? 'text-slate-700' : 'text-slate-400'}`}>Aaj Mila</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">cash + installment</p>
+                    </div>
+                  </div>
+
+                  <div className={`flex items-center gap-3 p-4 ${briefing.promisesToday > 0 ? 'bg-amber-50/40' : ''}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      briefing.promisesToday > 0 ? 'bg-amber-500' : 'bg-slate-100'
+                    }`}>
+                      <Bell size={16} className={briefing.promisesToday > 0 ? 'text-white' : 'text-slate-400'} />
+                    </div>
+                    <div>
+                      <p className={`text-2xl lg:text-3xl font-black tabular-nums leading-none ${
+                        briefing.promisesToday > 0 ? 'text-amber-700' : 'text-slate-300'
+                      }`}>{briefing.promisesToday}</p>
+                      <p className={`text-[11px] font-bold mt-0.5 ${briefing.promisesToday > 0 ? 'text-slate-700' : 'text-slate-400'}`}>Waday</p>
+                      <p className={`text-[10px] mt-0.5 ${briefing.promisesToday > 0 ? 'text-amber-500' : 'text-slate-300'}`}>
+                        {briefing.promisesToday > 0 ? 'aaj follow karo' : 'koi nahi'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
