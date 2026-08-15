@@ -38,6 +38,7 @@ const PortalDashboardPage   = lazy(() => import('../pages/portal/PortalDashboard
 const ImeiPage              = lazy(() => import('../pages/ImeiPage.tsx'));
 const DueSheetPage          = lazy(() => import('../pages/DueSheetPage.tsx'));
 const SuppliersPage         = lazy(() => import('../pages/SuppliersPage.tsx'));
+const StockReceivePage      = lazy(() => import('../pages/StockReceivePage.tsx'));
 const TradeInsPage          = lazy(() => import('../pages/TradeInsPage.tsx'));
 const RepossessionsPage     = lazy(() => import('../pages/RepossessionsPage.tsx'));
 const GuarantorsPage        = lazy(() => import('../pages/GuarantorsPage.tsx'));
@@ -139,6 +140,7 @@ export const router = createBrowserRouter([
       { path: '/dashboard',        element: <S><DashboardPage /></S> },
       { path: '/reports',          element: <PermGuard perm="canViewReports"><S><ReportsPage /></S></PermGuard> },
       { path: '/products',         element: <PermGuard perm="canManageProducts"><S><ProductsPage /></S></PermGuard> },
+      { path: '/stock-receive',    element: <PermGuard perm="canManageProducts"><S><StockReceivePage /></S></PermGuard> },
       { path: '/customers',        element: <PermGuard perm={['canAddCustomer', 'canAddInstallment', 'canRecordPayment']}><S><CustomersPage /></S></PermGuard> },
       { path: '/installments',     element: <PermGuard perm={['canAddInstallment', 'canRecordPayment']}><S><InstallmentsPage /></S></PermGuard> },
       { path: '/cash-sales',       element: <PermGuard perm="canMakeCashSales"><S><CashSalesPage /></S></PermGuard> },

@@ -1,8 +1,41 @@
 import { and, asc, eq, ilike, isNull, isNotNull, sql } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
 import { db } from '../../db/index.js';
-import { products, installments } from '../../db/schema.js';
+import { products, installments, supplierInvoices, supplierInvoiceLines } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import type { CreateProductInput, UpdateProductInput } from '@assaan/shared';
+
+export interface BulkReceiveUnit {
+  name:             string;
+  category?:        string;
+  brand?:           string;
+  model?:           string;
+  color?:           string;
+  purchasePrice?:   number;
+  price:            number;   // sale price
+  installmentPrice?: number;
+  stock?:           number;
+  minStock?:        number;
+  description?:     string;
+  // mobile
+  imeiNumber?:      string;
+  // vehicle
+  chassisNumber?:   string;
+  engineNumber?:    string;
+  registrationNumber?: string;
+  vehicleCondition?: 'NEW' | 'USED';
+  modelYear?:       number;
+  letterStatus?:    'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED';
+  biometricStatus?: 'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED';
+  vehicleFileLocation?: 'WITH_SHOP' | 'WITH_CUSTOMER' | 'WITH_RTO' | 'WITH_NADRA' | 'IN_TRANSFER' | 'WITH_COURT' | 'WITH_POLICE';
+}
+
+export interface BulkReceiveInput {
+  supplierId?:  string;
+  invoiceDate?: string;
+  paidAmount?:  number;
+  units:        BulkReceiveUnit[];
+}
 
 export class ProductsService {
   async list(sellerId: string, page: number, limit: number, search?: string) {
@@ -154,6 +187,78 @@ export class ProductsService {
       .slice(0, 10);
 
     return { fastMoving, slowMoving, demandForecast, reorderSuggestions };
+  }
+
+  async bulkCreate(sellerId: string, input: BulkReceiveInput) {
+    if (!input.units?.length) throw new AppError('At least one unit required', 400);
+    if (input.units.length > 100) throw new AppError('Max 100 units per batch', 400);
+
+    return db.transaction(async (tx) => {
+      // Insert all product records
+      const created = await tx
+        .insert(products)
+        .values(
+          input.units.map((u) => ({
+            id:                 randomUUID(),
+            sellerId,
+            name:               u.name,
+            category:           u.category ?? null,
+            brand:              u.brand ?? null,
+            model:              u.model ?? null,
+            color:              u.color ?? null,
+            price:              String(u.price),
+            installmentPrice:   u.installmentPrice != null ? String(u.installmentPrice) : null,
+            purchasePrice:      u.purchasePrice   != null ? String(u.purchasePrice)   : null,
+            stock:              u.stock ?? 1,
+            minStock:           u.minStock ?? 1,
+            description:        u.description ?? null,
+            supplierId:         input.supplierId ?? null,
+            imeiNumber:         u.imeiNumber       ?? null,
+            chassisNumber:      u.chassisNumber    ?? null,
+            engineNumber:       u.engineNumber     ?? null,
+            registrationNumber: u.registrationNumber ?? null,
+            vehicleCondition:   u.vehicleCondition ?? null,
+            modelYear:          u.modelYear        ?? null,
+            letterStatus:       u.letterStatus     ?? null,
+            biometricStatus:    u.biometricStatus  ?? null,
+            vehicleFileLocation: u.vehicleFileLocation ?? null,
+          })),
+        )
+        .returning();
+
+      // Create supplier invoice if supplierId given
+      if (input.supplierId && input.invoiceDate) {
+        const totalAmount = input.units.reduce((s, u) => s + (u.purchasePrice ?? 0), 0);
+        const desc = `Stock receive: ${input.units[0]?.name ?? 'products'} ×${input.units.length}`;
+
+        const [invoice] = await tx
+          .insert(supplierInvoices)
+          .values({
+            id:          randomUUID(),
+            sellerId,
+            supplierId:  input.supplierId,
+            totalAmount: String(totalAmount),
+            paidAmount:  String(input.paidAmount ?? 0),
+            description: desc,
+            invoiceDate: input.invoiceDate,
+          })
+          .returning();
+
+        await tx.insert(supplierInvoiceLines).values(
+          created.map((p, i) => ({
+            id:          randomUUID(),
+            invoiceId:   invoice!.id,
+            sellerId,
+            productId:   p.id,
+            productName: p.name,
+            quantity:    1,
+            unitPrice:   String(input.units[i]?.purchasePrice ?? p.price),
+          })),
+        );
+      }
+
+      return created;
+    });
   }
 
   async getValuation(sellerId: string) {

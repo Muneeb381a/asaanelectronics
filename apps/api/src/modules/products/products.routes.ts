@@ -3,7 +3,7 @@ import { authenticate, requireSeller, requireOwner } from '../../middleware/auth
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
 import { createProductSchema, updateProductSchema } from '@assaan/shared';
-import { listProducts, createProduct, updateProduct, deleteProduct, getInventoryIntelligence, getValuation, getCategories } from './products.controller.js';
+import { listProducts, createProduct, updateProduct, deleteProduct, getInventoryIntelligence, getValuation, getCategories, bulkReceiveProducts } from './products.controller.js';
 
 const router = Router();
 
@@ -13,6 +13,7 @@ router.get('/intelligence', requirePermission(['canManageProducts', 'canViewRepo
 router.get('/valuation',   requirePermission(['canManageProducts', 'canViewReports']), getValuation);
 router.get('/categories',  requirePermission('canManageProducts'), getCategories);
 router.get('/',            requirePermission('canManageProducts'), listProducts);
+router.post('/bulk',  requirePermission('canManageProducts'), bulkReceiveProducts);
 router.post('/',      requirePermission('canManageProducts'), validate(createProductSchema), createProduct);
 router.patch('/:id',  requirePermission('canManageProducts'), validate(updateProductSchema), updateProduct);
 router.delete('/:id', requireOwner, deleteProduct);

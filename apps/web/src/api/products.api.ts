@@ -49,6 +49,36 @@ export interface InventoryIntelligence {
   reorderSuggestions: ReorderItem[];
 }
 
+export interface BulkReceiveUnit {
+  name:             string;
+  category?:        string;
+  brand?:           string;
+  model?:           string;
+  color?:           string;
+  purchasePrice?:   number;
+  price:            number;
+  installmentPrice?: number;
+  stock?:           number;
+  minStock?:        number;
+  description?:     string;
+  imeiNumber?:      string;
+  chassisNumber?:   string;
+  engineNumber?:    string;
+  registrationNumber?: string;
+  vehicleCondition?: 'NEW' | 'USED';
+  modelYear?:       number;
+  letterStatus?:    'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED';
+  biometricStatus?: 'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED';
+  vehicleFileLocation?: 'WITH_SHOP' | 'WITH_CUSTOMER' | 'WITH_RTO' | 'WITH_NADRA' | 'IN_TRANSFER' | 'WITH_COURT' | 'WITH_POLICE';
+}
+
+export interface BulkReceiveInput {
+  supplierId?:  string;
+  invoiceDate?: string;
+  paidAmount?:  number;
+  units:        BulkReceiveUnit[];
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const productsApi = {
@@ -72,4 +102,7 @@ export const productsApi = {
 
   getCategories: () =>
     api.get<{ data: string[] }>('/products/categories').then((r) => r.data.data),
+
+  bulkReceive: (data: BulkReceiveInput) =>
+    api.post<{ data: Product[] }>('/products/bulk', data).then(unwrap<Product[]>),
 };

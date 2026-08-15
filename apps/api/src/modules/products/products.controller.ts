@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import type { AuthRequest } from '../../middleware/auth.js';
 import { ProductsService } from './products.service.js';
+import type { BulkReceiveInput } from './products.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
@@ -63,4 +64,17 @@ export async function deleteProduct(req: AuthRequest, res: Response) {
 
 export async function getValuation(req: AuthRequest, res: Response) {
   success(res, await svc.getValuation(req.user!.sellerId!));
+}
+
+export async function bulkReceiveProducts(req: AuthRequest, res: Response) {
+  const input = req.body as BulkReceiveInput;
+  const created = await svc.bulkCreate(req.user!.sellerId!, input);
+  success(res, created, 201);
+  void audit.log({
+    sellerId: req.user!.sellerId!, userId: req.user!.userId,
+    action: 'PRODUCT_CREATED', entityType: 'PRODUCT', entityId: created[0]?.id ?? '',
+    description: `Bulk stock receive: ${created.length} units of "${input.units[0]?.name}"`,
+    meta: { count: created.length, supplierId: input.supplierId },
+    ...auditCtx(req),
+  }).catch(console.error);
 }

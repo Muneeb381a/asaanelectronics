@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   productsApi, type Product, type InventoryIntelligence,
@@ -231,7 +232,8 @@ function IntelligenceView({ data, isLoading }: { data: InventoryIntelligence | u
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ProductsPage() {
-  const qc = useQueryClient();
+  const qc       = useQueryClient();
+  const navigate = useNavigate();
   const [modal, setModal]   = useState<Modal>(null);
   const [tab, setTab]       = useState<Tab>('inventory');
   const [search, setSearch] = useState('');
@@ -293,10 +295,16 @@ export default function ProductsPage() {
           <h1 className="text-xl font-semibold text-gray-900">Products</h1>
           <p className="text-sm text-gray-500 mt-0.5">{data?.total ?? 0} items</p>
         </div>
-        <button onClick={() => setModal({ mode: 'add' })}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-          + Add product
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/stock-receive')}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black rounded-lg transition flex items-center gap-1.5">
+            <Package size={14} /> Maal Aya
+          </button>
+          <button onClick={() => setModal({ mode: 'add' })}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
+            + Add product
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
