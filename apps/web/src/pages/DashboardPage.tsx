@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -70,7 +70,7 @@ function CashflowBar({ data }: { data: Array<{ date: string; expected: number }>
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-slate-400 mt-1">{data[0]?.date} → {data[data.length - 1]?.date}</p>
+      <p className="text-[10px] text-slate-400 mt-1">{data[0]?.date} â†’ {data[data.length - 1]?.date}</p>
     </div>
   );
 }
@@ -153,7 +153,7 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
           <button onClick={onClose} className="flex-1 py-2.5 text-sm font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition">Cancel</button>
           <button onClick={() => mutation.mutate()} disabled={!amount || Number(amount) < 0 || mutation.isPending}
             className="flex-1 py-2.5 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5">
-            {mutation.isPending ? 'Processing…' : <><CheckCircle size={14} /> Cash Li</>}
+            {mutation.isPending ? 'Processingâ€¦' : <><CheckCircle size={14} /> Cash Li            </>)}
           </button>
         </div>
       </div>
@@ -245,7 +245,7 @@ export default function DashboardPage() {
     ...(isOwner ? [{ key: 'reports' as DashTab, label: 'Reports' }] : []),
   ];
 
-  /* ── Sidebar widget renderers (reused in both sidebar and mobile inline) ── */
+  /* â”€â”€ Sidebar widget renderers (reused in both sidebar and mobile inline) â”€â”€ */
   const CashInHandWidget = !isOwner && myBalance && Number(myBalance.pendingBalance) > 0 ? (
     myBalance.pendingHandover ? (
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
@@ -254,7 +254,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-black text-amber-800">Handover Submitted</p>
-          <p className="text-xs text-amber-600 mt-0.5">{pkr(Number(myBalance.pendingBalance))} — Owner ki confirmation ka intezaar</p>
+          <p className="text-xs text-amber-600 mt-0.5">{pkr(Number(myBalance.pendingBalance))} â€” Owner ki confirmation ka intezaar</p>
         </div>
         <span className="shrink-0 text-[10px] font-black bg-amber-200 text-amber-700 px-2.5 py-1 rounded-lg uppercase tracking-wider">PENDING</span>
       </div>
@@ -289,7 +289,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-sm font-black text-amber-800">Cash in Field</p>
-            <p className="text-[11px] text-amber-500">Staff k paas — abhi jama nahi hua</p>
+            <p className="text-[11px] text-amber-500">Staff k paas â€” abhi jama nahi hua</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -375,7 +375,7 @@ export default function DashboardPage() {
           const todayD     = new Date(); todayD.setHours(0, 0, 0, 0);
           const isToday    = bday.toDateString() === todayD.toDateString();
           const phone      = c.phone.replace(/^0/, '92');
-          const msg        = encodeURIComponent(`Assalamu Alaikum ${c.name}! Aaj aap ka birthday hai — bohat bohat mubarak ho!`);
+          const msg        = encodeURIComponent(`Assalamu Alaikum ${c.name}! Aaj aap ka birthday hai â€” bohat bohat mubarak ho!`);
           return (
             <div key={c.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 ring-1 ring-pink-100">
               <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -409,7 +409,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-sm font-black text-slate-900">Khatam Hone Wale</p>
-            <p className="text-[11px] text-slate-400">1–3 installment baaki</p>
+            <p className="text-[11px] text-slate-400">1â€“3 installment baaki</p>
           </div>
         </div>
         <span className="text-[11px] font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">
@@ -448,7 +448,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50">
 
-      {/* ── Sticky header ── */}
+      {/* â”€â”€ Sticky header â”€â”€ */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-4 sm:pt-5 pb-0">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -478,11 +478,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Page body ── */}
+      {/* â”€â”€ Page body â”€â”€ */}
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-5 sm:py-6 lg:py-8">
         <div className="lg:grid lg:grid-cols-12 lg:gap-6 xl:gap-8 lg:items-start">
 
-          {/* ════════════ MAIN COLUMN ════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â• MAIN COLUMN â•â•â•â•â•â•â•â•â•â•â•â• */}
           <div className="lg:col-span-8 space-y-4 sm:space-y-5">
 
             {/* Quick Actions */}
@@ -585,13 +585,13 @@ export default function DashboardPage() {
               </div>
             ))}
 
-            {/* ═══════════ AAJ TAB ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• AAJ TAB â•â•â•â•â•â•â•â•â•â•â• */}
             {activeTab === 'aaj' && (<>
 
             <div className="flex items-center gap-2.5 pt-1">
               <div className="w-1 h-5 bg-blue-600 rounded-full shrink-0" />
               <p className="text-sm lg:text-base font-black text-slate-900">Aaj Ka Kaam</p>
-              <p className="text-[11px] text-slate-400">— ye cheezein aaj handle karni hain</p>
+              <p className="text-[11px] text-slate-400">â€” ye cheezein aaj handle karni hain</p>
             </div>
 
             {briefing && (<>
@@ -609,7 +609,7 @@ export default function DashboardPage() {
                   </p>
                   <p className={`text-sm font-black mt-2 ${briefing.dueToday > 0 ? 'text-blue-100' : 'text-slate-500'}`}>Aaj Due</p>
                   <p className={`text-[11px] mt-0.5 ${briefing.dueToday > 0 ? 'text-blue-200' : 'text-slate-400'}`}>
-                    {briefing.dueToday > 0 ? (showDueToday ? 'Chhupao ▲' : 'Naam dekho ▼') : 'Koi nahi'}
+                    {briefing.dueToday > 0 ? (showDueToday ? 'Chhupao â–²' : 'Naam dekho â–¼') : 'Koi nahi'}
                   </p>
                 </button>
 
@@ -653,7 +653,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-blue-100">
                   <div className="flex items-center gap-2">
                     <Clock size={14} className="text-blue-600" />
-                    <p className="text-xs font-black text-blue-700">Aaj due — {briefing.dueTodayAccounts.length} log</p>
+                    <p className="text-xs font-black text-blue-700">Aaj due â€” {briefing.dueTodayAccounts.length} log</p>
                   </div>
                   <button onClick={() => setShowDueToday(false)} className="text-blue-400 hover:text-blue-600"><X size={14} /></button>
                 </div>
@@ -692,8 +692,8 @@ export default function DashboardPage() {
                       <PhoneCall size={15} className="text-rose-600" />
                     </div>
                     <div>
-                      <p className="text-sm lg:text-base font-black text-rose-800">Inhe Call Karein — {briefing.urgentAccounts.length} log</p>
-                      <p className="text-[11px] text-rose-400">Sabse zyada late — foran contact karein</p>
+                      <p className="text-sm lg:text-base font-black text-rose-800">Inhe Call Karein â€” {briefing.urgentAccounts.length} log</p>
+                      <p className="text-[11px] text-rose-400">Sabse zyada late â€” foran contact karein</p>
                     </div>
                   </div>
                   {briefing.dueTomorrow > 0 && (
@@ -742,7 +742,7 @@ export default function DashboardPage() {
                       <Bell size={15} className="text-indigo-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-black text-indigo-800">{promisesDueCount} Waday — Follow Karein</p>
+                      <p className="text-sm font-black text-indigo-800">{promisesDueCount} Waday â€” Follow Karein</p>
                       <p className="text-[11px] text-indigo-400">In logo ne payment ka wada kia tha</p>
                     </div>
                   </div>
@@ -762,7 +762,7 @@ export default function DashboardPage() {
                         <div key={p.id} className="flex items-center justify-between px-4 py-3">
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-slate-900 truncate">{p.customerName}</p>
-                            <p className="text-[10px] text-slate-400 truncate">{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{p.productName}{p.note ? ` Â· ${p.note}` : ''}</p>
                           </div>
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg shrink-0 ml-3 ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'}`}>
                             {isOverdue ? 'Overdue' : 'Today'}
@@ -794,7 +794,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <span className={`text-lg lg:text-2xl font-black tabular-nums ${over ? 'text-emerald-600' : 'text-blue-600'}`}>
-                      {pct}%{over ? ' ✓' : ''}
+                      {pct}%{over ? ' âœ“' : ''}
                     </span>
                   </div>
                   <div className="flex items-baseline gap-3 mb-3">
@@ -805,7 +805,7 @@ export default function DashboardPage() {
                     <div className={`h-full rounded-full transition-all duration-700 ${barCls}`} style={{ width: `${pct}%` }} />
                   </div>
                   <p className={`text-xs font-bold mt-2 ${over ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    {over ? `+${pkr(todayTotal - target)} target se zyada — Masha'Allah!` : `${pkr(target - todayTotal)} aur chahiye`}
+                    {over ? `+${pkr(todayTotal - target)} target se zyada â€” Masha'Allah!` : `${pkr(target - todayTotal)} aur chahiye`}
                   </p>
                 </div>
               );
@@ -858,9 +858,9 @@ export default function DashboardPage() {
               )}
             </div>
 
-            </>}
+            </>)}
 
-            {/* ═══════════ IS MAHINE TAB ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• IS MAHINE TAB â•â•â•â•â•â•â•â•â•â•â• */}
             {activeTab === 'mahine' && (<>
 
             {isOwner && data && (() => {
@@ -940,11 +940,11 @@ export default function DashboardPage() {
                   </div>
                   <div className="grid grid-cols-3 divide-x divide-slate-100">
                     {[
-                      { label: 'Income',  val: income > 0 ? pkrShort(income) : '—',     cls: income > 0 ? 'text-slate-900' : 'text-slate-300', sub: 'inst + cash' },
-                      { label: 'Kharcha', val: expenses > 0 ? pkrShort(expenses) : '—', cls: expenses > 0 ? 'text-rose-600' : 'text-slate-300', sub: 'is mahine' },
+                      { label: 'Income',  val: income > 0 ? pkrShort(income) : 'â€”',     cls: income > 0 ? 'text-slate-900' : 'text-slate-300', sub: 'inst + cash' },
+                      { label: 'Kharcha', val: expenses > 0 ? pkrShort(expenses) : 'â€”', cls: expenses > 0 ? 'text-rose-600' : 'text-slate-300', sub: 'is mahine' },
                       {
                         label: `Net ${isProfit ? 'Faida' : 'Nuqsan'}`,
-                        val: income === 0 && expenses === 0 ? '—' : pkrShort(Math.abs(profit)),
+                        val: income === 0 && expenses === 0 ? 'â€”' : pkrShort(Math.abs(profit)),
                         cls: income === 0 && expenses === 0 ? 'text-slate-300' : isProfit ? 'text-emerald-600' : 'text-rose-600',
                         sub: isProfit ? 'Alhamdulillah' : 'Dhyan dein',
                       },
@@ -982,9 +982,9 @@ export default function DashboardPage() {
               </div>
             )}
 
-            </>}
+            </>)}
 
-            {/* ═══════════ PORTFOLIO TAB ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• PORTFOLIO TAB â•â•â•â•â•â•â•â•â•â•â• */}
             {activeTab === 'portfolio' && (<>
 
             {isOwner && reports && (() => {
@@ -1090,9 +1090,9 @@ export default function DashboardPage() {
                   <div className="space-y-2.5">
                     {[
                       { label: 'Waqt pe',       n: aging?.current    ?? 0, bar: 'bg-emerald-400', text: 'text-emerald-700' },
-                      { label: '1–7 din',        n: aging?.days0_7    ?? 0, bar: 'bg-amber-400',   text: 'text-amber-700'  },
-                      { label: '8–30 din',       n: aging?.days8_30   ?? 0, bar: 'bg-orange-400',  text: 'text-orange-700' },
-                      { label: '31–90 din',      n: aging?.days31_90  ?? 0, bar: 'bg-rose-500',    text: 'text-rose-700'   },
+                      { label: '1â€“7 din',        n: aging?.days0_7    ?? 0, bar: 'bg-amber-400',   text: 'text-amber-700'  },
+                      { label: '8â€“30 din',       n: aging?.days8_30   ?? 0, bar: 'bg-orange-400',  text: 'text-orange-700' },
+                      { label: '31â€“90 din',      n: aging?.days31_90  ?? 0, bar: 'bg-rose-500',    text: 'text-rose-700'   },
                       { label: '90+ din',        n: aging?.days90plus ?? 0, bar: 'bg-red-800',     text: 'text-red-800'    },
                     ].map(({ label, n, bar, text }) => {
                       const tot = (aging?.current ?? 0) + (aging?.days0_7 ?? 0) + (aging?.days8_30 ?? 0) + (aging?.days31_90 ?? 0) + (aging?.days90plus ?? 0);
@@ -1130,16 +1130,16 @@ export default function DashboardPage() {
               </div>
             )}
 
-            </>}
+            </>)}
 
-            {/* ═══════════ REPORTS TAB ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• REPORTS TAB â•â•â•â•â•â•â•â•â•â•â• */}
             {activeTab === 'reports' && isOwner && (<>
 
             {hasAnalytics && (
               <div className="flex items-center gap-2.5">
                 <div className="w-1 h-5 bg-violet-600 rounded-full shrink-0" />
                 <p className="text-sm lg:text-base font-black text-slate-900">Tafseeli Report</p>
-                <p className="text-[11px] text-slate-400">— gehri nazar, weekly check karein</p>
+                <p className="text-[11px] text-slate-400">â€” gehri nazar, weekly check karein</p>
               </div>
             )}
 
@@ -1260,7 +1260,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   {advanced.recovery.overdueCount === 0 ? (
-                    <p className="text-sm text-emerald-600 font-black py-4 text-center">Koi overdue nahi — Alhamdulillah!</p>
+                    <p className="text-sm text-emerald-600 font-black py-4 text-center">Koi overdue nahi â€” Alhamdulillah!</p>
                   ) : (
                     <>
                       <p className={`text-5xl lg:text-6xl font-black tabular-nums ${
@@ -1295,7 +1295,7 @@ export default function DashboardPage() {
                           <div key={s.userId}>
                             <div className="flex items-center justify-between text-xs mb-1">
                               <span className="font-bold text-slate-700 truncate max-w-[140px]">{s.name}</span>
-                              <span className="text-slate-400 shrink-0 ml-2 tabular-nums">{s.count} · {pkr(s.total)}</span>
+                              <span className="text-slate-400 shrink-0 ml-2 tabular-nums">{s.count} Â· {pkr(s.total)}</span>
                             </div>
                             <div className="bg-slate-100 rounded-full h-1.5 overflow-hidden">
                               <div className="h-full bg-violet-400 rounded-full" style={{ width: `${(s.count / maxC) * 100}%` }} />
@@ -1328,7 +1328,7 @@ export default function DashboardPage() {
                               <span className="font-bold text-slate-700 truncate">{a.city}</span>
                               <span className="text-slate-400 shrink-0 ml-2">
                                 {a.overdueCount > 0 && <span className="text-amber-600">{a.overdueCount} late</span>}
-                                {a.overdueCount > 0 && a.defaultedCount > 0 && <span className="mx-1 text-slate-300">·</span>}
+                                {a.overdueCount > 0 && a.defaultedCount > 0 && <span className="mx-1 text-slate-300">Â·</span>}
                                 {a.defaultedCount > 0 && <span className="text-rose-500">{a.defaultedCount} def</span>}
                               </span>
                             </div>
@@ -1345,11 +1345,11 @@ export default function DashboardPage() {
               </div>
             )}
 
-            </>}
+            </>)}
 
           </div>{/* end main col */}
 
-          {/* ════════════ SIDEBAR (desktop only) ════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â• SIDEBAR (desktop only) â•â•â•â•â•â•â•â•â•â•â•â• */}
           <div className="hidden lg:flex lg:col-span-4 flex-col gap-5 lg:mt-0">
 
             {/* Sticky wrapper so sidebar scrolls with page but sticks at top */}
@@ -1435,7 +1435,7 @@ export default function DashboardPage() {
                   className="flex-1 py-2.5 text-sm font-black text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition">Cancel</button>
                 <button disabled={!handoverAmount || amt <= 0 || submitHandover.isPending} onClick={() => submitHandover.mutate()}
                   className="flex-1 py-2.5 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl transition flex items-center justify-center gap-1.5">
-                  {submitHandover.isPending ? <span className="animate-pulse">Jama ho raha hai...</span> : <><Send size={13} /> Jama Karein</>}
+                  {submitHandover.isPending ? <span className="animate-pulse">Jama ho raha hai...</span> : <><Send size={13} /> Jama Karein            </>)}
                 </button>
               </div>
             </div>
