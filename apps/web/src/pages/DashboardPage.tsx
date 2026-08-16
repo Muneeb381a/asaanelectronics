@@ -194,7 +194,7 @@ export default function DashboardPage() {
 
   /* ─── RENDER ─── */
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="bg-slate-100">
 
       {/* ══════════ DARK HEADER ══════════ */}
       <div className="sticky top-0 z-30 bg-slate-950 shadow-lg">
@@ -478,13 +478,13 @@ export default function DashboardPage() {
 
                   {/* ALL CLEAR */}
                   {briefing.dueToday === 0 && briefing.overdueTotal === 0 && pDueCount === 0 && (
-                    <div className="flex flex-col items-center gap-3 py-10">
-                      <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center ring-4 ring-emerald-50">
-                        <CheckCircle size={26} className="text-emerald-600" />
+                    <div className="flex items-center gap-3 px-4 py-4 border-t border-slate-50">
+                      <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                        <CheckCircle size={16} className="text-emerald-600" />
                       </div>
-                      <div className="text-center">
+                      <div>
                         <p className="text-sm font-black text-slate-800">Aaj sab clear hai!</p>
-                        <p className="text-xs text-slate-400 mt-0.5">Koi due, overdue, ya wada pending nahi</p>
+                        <p className="text-xs text-slate-400">Koi due, overdue, ya wada pending nahi</p>
                       </div>
                     </div>
                   )}
