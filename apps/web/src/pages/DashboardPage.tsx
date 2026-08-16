@@ -132,11 +132,11 @@ export default function DashboardPage() {
   const [receiveTarget, setReceiveTarget] = useState<StaffBalance | null>(null);
 
   /* queries */
-  const { data: myBal } = useQuery({
-    queryKey: ['handover-my-balance'], queryFn: handoversApi.myBalance,
+  const { data: myBal } = useQuery<StaffBalance | null>({
+    queryKey: ['handover-my-balance'], queryFn: () => handoversApi.myBalance(),
     enabled: !isOwner, staleTime: 30_000, refetchInterval: 120_000,
   });
-  const { data: pendingBals = [] } = useQuery({
+  const { data: pendingBals = [] } = useQuery<StaffBalance[]>({
     queryKey: ['handover-pending-balances'], queryFn: handoversApi.pendingBalances,
     enabled: isOwner, staleTime: 30_000, refetchInterval: 120_000,
   });
