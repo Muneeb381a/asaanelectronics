@@ -3,11 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  TrendingUp, TrendingDown, CreditCard, AlertTriangle,
-  Calendar, Package, ArrowRight, BarChart3,
-  MapPin, Users, ShieldCheck, Zap, ShoppingCart, Bell, Target, Gift,
-  Clock, PhoneCall, Banknote,
-  Wallet, CheckCircle, Send, X, Landmark,
+  CreditCard, Package, ArrowRight, BarChart3,
+  Users, Zap, ShoppingCart, Bell, Target, Gift,
+  Clock, PhoneCall, Wallet, CheckCircle, Send, X,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
@@ -28,9 +26,9 @@ function pkrShort(v: number) {
 }
 function greeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return 'Subah Bakhair';
+  if (h < 17) return 'Adaab';
+  return 'Shaam Bakhair';
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -40,50 +38,15 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: 'bg-slate-100 text-slate-500',
 };
 
-function Sparkline({ data }: { data: number[] }) {
-  const max = Math.max(...data, 1);
-  return (
-    <div className="flex items-end gap-0.5 h-12">
-      {data.map((v, i) => {
-        const pct  = Math.max((v / max) * 100, v > 0 ? 6 : 0);
-        const last = i === data.length - 1;
-        return <div key={i} className={`flex-1 rounded-sm ${last ? 'bg-blue-500' : 'bg-blue-200'}`} style={{ height: `${pct}%` }} />;
-      })}
-    </div>
-  );
-}
-
-function CashflowBar({ data }: { data: Array<{ date: string; expected: number }> }) {
-  if (!data.length) return <p className="text-xs text-slate-400 py-4 text-center">Agli 30 dinon mein koi payment due nahi</p>;
-  const max   = Math.max(...data.map((d) => d.expected), 1);
-  const total = data.reduce((s, d) => s + d.expected, 0);
-  return (
-    <div>
-      <p className="text-2xl font-black text-slate-900 tabular-nums">PKR {pkrShort(total)}</p>
-      <p className="text-xs text-slate-400 mb-3">agli 30 dinon mein milne wala</p>
-      <div className="flex items-end gap-0.5 h-20">
-        {data.map((d) => (
-          <div key={d.date} className="flex-1">
-            <div className="w-full bg-blue-400 rounded-t-sm hover:bg-blue-600 transition-colors"
-              style={{ height: `${Math.max((d.expected / max) * 100, 6)}%` }}
-              title={`${d.date}: PKR ${d.expected.toLocaleString()}`} />
-          </div>
-        ))}
-      </div>
-      <p className="text-[10px] text-slate-400 mt-1">{data[0]?.date} &rarr; {data[data.length - 1]?.date}</p>
-    </div>
-  );
-}
-
 function HeroSkeleton() {
   return (
-    <div className="bg-[#0D1117] px-4 sm:px-5 lg:px-8 py-6 animate-pulse">
+    <div className="bg-[#0D1117] px-4 sm:px-6 lg:px-8 py-5 animate-pulse">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {[0,1,2,3].map(i => (
           <div key={i}>
-            <div className="h-2.5 bg-slate-700 rounded w-16 mb-3" />
-            <div className="h-9 bg-slate-700 rounded w-24" />
-            <div className="h-2.5 bg-slate-800 rounded w-20 mt-2" />
+            <div className="h-2 bg-slate-700 rounded w-14 mb-2.5" />
+            <div className="h-8 bg-slate-700 rounded w-20" />
+            <div className="h-2 bg-slate-800 rounded w-16 mt-2" />
           </div>
         ))}
       </div>
@@ -104,10 +67,10 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
       void qc.invalidateQueries({ queryKey: ['handover-pending-balances'] });
       void qc.invalidateQueries({ queryKey: ['handover-balances'] });
       void qc.invalidateQueries({ queryKey: ['handovers'] });
-      toast.success(`${target.staffName} se PKR ${Number(amount).toLocaleString()} receive ho gaya`);
+      toast.success(`${target.staffName} se ${pkr(Number(amount))} receive ho gaya`);
       onClose();
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Kuch masla ho gaya'),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Masla ho gaya'),
   });
 
   const diff    = Number(amount) - systemBalance;
@@ -115,7 +78,7 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-black text-slate-900">Cash Li</h2>
@@ -124,23 +87,23 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
         </div>
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-          <p className="text-[11px] text-blue-400 font-bold uppercase tracking-wide mb-0.5">System Balance (Cash)</p>
+          <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wide mb-0.5">System Balance</p>
           <p className="text-2xl font-black text-blue-700 tabular-nums">{pkr(systemBalance)}</p>
         </div>
         {target.pendingHandover && (
           <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-            <p className="text-[11px] text-amber-500 font-bold uppercase tracking-wide mb-0.5">Staff ne submit kiya</p>
+            <p className="text-[10px] text-amber-500 font-bold uppercase tracking-wide mb-0.5">Staff ne submit kiya</p>
             <p className="text-2xl font-black text-amber-700 tabular-nums">{pkr(Number(target.pendingHandover.handedAmount))}</p>
             {target.pendingHandover.note && <p className="text-xs text-slate-400 mt-1 italic">&ldquo;{target.pendingHandover.note}&rdquo;</p>}
           </div>
         )}
         <div>
-          <label className="block text-xs font-bold text-slate-500 mb-1.5">Aap ne gina hua amount (PKR) *</label>
+          <label className="block text-xs font-bold text-slate-500 mb-1.5">Ginا hua amount (PKR) *</label>
           <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min="0"
             className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50 transition tabular-nums" />
           {amount && hasDiff && (
             <p className={`text-xs mt-1 font-bold ${diff < 0 ? 'text-red-500' : 'text-amber-600'}`}>
-              {diff < 0 ? `PKR ${Math.abs(diff).toLocaleString()} system se kam` : `PKR ${diff.toLocaleString()} system se zyada`}
+              {diff < 0 ? `${pkr(Math.abs(diff))} system se kam` : `${pkr(diff)} system se zyada`}
             </p>
           )}
         </div>
@@ -149,7 +112,7 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
             className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-emerald-400 transition resize-none" />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-1">
           <button onClick={onClose} className="flex-1 py-2.5 text-sm font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition">Cancel</button>
           <button onClick={() => mutation.mutate()} disabled={!amount || Number(amount) < 0 || mutation.isPending}
             className="flex-1 py-2.5 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5">
@@ -161,20 +124,17 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
   );
 }
 
-type DashTab = 'aaj' | 'mahine' | 'portfolio' | 'reports';
-
 export default function DashboardPage() {
-  const user        = useAuthStore((s) => s.user);
-  const navigate    = useNavigate();
-  const isOwner     = user?.role === 'SELLER_OWNER';
-  const queryClient = useQueryClient();
+  const user     = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
+  const isOwner  = user?.role === 'SELLER_OWNER';
+  const qc       = useQueryClient();
+  const perms    = user?.permissions as Record<string, boolean> | null | undefined;
 
-  const [activeTab, setActiveTab]                 = useState<DashTab>('aaj');
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [handoverAmount, setHandoverAmount]       = useState('');
   const [handoverNote, setHandoverNote]           = useState('');
   const [receiveTarget, setReceiveTarget]         = useState<StaffBalance | null>(null);
-  const [showDueToday, setShowDueToday]           = useState(false);
 
   const { data: myBalance } = useQuery({
     queryKey: ['handover-my-balance'],
@@ -192,7 +152,7 @@ export default function DashboardPage() {
     mutationFn: () => handoversApi.create({ handedAmount: Number(handoverAmount), note: handoverNote.trim() || undefined }),
     onSuccess: () => {
       setShowHandoverModal(false); setHandoverAmount(''); setHandoverNote('');
-      void queryClient.invalidateQueries({ queryKey: ['handover-my-balance'] });
+      void qc.invalidateQueries({ queryKey: ['handover-my-balance'] });
     },
   });
 
@@ -200,124 +160,65 @@ export default function DashboardPage() {
     queryKey: ['dashboard'], queryFn: statsApi.getDashboard,
     staleTime: 60_000, gcTime: 5 * 60_000, refetchInterval: 5 * 60_000,
   });
-
-  const promisesDueCount = dashboard?.stats?.promisesDueCount ?? 0;
-  const { data: promises = [], isLoading: promisesLoading } = useQuery({
-    queryKey: ['promises-due'], queryFn: recoveryApi.promisesDue,
-    enabled: promisesDueCount > 0, staleTime: 60_000, gcTime: 5 * 60_000,
-  });
-  const { data: shop } = useQuery({
-    queryKey: ['shop-me'], queryFn: sellersApi.getMe,
-    staleTime: 5 * 60_000, gcTime: 10 * 60_000, enabled: isOwner,
-  });
-  const { data: birthdays = [] } = useQuery({
-    queryKey: ['upcoming-birthdays'], queryFn: customersApi.getUpcomingBirthdays,
-    staleTime: 60 * 60_000, gcTime: 2 * 60 * 60_000,
-  });
   const { data: briefing } = useQuery({
     queryKey: ['daily-briefing'], queryFn: statsApi.getDailyBriefing,
     staleTime: 60_000, gcTime: 5 * 60_000, refetchInterval: 5 * 60_000,
   });
+  const promisesDueCount = dashboard?.stats?.promisesDueCount ?? 0;
+  const { data: promises = [] } = useQuery({
+    queryKey: ['promises-due'], queryFn: recoveryApi.promisesDue,
+    enabled: promisesDueCount > 0, staleTime: 60_000,
+  });
+  const { data: shop } = useQuery({
+    queryKey: ['shop-me'], queryFn: sellersApi.getMe,
+    staleTime: 5 * 60_000, enabled: isOwner,
+  });
+  const { data: birthdays = [] } = useQuery({
+    queryKey: ['upcoming-birthdays'], queryFn: customersApi.getUpcomingBirthdays,
+    staleTime: 60 * 60_000,
+  });
 
-  const data     = dashboard?.stats;
-  const reports  = dashboard?.reports;
-  const advanced = dashboard?.advanced;
-  const today    = fmtDate(new Date());
-
-  const thisMonth = reports?.monthlyCollections.at(-1)?.total ?? 0;
-  const lastMonth = reports?.monthlyCollections.at(-2)?.total ?? 0;
-  const momChange = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null;
-  const spark6    = reports?.monthlyCollections.slice(-6).map((m) => m.total) ?? [];
-  const rate      = reports?.collectionRate.rate ?? 0;
-  const rateColor = rate >= 80 ? 'text-emerald-600' : rate >= 60 ? 'text-amber-600' : 'text-red-500';
-  const rateBar   = rate >= 80 ? 'bg-emerald-500'  : rate >= 60 ? 'bg-amber-400'   : 'bg-red-500';
-  const aging     = reports?.agingBuckets;
-  const lowStock  = data?.lowStockItems ?? [];
-
-  const todayTotal   = (data?.todayCollections ?? 0) + (data?.todayCashSales ?? 0);
-  const monthTotal   = (data?.monthCollections ?? 0) + (data?.monthCashSales ?? 0);
-  const hasAnalytics = !!(reports?.topDebtors.length || reports?.topProducts.length || advanced);
-
-  const DASH_TABS: { key: DashTab; label: string }[] = [
-    { key: 'aaj',       label: 'Aaj' },
-    { key: 'mahine',    label: 'Is Mahine' },
-    { key: 'portfolio', label: 'Portfolio' },
-    ...(isOwner ? [{ key: 'reports' as DashTab, label: 'Reports' }] : []),
-  ];
-
-  /* ── Sidebar widgets ── */
-  const CashInHandWidget = !isOwner && myBalance && Number(myBalance.pendingBalance) > 0 ? (
-    myBalance.pendingHandover ? (
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-        <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
-          <CheckCircle size={20} className="text-amber-600" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-black text-amber-800">Handover Submitted</p>
-          <p className="text-xs text-amber-600 mt-0.5">{pkr(Number(myBalance.pendingBalance))} &mdash; Owner ki confirmation ka intezaar</p>
-        </div>
-        <span className="shrink-0 text-[10px] font-black bg-amber-200 text-amber-700 px-2.5 py-1 rounded-lg uppercase tracking-wider">PENDING</span>
-      </div>
-    ) : (
-      <div className="bg-linear-to-r from-emerald-600 to-emerald-500 rounded-2xl p-4 lg:p-5 flex items-center justify-between gap-3 shadow-md shadow-emerald-200">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-            <Wallet size={22} className="text-white" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-emerald-100 uppercase tracking-widest">Cash in Hand</p>
-            <p className="text-2xl font-black text-white tabular-nums">{pkr(Number(myBalance.pendingBalance))}</p>
-          </div>
-        </div>
-        <button
-          onClick={() => { setHandoverAmount(String(Number(myBalance.pendingBalance))); setShowHandoverModal(true); }}
-          className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-white text-emerald-700 font-black text-sm rounded-xl hover:bg-emerald-50 transition">
-          <Send size={14} /> Jama Karein
-        </button>
-      </div>
-    )
-  ) : null;
+  const data       = dashboard?.stats;
+  const today      = fmtDate(new Date());
+  const todayTotal = (data?.todayCollections ?? 0) + (data?.todayCashSales ?? 0);
+  const monthTotal = (data?.monthCollections ?? 0) + (data?.monthCashSales ?? 0);
+  const lowStock   = data?.lowStockItems ?? [];
 
   const staffWithCash  = pendingBalances.filter((s) => Number(s.pendingBalance) > 0);
-  const totalFieldCash = staffWithCash.reduce((sum, s) => sum + Number(s.pendingBalance), 0);
+  const totalFieldCash = staffWithCash.reduce((s, x) => s + Number(x.pendingBalance), 0);
 
+  /* ── Quick actions list ── */
+  const quickActions = [
+    isOwner || perms?.canAddInstallment ? { label: 'Installment', icon: CreditCard,   cls: 'text-blue-600',    to: '/installments' } : null,
+    isOwner || perms?.canAddCustomer    ? { label: 'Customer',    icon: Users,        cls: 'text-violet-600',  to: '/customers'    } : null,
+    isOwner || perms?.canMakeCashSales  ? { label: 'Cash Sale',   icon: ShoppingCart, cls: 'text-emerald-600', to: '/cash-sales'   } : null,
+    isOwner || perms?.canRecordExpense  ? { label: 'Expense',     icon: Zap,          cls: 'text-rose-600',    to: '/expenses'     } : null,
+    isOwner || perms?.canManageProducts ? { label: 'Product',     icon: Package,      cls: 'text-amber-600',   to: '/products'     } : null,
+  ].filter(Boolean) as { label: string; icon: React.ElementType; cls: string; to: string }[];
+
+  /* ── Sidebar widgets ── */
   const CashInFieldWidget = isOwner && staffWithCash.length > 0 ? (
-    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-amber-200 overflow-hidden">
+    <div className="bg-white rounded-2xl ring-1 ring-amber-200 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center">
-            <Wallet size={15} className="text-amber-600" />
-          </div>
-          <div>
-            <p className="text-sm font-black text-amber-800">Cash in Field</p>
-            <p className="text-[11px] text-amber-500">Staff k paas &mdash; abhi jama nahi hua</p>
-          </div>
+        <div className="flex items-center gap-2">
+          <Wallet size={14} className="text-amber-600" />
+          <p className="text-xs font-black text-amber-800">Cash in Field</p>
         </div>
-        <div className="flex items-center gap-3">
-          <p className="text-base font-black text-amber-700 tabular-nums">{pkr(totalFieldCash)}</p>
-          <button onClick={() => navigate('/staff')} className="flex items-center gap-1 text-xs text-amber-600 font-black hover:underline">
-            Review <ArrowRight size={12} />
-          </button>
-        </div>
+        <p className="text-sm font-black text-amber-700 tabular-nums">{pkr(totalFieldCash)}</p>
       </div>
       <div className="divide-y divide-slate-50">
         {staffWithCash.map((s) => (
-          <div key={s.staffId} className="flex items-center gap-3 px-4 py-3">
-            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-xs font-black text-slate-600 shrink-0">
+          <div key={s.staffId} className="flex items-center gap-3 px-4 py-2.5">
+            <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center text-[11px] font-black text-slate-600 shrink-0">
               {s.staffName[0]?.toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-900">{s.staffName}</p>
-              {s.pendingHandover
-                ? <p className="text-[11px] text-amber-600 font-medium">Handover submit kia</p>
-                : <p className="text-[11px] text-slate-400">Field mein</p>}
-            </div>
-            <p className="text-sm font-black text-slate-900 shrink-0 tabular-nums">{pkr(Number(s.pendingBalance))}</p>
+            <p className="text-xs font-bold text-slate-800 flex-1 truncate">{s.staffName}</p>
+            <p className="text-xs font-black text-slate-900 tabular-nums shrink-0">{pkr(Number(s.pendingBalance))}</p>
             <button onClick={() => setReceiveTarget(s)}
-              className={`shrink-0 text-xs font-black px-3 py-1.5 rounded-xl transition ${
+              className={`shrink-0 text-[11px] font-black px-2.5 py-1 rounded-lg transition ${
                 s.pendingHandover ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
               }`}>
-              {s.pendingHandover ? 'Confirm' : 'Cash Li'}
+              {s.pendingHandover ? 'Confirm' : 'Li'}
             </button>
           </div>
         ))}
@@ -326,30 +227,23 @@ export default function DashboardPage() {
   ) : null;
 
   const LowStockWidget = lowStock.length > 0 ? (
-    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center">
-            <Package size={15} className="text-amber-600" />
-          </div>
-          <div>
-            <p className="text-sm font-black text-amber-800">Kam Stock</p>
-            <p className="text-[11px] text-amber-500">{lowStock.length} items reorder zaroor hai</p>
-          </div>
+    <div className="bg-white rounded-2xl ring-1 ring-amber-200 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50 border-b border-amber-100">
+        <div className="flex items-center gap-2">
+          <Package size={13} className="text-amber-600" />
+          <p className="text-xs font-black text-amber-800">Kam Stock ({lowStock.length})</p>
         </div>
-        <button onClick={() => navigate('/products')} className="flex items-center gap-1 text-xs text-amber-700 font-black hover:underline">
-          Manage <ArrowRight size={12} />
+        <button onClick={() => navigate('/products')} className="text-[11px] text-amber-700 font-black hover:underline flex items-center gap-0.5">
+          Manage <ArrowRight size={10}/>
         </button>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="px-4 py-3 flex flex-wrap gap-1.5">
         {lowStock.map((p) => (
-          <span key={p.id} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black ${
-            p.stock === 0 ? 'bg-red-100 text-red-700 ring-1 ring-red-200' : 'bg-amber-100 text-amber-700 ring-1 ring-amber-200'
+          <span key={p.id} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-black ${
+            p.stock === 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
           }`}>
             {p.name}
-            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${p.stock === 0 ? 'bg-red-200' : 'bg-amber-200'}`}>
-              {p.stock === 0 ? 'KHATAM' : `${p.stock}/${p.minStock}`}
-            </span>
+            <span className="opacity-60">{p.stock === 0 ? '✕' : `${p.stock}`}</span>
           </span>
         ))}
       </div>
@@ -357,17 +251,12 @@ export default function DashboardPage() {
   ) : null;
 
   const BirthdayWidget = birthdays.length > 0 ? (
-    <div className="bg-pink-50 border border-pink-200 rounded-2xl p-4">
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="w-8 h-8 bg-pink-100 rounded-xl flex items-center justify-center">
-          <Gift size={15} className="text-pink-600" />
-        </div>
-        <div>
-          <p className="text-sm font-black text-pink-800">{birthdays.length} Birthday is hafte</p>
-          <p className="text-[11px] text-pink-400">Message bhej ke rishta mazboot karein</p>
-        </div>
+    <div className="bg-white rounded-2xl ring-1 ring-pink-200 shadow-sm overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-pink-50 border-b border-pink-100">
+        <Gift size={13} className="text-pink-500" />
+        <p className="text-xs font-black text-pink-700">{birthdays.length} Birthday is hafte</p>
       </div>
-      <div className="space-y-2">
+      <div className="divide-y divide-slate-50">
         {birthdays.map((c) => {
           const [, mm, dd] = c.dob.split('-');
           const thisYear   = new Date().getFullYear();
@@ -377,21 +266,17 @@ export default function DashboardPage() {
           const phone      = c.phone.replace(/^0/, '92');
           const msg        = encodeURIComponent(`Assalamu Alaikum ${c.name}! Aaj aap ka birthday hai — bohat bohat mubarak ho!`);
           return (
-            <div key={c.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 ring-1 ring-pink-100">
-              <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                {c.photoUrl
-                  ? <img src={c.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                  : <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 text-pink-600 text-xs font-black">{c.name[0]}</div>}
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate">{c.name}</p>
-                  {c.area && <p className="text-[10px] text-slate-400 truncate">{c.area}</p>}
-                </div>
+            <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+              {c.photoUrl
+                ? <img src={c.photoUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                : <div className="w-7 h-7 rounded-full bg-pink-100 flex items-center justify-center shrink-0 text-pink-600 text-[11px] font-black">{c.name[0]}</div>}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-900 truncate">{c.name}</p>
+                {c.area && <p className="text-[10px] text-slate-400 truncate">{c.area}</p>}
               </div>
-              <div className="flex items-center gap-2 shrink-0 ml-3">
-                {isToday && <span className="text-[10px] font-black bg-pink-100 text-pink-700 px-2 py-0.5 rounded-lg">Aaj!</span>}
-                <a href={`https://wa.me/${phone}?text=${msg}`} target="_blank" rel="noopener noreferrer"
-                  className="text-[11px] font-black text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-xl transition">WA</a>
-              </div>
+              {isToday && <span className="text-[10px] font-black bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded shrink-0">Aaj!</span>}
+              <a href={`https://wa.me/${phone}?text=${msg}`} target="_blank" rel="noopener noreferrer"
+                className="shrink-0 text-[11px] font-black text-white bg-green-500 hover:bg-green-600 px-2.5 py-1 rounded-lg transition">WA</a>
             </div>
           );
         })}
@@ -401,40 +286,30 @@ export default function DashboardPage() {
 
   const CompletingSoonWidget = isOwner && data && data.completingSoon.length > 0 ? (
     <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-50">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
-            <CheckCircle size={15} className="text-emerald-600" />
-          </div>
-          <div>
-            <p className="text-sm font-black text-slate-900">Khatam Hone Wale</p>
-            <p className="text-[11px] text-slate-400">1&ndash;3 installment baaki</p>
-          </div>
+      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <CheckCircle size={13} className="text-emerald-600" />
+          <p className="text-xs font-black text-slate-700">Khatam Hone Wale</p>
         </div>
-        <span className="text-[11px] font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">
-          {data.completingSoon.length} plans
-        </span>
+        <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{data.completingSoon.length}</span>
       </div>
       <div className="divide-y divide-slate-50">
         {data.completingSoon.map((c) => {
-          const pillCls = c.paymentsLeft === 1 ? 'bg-red-100 text-red-700' : c.paymentsLeft === 2 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+          const pillCls = c.paymentsLeft === 1 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700';
           const wa = `https://wa.me/92${c.customerPhone.replace(/^0/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
-            `Assalam-o-Alaikum ${c.customerName}! Sirf ${c.paymentsLeft} installment aur baaki hai. Jazak'Allah!`
+            `Assalam-o-Alaikum ${c.customerName}! Sirf ${c.paymentsLeft} installment aur baaki hai.`
           )}`;
           return (
-            <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+            <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex items-center gap-1.5 mb-0.5">
                   <p className="text-xs font-bold text-slate-900 truncate">{c.customerName}</p>
                   <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full ${pillCls}`}>{c.paymentsLeft} baaki</span>
                 </div>
                 <p className="text-[10px] text-slate-400 truncate">{c.productName}</p>
               </div>
-              <p className="text-xs font-black text-slate-900 tabular-nums shrink-0">{pkr(c.remaining)}</p>
               <a href={wa} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-black transition shrink-0">
-                <PhoneCall size={11} /> WA
-              </a>
+                className="shrink-0 text-[11px] font-black text-white bg-emerald-500 hover:bg-emerald-600 px-2.5 py-1 rounded-lg transition">WA</a>
             </div>
           );
         })}
@@ -446,90 +321,98 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-100">
 
       {/* ── Sticky header ── */}
-      <div className="sticky top-0 z-20 bg-white border-b border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
-        <div className="px-4 sm:px-5 lg:px-8 pt-3 pb-0">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase">{today}</p>
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 leading-snug mt-0.5">
-                {greeting()}, <span className="text-blue-600">{user?.name.split(' ')[0]}</span>
-              </h1>
-            </div>
+      <div className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
+        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3.5">
+          <div>
+            <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">{today}</p>
+            <h1 className="text-base sm:text-lg font-black text-slate-900 leading-tight mt-0.5">
+              {greeting()}, <span className="text-blue-600">{user?.name.split(' ')[0]}</span>
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {!isOwner && myBalance && Number(myBalance.pendingBalance) > 0 && !myBalance.pendingHandover && (
+              <button onClick={() => { setHandoverAmount(String(Number(myBalance.pendingBalance))); setShowHandoverModal(true); }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-sm">
+                <Send size={12} /> Jama Karo
+              </button>
+            )}
             {isOwner && (
               <button onClick={() => navigate('/reports')}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition shadow-sm">
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition shadow-sm">
                 <BarChart3 size={13} /> Reports
               </button>
             )}
           </div>
-          <div className="flex overflow-x-auto scrollbar-none -mb-px">
-            {DASH_TABS.map((t) => (
-              <button key={t.key} onClick={() => setActiveTab(t.key)}
-                className={`px-5 py-2.5 text-sm font-bold whitespace-nowrap border-b-2 transition-all shrink-0 ${
-                  activeTab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}>
-                {t.label}
+        </div>
+
+        {/* Quick actions strip */}
+        {quickActions.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none px-4 sm:px-6 lg:px-8 pb-3 pt-0">
+            {quickActions.map((a) => (
+              <button key={a.to} onClick={() => navigate(a.to)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 ring-1 ring-slate-200 rounded-xl text-[11px] font-black text-slate-700 whitespace-nowrap transition shrink-0">
+                <a.icon size={12} className={a.cls} /> {a.label}
               </button>
             ))}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* ── Hero band — full width, outside the grid ── */}
+      {/* ── Hero band ── */}
       {isOwner && (isLoading ? <HeroSkeleton /> : (
-        <div className="bg-[#0D1117] px-4 sm:px-5 lg:px-8 py-5 lg:py-7">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.12em] mb-4">Paisa Ka Haal</p>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-0 lg:divide-x lg:divide-white/10">
+        <div className="bg-[#0D1117] px-4 sm:px-6 lg:px-8 py-5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x lg:divide-white/10">
             <div className="lg:pr-8">
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Aaj Aya</p>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Aaj Aya</p>
               <p className="text-3xl xl:text-4xl font-black text-white tabular-nums leading-none">{pkrShort(todayTotal)}</p>
-              <p className="text-[11px] text-slate-500 mt-1.5 tabular-nums">{pkr(todayTotal)}</p>
-              <div className="flex gap-2 mt-3">
-                <div className="bg-white/[0.06] rounded-lg px-2.5 py-1.5">
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wide">Inst</p>
-                  <p className="text-xs font-black text-slate-300 tabular-nums">{pkrShort(data?.todayCollections ?? 0)}</p>
+              <p className="text-[11px] text-slate-500 mt-1 tabular-nums">{pkr(todayTotal)}</p>
+              <div className="flex gap-1.5 mt-2.5">
+                <div className="bg-white/[0.07] rounded-lg px-2 py-1">
+                  <p className="text-[9px] text-slate-500 uppercase">Inst</p>
+                  <p className="text-[11px] font-black text-slate-300">{pkrShort(data?.todayCollections ?? 0)}</p>
                 </div>
-                <div className="bg-white/[0.06] rounded-lg px-2.5 py-1.5">
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wide">Sale</p>
-                  <p className="text-xs font-black text-slate-300 tabular-nums">{pkrShort(data?.todayCashSales ?? 0)}</p>
+                <div className="bg-white/[0.07] rounded-lg px-2 py-1">
+                  <p className="text-[9px] text-slate-500 uppercase">Sale</p>
+                  <p className="text-[11px] font-black text-slate-300">{pkrShort(data?.todayCashSales ?? 0)}</p>
                 </div>
               </div>
             </div>
             <div className="lg:px-8">
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Is Mahine</p>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Is Mahine</p>
               <p className="text-3xl xl:text-4xl font-black text-white tabular-nums leading-none">{pkrShort(monthTotal)}</p>
-              <p className="text-[11px] text-slate-500 mt-1.5 tabular-nums">{pkr(monthTotal)}</p>
-              {momChange !== null && (
-                <div className="flex items-center gap-1.5 mt-3 bg-white/[0.06] rounded-lg px-2.5 py-1.5 w-fit">
-                  {momChange >= 0 ? <TrendingUp size={11} className="text-emerald-400" /> : <TrendingDown size={11} className="text-red-400" />}
-                  <span className={`text-[11px] font-black ${momChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {Math.abs(momChange)}%
-                  </span>
-                </div>
-              )}
+              <p className="text-[11px] text-slate-500 mt-1 tabular-nums">{pkr(monthTotal)}</p>
+              {isOwner && data && (data.monthInstTarget ?? 0) > 0 && (() => {
+                const pct = Math.min(100, Math.round((data.monthCollections / data.monthInstTarget!) * 100));
+                return (
+                  <div className="mt-2.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[9px] text-slate-600">Target: {pkrShort(data.monthInstTarget!)}</p>
+                      <p className="text-[9px] text-slate-500">{pct}%</p>
+                    </div>
+                    <div className="bg-white/10 rounded-full h-1 overflow-hidden">
+                      <div className={`h-full rounded-full ${pct >= 80 ? 'bg-emerald-400' : pct >= 50 ? 'bg-blue-400' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <div className="lg:px-8">
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Active Plans</p>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Active Plans</p>
               <p className="text-3xl xl:text-4xl font-black text-white tabular-nums leading-none">{data?.activeCount ?? 0}</p>
-              <p className="text-[11px] text-slate-500 mt-1.5">chal rahe plans</p>
-              <div className="mt-3 flex items-center gap-1.5 bg-emerald-500/20 rounded-lg px-2.5 py-1.5 w-fit">
-                <CreditCard size={10} className="text-emerald-400" />
-                <span className="text-[10px] font-black text-emerald-300">Active</span>
+              <p className="text-[11px] text-slate-500 mt-1">chal rahe plans</p>
+              <div className="flex gap-1.5 mt-2.5 text-[10px]">
+                <span className="bg-white/[0.07] text-slate-400 px-2 py-1 rounded-lg">{data?.monthlyActiveCount ?? 0} monthly</span>
+                <span className="bg-white/[0.07] text-slate-400 px-2 py-1 rounded-lg">{data?.dailyActiveCount ?? 0} daily</span>
               </div>
             </div>
             <div className="lg:pl-8 cursor-pointer" onClick={() => navigate('/installments')}>
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Overdue</p>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Overdue</p>
               <p className={`text-3xl xl:text-4xl font-black tabular-nums leading-none ${(data?.overdueCount ?? 0) > 0 ? 'text-red-400' : 'text-slate-600'}`}>
                 {data?.overdueCount ?? 0}
               </p>
-              <p className="text-[11px] text-slate-500 mt-1.5 tabular-nums">
-                {(data?.overdueAmount ?? 0) > 0 ? pkr(data!.overdueAmount) : 'koi nahi'}
-              </p>
+              <p className="text-[11px] text-slate-500 mt-1">{(data?.overdueAmount ?? 0) > 0 ? pkr(data!.overdueAmount) : 'koi nahi'}</p>
               {(data?.overdueCount ?? 0) > 0 && (
-                <div className="flex items-center gap-1.5 mt-3 bg-red-500/20 rounded-lg px-2.5 py-1.5 w-fit">
-                  <AlertTriangle size={10} className="text-red-400" />
-                  <span className="text-[10px] font-black text-red-300">Call Karo</span>
-                </div>
+                <p className="text-[10px] text-red-400 mt-2.5 font-black">dekho &rarr;</p>
               )}
             </div>
           </div>
@@ -537,314 +420,240 @@ export default function DashboardPage() {
       ))}
 
       {/* ── Page body ── */}
-      <div className="px-4 sm:px-5 lg:px-8 py-5 lg:py-6">
-        <div className="flex flex-col lg:flex-row lg:gap-6 xl:gap-8 items-start">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 lg:py-5">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start">
 
-          {/* ════════════ MAIN COLUMN ════════════ */}
-          <div className="flex-1 min-w-0 space-y-4 lg:space-y-5">
+          {/* ════ MAIN COLUMN ════ */}
+          <div className="w-full lg:flex-1 lg:min-w-0 space-y-4">
 
-            {/* Quick Actions */}
-            {(() => {
-              const perms   = user?.permissions as Record<string, boolean> | null | undefined;
-              const actions = [
-                isOwner || perms?.canAddInstallment ? { label: 'Installment', icon: CreditCard,   color: 'text-blue-600',    bg: 'bg-blue-50',    to: '/installments' } : null,
-                isOwner || perms?.canAddCustomer    ? { label: 'Customer',    icon: Users,        color: 'text-violet-600',  bg: 'bg-violet-50',  to: '/customers'    } : null,
-                isOwner || perms?.canMakeCashSales  ? { label: 'Cash Sale',   icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50', to: '/cash-sales'   } : null,
-                isOwner || perms?.canRecordExpense  ? { label: 'Expense',     icon: Zap,          color: 'text-rose-600',    bg: 'bg-rose-50',    to: '/expenses'     } : null,
-                isOwner || perms?.canManageProducts ? { label: 'Product',     icon: Package,      color: 'text-amber-600',   bg: 'bg-amber-50',   to: '/products'     } : null,
-              ].filter(Boolean) as { label: string; icon: React.ElementType; color: string; bg: string; to: string }[];
-              if (!actions.length) return null;
-              return (
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
-                  {actions.map((a) => (
-                    <button key={a.to} onClick={() => navigate(a.to)}
-                      className="flex flex-col items-center gap-1.5 py-3 lg:py-4 rounded-2xl bg-white ring-1 ring-slate-200 hover:ring-slate-300 hover:shadow-md shadow-sm transition-all">
-                      <div className={`w-10 h-10 ${a.bg} rounded-xl flex items-center justify-center`}>
-                        <a.icon size={18} className={a.color} />
-                      </div>
-                      <span className="text-[11px] font-black text-slate-700 whitespace-nowrap">{a.label}</span>
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
-
-            {/* Mobile: cash widgets */}
-            <div className="lg:hidden space-y-4">
-              {CashInHandWidget}
-              {CashInFieldWidget}
-            </div>
-
-            {/* Desktop: non-owner cash in hand */}
-            <div className="hidden lg:block">
-              {CashInHandWidget}
-            </div>
-
-            {/* ══════ AAJ TAB ══════ */}
-            {activeTab === 'aaj' && (<>
-
-            {briefing && (
-              <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Aaj Ka Hisaab</p>
+            {/* Staff pending handover banner */}
+            {!isOwner && myBalance && Number(myBalance.pendingBalance) > 0 && (
+              myBalance.pendingHandover ? (
+                <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
+                  <CheckCircle size={18} className="text-amber-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-amber-800">Handover Submitted</p>
+                    <p className="text-xs text-amber-600">{pkr(Number(myBalance.pendingBalance))} &mdash; owner ki confirmation pending</p>
                   </div>
-                  {briefing.dueTomorrow > 0 && (
-                    <span className="text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-lg">
-                      +{briefing.dueTomorrow} kal due
-                    </span>
-                  )}
+                  <span className="text-[10px] font-black bg-amber-200 text-amber-700 px-2 py-1 rounded-lg uppercase shrink-0">PENDING</span>
                 </div>
-                <div className="grid grid-cols-2 divide-x divide-y divide-slate-100">
-                  <button
-                    onClick={() => briefing.dueToday > 0 && setShowDueToday((v) => !v)}
-                    className={`flex items-center gap-3 p-4 text-left transition-colors ${
-                      briefing.dueToday > 0 ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'
-                    }`}>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      briefing.dueToday > 0 ? 'bg-blue-600' : 'bg-slate-100'
-                    }`}>
-                      <Clock size={16} className={briefing.dueToday > 0 ? 'text-white' : 'text-slate-400'} />
+              ) : (
+                <div className="flex items-center justify-between bg-linear-to-r from-emerald-600 to-emerald-500 rounded-2xl px-4 py-4 shadow-md shadow-emerald-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                      <Wallet size={20} className="text-white" />
                     </div>
                     <div>
-                      <p className={`text-2xl lg:text-3xl font-black tabular-nums leading-none ${
-                        briefing.dueToday > 0 ? 'text-blue-700' : 'text-slate-300'
-                      }`}>{briefing.dueToday}</p>
-                      <p className={`text-[11px] font-bold mt-0.5 ${briefing.dueToday > 0 ? 'text-slate-700' : 'text-slate-400'}`}>Aaj Due</p>
-                      <p className={`text-[10px] mt-0.5 ${briefing.dueToday > 0 ? 'text-blue-500' : 'text-slate-300'}`}>
-                        {briefing.dueToday > 0 ? (showDueToday ? 'Chhupao ▲' : 'Naam dekho ▼') : 'koi nahi'}
-                      </p>
-                    </div>
-                  </button>
-
-                  <div className={`flex items-center gap-3 p-4 ${briefing.overdueTotal > 0 ? 'bg-rose-50/40' : ''}`}>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      briefing.overdueTotal > 0 ? 'bg-rose-600' : 'bg-slate-100'
-                    }`}>
-                      <AlertTriangle size={16} className={briefing.overdueTotal > 0 ? 'text-white' : 'text-slate-400'} />
-                    </div>
-                    <div>
-                      <p className={`text-2xl lg:text-3xl font-black tabular-nums leading-none ${
-                        briefing.overdueTotal > 0 ? 'text-rose-700' : 'text-slate-300'
-                      }`}>{briefing.overdueTotal}</p>
-                      <p className={`text-[11px] font-bold mt-0.5 ${briefing.overdueTotal > 0 ? 'text-slate-700' : 'text-slate-400'}`}>Late Hain</p>
-                      <p className={`text-[10px] mt-0.5 ${briefing.overdueTotal > 0 ? 'text-rose-500' : 'text-slate-300'}`}>
-                        {briefing.overdueTotal > 0 ? 'call karo' : 'sab theek'}
-                      </p>
+                      <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-widest">Cash in Hand</p>
+                      <p className="text-2xl font-black text-white tabular-nums">{pkr(Number(myBalance.pendingBalance))}</p>
                     </div>
                   </div>
-
-                  <div className={`flex items-center gap-3 p-4 ${todayTotal > 0 ? 'bg-emerald-50/40' : ''}`}>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      todayTotal > 0 ? 'bg-emerald-600' : 'bg-slate-100'
-                    }`}>
-                      <Banknote size={16} className={todayTotal > 0 ? 'text-white' : 'text-slate-400'} />
-                    </div>
-                    <div>
-                      <p className={`text-xl lg:text-2xl font-black tabular-nums leading-none ${
-                        todayTotal > 0 ? 'text-emerald-700' : 'text-slate-300'
-                      }`}>{todayTotal > 0 ? pkrShort(todayTotal) : '0'}</p>
-                      <p className={`text-[11px] font-bold mt-0.5 ${todayTotal > 0 ? 'text-slate-700' : 'text-slate-400'}`}>Aaj Mila</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">cash + installment</p>
-                    </div>
-                  </div>
-
-                  <div className={`flex items-center gap-3 p-4 ${briefing.promisesToday > 0 ? 'bg-amber-50/40' : ''}`}>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      briefing.promisesToday > 0 ? 'bg-amber-500' : 'bg-slate-100'
-                    }`}>
-                      <Bell size={16} className={briefing.promisesToday > 0 ? 'text-white' : 'text-slate-400'} />
-                    </div>
-                    <div>
-                      <p className={`text-2xl lg:text-3xl font-black tabular-nums leading-none ${
-                        briefing.promisesToday > 0 ? 'text-amber-700' : 'text-slate-300'
-                      }`}>{briefing.promisesToday}</p>
-                      <p className={`text-[11px] font-bold mt-0.5 ${briefing.promisesToday > 0 ? 'text-slate-700' : 'text-slate-400'}`}>Waday</p>
-                      <p className={`text-[10px] mt-0.5 ${briefing.promisesToday > 0 ? 'text-amber-500' : 'text-slate-300'}`}>
-                        {briefing.promisesToday > 0 ? 'aaj follow karo' : 'koi nahi'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {briefing && showDueToday && briefing.dueTodayAccounts.length > 0 && (
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-blue-100">
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-blue-600" />
-                    <p className="text-xs font-black text-blue-700">Aaj due &mdash; {briefing.dueTodayAccounts.length} log</p>
-                  </div>
-                  <button onClick={() => setShowDueToday(false)} className="text-blue-400 hover:text-blue-600"><X size={14} /></button>
-                </div>
-                <div className="grid xl:grid-cols-2 divide-y xl:divide-y-0 xl:divide-x divide-blue-100">
-                  {briefing.dueTodayAccounts.map((acct) => {
-                    const wa = `https://wa.me/92${acct.customerPhone.replace(/^0/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
-                      `Assalam-o-Alaikum ${acct.customerName}, aapka aaj ka installment PKR ${acct.monthly.toLocaleString('en-PK')} due hai.`
-                    )}`;
-                    return (
-                      <div key={acct.id} className="flex items-center gap-3 px-4 py-2.5">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-[11px] font-black text-blue-600 shrink-0">
-                          {acct.customerName[0]?.toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-slate-900 truncate">{acct.customerName}</p>
-                          <p className="text-[10px] text-slate-400">{acct.customerPhone}</p>
-                        </div>
-                        <p className="text-sm font-black text-blue-700 tabular-nums shrink-0">{pkr(acct.monthly)}</p>
-                        <a href={wa} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-black transition shrink-0">
-                          <PhoneCall size={11} /> WA
-                        </a>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {briefing && briefing.urgentAccounts.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm ring-1 ring-rose-200 overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 bg-rose-50 border-b border-rose-100">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 bg-rose-100 rounded-xl flex items-center justify-center">
-                      <PhoneCall size={15} className="text-rose-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-rose-800">Inhe Call Karein &mdash; {briefing.urgentAccounts.length} log</p>
-                      <p className="text-[11px] text-rose-400">Sabse zyada late &mdash; foran contact karein</p>
-                    </div>
-                  </div>
-                  {briefing.dueTomorrow > 0 && (
-                    <span className="text-[11px] bg-amber-100 text-amber-700 font-black px-2.5 py-1 rounded-full shrink-0">
-                      +{briefing.dueTomorrow} kal due
-                    </span>
-                  )}
-                </div>
-                <div className="grid xl:grid-cols-2 divide-y divide-slate-50">
-                  {briefing.urgentAccounts.map((acct) => {
-                    const wa = `https://wa.me/92${acct.customerPhone.replace(/^0/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
-                      `Assalam-o-Alaikum ${acct.customerName}, aapka installment ${acct.daysOverdue} din se overdue hai. Meherbani farma ke jald settlement karein.`
-                    )}`;
-                    return (
-                      <div key={acct.id} className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-50">
-                        <div className="w-8 h-8 bg-rose-50 rounded-full flex items-center justify-center text-xs font-black text-rose-500 shrink-0">
-                          {acct.customerName[0]?.toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-900 truncate">{acct.customerName}</p>
-                          <p className="text-[11px] text-slate-400">{acct.customerPhone}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-black text-slate-900 tabular-nums">{pkr(acct.monthly)}</p>
-                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
-                            acct.daysOverdue >= 30 ? 'bg-red-100 text-red-700' : acct.daysOverdue >= 7 ? 'bg-amber-100 text-amber-700' : 'bg-orange-100 text-orange-600'
-                          }`}>{acct.daysOverdue} din late</span>
-                        </div>
-                        <a href={wa} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-black transition shrink-0">
-                          <PhoneCall size={11} /> WA
-                        </a>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {promisesDueCount > 0 && (
-              <div className="bg-white ring-1 ring-indigo-100 rounded-2xl shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 bg-indigo-50 border-b border-indigo-100">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center">
-                      <Bell size={15} className="text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-indigo-800">{promisesDueCount} Waday &mdash; Follow Karein</p>
-                      <p className="text-[11px] text-indigo-400">In logo ne payment ka wada kia tha</p>
-                    </div>
-                  </div>
-                  <button onClick={() => navigate('/installments')} className="flex items-center gap-1 text-xs text-indigo-700 font-black hover:underline">
-                    Sab <ArrowRight size={12} />
+                  <button onClick={() => { setHandoverAmount(String(Number(myBalance.pendingBalance))); setShowHandoverModal(true); }}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-white text-emerald-700 font-black text-sm rounded-xl hover:bg-emerald-50 transition shrink-0">
+                    <Send size={14} /> Jama Karein
                   </button>
                 </div>
-                {promisesLoading ? (
-                  <div className="p-4 space-y-2">{[0, 1].map((i) => <div key={i} className="h-10 bg-indigo-50 rounded-xl animate-pulse" />)}</div>
-                ) : (
-                  <div className="grid xl:grid-cols-2 divide-y divide-slate-50">
-                    {promises.slice(0, 8).map((p) => {
-                      const pd            = new Date(p.promiseDate);
-                      const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
-                      const isOverdue     = pd < todayMidnight;
-                      return (
-                        <div key={p.id} className="flex items-center justify-between px-5 py-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate">{p.customerName}</p>
-                            <p className="text-[10px] text-slate-400 truncate">{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
+              )
+            )}
+
+            {/* Mobile: cash in field */}
+            <div className="lg:hidden">{CashInFieldWidget}</div>
+
+            {/* ════ AАJ KА KAAM — MAIN ACTION CARD ════ */}
+            <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
+
+              {/* Card header with counts */}
+              <div className="flex items-center justify-between px-5 py-3.5 bg-slate-50/80 border-b border-slate-100">
+                <h2 className="text-sm font-black text-slate-900">Aaj Ka Kaam</h2>
+                <div className="flex items-center gap-2">
+                  {briefing && (
+                    <>
+                      {briefing.dueToday > 0 && (
+                        <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{briefing.dueToday} due</span>
+                      )}
+                      {briefing.overdueTotal > 0 && (
+                        <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">{briefing.overdueTotal} late</span>
+                      )}
+                      {promisesDueCount > 0 && (
+                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{promisesDueCount} waday</span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {!briefing ? (
+                <RowSkeleton rows={5} />
+              ) : (
+                <>
+                  {/* Due today */}
+                  {briefing.dueTodayAccounts.length > 0 ? (
+                    <div>
+                      <div className="flex items-center gap-2 px-5 py-2 bg-blue-50/50 border-b border-blue-100/50">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />
+                        <p className="text-[11px] font-black text-blue-700">
+                          {briefing.dueToday} log aaj milenge
+                        </p>
+                        {briefing.dueTomorrow > 0 && (
+                          <span className="ml-auto text-[10px] text-slate-400">+{briefing.dueTomorrow} kal</span>
+                        )}
+                      </div>
+                      <div className="divide-y divide-slate-50">
+                        {briefing.dueTodayAccounts.slice(0, 12).map((acct) => {
+                          const wa = `https://wa.me/92${acct.customerPhone.replace(/^0/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                            `Assalam-o-Alaikum ${acct.customerName}, aapka aaj ka installment ${pkr(acct.monthly)} due hai.`
+                          )}`;
+                          return (
+                            <div key={acct.id} className="flex items-center gap-3 px-5 py-3">
+                              <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center text-xs font-black text-blue-600 shrink-0">
+                                {acct.customerName[0]?.toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-900 truncate">{acct.customerName}</p>
+                                <p className="text-[11px] text-slate-400">{acct.customerPhone}</p>
+                              </div>
+                              <p className="text-sm font-black text-blue-700 tabular-nums shrink-0">{pkr(acct.monthly)}</p>
+                              <a href={wa} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-black transition shrink-0">
+                                <PhoneCall size={11} /> WA
+                              </a>
+                            </div>
+                          );
+                        })}
+                        {briefing.dueTodayAccounts.length > 12 && (
+                          <div className="px-5 py-2.5 border-t border-slate-50 text-center">
+                            <button onClick={() => navigate('/installments')} className="text-xs text-blue-600 font-black hover:underline">
+                              +{briefing.dueTodayAccounts.length - 12} aur log &rarr;
+                            </button>
                           </div>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg shrink-0 ml-3 ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                            {isOverdue ? 'Overdue' : 'Today'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-50">
+                      <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
+                        <Clock size={13} className="text-slate-400" />
+                      </div>
+                      <p className="text-sm text-slate-400">Aaj koi due nahi</p>
+                    </div>
+                  )}
 
+                  {/* Overdue */}
+                  {briefing.urgentAccounts.length > 0 && (
+                    <div className="border-t border-slate-100">
+                      <div className="flex items-center gap-2 px-5 py-2 bg-rose-50/50 border-b border-rose-100/50">
+                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0" />
+                        <p className="text-[11px] font-black text-rose-700">{briefing.overdueTotal} log late hain &mdash; foran call karo</p>
+                      </div>
+                      <div className="divide-y divide-slate-50">
+                        {briefing.urgentAccounts.map((acct) => {
+                          const wa = `https://wa.me/92${acct.customerPhone.replace(/^0/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                            `Assalam-o-Alaikum ${acct.customerName}, aapka installment ${acct.daysOverdue} din se overdue hai. ${pkr(acct.monthly)} jald send karein.`
+                          )}`;
+                          return (
+                            <div key={acct.id} className="flex items-center gap-3 px-5 py-3">
+                              <div className="w-8 h-8 bg-rose-50 rounded-full flex items-center justify-center text-xs font-black text-rose-500 shrink-0">
+                                {acct.customerName[0]?.toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-900 truncate">{acct.customerName}</p>
+                                <p className="text-[11px] text-slate-400">{acct.customerPhone}</p>
+                              </div>
+                              <div className="shrink-0 text-right mr-1">
+                                <p className="text-sm font-black text-slate-900 tabular-nums">{pkr(acct.monthly)}</p>
+                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                                  acct.daysOverdue >= 30 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                                }`}>{acct.daysOverdue} din late</span>
+                              </div>
+                              <a href={wa} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-black transition shrink-0">
+                                <PhoneCall size={11} /> WA
+                              </a>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Promises */}
+                  {promisesDueCount > 0 && promises.length > 0 && (
+                    <div className="border-t border-slate-100">
+                      <div className="flex items-center gap-2 px-5 py-2 bg-amber-50/50 border-b border-amber-100/50">
+                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shrink-0" />
+                        <p className="text-[11px] font-black text-amber-700">{promisesDueCount} waday due hain</p>
+                      </div>
+                      <div className="divide-y divide-slate-50">
+                        {promises.slice(0, 6).map((p) => (
+                          <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                            <Bell size={14} className="text-amber-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-900 truncate">{p.customerName}</p>
+                              <p className="text-[11px] text-slate-400 truncate">{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
+                            </div>
+                            <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg shrink-0">Wada</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* All clear */}
+                  {briefing.dueToday === 0 && briefing.overdueTotal === 0 && promisesDueCount === 0 && (
+                    <div className="py-10 flex flex-col items-center gap-2.5 text-center">
+                      <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center">
+                        <CheckCircle size={26} className="text-emerald-500" />
+                      </div>
+                      <p className="text-sm font-black text-slate-700">Aaj sab clear hai!</p>
+                      <p className="text-xs text-slate-400">Koi due, koi overdue, koi wada pending nahi</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Daily target */}
             {isOwner && shop?.settings?.dailyTarget && (() => {
               const target = shop.settings!.dailyTarget!;
               const pct    = Math.min(Math.round((todayTotal / target) * 100), 100);
               const over   = todayTotal > target;
-              const barCls = over ? 'bg-emerald-500' : pct >= 75 ? 'bg-blue-500' : pct >= 40 ? 'bg-amber-400' : 'bg-slate-300';
               return (
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
-                        <Target size={17} className="text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900">Roz Ka Target</p>
-                        <p className="text-[11px] text-slate-400">Aaj kahan ho target ke mukable</p>
-                      </div>
+                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Target size={14} className="text-blue-600" />
+                      <p className="text-sm font-black text-slate-900">Roz Ka Target</p>
                     </div>
-                    <span className={`text-lg font-black tabular-nums ${over ? 'text-emerald-600' : 'text-blue-600'}`}>
-                      {pct}%{over ? ' ✓' : ''}
-                    </span>
+                    <span className={`text-sm font-black ${over ? 'text-emerald-600' : 'text-blue-600'}`}>{pct}%{over ? ' ✓' : ''}</span>
                   </div>
-                  <div className="flex items-baseline gap-3 mb-3">
-                    <span className="text-3xl font-black text-slate-900 tabular-nums">{pkr(todayTotal)}</span>
-                    <span className="text-sm text-slate-400">of {pkr(target)}</span>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-xl font-black text-slate-900 tabular-nums">{pkr(todayTotal)}</span>
+                    <span className="text-xs text-slate-400">of {pkr(target)}</span>
                   </div>
-                  <div className="bg-slate-100 rounded-full h-3 overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-700 ${barCls}`} style={{ width: `${pct}%` }} />
+                  <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-700 ${over ? 'bg-emerald-500' : pct >= 70 ? 'bg-blue-500' : 'bg-amber-400'}`}
+                      style={{ width: `${pct}%` }} />
                   </div>
-                  <p className={`text-xs font-bold mt-2 ${over ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    {over ? `+${pkr(todayTotal - target)} target se zyada — Masha'Allah!` : `${pkr(target - todayTotal)} aur chahiye`}
+                  <p className={`text-xs font-bold mt-1.5 ${over ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    {over ? `+${pkr(todayTotal - target)} zyada!` : `${pkr(target - todayTotal)} aur chahiye`}
                   </p>
                 </div>
               );
             })()}
 
-            {/* Mobile sidebar widgets in aaj tab */}
+            {/* Mobile sidebar widgets */}
             <div className="lg:hidden space-y-4">
               {LowStockWidget}
               {BirthdayWidget}
               {CompletingSoonWidget}
             </div>
 
-            <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-                <div>
-                  <h2 className="text-sm font-black text-slate-900">Nayi Installments</h2>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Haal hi mein shuru hue plans</p>
-                </div>
+            {/* Recent installments */}
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
+                <h2 className="text-sm font-black text-slate-900">Nayi Installments</h2>
                 <button onClick={() => navigate('/installments')} className="flex items-center gap-1 text-xs text-blue-600 font-black hover:underline">
-                  Sab dekho <ArrowRight size={13} />
+                  Sab dekho <ArrowRight size={12} />
                 </button>
               </div>
               {isLoading ? <RowSkeleton rows={4} /> : !data?.recentInstallments.length ? (
@@ -861,7 +670,7 @@ export default function DashboardPage() {
                         <p className="text-sm font-bold text-slate-900 truncate">{inst.customerName}</p>
                         <p className="text-xs text-slate-400 truncate">{inst.productName}</p>
                       </div>
-                      <div className="flex items-center gap-3 ml-4">
+                      <div className="flex items-center gap-3 ml-4 shrink-0">
                         <div className="text-right">
                           <p className="text-sm font-black text-slate-900 tabular-nums">{pkr(Number(inst.remaining))}</p>
                           <p className="text-[10px] text-slate-400">baaki</p>
@@ -876,528 +685,70 @@ export default function DashboardPage() {
               )}
             </div>
 
-            </>)}
-
-            {/* ══════ IS MAHINE TAB ══════ */}
-            {activeTab === 'mahine' && (<>
-
-            {isOwner && data && (() => {
-              const target   = data.monthInstTarget;
-              const received = data.monthCollections;
-              const pct      = Math.min(100, target > 0 ? Math.round((received / target) * 100) : received > 0 ? 100 : 0);
-              const gap      = target - received;
-              const isAhead  = target > 0 ? received >= target : false;
-              const barColor = pct >= 90 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-400' : 'bg-rose-500';
-              const now      = new Date();
-              const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-              const timePct  = Math.round((now.getDate() / daysInMonth) * 100);
-              return (
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 lg:p-7 shadow-sm">
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-                        <Target size={17} className="text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900">Is Mahine Ki Target</p>
-                        <p className="text-[11px] text-slate-400">{now.toLocaleDateString('en-PK', { month: 'long', year: 'numeric' })}</p>
-                      </div>
-                    </div>
-                    <span className={`text-sm font-black px-3 py-1.5 rounded-xl ${
-                      target === 0 ? 'bg-slate-100 text-slate-500' : isAhead ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                    }`}>{target === 0 ? 'N/A' : `${pct}%`}</span>
-                  </div>
-                  {target === 0 ? <p className="text-xs text-slate-400 text-center py-3">Is mahine koi installment due nahi</p> : (
-                    <>
-                      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
-                        <div className="bg-slate-50 rounded-xl px-4 py-3">
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">Expected</p>
-                          <p className="text-xl xl:text-2xl font-black text-slate-800 tabular-nums">{pkrShort(target)}</p>
-                        </div>
-                        <div className={`rounded-xl px-4 py-3 ${isAhead ? 'bg-emerald-50' : 'bg-blue-50'}`}>
-                          <p className={`text-[11px] font-bold uppercase tracking-wide mb-1 ${isAhead ? 'text-emerald-500' : 'text-blue-400'}`}>Wapas Aya</p>
-                          <p className={`text-xl xl:text-2xl font-black tabular-nums ${isAhead ? 'text-emerald-700' : 'text-blue-700'}`}>{pkrShort(received)}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-xl px-4 py-3">
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">Baaki</p>
-                          <p className="text-xl xl:text-2xl font-black text-slate-800 tabular-nums">{pkrShort(Math.max(gap, 0))}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-xl px-4 py-3">
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">Mahina Guzra</p>
-                          <p className="text-xl xl:text-2xl font-black text-slate-800 tabular-nums">{timePct}%</p>
-                        </div>
-                      </div>
-                      <div className="relative h-3 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
-                        <div className="absolute top-0 h-full w-0.5 bg-slate-400/50" style={{ left: `${timePct}%` }} />
-                      </div>
-                      <p className={`text-xs font-black mt-2 ${isAhead ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {isAhead ? `+${pkrShort(received - target)} target se zyada` : `${pkrShort(gap)} abhi baaki`}
-                      </p>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-
-            {isOwner && data && (() => {
-              const income   = monthTotal;
-              const expenses = data.monthExpenseTotal ?? 0;
-              const profit   = income - expenses;
-              const isProfit = profit >= 0;
-              return (
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                  <div className="flex items-center gap-2.5 px-5 pt-4 pb-3.5 border-b border-slate-50">
-                    <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
-                      <BarChart3 size={15} className="text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900">Is Mahine Ka Hisaab</p>
-                      <p className="text-[11px] text-slate-400">Income vs Kharcha</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 divide-x divide-slate-100">
-                    {[
-                      { label: 'Income',  val: income > 0 ? pkrShort(income) : '—',     cls: income > 0 ? 'text-slate-900' : 'text-slate-300', sub: 'inst + cash' },
-                      { label: 'Kharcha', val: expenses > 0 ? pkrShort(expenses) : '—', cls: expenses > 0 ? 'text-rose-600' : 'text-slate-300', sub: 'is mahine' },
-                      {
-                        label: `Net ${isProfit ? 'Faida' : 'Nuqsan'}`,
-                        val: income === 0 && expenses === 0 ? '—' : pkrShort(Math.abs(profit)),
-                        cls: income === 0 && expenses === 0 ? 'text-slate-300' : isProfit ? 'text-emerald-600' : 'text-rose-600',
-                        sub: isProfit ? 'Alhamdulillah' : 'Dhyan dein',
-                      },
-                    ].map(({ label, val, cls, sub }) => (
-                      <div key={label} className="px-4 lg:px-8 py-5 lg:py-6 text-center">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
-                        <p className={`text-xl xl:text-3xl font-black tabular-nums ${cls}`}>{val}</p>
-                        <p className="text-[10px] text-slate-400 mt-1">{sub}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {isOwner && data && (data.newThisMonthCount > 0 || data.completedThisMonthCount > 0) && (
-              <div className="grid grid-cols-2 gap-3 lg:gap-4">
-                {[
-                  { label: 'Naye Plans', count: data.newThisMonthCount,      val: data.newThisMonthValue,      icon: TrendingUp,   bg: 'bg-indigo-50',  ico: 'text-indigo-600',  ring: 'ring-indigo-100',  money: 'text-indigo-700',  badge: 'Naye'  },
-                  { label: 'Mukammal',   count: data.completedThisMonthCount, val: data.completedThisMonthValue, icon: CheckCircle, bg: 'bg-emerald-50', ico: 'text-emerald-600', ring: 'ring-emerald-100', money: 'text-emerald-700', badge: 'Poore' },
-                ].map(({ label, count, val, icon: Icon, bg, ico, ring, money, badge }) => (
-                  <div key={label} className={`bg-white ring-1 ${ring} rounded-2xl p-5 lg:p-6 shadow-sm`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center`}>
-                        <Icon size={18} className={ico} />
-                      </div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{badge}</span>
-                    </div>
-                    <p className="text-4xl xl:text-5xl font-black tabular-nums text-slate-900">{count}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{label}</p>
-                    <p className={`text-base xl:text-lg font-black mt-3 tabular-nums ${money}`}>{pkr(val)}</p>
-                    <p className="text-[10px] text-slate-400">{label === 'Naye Plans' ? 'total value' : 'wapas aya'}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            </>)}
-
-            {/* ══════ PORTFOLIO TAB ══════ */}
-            {activeTab === 'portfolio' && (<>
-
-            {isOwner && reports && (() => {
-              const outstanding = reports.collectionRate.totalOutstanding;
-              const billed      = reports.collectionRate.totalBilled;
-              const collected   = reports.collectionRate.totalCollected;
-              const pct         = billed > 0 ? Math.round((collected / billed) * 100) : 0;
-              return (
-                <div className="relative bg-indigo-600 rounded-3xl p-6 lg:p-8 text-white overflow-hidden shadow-xl shadow-indigo-900/20">
-                  <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/5 pointer-events-none" />
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                        <Landmark size={17} className="text-white" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">Total Receivables</p>
-                        <p className="text-[11px] text-indigo-300">Sare active plans ka outstanding</p>
-                      </div>
-                    </div>
-                    <button onClick={() => navigate('/installments')} className="text-[11px] text-indigo-200 hover:text-white font-black flex items-center gap-1">
-                      Plans <ArrowRight size={11} />
-                    </button>
-                  </div>
-                  <p className="text-5xl lg:text-6xl xl:text-7xl font-black text-white tabular-nums leading-none">{pkrShort(outstanding)}</p>
-                  <p className="text-xs text-indigo-300 mt-1.5 tabular-nums">{pkr(outstanding)}</p>
-                  <div className="mt-5 flex items-center gap-3">
-                    <div className="flex-1 bg-white/15 rounded-full h-2 overflow-hidden">
-                      <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs font-black text-indigo-200 shrink-0">{pct}% wapas aya</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4 lg:gap-8 mt-5">
-                    {[
-                      { label: 'Total Dia',  val: billed,      cls: 'text-white' },
-                      { label: 'Wapas Aya',  val: collected,   cls: 'text-emerald-300' },
-                      { label: 'Baaki Hai',  val: outstanding, cls: 'text-amber-300' },
-                    ].map(({ label, val, cls }) => (
-                      <div key={label}>
-                        <p className="text-[10px] text-indigo-300 uppercase tracking-wide">{label}</p>
-                        <p className={`text-base xl:text-xl font-black tabular-nums mt-0.5 ${cls}`}>{pkrShort(val)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {data && (data.monthlyActiveCount > 0 || data.dailyActiveCount > 0) && (() => {
-              const total = data.monthlyActiveCount + data.dailyActiveCount;
-              const mPct  = total > 0 ? Math.round((data.monthlyActiveCount / total) * 100) : 0;
-              return (
-                <div className="grid grid-cols-2 gap-3 lg:gap-4">
-                  {[
-                    { label: 'Monthly Plans', count: data.monthlyActiveCount, rem: data.monthlyActiveRemaining, pct: mPct,      color: 'blue',   icon: Calendar, to: '/installments?freq=monthly' },
-                    { label: 'Daily Plans',   count: data.dailyActiveCount,   rem: data.dailyActiveRemaining,   pct: 100-mPct,  color: 'violet', icon: Clock,    to: '/installments?freq=daily'   },
-                  ].map(({ label, count, rem, pct, color, icon: Icon, to }) => (
-                    <div key={label} className={`bg-white ring-1 ring-${color}-100 rounded-2xl p-5 lg:p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow`}
-                      onClick={() => navigate(to)}>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={`w-10 h-10 bg-${color}-50 rounded-xl flex items-center justify-center`}>
-                          <Icon size={18} className={`text-${color}-600`} />
-                        </div>
-                        <ArrowRight size={14} className="text-slate-400" />
-                      </div>
-                      <p className="text-4xl xl:text-5xl font-black text-slate-900 tabular-nums">{count}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{label.toLowerCase()}</p>
-                      <p className={`text-base xl:text-xl font-black text-${color}-700 mt-3 tabular-nums`}>{pkr(rem)}</p>
-                      <p className="text-[10px] text-slate-400">baaki hai</p>
-                      <div className="mt-3 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                        <div className={`h-full bg-${color}-400 rounded-full`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-
-            {reports && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-sm font-black text-slate-900">Collection Rate</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Billing ka kitna wapas aya</p>
-                    </div>
-                    <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl shrink-0 ml-2 ${
-                      rate >= 80 ? 'bg-emerald-100 text-emerald-700' : rate >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'
-                    }`}>{rate >= 80 ? 'Acha' : rate >= 60 ? 'Theek' : 'Kharaab'}</span>
-                  </div>
-                  <p className={`text-5xl font-black tabular-nums ${rateColor}`}>{rate}%</p>
-                  <div className="mt-3 bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-700 ${rateBar}`} style={{ width: `${rate}%` }} />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-2 tabular-nums">{pkrShort(reports.collectionRate.totalCollected)} mila</p>
-                </div>
-
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm">
-                  <p className="text-sm font-black text-slate-900 mb-1">Payments Ka Haal</p>
-                  <p className="text-[11px] text-slate-400 mb-4">Kitne log time pe</p>
-                  <div className="space-y-2.5">
-                    {[
-                      { label: 'Waqt pe',   n: aging?.current    ?? 0, bar: 'bg-emerald-400', text: 'text-emerald-700' },
-                      { label: '1–7 din',  n: aging?.days0_7    ?? 0, bar: 'bg-amber-400',   text: 'text-amber-700'  },
-                      { label: '8–30 din', n: aging?.days8_30   ?? 0, bar: 'bg-orange-400',  text: 'text-orange-700' },
-                      { label: '31–90 din',n: aging?.days31_90  ?? 0, bar: 'bg-rose-500',    text: 'text-rose-700'   },
-                      { label: '90+ din',   n: aging?.days90plus ?? 0, bar: 'bg-red-800',     text: 'text-red-800'    },
-                    ].map(({ label, n, bar, text }) => {
-                      const tot = (aging?.current ?? 0) + (aging?.days0_7 ?? 0) + (aging?.days8_30 ?? 0) + (aging?.days31_90 ?? 0) + (aging?.days90plus ?? 0);
-                      return (
-                        <div key={label} className="flex items-center gap-2">
-                          <div className="w-16 shrink-0 text-[11px] font-semibold text-slate-600">{label}</div>
-                          <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                            <div className={`h-full rounded-full ${bar}`} style={{ width: `${tot > 0 ? (n / tot) * 100 : 0}%` }} />
-                          </div>
-                          <span className={`text-xs font-black w-5 text-right tabular-nums ${n > 0 ? text : 'text-slate-300'}`}>{n}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm flex flex-col">
-                  <p className="text-sm font-black text-slate-900">6 Mahine Trend</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5 mb-4">Collection ka safar</p>
-                  <div className="flex-1 flex flex-col justify-end">
-                    {spark6.length > 0 ? <Sparkline data={spark6} /> : (
-                      <div className="h-12 flex items-end gap-0.5">
-                        {Array.from({ length: 6 }).map((_, i) => <div key={i} className="flex-1 bg-slate-100 rounded-sm h-1" />)}
-                      </div>
-                    )}
-                  </div>
-                  {momChange !== null && (
-                    <p className={`text-xs font-black mt-3 flex items-center gap-1 ${momChange >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                      {momChange >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                      {Math.abs(momChange)}% pichle mahine se
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            </>)}
-
-            {/* ══════ REPORTS TAB ══════ */}
-            {activeTab === 'reports' && isOwner && (<>
-
-            {hasAnalytics && (
-              <div className="flex items-center gap-2.5">
-                <div className="w-1 h-5 bg-violet-600 rounded-full shrink-0" />
-                <p className="text-sm font-black text-slate-800">Tafseeli Report</p>
-                <p className="text-[11px] text-slate-400">&mdash; gehri nazar, weekly check karein</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-5">
-              {reports && reports.topDebtors.length > 0 && (
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 bg-rose-50 rounded-xl flex items-center justify-center">
-                        <AlertTriangle size={15} className="text-rose-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900">Sabse Zyada Baaki</p>
-                        <p className="text-[11px] text-slate-400">Top debtors</p>
-                      </div>
-                    </div>
-                    <button onClick={() => navigate('/installments')} className="flex items-center gap-1 text-xs text-blue-600 font-black hover:underline">
-                      View all <ArrowRight size={12} />
-                    </button>
-                  </div>
-                  <div className="p-4 lg:p-5 space-y-3">
-                    {reports.topDebtors.slice(0, 6).map((d) => {
-                      const wa = `https://wa.me/92${d.phone.replace(/^0/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
-                        `Assalam-o-Alaikum ${d.name}, installment PKR ${d.remaining.toLocaleString('en-PK')} baaki hai.`
-                      )}`;
-                      const maxR = reports.topDebtors[0]?.remaining ?? 1;
-                      return (
-                        <div key={d.name + d.phone}>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-slate-900 truncate">{d.name}</p>
-                              <p className="text-[11px] text-slate-400">{d.count} plan{d.count !== 1 ? 's' : ''}</p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0 ml-3">
-                              <p className="text-sm font-black text-rose-600 tabular-nums">{pkr(d.remaining)}</p>
-                              <a href={wa} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black transition">
-                                <PhoneCall size={10} /> WA
-                              </a>
-                            </div>
-                          </div>
-                          <div className="bg-slate-100 rounded-full h-1 overflow-hidden">
-                            <div className="h-full bg-rose-400 rounded-full" style={{ width: `${(d.remaining / maxR) * 100}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {reports && reports.topProducts.length > 0 && (
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
-                        <Package size={15} className="text-amber-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900">Sabse Zyada Bikne Wale</p>
-                        <p className="text-[11px] text-slate-400">Installment pe gaye</p>
-                      </div>
-                    </div>
-                    <button onClick={() => navigate('/products')} className="flex items-center gap-1 text-xs text-blue-600 font-black hover:underline">
-                      Manage <ArrowRight size={12} />
-                    </button>
-                  </div>
-                  <div className="p-4 lg:p-5 space-y-3">
-                    {reports.topProducts.map((p, i) => {
-                      const maxC = reports.topProducts[0]?.count ?? 1;
-                      return (
-                        <div key={p.name}>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-[10px] font-black text-slate-300 w-4 shrink-0">#{i+1}</span>
-                              <span className="text-sm font-bold text-slate-800 truncate">{p.name}</span>
-                            </div>
-                            <div className="text-right shrink-0 ml-3">
-                              <span className="text-sm font-black text-slate-900 tabular-nums">{p.count}</span>
-                              <span className="text-[11px] text-slate-400 ml-1.5 tabular-nums">{pkr(p.totalAmount)}</span>
-                            </div>
-                          </div>
-                          <div className="bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                            <div className="h-full bg-amber-400 rounded-full" style={{ width: `${(p.count / maxC) * 100}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {advanced && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center gap-2.5 mb-5">
-                    <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
-                      <Zap size={15} className="text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900">Aane Wala Paisa</p>
-                      <p className="text-[11px] text-slate-400">Agli 30 din mein</p>
-                    </div>
-                  </div>
-                  <CashflowBar data={advanced.cashflowForecast} />
-                </div>
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center gap-2.5 mb-5">
-                    <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
-                      <ShieldCheck size={15} className="text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900">Recovery Rate</p>
-                      <p className="text-[11px] text-slate-400">Overdue mein se kitna wapas aya</p>
-                    </div>
-                  </div>
-                  {advanced.recovery.overdueCount === 0 ? (
-                    <p className="text-sm text-emerald-600 font-black py-4 text-center">Koi overdue nahi &mdash; Alhamdulillah!</p>
-                  ) : (
-                    <>
-                      <p className={`text-5xl font-black tabular-nums ${
-                        advanced.recovery.efficiency >= 70 ? 'text-emerald-600' : advanced.recovery.efficiency >= 40 ? 'text-amber-600' : 'text-rose-500'
-                      }`}>{advanced.recovery.efficiency}%</p>
-                      <div className="mt-3 bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-700 ${
-                          advanced.recovery.efficiency >= 70 ? 'bg-emerald-500' : advanced.recovery.efficiency >= 40 ? 'bg-amber-400' : 'bg-rose-500'
-                        }`} style={{ width: `${advanced.recovery.efficiency}%` }} />
-                      </div>
-                      <p className="text-xs text-slate-400 mt-2 tabular-nums">{pkr(advanced.recovery.totalCollected)} of {pkr(advanced.recovery.totalDue)}</p>
-                    </>
-                  )}
-                </div>
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center gap-2.5 mb-5">
-                    <div className="w-8 h-8 bg-violet-50 rounded-xl flex items-center justify-center">
-                      <Users size={15} className="text-violet-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900">Staff Performance</p>
-                      <p className="text-[11px] text-slate-400">Pichle 30 din</p>
-                    </div>
-                  </div>
-                  {!advanced.staffProductivity.length ? (
-                    <p className="text-xs text-slate-400 py-4 text-center">Koi data nahi</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {advanced.staffProductivity.map((s) => {
-                        const maxC = advanced.staffProductivity[0]?.count ?? 1;
-                        return (
-                          <div key={s.userId}>
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span className="font-bold text-slate-700 truncate max-w-[140px]">{s.name}</span>
-                              <span className="text-slate-400 shrink-0 ml-2 tabular-nums">{s.count} &middot; {pkr(s.total)}</span>
-                            </div>
-                            <div className="bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                              <div className="h-full bg-violet-400 rounded-full" style={{ width: `${(s.count / maxC) * 100}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center gap-2.5 mb-5">
-                    <div className="w-8 h-8 bg-rose-50 rounded-xl flex items-center justify-center">
-                      <MapPin size={15} className="text-rose-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900">Area ke Hisab se</p>
-                      <p className="text-[11px] text-slate-400">Problem areas</p>
-                    </div>
-                  </div>
-                  {!advanced.areaHeatmap.length ? (
-                    <p className="text-xs text-slate-400 py-4 text-center">Koi overdue nahi</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {advanced.areaHeatmap.map((a) => {
-                        const maxT = advanced.areaHeatmap[0] ? advanced.areaHeatmap[0].overdueCount + advanced.areaHeatmap[0].defaultedCount : 1;
-                        return (
-                          <div key={a.city}>
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span className="font-bold text-slate-700 truncate">{a.city}</span>
-                              <span className="text-slate-400 shrink-0 ml-2">
-                                {a.overdueCount > 0 && <span className="text-amber-600">{a.overdueCount} late</span>}
-                                {a.overdueCount > 0 && a.defaultedCount > 0 && <span className="mx-1 text-slate-300">&middot;</span>}
-                                {a.defaultedCount > 0 && <span className="text-rose-500">{a.defaultedCount} def</span>}
-                              </span>
-                            </div>
-                            <div className="bg-slate-100 rounded-full h-1.5 overflow-hidden flex">
-                              <div className="h-full bg-amber-400" style={{ width: `${(a.overdueCount / maxT) * 100}%` }} />
-                              <div className="h-full bg-rose-500" style={{ width: `${(a.defaultedCount / maxT) * 100}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            </>)}
-
           </div>{/* end main col */}
 
-          {/* ════════════ SIDEBAR (desktop only) ════════════ */}
+          {/* ════ SIDEBAR ════ */}
           <div className="hidden lg:flex flex-col gap-4 w-72 xl:w-80 shrink-0">
-            <div className="sticky top-[120px] space-y-4">
+            <div className="sticky top-[112px] space-y-4">
               {CashInFieldWidget}
+
+              {/* Is Mahine summary */}
+              {isOwner && data && (
+                <div className="bg-white ring-1 ring-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Is Mahine</p>
+                    <button onClick={() => navigate('/reports')} className="text-[11px] text-blue-600 font-black hover:underline flex items-center gap-0.5">
+                      Detail <ArrowRight size={10}/>
+                    </button>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xl font-black text-slate-900 tabular-nums">{pkrShort(monthTotal)}</span>
+                        {data.monthInstTarget > 0 && <span className="text-[11px] text-slate-400">of {pkrShort(data.monthInstTarget)}</span>}
+                      </div>
+                      {data.monthInstTarget > 0 && (() => {
+                        const pct = Math.min(100, Math.round((data.monthCollections / data.monthInstTarget) * 100));
+                        return (
+                          <>
+                            <div className="bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                              <div className={`h-full rounded-full ${pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1">{pct}% target achieve</p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    {(() => {
+                      const expenses = data.monthExpenseTotal ?? 0;
+                      const profit   = monthTotal - expenses;
+                      return (
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div className="bg-slate-50 rounded-xl px-3 py-2">
+                            <p className="text-[10px] text-slate-400">Kharcha</p>
+                            <p className="text-sm font-black text-rose-500 tabular-nums">{pkrShort(expenses)}</p>
+                          </div>
+                          <div className="bg-slate-50 rounded-xl px-3 py-2">
+                            <p className="text-[10px] text-slate-400">Net Faida</p>
+                            <p className={`text-sm font-black tabular-nums ${profit >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                              {profit >= 0 ? '' : '-'}{pkrShort(Math.abs(profit))}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {CompletingSoonWidget}
               {LowStockWidget}
               {BirthdayWidget}
-              {CompletingSoonWidget}
-
-              {isOwner && shop?.settings?.dailyTarget && (() => {
-                const target = shop.settings!.dailyTarget!;
-                const pct    = Math.min(Math.round((todayTotal / target) * 100), 100);
-                const over   = todayTotal > target;
-                return (
-                  <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Target size={15} className="text-blue-600" />
-                        <p className="text-sm font-black text-slate-900">Roz Ka Target</p>
-                      </div>
-                      <span className={`text-base font-black tabular-nums ${over ? 'text-emerald-600' : 'text-blue-600'}`}>{pct}%</span>
-                    </div>
-                    <div className="bg-slate-100 rounded-full h-2.5 overflow-hidden mb-2">
-                      <div className={`h-full rounded-full transition-all duration-700 ${over ? 'bg-emerald-500' : pct >= 75 ? 'bg-blue-500' : pct >= 40 ? 'bg-amber-400' : 'bg-slate-300'}`}
-                        style={{ width: `${pct}%` }} />
-                    </div>
-                    <p className={`text-xs font-bold ${over ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {over ? `+${pkr(todayTotal - target)} zyada!` : `${pkr(target - todayTotal)} baaki`}
-                    </p>
-                  </div>
-                );
-              })()}
             </div>
           </div>
 
-        </div>{/* end flex row */}
-      </div>{/* end body */}
+        </div>
+      </div>
 
       {/* Staff handover modal */}
       {showHandoverModal && !isOwner && (() => {
@@ -1413,7 +764,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-slate-400 mt-0.5">Owner ko cash hand-off ka record</p>
                 </div>
                 <button onClick={() => setShowHandoverModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg transition">
-                  <X size={18} className="text-slate-500" />
+                  <X size={16} className="text-slate-500" />
                 </button>
               </div>
               <div className="p-5 space-y-4">
@@ -1435,8 +786,7 @@ export default function DashboardPage() {
                 <div>
                   <label className="block text-xs font-black text-slate-600 mb-1.5">Note (optional)</label>
                   <textarea value={handoverNote} onChange={(e) => setHandoverNote(e.target.value)} rows={2}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-emerald-400 transition"
-                    placeholder="Koi additional info..." />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-emerald-400 transition" />
                 </div>
               </div>
               <div className="flex gap-2 px-5 pb-5">
@@ -1444,7 +794,7 @@ export default function DashboardPage() {
                   className="flex-1 py-2.5 text-sm font-black text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition">Cancel</button>
                 <button disabled={!handoverAmount || amt <= 0 || submitHandover.isPending} onClick={() => submitHandover.mutate()}
                   className="flex-1 py-2.5 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl transition flex items-center justify-center gap-1.5">
-                  {submitHandover.isPending ? <span className="animate-pulse">Jama ho raha hai...</span> : <><Send size={13} /> Jama Karein</>}
+                  {submitHandover.isPending ? <span className="animate-pulse">Jama ho raha…</span> : <><Send size={13} /> Jama Karein</>}
                 </button>
               </div>
             </div>
@@ -1453,7 +803,6 @@ export default function DashboardPage() {
       })()}
 
       {receiveTarget && <CashReceiveModal target={receiveTarget} onClose={() => setReceiveTarget(null)} />}
-
     </div>
   );
 }
