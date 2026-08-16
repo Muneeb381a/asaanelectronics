@@ -59,15 +59,15 @@ const ALL_NAV: NavItemDef[] = [
 
 const GROUP_LABELS: Record<NavGroup, string> = {
   core:       '',
-  finance:    'Finance',
-  catalog:    'Catalog',
-  customers:  'Sales & Customers',
+  customers:  'Customers & Sales',
   operations: 'Operations',
+  catalog:    'Catalog',
+  finance:    'Finance',
   reporting:  'Reporting',
   system:     'System',
 };
 
-const GROUP_ORDER: NavGroup[] = ['core', 'finance', 'catalog', 'customers', 'operations', 'reporting', 'system'];
+const GROUP_ORDER: NavGroup[] = ['core', 'customers', 'operations', 'catalog', 'finance', 'reporting', 'system'];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
