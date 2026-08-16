@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowLeft, Users, Calendar, Image, Phone, TrendingUp,
+  ArrowLeft, Users, Image, Phone, TrendingUp,
   ChevronRight, ChevronLeft, Activity, Clock,
 } from 'lucide-react';
 import { recoveryAgentsApi, type AgentStat, type AgentCollection } from '../api/recovery-agents.api.ts';
 import { RowSkeleton } from '../components/ui/Skeleton.tsx';
-import { fmtDate, fmtDateShort } from '../utils/dateFormat.ts';
+import { fmtDateShort } from '../utils/dateFormat.ts';
 
 /* ── helpers ── */
 const pkr = (v: number) => 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
