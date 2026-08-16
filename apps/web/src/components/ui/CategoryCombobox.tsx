@@ -11,7 +11,15 @@ interface Props {
   className?: string;
 }
 
-interface Rect { top: number; left: number; width: number; }
+// Viewport-relative coords — used directly with position:fixed
+interface TriggerRect {
+  bottom: number;
+  top:    number;
+  left:   number;
+  width:  number;
+}
+
+const MIN_DROP_W = 260; // never narrower than this
 
 export default function CategoryCombobox({
   value,
@@ -22,24 +30,24 @@ export default function CategoryCombobox({
 }: Props) {
   const [open,  setOpen]  = useState(false);
   const [query, setQuery] = useState('');
-  const [rect,  setRect]  = useState<Rect | null>(null);
+  const [rect,  setRect]  = useState<TriggerRect | null>(null);
 
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef  = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef   = useRef<HTMLInputElement>(null);
 
-  // Measure trigger position whenever open changes or window moves
   const measure = useCallback(() => {
     if (!triggerRef.current) return;
     const r = triggerRef.current.getBoundingClientRect();
-    setRect({ top: r.bottom + window.scrollY, left: r.left + window.scrollX, width: r.width });
+    // Store raw viewport coords — correct for position:fixed without any scroll offset
+    setRect({ bottom: r.bottom, top: r.top, left: r.left, width: r.width });
   }, []);
 
   useEffect(() => {
     if (!open) return;
     measure();
-    window.addEventListener('scroll', measure, true);
-    window.addEventListener('resize', measure);
+    window.addEventListener('scroll',  measure, true);
+    window.addEventListener('resize',  measure);
     return () => {
       window.removeEventListener('scroll', measure, true);
       window.removeEventListener('resize', measure);
@@ -60,7 +68,6 @@ export default function CategoryCombobox({
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Focus search on open
   useEffect(() => {
     if (open) setTimeout(() => searchRef.current?.focus(), 40);
   }, [open]);
@@ -83,27 +90,41 @@ export default function CategoryCombobox({
   const select = (v: string) => { onChange(v); setOpen(false); setQuery(''); };
   const clear  = (e: React.MouseEvent) => { e.stopPropagation(); onChange(''); };
 
-  // Viewport height to flip dropdown upward if too close to bottom
-  const vpHeight  = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const spaceBelow = rect ? vpHeight - (rect.top - window.scrollY) : 999;
-  const dropUp    = spaceBelow < 300;
+  // Compute safe position — stays inside viewport horizontally
+  const getPortalStyle = (): React.CSSProperties => {
+    if (!rect) return { position: 'fixed', left: 8, top: 0, zIndex: 9999 };
+
+    const vpW   = window.innerWidth;
+    const vpH   = window.innerHeight;
+    const dropW = Math.max(rect.width, MIN_DROP_W);
+
+    // Keep dropdown within left/right viewport bounds
+    const rawLeft  = rect.left;
+    const safeLeft = Math.max(8, Math.min(rawLeft, vpW - dropW - 8));
+
+    // Flip upward if not enough space below
+    const spaceBelow = vpH - rect.bottom;
+    const dropUp     = spaceBelow < 300;
+
+    return {
+      position: 'fixed',
+      left:     safeLeft,
+      width:    dropW,
+      zIndex:   9999,
+      ...(dropUp
+        ? { bottom: vpH - rect.top + 4, top: 'auto' }
+        : { top:    rect.bottom + 4 }),
+    };
+  };
 
   const dropdown = open && rect ? createPortal(
     <div
       ref={dropdownRef}
-      style={{
-        position: 'fixed',
-        left:     rect.left,
-        width:    rect.width,
-        ...(dropUp
-          ? { bottom: vpHeight - (rect.top - window.scrollY) + 4, top: 'auto' }
-          : { top:    rect.top  - window.scrollY + 4 }),
-        zIndex: 9999,
-      }}
+      style={getPortalStyle()}
       className="bg-white border border-gray-200 rounded-xl shadow-2xl shadow-black/10 overflow-hidden"
     >
-      {/* Search */}
-      <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2 bg-white sticky top-0">
+      {/* Sticky search */}
+      <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2 bg-white sticky top-0 z-10">
         <Search size={13} className="text-gray-400 shrink-0"/>
         <input
           ref={searchRef}
@@ -111,33 +132,36 @@ export default function CategoryCombobox({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Escape')                         { setOpen(false); setQuery(''); }
-            if (e.key === 'Enter' && canUseCustom && noMatches) select(query.trim());
+            if (e.key === 'Escape')                             { setOpen(false); setQuery(''); }
+            if (e.key === 'Enter' && canUseCustom && noMatches)  select(query.trim());
           }}
           placeholder="Category search karo…"
-          className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
+          className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400 min-w-0"
         />
         {query && (
-          <button type="button" onClick={() => setQuery('')} className="text-gray-300 hover:text-gray-500 transition p-0.5">
+          <button type="button" onClick={() => setQuery('')} className="text-gray-300 hover:text-gray-500 transition p-0.5 shrink-0">
             <X size={12}/>
           </button>
         )}
       </div>
 
-      {/* List */}
+      {/* Scrollable list */}
       <div className="max-h-64 overflow-y-auto overscroll-contain">
-        {/* DB-only extras */}
         {extras.length > 0 && (
           <div>
             <GroupHeader emoji="⭐" label="Aapki Categories"/>
-            {extras.map((item) => <OptionRow key={item} item={item} selected={value === item} onSelect={select}/>)}
+            {extras.map((item) => (
+              <OptionRow key={item} item={item} selected={value === item} onSelect={select}/>
+            ))}
           </div>
         )}
 
         {filteredGroups.map((g) => (
           <div key={g.label}>
             <GroupHeader emoji={g.emoji} label={g.label}/>
-            {g.items.map((item) => <OptionRow key={item} item={item} selected={value === item} onSelect={select}/>)}
+            {g.items.map((item) => (
+              <OptionRow key={item} item={item} selected={value === item} onSelect={select}/>
+            ))}
           </div>
         ))}
 
@@ -147,8 +171,8 @@ export default function CategoryCombobox({
             onClick={() => select(query.trim())}
             className="w-full text-left px-3 py-2.5 text-sm text-blue-600 hover:bg-blue-50 transition border-t border-gray-100 flex items-center gap-2"
           >
-            <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[11px] font-black shrink-0">+</span>
-            <span>&ldquo;<strong>{query.trim()}</strong>&rdquo; add karein</span>
+            <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[11px] font-black shrink-0">+</span>
+            <span className="min-w-0">&ldquo;<strong>{query.trim()}</strong>&rdquo; add karein</span>
           </button>
         )}
 
@@ -174,11 +198,7 @@ export default function CategoryCombobox({
         </span>
         <div className="flex items-center gap-1 shrink-0">
           {value && (
-            <span
-              role="button"
-              onClick={clear}
-              className="p-0.5 text-gray-300 hover:text-red-400 rounded transition"
-            >
+            <span role="button" onClick={clear} className="p-0.5 text-gray-300 hover:text-red-400 rounded transition">
               <X size={12}/>
             </span>
           )}
@@ -193,7 +213,7 @@ export default function CategoryCombobox({
 
 function GroupHeader({ emoji, label }: { emoji: string; label: string }) {
   return (
-    <div className="px-3 py-1.5 flex items-center gap-1.5 bg-gray-50 border-b border-gray-100 sticky top-[45px]">
+    <div className="px-3 py-1.5 flex items-center gap-1.5 bg-gray-50 border-b border-gray-100">
       <span className="text-sm leading-none">{emoji}</span>
       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</span>
     </div>
@@ -205,10 +225,10 @@ function OptionRow({ item, selected, onSelect }: { item: string; selected: boole
     <button
       type="button"
       onClick={() => onSelect(item)}
-      className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition
+      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition
         ${selected ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-slate-50'}`}
     >
-      <span>{item}</span>
+      <span className="flex-1 min-w-0">{item}</span>
       {selected && <Check size={13} className="text-blue-500 shrink-0"/>}
     </button>
   );
