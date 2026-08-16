@@ -1,4 +1,4 @@
-import { useState, useCallback, useId } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { suppliersApi } from '../api/suppliers.api.ts';
 import { productsApi, type BulkReceiveUnit } from '../api/products.api.ts';
-import { PRESET_CATEGORIES } from '../utils/categories.ts';
+import CategoryCombobox from '../components/ui/CategoryCombobox.tsx';
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
@@ -87,8 +87,6 @@ function Sel({ value, onChange, options, placeholder }: {
 export default function StockReceivePage() {
   const navigate    = useNavigate();
   const qc          = useQueryClient();
-  const formId      = useId();
-
   // ── step 1 state ──
   const [supplierId,   setSupplierId]   = useState('');
   const [productName,  setProductName]  = useState('');
@@ -120,7 +118,6 @@ export default function StockReceivePage() {
     queryFn:  productsApi.getCategories,
     staleTime: 5 * 60_000,
   });
-  const categories = Array.from(new Set([...PRESET_CATEGORIES, ...dbCategories])).sort();
 
   // mutation
   const saveMutation = useMutation({
@@ -368,14 +365,12 @@ export default function StockReceivePage() {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block text-xs font-black text-slate-600 mb-1">Category</label>
-                  <div className="relative">
-                    <input list={`${formId}-cats`} value={category} onChange={(e) => setCategory(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition"
-                      placeholder="Mobile..." />
-                    <datalist id={`${formId}-cats`}>
-                      {categories.map((c) => <option key={c} value={c} />)}
-                    </datalist>
-                  </div>
+                  <CategoryCombobox
+                    value={category}
+                    onChange={setCategory}
+                    extraOptions={dbCategories}
+                    placeholder="Category…"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-black text-slate-600 mb-1">Brand</label>
