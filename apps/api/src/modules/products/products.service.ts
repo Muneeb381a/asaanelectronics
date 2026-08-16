@@ -17,6 +17,7 @@ export interface BulkReceiveUnit {
   stock?:           number;
   minStock?:        number;
   description?:     string;
+  attributes?:      Record<string, unknown>;
   // mobile
   imeiNumber?:      string;
   // vehicle
@@ -212,6 +213,7 @@ export class ProductsService {
             stock:              u.stock ?? 1,
             minStock:           u.minStock ?? 1,
             description:        u.description ?? null,
+            attributes:         u.attributes ?? null,
             supplierId:         input.supplierId ?? null,
             imeiNumber:         u.imeiNumber       ?? null,
             chassisNumber:      u.chassisNumber    ?? null,
@@ -252,7 +254,7 @@ export class ProductsService {
             productId:   p.id,
             productName: p.name,
             quantity:    1,
-            unitPrice:   String(input.units[i]?.purchasePrice ?? p.price),
+            unitPrice:   String(input.units[i]?.purchasePrice ?? 0),
           })),
         );
       }

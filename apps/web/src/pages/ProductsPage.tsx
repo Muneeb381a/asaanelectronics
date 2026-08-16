@@ -314,7 +314,7 @@ export default function ProductsPage() {
           { key: 'intelligence', label: 'Intelligence', icon: <Brain size={13} />,
             badge: (urgentReorders + criticalSlow) > 0 ? urgentReorders + criticalSlow : null },
         ] as const).map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => { setTab(t.key); setPage(1); }}
             className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition relative ${
               tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}>

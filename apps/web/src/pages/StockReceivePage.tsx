@@ -224,18 +224,20 @@ export default function StockReceivePage() {
         seenChassis.add(r.chassisNumber);
       }
 
+      const effectiveBuy = r.purchasePrice ? Number(r.purchasePrice) : (defBuy ? Number(defBuy) : undefined);
       units.push({
         name:             productName.trim(),
         category:         category || undefined,
         brand:            brand    || undefined,
         model:            model    || undefined,
         color:            r.color  || undefined,
-        purchasePrice:    r.purchasePrice ? Number(r.purchasePrice) : (defBuy ? Number(defBuy) : undefined),
+        purchasePrice:    effectiveBuy,
         price:            salePrice,
         installmentPrice: r.installmentPrice ? Number(r.installmentPrice) : (defInst ? Number(defInst) : undefined),
         stock:            1,
         minStock:         1,
         description:      r.description || undefined,
+        attributes:       (productType === 'mobile' && r.storageGb) ? { storageGb: Number(r.storageGb) } : undefined,
         imeiNumber:       r.imeiNumber       || undefined,
         chassisNumber:    r.chassisNumber    || undefined,
         engineNumber:     r.engineNumber     || undefined,
@@ -255,13 +257,21 @@ export default function StockReceivePage() {
   const handleSave = () => {
     const units = buildUnits();
     if (!units) return;
+    if (supplierId && paidAmount) {
+      const totalBuy = units.reduce((s, u) => s + (u.purchasePrice ?? 0), 0);
+      if (Number(paidAmount) > totalBuy && totalBuy > 0) {
+        toast.error(`Paid amount (${pkr(Number(paidAmount))}) invoice total (${pkr(totalBuy)}) se zyada hai`);
+        return;
+      }
+    }
     saveMutation.mutate(units);
   };
 
   // ── derived ──
-  const totalPurchase = rows.reduce((s, r) => s + Number(r.purchasePrice || defBuy || 0), 0);
-  const totalSale     = rows.reduce((s, r) => s + Number(r.price || defSale || 0), 0);
-  const profit        = totalSale - totalPurchase;
+  const totalPurchase    = rows.reduce((s, r) => s + Number(r.purchasePrice || defBuy || 0), 0);
+  const totalSale        = rows.reduce((s, r) => s + Number(r.price || defSale || 0), 0);
+  const profit           = totalSale - totalPurchase;
+  const missingBuyPrices = tableReady && totalPurchase === 0 && totalSale > 0;
 
   const typeIcons: Record<ProductType, React.ReactNode> = {
     mobile:  <Smartphone size={16} />,
@@ -719,12 +729,17 @@ export default function StockReceivePage() {
         {tableReady && (
           <div className="bg-slate-900 rounded-2xl p-5 lg:p-6 text-white">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-4">Summary</p>
+            {missingBuyPrices && (
+              <div className="flex items-center gap-2 bg-amber-500/20 border border-amber-400/30 rounded-xl px-4 py-2.5 mb-4 text-amber-300 text-xs font-bold">
+                <AlertCircle size={13} /> Purchase prices nahi bhari — Gross Profit sahi nahi hoga. Invoice total bhi 0 jayegi.
+              </div>
+            )}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Total Units',    val: String(rows.length),    cls: 'text-white' },
-                { label: 'Purchase Cost',  val: `PKR ${pkr(totalPurchase)}`, cls: 'text-amber-300' },
-                { label: 'Sale Value',     val: `PKR ${pkr(totalSale)}`,     cls: 'text-emerald-300' },
-                { label: 'Gross Profit',   val: `PKR ${pkr(profit)}`,        cls: profit >= 0 ? 'text-emerald-400' : 'text-red-400' },
+                { label: 'Total Units',   val: String(rows.length),                                   cls: 'text-white' },
+                { label: 'Purchase Cost', val: totalPurchase > 0 ? `PKR ${pkr(totalPurchase)}` : '—', cls: totalPurchase > 0 ? 'text-amber-300' : 'text-slate-600' },
+                { label: 'Sale Value',    val: `PKR ${pkr(totalSale)}`,                               cls: 'text-emerald-300' },
+                { label: 'Gross Profit',  val: missingBuyPrices ? '—' : `PKR ${pkr(profit)}`,        cls: missingBuyPrices ? 'text-slate-600' : profit >= 0 ? 'text-emerald-400' : 'text-red-400' },
               ].map(({ label, val, cls }) => (
                 <div key={label} className="bg-white/8 rounded-2xl p-4">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>

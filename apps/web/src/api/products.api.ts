@@ -61,6 +61,7 @@ export interface BulkReceiveUnit {
   stock?:           number;
   minStock?:        number;
   description?:     string;
+  attributes?:      Record<string, unknown>;
   imeiNumber?:      string;
   chassisNumber?:   string;
   engineNumber?:    string;
