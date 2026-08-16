@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { suppliersApi } from '../api/suppliers.api.ts';
 import { productsApi, type BulkReceiveUnit } from '../api/products.api.ts';
+import { PRESET_CATEGORIES } from '../utils/categories.ts';
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
@@ -114,11 +115,12 @@ export default function StockReceivePage() {
     queryFn:  suppliersApi.list,
     staleTime: 5 * 60_000,
   });
-  const { data: categories = [] } = useQuery({
+  const { data: dbCategories = [] } = useQuery({
     queryKey: ['product-categories'],
     queryFn:  productsApi.getCategories,
     staleTime: 5 * 60_000,
   });
+  const categories = Array.from(new Set([...PRESET_CATEGORIES, ...dbCategories])).sort();
 
   // mutation
   const saveMutation = useMutation({

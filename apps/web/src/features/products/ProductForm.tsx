@@ -30,6 +30,8 @@ function Field({ label, optional, error, children }: {
   );
 }
 
+import { PRESET_CATEGORIES } from '../../utils/categories.ts';
+
 const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -97,7 +99,7 @@ export default function ProductForm({ defaultValues, onSubmit, isPending, onCanc
     ? Math.round(((cashPrice - purchasePrice) / cashPrice) * 100)
     : null;
 
-  const allCategories = Array.from(new Set([...existingCategories])).sort();
+  const allCategories = Array.from(new Set([...PRESET_CATEGORIES, ...existingCategories])).sort();
 
   const hasTemplate = !!templateFields && templateFields.length > 0;
 
