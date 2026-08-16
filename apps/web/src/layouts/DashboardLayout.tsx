@@ -67,7 +67,7 @@ const GROUP_LABELS: Record<NavGroup, string> = {
   system:     'System',
 };
 
-const GROUP_ORDER: NavGroup[] = ['core', 'customers', 'operations', 'catalog', 'finance', 'reporting', 'system'];
+const GROUP_ORDER: NavGroup[] = ['core', 'customers', 'catalog', 'operations', 'finance', 'reporting', 'system'];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
