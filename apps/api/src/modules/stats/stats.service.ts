@@ -216,8 +216,8 @@ export class StatsService {
         dailyActiveCount:        0,
         monthlyActiveRemaining:  0,
         dailyActiveRemaining:    0,
-        recentInstallments: [],
-        lowStockItems:      [],
+        recentInstallments:      [],
+        lowStockItems:           [],
         promisesDueCount:        0,
         guarantorRiskCount:      0,
         budgetAlertsCount:       0,
@@ -225,6 +225,9 @@ export class StatsService {
         newThisMonthValue:       0,
         completedThisMonthCount: 0,
         completedThisMonthValue: 0,
+        completingSoon:          [],
+        monthExpenseTotal:       0,
+        monthInstTarget:         0,
       };
     }
 
