@@ -227,7 +227,7 @@ export default function DashboardPage() {
   const kpiOverdue  = d?.overdueCount ?? 0;
 
   return (
-    <div className="flex flex-col min-h-full bg-[#F0F2F8]">
+    <div className="flex flex-col bg-[#F0F2F8]">
 
       {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-30 bg-slate-950 h-16 flex items-center px-4 sm:px-6 gap-3">
@@ -330,7 +330,7 @@ export default function DashboardPage() {
       )}
 
       {/* ══ PAGE BODY ═══════════════════════════════════════════════════════ */}
-      <div className="flex-1 px-3 sm:px-5 lg:px-6 py-4">
+      <div className="px-3 sm:px-5 lg:px-6 py-4">
         <div className="lg:grid lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] gap-4 items-start">
 
           {/* ── LEFT ────────────────────────────────────────────────── */}
