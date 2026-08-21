@@ -261,7 +261,7 @@ export default function DashboardLayout() {
       />
 
       {/* ── Sidebar ── */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 lg:w-60 bg-slate-950 flex flex-col transition-transform duration-300 ease-in-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 w-64 lg:w-60 bg-slate-950 flex flex-col transition-transform duration-300 ease-in-out shrink-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
 
         {/* Brand */}
         <div className="px-4 py-4 border-b border-white/5 flex items-center justify-between shrink-0">
