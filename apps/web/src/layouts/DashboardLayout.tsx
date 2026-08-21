@@ -300,10 +300,10 @@ export default function DashboardLayout() {
                     end={end}
                     onClick={() => setMobileOpen(false)}
                     className={({ isActive }) =>
-                      `relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
+                      `relative flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-all ${
                         isActive
-                          ? 'bg-white/10 text-white'
-                          : 'text-slate-500 hover:bg-white/5 hover:text-slate-200'
+                          ? 'bg-blue-500/15 text-white'
+                          : 'text-slate-500 hover:bg-white/6 hover:text-slate-300'
                       }`
                     }
                   >
@@ -326,74 +326,73 @@ export default function DashboardLayout() {
           ))}
         </nav>
 
-        {/* Utility row */}
-        <div className="px-2 pb-2 space-y-0.5 border-t border-white/5 pt-2 shrink-0">
-          {canSearch && (
-            <button
-              onClick={() => { setSearchOpen(true); setMobileOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/5 transition group text-left"
-            >
-              <Search size={15} className="text-slate-600 group-hover:text-slate-400 shrink-0 transition"/>
-              <span className="text-[13px] text-slate-500 group-hover:text-slate-300 flex-1 transition">CNIC search…</span>
-              <kbd className="hidden sm:block text-[9px] text-slate-700 font-mono">⌃K</kbd>
-            </button>
-          )}
+        {/* ── Compact bottom bar ── */}
+        <div className="shrink-0 border-t border-white/5 px-2 pt-2 space-y-0.5"
+          style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
 
-          {/* Bell — desktop only */}
-          <div className="relative hidden lg:block" ref={bellRef}>
-            <button
-              onClick={() => setShowBell((v) => !v)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/5 transition text-left"
-            >
-              <div className="relative shrink-0">
-                <Bell size={15} className="text-slate-600"/>
+          {/* Row 1: CNIC search + Bell */}
+          <div className="flex items-center gap-1">
+            {canSearch && (
+              <button
+                onClick={() => { setSearchOpen(true); setMobileOpen(false); }}
+                className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-white/6 transition group text-left min-w-0"
+              >
+                <Search size={12} className="text-slate-600 shrink-0 group-hover:text-slate-400 transition"/>
+                <span className="text-[12px] text-slate-600 group-hover:text-slate-400 flex-1 truncate transition">CNIC khojo</span>
+                <kbd className="hidden sm:block text-[9px] text-slate-700 font-mono bg-white/5 px-1 py-0.5 rounded shrink-0">⌃K</kbd>
+              </button>
+            )}
+
+            {/* Bell */}
+            <div className="relative" ref={bellRef}>
+              <button
+                onClick={() => setShowBell(v => !v)}
+                className={`p-2 rounded-xl hover:bg-white/6 transition relative ${!canSearch ? 'flex-1 w-full' : ''}`}
+                title="Notifications"
+              >
+                <Bell size={14} className="text-slate-600"/>
                 {totalAlerts > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-red-500 text-white text-[7px] font-black rounded-full flex items-center justify-center leading-none">
                     {totalAlerts > 9 ? '9+' : totalAlerts}
                   </span>
                 )}
-              </div>
-              <span className="text-[13px] text-slate-500 flex-1">Notifications</span>
-              {totalAlerts > 0 && (
-                <span className="text-[11px] font-bold text-red-400">{totalAlerts}</span>
-              )}
-            </button>
-            {showBell && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-2xl shadow-2xl shadow-black/20 overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                  <Bell size={13} className="text-gray-400"/>
-                  <p className="text-xs font-semibold text-gray-700">
-                    {totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}
-                  </p>
+              </button>
+              {showBell && (
+                <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-2xl shadow-black/25 overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                    <Bell size={13} className="text-gray-400"/>
+                    <p className="text-xs font-semibold text-gray-700">
+                      {totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                  {bellDropdownContent}
                 </div>
-                {bellDropdownContent}
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* User section */}
-        <div className="px-2 pb-3 pt-2 border-t border-white/5 space-y-0.5 shrink-0" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
-          <button
-            onClick={() => { setShowProfile(true); setMobileOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/5 transition group text-left"
-          >
-            <div className="w-7 h-7 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-slate-300 truncate leading-tight">{user?.name}</p>
-              <p className="text-[11px] text-slate-600 truncate leading-tight">{user?.email}</p>
-            </div>
-            <ChevronRight size={13} className="text-slate-700 group-hover:text-slate-500 transition shrink-0"/>
-          </button>
-          <button
-            onClick={() => logout()}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-slate-600 hover:bg-white/5 hover:text-red-400 transition"
-          >
-            <LogOut size={14} className="shrink-0"/>
-            Sign out
-          </button>
+          {/* Row 2: User + Logout */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { setShowProfile(true); setMobileOpen(false); }}
+              className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-white/6 transition group text-left min-w-0"
+            >
+              <div className="w-6 h-6 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-slate-300 truncate leading-tight">{user?.name}</p>
+                <p className="text-[10px] text-slate-600 truncate leading-tight">{isOwner ? 'Owner' : 'Staff'}</p>
+              </div>
+            </button>
+            <button
+              onClick={() => logout()}
+              className="p-2 rounded-xl text-slate-600 hover:bg-white/6 hover:text-red-400 transition"
+              title="Sign out"
+            >
+              <LogOut size={13}/>
+            </button>
+          </div>
         </div>
       </aside>
 
