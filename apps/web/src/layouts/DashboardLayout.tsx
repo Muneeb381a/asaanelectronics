@@ -284,7 +284,7 @@ export default function DashboardLayout() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 py-4 overflow-y-auto space-y-5 scrollbar-thin">
+        <nav className="flex-1 min-h-0 px-2 py-4 overflow-y-auto space-y-5 scrollbar-thin">
           {groupedNav.map((group) => (
             <div key={group.key}>
               {group.label && (
