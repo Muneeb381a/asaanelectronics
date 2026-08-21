@@ -595,7 +595,7 @@ export default function DashboardPage() {
 
           {/* ── RIGHT SIDEBAR ───────────────────────────────────────── */}
           <div className="mt-4 lg:mt-0 space-y-4">
-            <div className="lg:sticky lg:top-[94px] space-y-4">
+            <div className="lg:sticky lg:top-[94px] space-y-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pb-4 lg:pr-0.5">
 
               {/* PORTFOLIO NUMBERS ─────────────────────────────────── */}
               {isOwner && (
