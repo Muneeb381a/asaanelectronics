@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
 import { verificationsApi, type AvoStat } from '../api/verifications.api.ts';
-import { reportsApi, type AreaRow, type AgingBucket, type HeatmapDay, type ForecastMonth } from '../api/reports.api.ts';
+import { reportsApi, type AreaRow, type AgingBucket, type HeatmapDay, type ForecastMonth, type CohortRow } from '../api/reports.api.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { sellersApi } from '../api/sellers.api.ts';
@@ -307,6 +307,12 @@ export default function ReportsPage() {
     queryKey: ['forecast'],
     queryFn:  reportsApi.getForecast,
     staleTime: 10 * 60_000,
+    enabled: canReports,
+  });
+  const { data: cohortRows = [] } = useQuery<CohortRow[]>({
+    queryKey: ['cohort-analysis'],
+    queryFn:  reportsApi.getCohortAnalysis,
+    staleTime: 15 * 60_000,
     enabled: canReports,
   });
 
@@ -931,6 +937,78 @@ export default function ReportsPage() {
             )}
           </div>
         </div>
+
+        {/* ── Cohort Analysis ── */}
+        {cohortRows.length > 0 && (
+          <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-6">
+            <div className="mb-5">
+              <p className="text-sm font-bold text-slate-900">Cohort Analysis</p>
+              <p className="text-xs text-slate-400 mt-0.5">Plans grouped by start month — completion vs default rate</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wide pb-3 pr-4">Month</th>
+                    <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wide pb-3 px-3">New</th>
+                    <th className="text-right text-xs font-bold text-emerald-600 uppercase tracking-wide pb-3 px-3">Completed</th>
+                    <th className="text-right text-xs font-bold text-blue-600 uppercase tracking-wide pb-3 px-3">Active</th>
+                    <th className="text-right text-xs font-bold text-red-500 uppercase tracking-wide pb-3 px-3">Defaulted</th>
+                    <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wide pb-3 px-3">Completion</th>
+                    <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wide pb-3 pl-3">Default Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {cohortRows.map((row) => (
+                    <tr key={row.cohortMonth} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 pr-4 font-semibold text-slate-700 whitespace-nowrap">{row.cohortLabel}</td>
+                      <td className="py-3 px-3 text-right font-bold text-slate-900">{row.total}</td>
+                      <td className="py-3 px-3 text-right font-bold text-emerald-600">{row.completed}</td>
+                      <td className="py-3 px-3 text-right font-bold text-blue-600">{row.active}</td>
+                      <td className="py-3 px-3 text-right font-bold text-red-500">{row.defaulted}</td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-20 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-emerald-500 transition-all"
+                              style={{ width: `${row.completionRate}%` }}
+                            />
+                          </div>
+                          <span className={`font-bold text-xs w-9 text-right ${row.completionRate >= 60 ? 'text-emerald-600' : row.completionRate >= 30 ? 'text-amber-600' : 'text-slate-500'}`}>
+                            {row.completionRate}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className={`font-bold text-xs ${row.defaultRate >= 20 ? 'text-red-500' : row.defaultRate >= 10 ? 'text-amber-500' : 'text-slate-400'}`}>
+                          {row.defaultRate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Aggregate footer */}
+            {(() => {
+              const totals = cohortRows.reduce((acc, r) => ({
+                total: acc.total + r.total,
+                completed: acc.completed + r.completed,
+                active: acc.active + r.active,
+                defaulted: acc.defaulted + r.defaulted,
+              }), { total: 0, completed: 0, active: 0, defaulted: 0 });
+              const overallCompletion = totals.total > 0 ? Math.round((totals.completed / totals.total) * 100) : 0;
+              const overallDefault    = totals.total > 0 ? Math.round((totals.defaulted  / totals.total) * 100) : 0;
+              return (
+                <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-4 text-xs text-slate-500">
+                  <span>Total plans: <strong className="text-slate-800">{totals.total}</strong></span>
+                  <span>Overall completion: <strong className="text-emerald-600">{overallCompletion}%</strong></span>
+                  <span>Overall default rate: <strong className={overallDefault >= 15 ? 'text-red-500' : 'text-slate-600'}>{overallDefault}%</strong></span>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
       </div>
 

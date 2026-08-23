@@ -900,4 +900,50 @@ export class ReportsService {
     const grandTotal = result.reduce((s, c) => s + c.totalRemaining, 0);
     return { customers: result, grandTotal };
   }
+
+  async getCohortAnalysis(sellerId: string) {
+    const rows = await db.execute<{
+      cohort_month:    string;
+      cohort_label:    string;
+      total:           number;
+      completed:       number;
+      active:          number;
+      defaulted:       number;
+      cancelled:       number;
+      total_value:     string;
+      completed_value: string;
+    }>(sql`
+      SELECT
+        TO_CHAR(DATE_TRUNC('month', i.created_at), 'YYYY-MM')  AS cohort_month,
+        TO_CHAR(DATE_TRUNC('month', i.created_at), 'Mon YYYY') AS cohort_label,
+        COUNT(*)::int                                                                          AS total,
+        COUNT(*) FILTER (WHERE i.status = 'COMPLETED')::int                                   AS completed,
+        COUNT(*) FILTER (WHERE i.status = 'ACTIVE')::int                                      AS active,
+        COUNT(*) FILTER (WHERE i.status = 'DEFAULTED')::int                                   AS defaulted,
+        COUNT(*) FILTER (WHERE i.status IN ('CANCELLED', 'CLOSED'))::int                      AS cancelled,
+        COALESCE(SUM(i.total_amount::numeric), 0)::text                                       AS total_value,
+        COALESCE(SUM(i.total_amount::numeric) FILTER (WHERE i.status = 'COMPLETED'), 0)::text AS completed_value
+      FROM installments i
+      JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
+      WHERE c.seller_id = ${sellerId}
+        AND i.deleted_at IS NULL
+      GROUP BY DATE_TRUNC('month', i.created_at)
+      ORDER BY DATE_TRUNC('month', i.created_at) DESC
+      LIMIT 18
+    `);
+
+    return rows.map((r) => ({
+      cohortMonth:    r.cohort_month,
+      cohortLabel:    r.cohort_label,
+      total:          Number(r.total),
+      completed:      Number(r.completed),
+      active:         Number(r.active),
+      defaulted:      Number(r.defaulted),
+      cancelled:      Number(r.cancelled),
+      totalValue:     Number(r.total_value),
+      completedValue: Number(r.completed_value),
+      completionRate: Number(r.total) > 0 ? Math.round((Number(r.completed) / Number(r.total)) * 100) : 0,
+      defaultRate:    Number(r.total) > 0 ? Math.round((Number(r.defaulted) / Number(r.total)) * 100) : 0,
+    }));
+  }
 }

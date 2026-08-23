@@ -111,6 +111,20 @@ export type CashflowDayInstallment = {
   paymentCount:     number;
 };
 
+export type CohortRow = {
+  cohortMonth:    string;
+  cohortLabel:    string;
+  total:          number;
+  completed:      number;
+  active:         number;
+  defaulted:      number;
+  cancelled:      number;
+  totalValue:     number;
+  completedValue: number;
+  completionRate: number;
+  defaultRate:    number;
+};
+
 export const reportsApi = {
   getMonthly: (year: number): Promise<MonthlyReportRow[]> =>
     api.get(`/reports/monthly?year=${year}`).then((res) => res.data.data),
@@ -138,4 +152,7 @@ export const reportsApi = {
 
   getCashflowDay: (date: string): Promise<CashflowDayInstallment[]> =>
     api.get(`/reports/cashflow-day?date=${date}`).then((res) => res.data.data),
+
+  getCohortAnalysis: (): Promise<CohortRow[]> =>
+    api.get('/reports/cohort').then((res) => res.data.data),
 };

@@ -82,3 +82,7 @@ export async function getMonthlyCustomers(req: AuthRequest, res: Response) {
   }
   success(res, await svc.getMonthlyCustomers(sellerId, year, month));
 }
+
+export async function getCohortAnalysis(req: AuthRequest, res: Response) {
+  success(res, await svc.getCohortAnalysis(req.user!.sellerId!));
+}
