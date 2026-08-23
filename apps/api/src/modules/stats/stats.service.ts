@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, isNull, lt, sql, sum } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { cashSales, customers, expenses, installments, payments, products, recoveryActions, sellers } from '../../db/schema.js';
+import { cashSales, customers, expenses, installments, payments, products, recoveryActions, sellers, users } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
 
 // ── In-memory TTL cache (per-process, survives request boundaries) ─────────────
@@ -883,5 +883,46 @@ export class StatsService {
         monthly:       Number(u.monthly),
       })),
     };
+  }
+
+  async getStaffTodayCollections(sellerId: string) {
+    // Start from users so ALL staff appear — even those who collected 0 today
+    const rows = await db.execute<{
+      staff_id:   string;
+      staff_name: string;
+      total:      string;
+      pay_count:  string;
+    }>(sql`
+      SELECT
+        u.id                                                          AS staff_id,
+        u.name                                                        AS staff_name,
+        COALESCE(SUM(p.amount::numeric) FILTER (WHERE p.id IS NOT NULL), 0)::text  AS total,
+        COUNT(p.id) FILTER (WHERE p.id IS NOT NULL)::text             AS pay_count
+      FROM users u
+      LEFT JOIN payments p
+             ON p.collected_by = u.id
+            AND DATE(p.paid_on AT TIME ZONE 'Asia/Karachi')
+                  = CURRENT_DATE AT TIME ZONE 'Asia/Karachi'
+            AND p.deleted_at IS NULL
+            AND EXISTS (
+              SELECT 1 FROM installments i
+              INNER JOIN customers c ON c.id = i.customer_id
+              WHERE i.id = p.installment_id
+                AND c.seller_id = ${sellerId}
+                AND i.deleted_at IS NULL
+                AND c.deleted_at IS NULL
+            )
+      WHERE u.seller_id = ${sellerId}
+        AND u.role IN ('SELLER_STAFF', 'SELLER_OWNER')
+      GROUP BY u.id, u.name
+      ORDER BY SUM(p.amount::numeric) DESC NULLS LAST, u.name ASC
+    `);
+
+    return rows.map((r) => ({
+      staffId:   r.staff_id,
+      staffName: r.staff_name,
+      total:     Number(r.total ?? 0),
+      count:     Number(r.pay_count ?? 0),
+    }));
   }
 }

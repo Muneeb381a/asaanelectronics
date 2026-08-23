@@ -91,9 +91,17 @@ export interface DailyBriefing {
   dueTodayAccounts: DueTodayAccount[];
 }
 
+export interface StaffTodayCollection {
+  staffId:   string;
+  staffName: string;
+  total:     number;
+  count:     number;
+}
+
 export const statsApi = {
-  getDashboard:     () => api.get<{ data: DashboardData }>('/stats/dashboard').then((r) => r.data.data),
-  getDailyBriefing: () => api.get<{ data: DailyBriefing }>('/stats/daily-briefing').then((r) => r.data.data),
+  getDashboard:              () => api.get<{ data: DashboardData }>('/stats/dashboard').then((r) => r.data.data),
+  getDailyBriefing:          () => api.get<{ data: DailyBriefing }>('/stats/daily-briefing').then((r) => r.data.data),
+  getStaffTodayCollections:  () => api.get<{ data: StaffTodayCollection[] }>('/stats/staff-today').then((r) => r.data.data),
   // Individual endpoints kept for any page that needs just one piece
   get:         () => api.get<{ data: Stats }>('/stats').then((r) => r.data.data),
   getReports:  () => api.get<{ data: Reports }>('/stats/reports').then((r) => r.data.data),
