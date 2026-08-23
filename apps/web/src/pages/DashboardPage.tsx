@@ -527,12 +527,6 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                {/* Table header — like Figma's Top Products "#, Name, Popularity, Sales" */}
-                {!isLoading && staffToday.length > 0 && (
-                  <div className="grid grid-cols-[2rem_1fr_120px_64px] gap-3 px-6 py-2.5 text-[10px] font-black uppercase tracking-wider" style={{ color: '#94A3B8', borderBottom: '1px solid #F5F5FA' }}>
-                    <span>#</span><span>Naam</span><span>Collection</span><span className="text-right">%</span>
-                  </div>
-                )}
 
                 {isLoading ? <RowSkeleton rows={3}/> : staffToday.length === 0 ? (
                   <div className="py-10 text-center">
@@ -547,31 +541,28 @@ export default function DashboardPage() {
                       const has = staff.total > 0;
                       return (
                         <div key={staff.staffId}
-                          className={`grid grid-cols-[2rem_1fr_120px_64px] gap-3 items-center px-6 py-3.5 ${i > 0 ? 'border-t' : ''}`}
+                          className={`flex items-center gap-3 px-6 py-3.5 ${i > 0 ? 'border-t' : ''}`}
                           style={{ borderColor: '#F5F5FA' }}>
-                          <span className="text-sm font-black" style={{ color: '#CBD5E1' }}>
+                          <span className="text-sm font-black w-7 shrink-0" style={{ color: '#CBD5E1' }}>
                             {String(i + 1).padStart(2, '0')}
                           </span>
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
-                              style={{ background: has ? col : '#F1F5F9', color: has ? '#fff' : '#94A3B8' }}>
-                              {staff.staffName[0]?.toUpperCase()}
-                            </div>
-                            <p className="text-sm font-bold truncate" style={{ color: '#1A1A2E' }}>{staff.staffName}</p>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
+                            style={{ background: has ? col : '#F1F5F9', color: has ? '#fff' : '#94A3B8' }}>
+                            {staff.staffName[0]?.toUpperCase()}
                           </div>
-                          <div>
-                            <div className="h-2 rounded-full overflow-hidden mb-1" style={{ background: '#F1F5F9' }}>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold truncate" style={{ color: '#1A1A2E' }}>{staff.staffName}</p>
+                            <div className="h-1.5 rounded-full overflow-hidden mt-1.5" style={{ background: '#F1F5F9' }}>
                               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: col, transition: 'width 0.7s' }}/>
                             </div>
-                            <p className="text-[10px] font-semibold" style={{ color: has ? '#0F172A' : '#CBD5E1' }}>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-black tabular-nums" style={{ color: has ? '#1A1A2E' : '#CBD5E1', fontFamily: "'Syne', sans-serif" }}>
                               {has ? pkrSh(staff.total) : '—'}
                             </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[11px] font-black px-2 py-0.5 rounded-lg"
-                              style={{ background: has ? `${col}15` : '#F5F5FA', color: has ? col : '#CBD5E1' }}>
-                              {pct}%
-                            </span>
+                            <p className="text-[10px] font-bold mt-0.5" style={{ color: has ? col : '#CBD5E1' }}>
+                              {has ? `${staff.count} collection${staff.count !== 1 ? 's' : ''}` : 'koi nahi'}
+                            </p>
                           </div>
                         </div>
                       );
