@@ -390,6 +390,13 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const amountNum = Number(amount);
   const amountInvalid = !amount || amountNum <= 0 || amountNum > remaining + 0.01;
 
+  const lateFeePerDay    = seller?.settings?.lateFeePerDay    ?? 0;
+  const lateFeeGraceDays = seller?.settings?.lateFeeGraceDays ?? 0;
+  const daysOverdue      = freshInst.daysOverdue ?? 0;
+  const accumulatedLateFee = lateFeePerDay > 0 && daysOverdue > lateFeeGraceDays
+    ? Math.max(0, daysOverdue - lateFeeGraceDays) * lateFeePerDay
+    : 0;
+
   const historyWithPeriods = useMemo(() => {
     if (!history) return [];
     const mo = Number(freshInst.monthly);
@@ -578,6 +585,29 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
               {mutation.error instanceof Error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600">
                   {mutation.error.message}
+                </div>
+              )}
+
+              {accumulatedLateFee > 0 && isOwner && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold text-amber-800 flex items-center gap-1">
+                        <AlertTriangle size={12} className="text-amber-500" />
+                        Late Fee Accumulated
+                      </p>
+                      <p className="text-[11px] text-amber-700 mt-0.5">
+                        {Math.max(0, daysOverdue - lateFeeGraceDays)} din × PKR {lateFeePerDay}/din = <span className="font-black">{pkr(accumulatedLateFee)}</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAmount(String(Math.min(Number(freshInst.monthly) + accumulatedLateFee, remaining)))}
+                      className="shrink-0 text-[11px] px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition"
+                    >
+                      +Fee Include
+                    </button>
+                  </div>
                 </div>
               )}
 

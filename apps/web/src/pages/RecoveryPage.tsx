@@ -9,6 +9,7 @@ import {
 import { installmentsApi, type Installment, type OverdueWithStageItem } from '../api/installments.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { recoveryApi, type RecoveryActionType, type RecoveryAction, type PromiseDue } from '../api/recovery.api.ts';
+import { sellersApi } from '../api/sellers.api.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
@@ -20,6 +21,12 @@ function daysSince(d: string) {
   const diff = Date.now() - new Date(d).getTime();
   return Math.floor(diff / 86_400_000);
 }
+
+function calcLateFee(daysOverdue: number, lateFeePerDay: number, graceDays: number): number {
+  return Math.max(0, daysOverdue - graceDays) * lateFeePerDay;
+}
+
+export type LateFeeConfig = { perDay: number; graceDays: number };
 
 // ── Action meta ────────────────────────────────────────────────────────────────
 
@@ -175,7 +182,7 @@ function LogModal({ installmentId, onClose }: { installmentId: string; onClose: 
 
 // ── Recovery Panel ─────────────────────────────────────────────────────────────
 
-function RecoveryPanel({ inst }: { inst: Installment }) {
+function RecoveryPanel({ inst, stageData, lateFeeConfig }: { inst: Installment; stageData?: OverdueWithStageItem; lateFeeConfig?: LateFeeConfig }) {
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -196,6 +203,10 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
   });
 
   const overdue = inst.isOverdue;
+  const daysOverdue = stageData?.days_overdue ?? 0;
+  const lateFeeAmount = lateFeeConfig && daysOverdue > 0
+    ? calcLateFee(daysOverdue, lateFeeConfig.perDay, lateFeeConfig.graceDays)
+    : 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -213,9 +224,18 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
           </button>
         </div>
         {overdue && (
-          <div className="mt-3 flex items-center gap-1.5 text-xs text-red-600 font-medium">
-            <Clock size={12} />
-            Overdue — {daysSince(new Date(new Date(inst.startDate).setMonth(new Date(inst.startDate).getMonth() + inst.months)).toISOString())} days past due
+          <div className="mt-3 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs text-red-600 font-medium">
+              <Clock size={12} />
+              Overdue — {daysOverdue > 0 ? daysOverdue : daysSince(new Date(new Date(inst.startDate).setMonth(new Date(inst.startDate).getMonth() + inst.months)).toISOString())} days past due
+            </div>
+            {lateFeeAmount > 0 && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium">
+                <AlertTriangle size={11} className="text-amber-500 shrink-0" />
+                Late fee accumulated: <span className="font-black ml-0.5">{pkr(lateFeeAmount)}</span>
+                <span className="text-amber-500 font-normal ml-1">({Math.max(0, daysOverdue - lateFeeConfig!.graceDays)} days × PKR {lateFeeConfig!.perDay}/day)</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -283,13 +303,16 @@ function RecoveryPanel({ inst }: { inst: Installment }) {
 // ── Installment Row ────────────────────────────────────────────────────────────
 
 function InstallmentRow({
-  inst, selectedId, onSelect, stageData,
-}: { inst: Installment; selectedId: string | null; onSelect: (i: Installment) => void; stageData?: OverdueWithStageItem }) {
+  inst, selectedId, onSelect, stageData, lateFeeConfig,
+}: { inst: Installment; selectedId: string | null; onSelect: (i: Installment) => void; stageData?: OverdueWithStageItem; lateFeeConfig?: LateFeeConfig }) {
   const overdue = inst.isOverdue;
   const stage   = stageData ? getStage(stageData) : null;
   const dotColor = overdue
     ? (stage ? STAGE_META[stage].dot : 'bg-red-500')
     : 'bg-emerald-400';
+  const lateFee = lateFeeConfig && stageData && stageData.days_overdue > 0
+    ? calcLateFee(stageData.days_overdue, lateFeeConfig.perDay, lateFeeConfig.graceDays)
+    : 0;
 
   return (
     <button
@@ -304,7 +327,14 @@ function InstallmentRow({
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-900 truncate">{inst.customerName}</p>
         <p className="text-xs text-gray-400 truncate">{inst.productName} · {inst.customerPhone}</p>
-        {stage && <div className="mt-0.5"><CollectionStageBadge stage={stage} /></div>}
+        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+          {stage && <CollectionStageBadge stage={stage} />}
+          {lateFee > 0 && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+              +{pkr(lateFee)} fee
+            </span>
+          )}
+        </div>
       </div>
       <div className="text-right shrink-0">
         <p className="text-xs font-semibold text-gray-700">{pkr(inst.remaining)}</p>
@@ -496,6 +526,11 @@ export default function RecoveryPage() {
   });
   const stageMap = new Map(stageItems.map((s) => [s.id, s]));
 
+  const { data: shop } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe, staleTime: 5 * 60_000 });
+  const lateFeeConfig: LateFeeConfig | undefined = shop?.settings?.lateFeePerDay
+    ? { perDay: shop.settings.lateFeePerDay, graceDays: shop.settings.lateFeeGraceDays ?? 0 }
+    : undefined;
+
   const installments = data?.data  ?? [];
   const totalOnServer = data?.total ?? 0;
   const isTruncated  = totalOnServer > installments.length;
@@ -628,7 +663,7 @@ export default function RecoveryPage() {
                         )}
                       </div>
                       {items.map((i) => (
-                        <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} stageData={stageMap.get(i.id)} />
+                        <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} stageData={stageMap.get(i.id)} lateFeeConfig={lateFeeConfig} />
                       ))}
                     </div>
                   );
@@ -643,7 +678,7 @@ export default function RecoveryPage() {
                       Overdue ({overdueList.length})
                     </p>
                     {overdueList.map((i) => (
-                      <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} stageData={stageMap.get(i.id)} />
+                      <InstallmentRow key={i.id} inst={i} selectedId={selected?.id ?? null} onSelect={setSelected} stageData={stageMap.get(i.id)} lateFeeConfig={lateFeeConfig} />
                     ))}
                     {currentList.length > 0 && (
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 pt-3">
@@ -697,7 +732,7 @@ export default function RecoveryPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-hidden">
-                <RecoveryPanel key={selected.id} inst={selected} />
+                <RecoveryPanel key={selected.id} inst={selected} stageData={stageMap.get(selected.id)} lateFeeConfig={lateFeeConfig} />
               </div>
             </>
           ) : (

@@ -268,11 +268,13 @@ function ShopSection({ shop, isLoading, usage }: {
 
 function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.getMe>> | undefined }) {
   const qc = useQueryClient();
-  const [daily,      setDaily]      = useState('');
-  const [weekly,     setWeekly]     = useState('');
-  const [monthly,    setMonthly]    = useState('');
-  const [commission, setCommission] = useState('');
-  const [budgets, setBudgets]       = useState<Partial<Record<string,string>>>({});
+  const [daily,          setDaily]         = useState('');
+  const [weekly,         setWeekly]        = useState('');
+  const [monthly,        setMonthly]       = useState('');
+  const [commission,     setCommission]    = useState('');
+  const [lateFeePerDay,  setLateFeePerDay] = useState('');
+  const [lateFeeGrace,   setLateFeeGrace]  = useState('');
+  const [budgets, setBudgets]              = useState<Partial<Record<string,string>>>({});
 
   useEffect(() => {
     if (shop) {
@@ -280,6 +282,8 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
       setWeekly(String(shop.settings?.weeklyTarget??''));
       setMonthly(String(shop.settings?.monthlyTarget??''));
       setCommission(String(shop.settings?.commissionRate??''));
+      setLateFeePerDay(String(shop.settings?.lateFeePerDay??''));
+      setLateFeeGrace(String(shop.settings?.lateFeeGraceDays??''));
       const eb = shop.settings?.expenseBudgets??{};
       setBudgets(Object.fromEntries(Object.entries(eb).map(([k,v])=>[k,String(v??'')])));
     }
@@ -291,14 +295,16 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
         Object.entries(budgets).filter(([,v])=>v&&Number(v)>0).map(([k,v])=>[k,Number(v)])
       ) as Record<string,number>;
       return sellersApi.update({ settings: {
-        dailyTarget:    daily      ? Number(daily)      : undefined,
-        weeklyTarget:   weekly     ? Number(weekly)     : undefined,
-        monthlyTarget:  monthly    ? Number(monthly)    : undefined,
-        commissionRate: commission ? Number(commission) : undefined,
+        dailyTarget:      daily          ? Number(daily)          : undefined,
+        weeklyTarget:     weekly         ? Number(weekly)         : undefined,
+        monthlyTarget:    monthly        ? Number(monthly)        : undefined,
+        commissionRate:   commission     ? Number(commission)     : undefined,
+        lateFeePerDay:    lateFeePerDay  ? Number(lateFeePerDay)  : undefined,
+        lateFeeGraceDays: lateFeeGrace   ? Number(lateFeeGrace)   : undefined,
         expenseBudgets: Object.keys(expenseBudgets).length ? expenseBudgets : undefined,
       }});
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey:['shop-me'] }); qc.invalidateQueries({ queryKey:['dashboard'] }); toast.success('Targets save ho gaye'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey:['shop-me'] }); qc.invalidateQueries({ queryKey:['dashboard'] }); toast.success('Settings save ho gaye'); },
     onError: (e) => toast.error(getErrorMessage(e,'Save nahi hua')),
   });
 
@@ -306,10 +312,12 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
     Object.fromEntries(Object.entries(shop?.settings?.expenseBudgets??{}).map(([k,v])=>[k,String(v??'')]))
   );
   const dirty = shop && (
-    daily      !== String(shop.settings?.dailyTarget??'') ||
-    weekly     !== String(shop.settings?.weeklyTarget??'') ||
-    monthly    !== String(shop.settings?.monthlyTarget??'') ||
-    commission !== String(shop.settings?.commissionRate??'') ||
+    daily         !== String(shop.settings?.dailyTarget??'')     ||
+    weekly        !== String(shop.settings?.weeklyTarget??'')    ||
+    monthly       !== String(shop.settings?.monthlyTarget??'')   ||
+    commission    !== String(shop.settings?.commissionRate??'')  ||
+    lateFeePerDay !== String(shop.settings?.lateFeePerDay??'')   ||
+    lateFeeGrace  !== String(shop.settings?.lateFeeGraceDays??'') ||
     budgetDirty
   );
 
@@ -362,6 +370,40 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
         </div>
       </Card>
 
+      {/* Late fee */}
+      <Card>
+        <CardHeader icon={AlertTriangle} iconBg="bg-amber-50" iconColor="text-amber-600" title="Late Fee / Jurmana" subtitle="Overdue accounts pe automatically late fee calculate hogi"/>
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Late Fee Per Day (PKR)</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">Rs</span>
+                <input type="number" value={lateFeePerDay} onChange={e=>setLateFeePerDay(e.target.value)}
+                  placeholder="e.g. 50" min="0" className={`${inp} pl-8`}/>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">Har overdue day pe yeh amount add hogi</p>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Grace Period (Days)</label>
+              <input type="number" value={lateFeeGrace} onChange={e=>setLateFeeGrace(e.target.value)}
+                placeholder="e.g. 3" min="0" max="30" className={inp}/>
+              <p className="text-[11px] text-slate-400 mt-1">Itne din baad fee start hogi (default: 0)</p>
+            </div>
+          </div>
+          {lateFeePerDay && Number(lateFeePerDay) > 0 && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-800">
+              <span className="font-semibold">Example:</span> Agar customer 10 din late hai{lateFeeGrace && Number(lateFeeGrace) > 0 ? ` (${lateFeeGrace} din grace ke baad)` : ''}: Late fee = PKR {
+                Math.max(0, 10 - (Number(lateFeeGrace)||0)) * Number(lateFeePerDay)
+              } ({Math.max(0, 10 - (Number(lateFeeGrace)||0))} days × PKR {lateFeePerDay}/day)
+            </div>
+          )}
+          {!lateFeePerDay && (
+            <p className="text-xs text-slate-400 italic">Late fee off hai — 0 ya empty chhod dein</p>
+          )}
+        </div>
+      </Card>
+
       {/* Expense budgets */}
       <Card>
         <CardHeader icon={Wallet} iconBg="bg-rose-50" iconColor="text-rose-500" title="Monthly Expense Budgets" subtitle="Category wise limit — alerts milenge jab limit cross ho"/>
@@ -388,7 +430,7 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
       <div className="flex items-center gap-3">
         <button onClick={()=>mutation.mutate()} disabled={!dirty||mutation.isPending}
           className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-black rounded-xl transition shadow-sm shadow-blue-600/20">
-          {mutation.isPending ? 'Saving…' : 'Save All Targets'}
+          {mutation.isPending ? 'Saving…' : 'Save Settings'}
         </button>
         {dirty && (
           <button onClick={()=>{
@@ -396,6 +438,8 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
             setWeekly(String(shop?.settings?.weeklyTarget??''));
             setMonthly(String(shop?.settings?.monthlyTarget??''));
             setCommission(String(shop?.settings?.commissionRate??''));
+            setLateFeePerDay(String(shop?.settings?.lateFeePerDay??''));
+            setLateFeeGrace(String(shop?.settings?.lateFeeGraceDays??''));
             const eb=shop?.settings?.expenseBudgets??{};
             setBudgets(Object.fromEntries(Object.entries(eb).map(([k,v])=>[k,String(v??'')])));
           }} className="text-sm text-slate-400 hover:text-slate-700 transition">Discard</button>

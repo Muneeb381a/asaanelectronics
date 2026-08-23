@@ -10,6 +10,8 @@ export interface SellerSettings {
   monthlyTarget?: number;
   commissionRate?: number;
   expenseBudgets?: Partial<Record<ExpenseCategory, number>>;
+  lateFeePerDay?: number;
+  lateFeeGraceDays?: number;
 }
 
 export interface Seller {

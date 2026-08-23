@@ -38,6 +38,7 @@ export interface Installment {
   letterSentAt:       string | null;
   biometricStatus:    'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED' | null;
   biometricDoneAt:    string | null;
+  daysOverdue?:       number;
 }
 
 interface ListResponse {

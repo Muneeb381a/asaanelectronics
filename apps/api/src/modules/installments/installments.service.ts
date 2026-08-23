@@ -220,6 +220,22 @@ export class InstallmentsService {
             ELSE (${installments.startDate} + (${installments.months} || ' months')::interval) < now()
           END
         ))`,
+        daysOverdue: sql<number>`
+          CASE WHEN ${installments.status} != 'ACTIVE' THEN 0
+          ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - (
+            CASE WHEN ${installments.paymentFrequency} = 'daily' THEN
+              ${installments.startDate} + ((GREATEST(0, FLOOR(
+                (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+                / NULLIF(${installments.monthly}::numeric, 0)
+              )) + 1) || ' days')::interval
+            ELSE
+              DATE_TRUNC('month', ${installments.startDate} + ((GREATEST(0, FLOOR(
+                (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
+                / NULLIF(${installments.monthly}::numeric, 0)
+              )) + 1) || ' months')::interval)::date + (${installments.paymentDueDay} - 1)
+            END
+          ))) / 86400))::int END
+        `,
       })
       .from(installments)
       .innerJoin(customers, eq(installments.customerId, customers.id))
