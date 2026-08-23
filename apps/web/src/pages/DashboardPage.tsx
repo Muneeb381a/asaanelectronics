@@ -257,7 +257,7 @@ export default function DashboardPage() {
   const staffTodayMax = staffToday.length > 0 ? Math.max(...staffToday.map(s => s.total)) : 0;
 
   return (
-    <div className="flex flex-col" style={{ background: 'var(--canvas)' }}>
+    <div style={{ background: '#F0F3FF', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
 
       {/* Google Fonts */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -267,128 +267,173 @@ export default function DashboardPage() {
       {/* CSS tokens */}
       <style>{`
         :root {
-          --canvas:  #F4F7FF;
+          --canvas:  #F0F3FF;
           --surface: #FFFFFF;
-          --ink:     #0F1629;
-          --ink-dim: #7A849A;
-          --accent:  #2563EB;
+          --ink:     #1E2A4A;
+          --ink-dim: #64748B;
+          --accent:  #4F46E5;
         }
         @media (prefers-color-scheme: dark) {
           :root:not([data-theme="light"]) {
-            --canvas:  #0A0E1A;
-            --surface: #141826;
+            --canvas:  #0C0F1E;
+            --surface: #141827;
             --ink:     #E8ECFA;
-            --ink-dim: #5C6580;
-            --accent:  #3B82F6;
+            --ink-dim: #556080;
+            --accent:  #6366F1;
           }
         }
         :root[data-theme="dark"] {
-          --canvas:  #0A0E1A;
-          --surface: #141826;
+          --canvas:  #0C0F1E;
+          --surface: #141827;
           --ink:     #E8ECFA;
-          --ink-dim: #5C6580;
-          --accent:  #3B82F6;
+          --ink-dim: #556080;
+          --accent:  #6366F1;
         }
         body { background: var(--canvas); }
-        .dash-font { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
       `}</style>
 
-      {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-30 h-16 flex items-center px-4 sm:px-6 gap-3" style={{ background: 'var(--ink)' }}>
-        <div className="flex-1 min-w-0">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.22em] leading-none select-none" style={{ color: 'var(--ink-dim)' }}>{today}</p>
-          <h1 className="text-sm font-black leading-tight mt-0.5 text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
-            {greet()}, <span style={{ color: '#60A5FA' }}>{firstName}</span>
-          </h1>
+      {/* ══ HERO HEADER ═════════════════════════════════════════════════════ */}
+      <header className="relative overflow-hidden px-5 sm:px-8 pt-6 pb-10"
+        style={{ background: 'linear-gradient(135deg, #1E2A4A 0%, #2D3A5F 55%, #1A2540 100%)' }}>
+        {/* Background glows */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 85% 40%, rgba(99,102,241,0.18) 0%, transparent 55%)' }}/>
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 15% 85%, rgba(16,185,129,0.1) 0%, transparent 45%)' }}/>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {!isOwner && myBal && Number(myBal.pendingBalance) > 0 && !myBal.pendingHandover && (
-            <button onClick={() => { setHandoverAmt(String(Number(myBal.pendingBalance))); setShowHandover(true); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition">
-              <Send size={11}/> Jama Karo
-            </button>
+
+        <div className="relative z-10">
+          {/* Top row */}
+          <div className="flex items-start justify-between mb-7">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/>
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(147,197,253,0.7)' }}>{today}</p>
+              </div>
+              <h1 className="text-[1.6rem] font-black text-white leading-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
+                {greet()}, <span style={{ color: '#93C5FD' }}>{firstName}</span>
+              </h1>
+              <p className="text-[13px] mt-1" style={{ color: 'rgba(147,197,253,0.5)' }}>Assaan Electronics — Sales Dashboard</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 mt-1">
+              {!isOwner && myBal && Number(myBal.pendingBalance) > 0 && !myBal.pendingHandover && (
+                <button onClick={() => { setHandoverAmt(String(Number(myBal.pendingBalance))); setShowHandover(true); }}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition"
+                  style={{ background: '#34D399', color: '#064E3B' }}>
+                  <Send size={11}/> Jama Karo
+                </button>
+              )}
+              {!isOwner && myBal?.pendingHandover && (
+                <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black"
+                  style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.3)', color: '#FCD34D' }}>
+                  <Clock size={10}/> Pending
+                </span>
+              )}
+              {(isOwner || perms?.canAddInstallment) && (
+                <button onClick={() => navigate('/installments')}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-black text-white transition"
+                  style={{ background: '#4F46E5', boxShadow: '0 4px 12px rgba(79,70,229,0.4)' }}>
+                  <Plus size={14}/> Naya
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* KPI cards inside hero */}
+          {isOwner && (
+            isLoading ? (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[0,1,2,3].map(i => (
+                  <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.07)' }}/>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {([
+                  {
+                    label: 'Aaj Aya', value: pkrSh(todayTotal),
+                    sub: dailyTarget ? `${dailyPct}% daily target` : 'Aaj ki total',
+                    progress: dailyTarget ? dailyPct : undefined,
+                    color: '#34D399', bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.22)',
+                  },
+                  {
+                    label: 'Is Mahine', value: pkrSh(monthTotal),
+                    sub: d?.monthInstTarget ? `${monthPct}% · ${daysLeft}d left` : `Net ${netFaida >= 0 ? '+' : ''}${pkrSh(netFaida)}`,
+                    progress: d?.monthInstTarget ? monthPct : undefined,
+                    color: '#818CF8', bg: 'rgba(129,140,248,0.12)', border: 'rgba(129,140,248,0.22)',
+                  },
+                  {
+                    label: 'Overdue', value: kpiOverdue > 0 ? String(kpiOverdue) : '✓',
+                    sub: kpiOverdue > 0 ? `${pkrSh(d?.overdueAmount ?? 0)} baaki` : 'Koi overdue nahi',
+                    color: kpiOverdue > 0 ? '#F87171' : '#34D399',
+                    bg: kpiOverdue > 0 ? 'rgba(248,113,113,0.12)' : 'rgba(52,211,153,0.12)',
+                    border: kpiOverdue > 0 ? 'rgba(248,113,113,0.25)' : 'rgba(52,211,153,0.22)',
+                    onClick: () => navigate('/installments'),
+                  },
+                  {
+                    label: 'Active Plans', value: d?.activeCount ?? 0,
+                    sub: `${d?.monthlyActiveCount ?? 0} mahana · ${d?.dailyActiveCount ?? 0} roz`,
+                    color: '#60A5FA', bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.22)',
+                  },
+                ] as Array<{ label: string; value: string | number; sub: string; progress?: number; color: string; bg: string; border: string; onClick?: () => void }>).map(card => (
+                  <button key={card.label} onClick={card.onClick}
+                    className={`rounded-2xl p-4 text-left w-full transition-all ${card.onClick ? 'cursor-pointer active:scale-[0.97]' : 'cursor-default'}`}
+                    style={{ background: card.bg, border: `1px solid ${card.border}` }}>
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.2em] mb-2" style={{ color: card.color, opacity: 0.85 }}>
+                      {card.label}
+                    </p>
+                    <p className="font-black tabular-nums leading-none text-white"
+                      style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(1.3rem,4vw,1.75rem)' }}>
+                      {card.value}
+                    </p>
+                    {card.sub && (
+                      <p className="text-[11px] mt-1.5 font-medium leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                        {card.sub}
+                      </p>
+                    )}
+                    {typeof card.progress === 'number' && (
+                      <div className="h-1 rounded-full mt-3 overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${Math.min(100, card.progress)}%`, background: card.color }}/>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )
           )}
-          {!isOwner && myBal?.pendingHandover && (
-            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-black rounded-xl">
-              <Clock size={10}/> Pending
-            </span>
-          )}
-          {(isOwner || perms?.canAddInstallment) && (
-            <button onClick={() => navigate('/installments')}
-              className="flex items-center gap-1.5 px-4 py-2 text-white text-[13px] font-black rounded-xl transition shadow-sm"
-              style={{ background: 'var(--accent)' }}>
-              <Plus size={13}/> Naya Installment
-            </button>
+
+          {/* Non-owner cash banner */}
+          {!isOwner && myBal && Number(myBal.pendingBalance) > 0 && (
+            <div className="rounded-2xl p-4 flex items-center justify-between gap-4"
+              style={{
+                background: myBal.pendingHandover ? 'rgba(251,191,36,0.12)' : 'rgba(52,211,153,0.12)',
+                border: `1px solid ${myBal.pendingHandover ? 'rgba(251,191,36,0.3)' : 'rgba(52,211,153,0.3)'}`,
+              }}>
+              <div className="flex items-center gap-3">
+                <Wallet size={20} className={myBal.pendingHandover ? 'text-amber-300' : 'text-emerald-300'}/>
+                <div>
+                  <p className="text-xs font-bold" style={{ color: myBal.pendingHandover ? '#FCD34D' : '#6EE7B7' }}>
+                    {myBal.pendingHandover ? 'Handover pending hai' : 'Aap ke paas cash'}
+                  </p>
+                  <p className="text-2xl font-black tabular-nums text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
+                    {pkr(Number(myBal.pendingBalance))}
+                  </p>
+                </div>
+              </div>
+              {!myBal.pendingHandover && (
+                <button onClick={() => { setHandoverAmt(String(Number(myBal.pendingBalance))); setShowHandover(true); }}
+                  className="px-4 py-2 rounded-xl text-sm font-black shrink-0 transition"
+                  style={{ background: '#34D399', color: '#064E3B' }}>
+                  <Send size={13} className="inline mr-1.5"/> Jama Karein
+                </button>
+              )}
+            </div>
           )}
         </div>
       </header>
 
-      {/* ══ STAFF CASH BANNER (non-owner) ══════════════════════════════════ */}
-      {!isOwner && myBal && Number(myBal.pendingBalance) > 0 && (
-        <div className={`shrink-0 border-b ${myBal.pendingHandover ? 'bg-amber-50 border-amber-200' : 'bg-emerald-600 border-emerald-700'}`}>
-          <div className="flex items-center justify-between px-5 sm:px-6 py-3.5">
-            <div className="flex items-center gap-3">
-              <Wallet size={18} className={myBal.pendingHandover ? 'text-amber-600' : 'text-white/70'}/>
-              <div>
-                <p className={`text-xs font-bold ${myBal.pendingHandover ? 'text-amber-600' : 'text-emerald-100'}`}>
-                  {myBal.pendingHandover ? 'Handover confirm hona baaki hai' : 'Aap ke paas cash'}
-                </p>
-                <p className={`text-2xl font-black tabular-nums ${myBal.pendingHandover ? 'text-amber-800' : 'text-white'}`}
-                  style={{ fontFamily: "'Syne', sans-serif" }}>
-                  {pkr(Number(myBal.pendingBalance))}
-                </p>
-              </div>
-            </div>
-            {!myBal.pendingHandover && (
-              <button onClick={() => { setHandoverAmt(String(Number(myBal.pendingBalance))); setShowHandover(true); }}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 font-black text-sm rounded-xl hover:bg-emerald-50 transition shrink-0">
-                <Send size={13}/> Jama Karein
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ══ KPI STRIP (owner only) ══════════════════════════════════════════ */}
-      {isOwner && (
-        <div className="px-4 sm:px-6 pt-4 pb-2 shrink-0">
-          {isLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {[0,1,2,3].map(i => <div key={i} className="h-[88px] rounded-2xl animate-pulse" style={{ background: 'var(--surface)' }}/>)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <KPICard
-                label="Aaj Aya"
-                value={pkrSh(todayTotal)}
-                sub={dailyTarget ? `${dailyPct}% target` : pkr(todayTotal)}
-                progress={dailyTarget ? dailyPct : undefined}
-              />
-              <KPICard
-                label="Is Mahine"
-                value={pkrSh(monthTotal)}
-                sub={d?.monthInstTarget ? `${monthPct}% · ${daysLeft}d baaki` : `Net ${netFaida >= 0 ? '+' : ''}${pkrSh(netFaida)}`}
-                progress={d?.monthInstTarget ? monthPct : undefined}
-              />
-              <KPICard
-                label="Overdue"
-                value={kpiOverdue > 0 ? `${kpiOverdue} log` : 'Sab Clear ✓'}
-                sub={kpiOverdue > 0 ? pkr(d!.overdueAmount) + ' baaki' : 'Koi overdue nahi'}
-                cs={kpiOverdue > 0 ? 'danger' : 'success'}
-                onClick={() => navigate('/installments')}
-              />
-              <KPICard
-                label="Active Plans"
-                value={d?.activeCount ?? 0}
-                sub={`${d?.monthlyActiveCount ?? 0} mahana · ${d?.dailyActiveCount ?? 0} roz`}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ══ PAGE BODY ═══════════════════════════════════════════════════════ */}
-      <div className="px-3 sm:px-5 lg:px-6 py-3">
+      <div className="px-4 sm:px-6 -mt-4 pb-8">
         <div className="lg:grid lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] gap-4 items-start">
 
           {/* ── LEFT ────────────────────────────────────────────────── */}
@@ -396,109 +441,77 @@ export default function DashboardPage() {
 
             {/* ── STAFF TODAY COLLECTIONS ─────────────────────────── */}
             {isOwner && (
-              <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b" style={{ borderColor: '#F1F5F9' }}>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#EFF6FF' }}>
-                      <Users size={13} style={{ color: 'var(--accent)' }} />
+              <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
+                <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#F1F5F9' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}>
+                      <Users size={15} className="text-white"/>
                     </div>
                     <div>
-                      <h2 className="text-[14px] font-black leading-tight" style={{ color: 'var(--ink)' }}>
-                        Aaj Ki Collection — Employee Wise
-                      </h2>
+                      <h2 className="text-[14px] font-black leading-tight" style={{ color: 'var(--ink)' }}>Aaj Ki Collection</h2>
                       <p className="text-[11px] font-medium" style={{ color: 'var(--ink-dim)' }}>
-                        {staffToday.length > 0
+                        {staffToday.some(s => s.total > 0)
                           ? `${staffToday.reduce((a, s) => a + s.count, 0)} payments · ${pkr(staffToday.reduce((a, s) => a + s.total, 0))} kul`
-                          : 'Aaj abhi koi payment record nahi hui'}
+                          : 'Employee-wise breakdown'}
                       </p>
                     </div>
                   </div>
                   <button onClick={() => navigate('/installments')}
-                    className="flex items-center gap-0.5 text-[12px] font-extrabold shrink-0" style={{ color: 'var(--accent)' }}>
-                    Sab <ChevronRight size={12} />
+                    className="text-[12px] font-extrabold flex items-center gap-0.5 shrink-0" style={{ color: '#4F46E5' }}>
+                    Sab <ChevronRight size={12}/>
                   </button>
                 </div>
 
-                {/* Skeleton while loading */}
                 {isLoading ? (
-                  <RowSkeleton rows={3} />
+                  <RowSkeleton rows={3}/>
                 ) : staffToday.length === 0 ? (
-                  <div className="py-8 flex flex-col items-center gap-2 text-center px-4">
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: '#F8FAFC' }}>
-                      <Users size={20} style={{ color: 'var(--ink-dim)' }} />
+                  <div className="py-10 flex flex-col items-center gap-2 text-center px-4">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: '#F0F3FF' }}>
+                      <Users size={22} style={{ color: '#4F46E5' }}/>
                     </div>
-                    <p className="text-xs font-semibold" style={{ color: 'var(--ink-dim)' }}>
-                      Koi staff register nahi ya aaj koi collection nahi hui
-                    </p>
+                    <p className="text-xs font-semibold" style={{ color: 'var(--ink-dim)' }}>Aaj abhi koi collection nahi hui</p>
                   </div>
                 ) : (
                   <>
                     <div className="divide-y" style={{ borderColor: '#F8FAFC' }}>
                       {staffToday.map((staff, i) => {
                         const pct    = staffTodayMax > 0 ? Math.round((staff.total / staffTodayMax) * 100) : 0;
-                        const colors = ['#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777', '#0891B2'];
+                        const colors = ['#4F46E5', '#059669', '#D97706', '#7C3AED', '#DB2777', '#0891B2'];
                         const color  = colors[i % colors.length];
                         const hasCollected = staff.total > 0;
                         return (
-                          <div key={staff.staffId} className="px-5 py-3.5">
-                            <div className="flex items-center gap-3 mb-2">
-                              {/* Avatar */}
-                              <div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 select-none"
-                                style={{
-                                  background: hasCollected ? color : '#F1F5F9',
-                                  color:      hasCollected ? '#fff' : 'var(--ink-dim)',
-                                }}>
+                          <div key={staff.staffId} className="px-5 py-4">
+                            <div className="flex items-center gap-3 mb-2.5">
+                              <div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-black shrink-0"
+                                style={{ background: hasCollected ? color : '#F1F5F9', color: hasCollected ? '#fff' : 'var(--ink-dim)' }}>
                                 {staff.staffName[0]?.toUpperCase()}
                               </div>
-
-                              {/* Name + count */}
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold truncate" style={{ color: 'var(--ink)' }}>{staff.staffName}</p>
                                 <p className="text-[11px] font-medium" style={{ color: hasCollected ? color : 'var(--ink-dim)' }}>
-                                  {hasCollected
-                                    ? `${staff.count} payment${staff.count !== 1 ? 's' : ''} aaj`
-                                    : 'Aaj koi collection nahi'}
+                                  {hasCollected ? `${staff.count} collection${staff.count !== 1 ? 's' : ''}` : 'Aaj koi collection nahi'}
                                 </p>
                               </div>
-
-                              {/* Amount */}
                               <div className="text-right shrink-0">
-                                <p className="font-black tabular-nums leading-tight"
-                                  style={{
-                                    color:      hasCollected ? 'var(--ink)' : 'var(--ink-dim)',
-                                    fontFamily: "'Syne', sans-serif",
-                                    fontSize:   '1rem',
-                                    opacity:    hasCollected ? 1 : 0.45,
-                                  }}>
+                                <p className="font-black tabular-nums leading-none"
+                                  style={{ color: hasCollected ? 'var(--ink)' : 'var(--ink-dim)', fontFamily: "'Syne', sans-serif", fontSize: '1rem', opacity: hasCollected ? 1 : 0.4 }}>
                                   {hasCollected ? pkrSh(staff.total) : '—'}
                                 </p>
-                                {hasCollected && (
-                                  <p className="text-[10px] font-semibold" style={{ color }}>
-                                    {pct}% share
-                                  </p>
-                                )}
+                                {hasCollected && <p className="text-[10px] font-semibold" style={{ color }}>{pct}%</p>}
                               </div>
                             </div>
-
-                            {/* Progress bar — only for those who collected */}
-                            <div className="h-1 rounded-full overflow-hidden" style={{ background: '#F1F5F9' }}>
-                              <div
-                                className="h-full rounded-full transition-all duration-700"
-                                style={{ width: hasCollected ? `${pct}%` : '0%', background: color }}
-                              />
+                            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#F1F5F9' }}>
+                              <div className="h-full rounded-full transition-all duration-700"
+                                style={{ width: hasCollected ? `${pct}%` : '0%', background: `linear-gradient(90deg,${color}99,${color})` }}/>
                             </div>
                           </div>
                         );
                       })}
                     </div>
-
-                    {/* Total footer */}
                     {staffToday.some(s => s.total > 0) && (
                       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ background: '#F8FAFC', borderColor: '#F1F5F9' }}>
-                        <p className="text-xs font-bold" style={{ color: 'var(--ink-dim)' }}>
-                          Kul Aaj Ki Collection
-                        </p>
+                        <p className="text-xs font-bold" style={{ color: 'var(--ink-dim)' }}>Kul Aaj Ki Collection</p>
                         <p className="text-sm font-black tabular-nums" style={{ color: 'var(--ink)', fontFamily: "'Syne', sans-serif" }}>
                           {pkr(staffToday.reduce((a, s) => a + s.total, 0))}
                         </p>
@@ -510,56 +523,62 @@ export default function DashboardPage() {
             )}
 
             {/* ── AAJ KA KAAM ─────────────────────────────────────── */}
-            <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
-              <div className="flex items-center justify-between px-5 pt-5 pb-3.5">
-                <div>
-                  <h2 className="text-[15px] font-black" style={{ color: 'var(--ink)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Aaj Ka Kaam</h2>
-                  <p className="text-[11px] font-medium mt-0.5" style={{ color: 'var(--ink-dim)' }}>
-                    {!briefing ? 'Load ho raha hai…' : allClear ? 'Sab clear hai' : `${totalWork} cheezein pending`}
-                  </p>
+            <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
+              <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#F1F5F9' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: allClear ? 'linear-gradient(135deg,#10B981,#059669)' : 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
+                    {allClear ? <CheckCircle size={15} className="text-white"/> : <TrendingDown size={15} className="text-white"/>}
+                  </div>
+                  <div>
+                    <h2 className="text-[14px] font-black" style={{ color: 'var(--ink)' }}>Aaj Ka Kaam</h2>
+                    <p className="text-[11px] font-medium" style={{ color: 'var(--ink-dim)' }}>
+                      {!briefing ? 'Load ho raha hai…' : allClear ? 'Sab clear — Mashaallah!' : `${totalWork} item${totalWork !== 1 ? 's' : ''} pending`}
+                    </p>
+                  </div>
                 </div>
                 {briefing && totalWork > 0 && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {bOverdue  > 0 && <span className="text-[10px] font-black px-2 py-0.5 bg-red-50   text-red-600   rounded-lg border border-red-100"  >{bOverdue}  late</span>}
-                    {bDueToday > 0 && <span className="text-[10px] font-black px-2 py-0.5 bg-blue-50  text-blue-600  rounded-lg border border-blue-100" >{bDueToday} aaj</span>}
-                    {pDueCount > 0 && <span className="text-[10px] font-black px-2 py-0.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">{pDueCount} wada</span>}
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                    {bOverdue  > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{bOverdue} late</span>}
+                    {bDueToday > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>{bDueToday} aaj</span>}
+                    {pDueCount > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>{pDueCount} wada</span>}
                   </div>
                 )}
               </div>
 
               {!briefing ? (
-                <div className="border-t" style={{ borderColor: '#F1F5F9' }}><RowSkeleton rows={5}/></div>
+                <RowSkeleton rows={5}/>
               ) : (
                 <>
-                  {/* Overdue */}
                   {briefing.urgentAccounts.length > 0 && (
-                    <div className="border-t" style={{ borderColor: '#F1F5F9' }}>
-                      <div className="flex items-center gap-2 px-5 py-2.5">
+                    <div>
+                      <div className="flex items-center gap-2 px-5 py-2.5" style={{ background: '#FEF2F2' }}>
                         <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"/>
                         <span className="text-[11px] font-black text-red-600 uppercase tracking-wide">Overdue ({briefing.overdueTotal})</span>
                       </div>
                       {briefing.urgentAccounts.map((acct, i) => {
-                        const sev = acct.daysOverdue >= 30
-                          ? 'bg-red-100 text-red-700' : acct.daysOverdue >= 14
-                          ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700';
+                        const sevColor = acct.daysOverdue >= 30 ? '#DC2626' : acct.daysOverdue >= 14 ? '#EA580C' : '#D97706';
                         return (
                           <div key={acct.id}
-                            className={`flex items-center gap-3 pl-4 pr-5 py-3 border-l-[3px] border-red-400 hover:bg-red-50/40 transition ${i > 0 ? 'border-t border-slate-50' : ''}`}>
-                            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-xs font-black text-red-600 shrink-0 select-none">
+                            className={`flex items-center gap-3 px-5 py-3 hover:bg-red-50/40 transition ${i > 0 ? 'border-t' : ''}`}
+                            style={{ borderColor: '#FEF2F2', borderLeft: '3px solid #F87171' }}>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
+                              style={{ background: '#FEE2E2', color: '#DC2626' }}>
                               {acct.customerName[0]?.toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold truncate leading-tight" style={{ color: 'var(--ink)' }}>{acct.customerName}</p>
+                              <p className="text-sm font-bold truncate" style={{ color: 'var(--ink)' }}>{acct.customerName}</p>
                               <p className="text-[11px]" style={{ color: 'var(--ink-dim)' }}>{acct.customerPhone}</p>
                             </div>
                             <div className="text-right shrink-0 mr-2">
                               <p className="text-sm font-black tabular-nums" style={{ color: 'var(--ink)' }}>{pkr(acct.monthly)}</p>
-                              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${sev}`}>{acct.daysOverdue}d late</span>
+                              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md"
+                                style={{ background: '#FEE2E2', color: sevColor }}>{acct.daysOverdue}d late</span>
                             </div>
-                            <a href={waLink(acct.customerPhone,
-                              `Assalam-o-Alaikum ${acct.customerName}! Aapka installment ${acct.daysOverdue} din se due hai. ${pkr(acct.monthly)} jama karwain. Shukriya!`)}
+                            <a href={waLink(acct.customerPhone, `Assalam-o-Alaikum ${acct.customerName}! Aapka installment ${acct.daysOverdue} din se due hai. ${pkr(acct.monthly)} jama karwain. Shukriya!`)}
                               target="_blank" rel="noopener noreferrer"
-                              className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-[#25D366] hover:bg-[#1fb859] text-white text-[11px] font-black rounded-xl transition">
+                              className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-white text-[11px] font-black rounded-xl transition hover:opacity-90"
+                              style={{ background: '#25D366' }}>
                               <PhoneCall size={10}/> WA
                             </a>
                           </div>
@@ -568,10 +587,9 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* Due today */}
                   {briefing.dueTodayAccounts.length > 0 && (
                     <div className="border-t" style={{ borderColor: '#F1F5F9' }}>
-                      <div className="flex items-center justify-between px-5 py-2.5">
+                      <div className="flex items-center justify-between px-5 py-2.5" style={{ background: '#EFF6FF' }}>
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"/>
                           <span className="text-[11px] font-black text-blue-600 uppercase tracking-wide">Aaj Ka Qist ({briefing.dueToday})</span>
@@ -582,50 +600,55 @@ export default function DashboardPage() {
                       </div>
                       {briefing.dueTodayAccounts.slice(0, 20).map((acct, i) => (
                         <div key={acct.id}
-                          className={`flex items-center gap-3 pl-4 pr-5 py-3 border-l-[3px] border-blue-400 hover:bg-blue-50/40 transition ${i > 0 ? 'border-t border-slate-50' : ''}`}>
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-black text-blue-700 shrink-0 select-none">
+                          className={`flex items-center gap-3 px-5 py-3 hover:bg-blue-50/40 transition ${i > 0 ? 'border-t' : ''}`}
+                          style={{ borderColor: '#EFF6FF', borderLeft: '3px solid #60A5FA' }}>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
+                            style={{ background: '#DBEAFE', color: '#2563EB' }}>
                             {acct.customerName[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate leading-tight" style={{ color: 'var(--ink)' }}>{acct.customerName}</p>
+                            <p className="text-sm font-bold truncate" style={{ color: 'var(--ink)' }}>{acct.customerName}</p>
                             <p className="text-[11px]" style={{ color: 'var(--ink-dim)' }}>{acct.customerPhone}</p>
                           </div>
                           <p className="text-sm font-black text-blue-700 tabular-nums shrink-0 mr-2">{pkr(acct.monthly)}</p>
-                          <a href={waLink(acct.customerPhone,
-                            `Assalam-o-Alaikum ${acct.customerName}! Aaj ka installment ${pkr(acct.monthly)} due hai. Jazak'Allah!`)}
+                          <a href={waLink(acct.customerPhone, `Assalam-o-Alaikum ${acct.customerName}! Aaj ka installment ${pkr(acct.monthly)} due hai. Jazak'Allah!`)}
                             target="_blank" rel="noopener noreferrer"
-                            className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-[#25D366] hover:bg-[#1fb859] text-white text-[11px] font-black rounded-xl transition">
+                            className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-white text-[11px] font-black rounded-xl transition hover:opacity-90"
+                            style={{ background: '#25D366' }}>
                             <PhoneCall size={10}/> WA
                           </a>
                         </div>
                       ))}
                       {briefing.dueTodayAccounts.length > 20 && (
                         <button onClick={() => navigate('/installments')}
-                          className="w-full py-2.5 text-xs font-black text-blue-600 border-t border-slate-50 hover:bg-blue-50 transition flex items-center justify-center gap-1">
+                          className="w-full py-2.5 text-xs font-black border-t flex items-center justify-center gap-1 hover:bg-blue-50 transition"
+                          style={{ borderColor: '#EFF6FF', color: '#2563EB' }}>
                           +{briefing.dueTodayAccounts.length - 20} aur <ChevronRight size={11}/>
                         </button>
                       )}
                     </div>
                   )}
 
-                  {/* Promises */}
                   {pDueCount > 0 && promises.length > 0 && (
                     <div className="border-t" style={{ borderColor: '#F1F5F9' }}>
-                      <div className="flex items-center gap-2 px-5 py-2.5">
+                      <div className="flex items-center gap-2 px-5 py-2.5" style={{ background: '#FFFBEB' }}>
                         <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0"/>
                         <span className="text-[11px] font-black text-amber-600 uppercase tracking-wide">Waday ({pDueCount})</span>
                       </div>
                       {promises.slice(0, 5).map((p, i) => (
                         <div key={p.id}
-                          className={`flex items-center gap-3 pl-4 pr-5 py-3 border-l-[3px] border-amber-400 ${i > 0 ? 'border-t border-slate-50' : ''}`}>
-                          <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-xs font-black text-amber-600 shrink-0 select-none">
+                          className={`flex items-center gap-3 px-5 py-3 ${i > 0 ? 'border-t' : ''}`}
+                          style={{ borderColor: '#FFFBEB', borderLeft: '3px solid #FCD34D' }}>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
+                            style={{ background: '#FEF3C7', color: '#D97706' }}>
                             {p.customerName[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate leading-tight" style={{ color: 'var(--ink)' }}>{p.customerName}</p>
+                            <p className="text-sm font-bold truncate" style={{ color: 'var(--ink)' }}>{p.customerName}</p>
                             <p className="text-[11px] truncate" style={{ color: 'var(--ink-dim)' }}>{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
                           </div>
-                          <span className="shrink-0 flex items-center gap-1 text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-xl border border-amber-200">
+                          <span className="shrink-0 flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-xl"
+                            style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A' }}>
                             <Bell size={9}/> Wada
                           </span>
                         </div>
@@ -633,14 +656,14 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* All clear */}
                   {allClear && (
-                    <div className="border-t py-10 flex flex-col items-center text-center" style={{ borderColor: '#F1F5F9' }}>
-                      <div className="w-14 h-14 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-center mb-3">
-                        <CheckCircle size={28} className="text-emerald-500"/>
+                    <div className="py-12 flex flex-col items-center text-center">
+                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3"
+                        style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)' }}>
+                        <CheckCircle size={30} style={{ color: '#10B981' }}/>
                       </div>
                       <p className="text-[15px] font-black" style={{ color: 'var(--ink)' }}>Sab Clear Hai!</p>
-                      <p className="text-xs mt-1.5 max-w-[15rem] leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
+                      <p className="text-xs mt-1.5 max-w-60 leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
                         Koi due, overdue ya wada nahi. Mashaallah!
                       </p>
                     </div>
@@ -650,37 +673,61 @@ export default function DashboardPage() {
             </div>
 
             {/* ── RECENT INSTALLMENTS ──────────────────────────────── */}
-            <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
-              <SectionHead title="Recent Installments" action="Sab" onAction={() => navigate('/installments')} />
+            <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
+              <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#F1F5F9' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #0EA5E9, #0284C7)' }}>
+                    <ArrowUpRight size={15} className="text-white"/>
+                  </div>
+                  <div>
+                    <h2 className="text-[14px] font-black" style={{ color: 'var(--ink)' }}>Recent Installments</h2>
+                    <p className="text-[11px] font-medium" style={{ color: 'var(--ink-dim)' }}>Latest added accounts</p>
+                  </div>
+                </div>
+                <button onClick={() => navigate('/installments')}
+                  className="text-[12px] font-extrabold flex items-center gap-0.5" style={{ color: '#4F46E5' }}>
+                  Sab <ChevronRight size={12}/>
+                </button>
+              </div>
               {isLoading ? (
-                <div className="border-t" style={{ borderColor: '#F1F5F9' }}><RowSkeleton rows={5}/></div>
+                <RowSkeleton rows={5}/>
               ) : !d?.recentInstallments.length ? (
-                <div className="py-10 text-center border-t" style={{ borderColor: '#F1F5F9' }}>
+                <div className="py-10 text-center">
                   <p className="text-xs" style={{ color: 'var(--ink-dim)' }}>
                     Koi installment nahi.{' '}
-                    <button onClick={() => navigate('/installments')} className="font-black" style={{ color: 'var(--accent)' }}>Banao</button>
+                    <button onClick={() => navigate('/installments')} className="font-black" style={{ color: '#4F46E5' }}>Banao</button>
                   </p>
                 </div>
               ) : (
-                <div className="divide-y border-t" style={{ borderColor: '#F1F5F9' }}>
+                <div className="divide-y" style={{ borderColor: '#F8FAFC' }}>
                   {d.recentInstallments.map(inst => {
-                    const s = STATUS[inst.status] ?? { bg: 'bg-slate-100', text: 'text-slate-500', label: inst.status };
+                    const statusMap: Record<string, { bg: string; text: string; label: string }> = {
+                      ACTIVE:    { bg: '#EFF6FF', text: '#2563EB', label: 'Active' },
+                      COMPLETED: { bg: '#ECFDF5', text: '#059669', label: 'Khatam' },
+                      DEFAULTED: { bg: '#FEF2F2', text: '#DC2626', label: 'Overdue' },
+                      CANCELLED: { bg: '#F8FAFC', text: '#94A3B8', label: 'Cancel' },
+                    };
+                    const sc = statusMap[inst.status] ?? { bg: '#F8FAFC', text: '#94A3B8', label: inst.status };
                     return (
                       <div key={inst.id} onClick={() => navigate('/installments')}
-                        className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-slate-50/60 transition">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 select-none"
-                          style={{ background: '#F1F5F9', color: 'var(--ink-dim)' }}>
+                        className="flex items-center gap-3 px-5 py-3.5 cursor-pointer hover:bg-slate-50/60 transition">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-black shrink-0"
+                          style={{ background: '#F0F3FF', color: '#4F46E5' }}>
                           {inst.customerName[0]?.toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold truncate" style={{ color: 'var(--ink)' }}>{inst.customerName}</p>
-                          <p className="text-[10px] truncate" style={{ color: 'var(--ink-dim)' }}>{inst.productName}</p>
+                          <p className="text-sm font-bold truncate" style={{ color: 'var(--ink)' }}>{inst.customerName}</p>
+                          <p className="text-[11px] truncate" style={{ color: 'var(--ink-dim)' }}>{inst.productName}</p>
                         </div>
-                        <div className="text-right shrink-0 mr-2">
-                          <p className="text-xs font-black tabular-nums" style={{ color: 'var(--ink)' }}>{pkr(Number(inst.remaining))}</p>
+                        <div className="text-right shrink-0 mr-3">
+                          <p className="text-sm font-black tabular-nums" style={{ color: 'var(--ink)' }}>{pkr(Number(inst.remaining))}</p>
                           <p className="text-[10px]" style={{ color: 'var(--ink-dim)' }}>baaki</p>
                         </div>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${s.bg} ${s.text}`}>{s.label}</span>
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0"
+                          style={{ background: sc.bg, color: sc.text }}>
+                          {sc.label}
+                        </span>
                       </div>
                     );
                   })}
@@ -692,25 +739,42 @@ export default function DashboardPage() {
 
           {/* ── SIDEBAR ─────────────────────────────────────────────── */}
           <div className="mt-4 lg:mt-0">
-            <div className="lg:sticky lg:top-16 space-y-4 lg:max-h-[calc(100vh_-_4rem)] lg:overflow-y-auto lg:pb-4 lg:pr-0.5">
+            <div className="lg:sticky lg:top-4 space-y-4 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:pb-4">
 
               {/* PORTFOLIO */}
               {isOwner && (
-                <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
-                  <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#F1F5F9' }}>
-                    <h3 className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--ink)' }}>Portfolio</h3>
+                <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
+                  <div className="flex items-center justify-between px-4 py-3.5 border-b" style={{ borderColor: '#F1F5F9' }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
+                        <ArrowUpRight size={12} className="text-white"/>
+                      </div>
+                      <h3 className="text-sm font-black" style={{ color: 'var(--ink)' }}>Portfolio</h3>
+                    </div>
                     <button onClick={() => navigate('/installments')}
-                      className="text-[11px] font-black flex items-center gap-0.5" style={{ color: 'var(--accent)' }}>
+                      className="text-[11px] font-black flex items-center gap-0.5" style={{ color: '#4F46E5' }}>
                       Sab <ArrowUpRight size={10}/>
                     </button>
                   </div>
                   {isLoading ? <RowSkeleton rows={5}/> : (
                     <div className="divide-y" style={{ borderColor: '#F8FAFC' }}>
-                      <PRow label="Active Plans"        value={d?.activeCount ?? 0}            sub={`${d?.monthlyActiveCount ?? 0} mahana · ${d?.dailyActiveCount ?? 0} roz`} vc="text-blue-700"/>
-                      <PRow label="Overdue"             value={d?.overdueCount ?? 0}            sub={(d?.overdueAmount ?? 0) > 0 ? pkr(d!.overdueAmount) : 'sab clear'} vc={(d?.overdueCount ?? 0) > 0 ? 'text-red-600' : 'text-slate-300'} onClick={() => navigate('/installments')}/>
-                      <PRow label="Khatam Hone Wale"   value={completingSoon.length}           sub="1–3 qist baaki" vc={completingSoon.length > 0 ? 'text-amber-600' : 'text-slate-300'}/>
-                      <PRow label="Naye (Is Mahine)"   value={d?.newThisMonthCount ?? 0}       sub={pkrSh(d?.newThisMonthValue ?? 0)}/>
-                      <PRow label="Khatam (Is Mahine)" value={d?.completedThisMonthCount ?? 0} sub={pkrSh(d?.completedThisMonthValue ?? 0)} vc={(d?.completedThisMonthCount ?? 0) > 0 ? 'text-emerald-600' : 'text-slate-300'}/>
+                      {([
+                        { label: 'Active Plans',      value: d?.activeCount ?? 0,            sub: `${d?.monthlyActiveCount ?? 0} mahana`,       color: '#2563EB' },
+                        { label: 'Overdue',           value: d?.overdueCount ?? 0,            sub: (d?.overdueAmount ?? 0) > 0 ? pkrSh(d!.overdueAmount) : 'sab clear', color: (d?.overdueCount ?? 0) > 0 ? '#DC2626' : '#34D399', click: () => navigate('/installments') },
+                        { label: 'Khatam Hone Wale', value: completingSoon.length,           sub: '1–3 qist baaki',                             color: completingSoon.length > 0 ? '#D97706' : '#CBD5E1' },
+                        { label: 'Naye (Is Mahine)', value: d?.newThisMonthCount ?? 0,       sub: pkrSh(d?.newThisMonthValue ?? 0),             color: '#4F46E5' },
+                        { label: 'Khatam Is Mahine', value: d?.completedThisMonthCount ?? 0, sub: pkrSh(d?.completedThisMonthValue ?? 0),       color: (d?.completedThisMonthCount ?? 0) > 0 ? '#059669' : '#CBD5E1' },
+                      ] as Array<{ label: string; value: number; sub: string; color: string; click?: () => void }>).map(row => (
+                        <div key={row.label} onClick={row.click}
+                          className={`flex items-center justify-between px-4 py-3 ${row.click ? 'cursor-pointer hover:bg-slate-50 transition' : ''}`}>
+                          <p className="text-xs font-medium" style={{ color: 'var(--ink-dim)' }}>{row.label}</p>
+                          <div className="text-right">
+                            <p className="text-sm font-black tabular-nums" style={{ color: row.color }}>{row.value}</p>
+                            <p className="text-[10px]" style={{ color: 'var(--ink-dim)' }}>{row.sub}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -718,28 +782,37 @@ export default function DashboardPage() {
 
               {/* CASH IN FIELD */}
               {isOwner && staffCash.length > 0 && (
-                <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid #FDE68A' }}>
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-amber-100 bg-amber-50">
+                <div className="rounded-2xl overflow-hidden shadow-sm border" style={{ background: 'var(--surface)', borderColor: '#FDE68A' }}>
+                  <div className="flex items-center justify-between px-4 py-3.5 border-b"
+                    style={{ background: 'linear-gradient(135deg,#FFFBEB,#FEF3C7)', borderColor: '#FDE68A' }}>
                     <div className="flex items-center gap-2">
-                      <Wallet size={12} className="text-amber-600"/>
-                      <span className="text-xs font-black text-amber-800">Cash in Field</span>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#F59E0B' }}>
+                        <Wallet size={12} className="text-white"/>
+                      </div>
+                      <span className="text-sm font-black text-amber-900">Cash in Field</span>
                     </div>
-                    <span className="text-sm font-black text-amber-700 tabular-nums">{pkr(fieldTotal)}</span>
+                    <span className="text-base font-black text-amber-700 tabular-nums" style={{ fontFamily: "'Syne', sans-serif" }}>
+                      {pkrSh(fieldTotal)}
+                    </span>
                   </div>
                   {staffCash.map((s, i) => (
-                    <div key={s.staffId} className={`flex items-center gap-2.5 px-4 py-3 ${i > 0 ? 'border-t border-slate-50' : ''}`}>
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 select-none"
-                        style={{ background: '#F1F5F9', color: 'var(--ink-dim)' }}>
+                    <div key={s.staffId} className={`flex items-center gap-2.5 px-4 py-3 ${i > 0 ? 'border-t' : ''}`}
+                      style={{ borderColor: '#FFFBEB' }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0"
+                        style={{ background: '#FEF3C7', color: '#D97706' }}>
                         {s.staffName[0]?.toUpperCase()}
                       </div>
                       <p className="text-xs font-bold flex-1 truncate" style={{ color: 'var(--ink)' }}>{s.staffName}</p>
-                      <p className="text-xs font-black tabular-nums shrink-0 mr-1" style={{ color: 'var(--ink)' }}>{pkr(Number(s.pendingBalance))}</p>
+                      <p className="text-xs font-black tabular-nums shrink-0 mr-1.5" style={{ color: 'var(--ink)' }}>
+                        {pkrSh(Number(s.pendingBalance))}
+                      </p>
                       <button onClick={() => setReceiveTarget(s)}
-                        className={`shrink-0 text-[11px] font-black px-2.5 py-1.5 rounded-xl transition border ${
-                          s.pendingHandover
-                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200'
-                            : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200'
-                        }`}>
+                        className="shrink-0 text-[11px] font-black px-2.5 py-1.5 rounded-xl transition"
+                        style={{
+                          background: s.pendingHandover ? '#FEF3C7' : '#D1FAE5',
+                          color:      s.pendingHandover ? '#D97706' : '#059669',
+                          border:     `1px solid ${s.pendingHandover ? '#FDE68A' : '#A7F3D0'}`,
+                        }}>
                         {s.pendingHandover ? 'Confirm' : 'Li'}
                       </button>
                     </div>
@@ -749,20 +822,31 @@ export default function DashboardPage() {
 
               {/* KHATAM HONE WALE */}
               {isOwner && completingSoon.length > 0 && (
-                <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
-                  <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#F1F5F9' }}>
+                <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ background: 'var(--surface)', borderColor: '#E2E8F0' }}>
+                  <div className="flex items-center justify-between px-4 py-3.5 border-b" style={{ borderColor: '#F1F5F9' }}>
                     <div className="flex items-center gap-2">
-                      <TrendingDown size={12} className="text-emerald-600"/>
-                      <span className="text-xs font-black" style={{ color: 'var(--ink)' }}>Khatam Hone Wale</span>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#ECFDF5' }}>
+                        <TrendingDown size={12} style={{ color: '#10B981' }}/>
+                      </div>
+                      <span className="text-sm font-black" style={{ color: 'var(--ink)' }}>Khatam Hone Wale</span>
                     </div>
-                    <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-lg">{completingSoon.length}</span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-lg"
+                      style={{ background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                      {completingSoon.length}
+                    </span>
                   </div>
                   {completingSoon.map((c, i) => (
-                    <div key={c.id} className={`flex items-center gap-2.5 px-4 py-3 ${i > 0 ? 'border-t border-slate-50' : ''}`}>
+                    <div key={c.id} className={`flex items-center gap-2.5 px-4 py-3 ${i > 0 ? 'border-t' : ''}`}
+                      style={{ borderColor: '#F8FAFC' }}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-xs font-bold truncate" style={{ color: 'var(--ink)' }}>{c.customerName}</p>
-                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border shrink-0 ${c.paymentsLeft === 1 ? 'bg-red-50 text-red-700 border-red-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md shrink-0"
+                            style={{
+                              background: c.paymentsLeft === 1 ? '#FEE2E2' : '#FEF3C7',
+                              color:      c.paymentsLeft === 1 ? '#DC2626' : '#D97706',
+                              border:     `1px solid ${c.paymentsLeft === 1 ? '#FECACA' : '#FDE68A'}`,
+                            }}>
                             {c.paymentsLeft}x
                           </span>
                         </div>
@@ -770,7 +854,8 @@ export default function DashboardPage() {
                       </div>
                       <a href={waLink(c.customerPhone, `Assalam-o-Alaikum ${c.customerName}! Sirf ${c.paymentsLeft} installment baaki hai. Shukriya!`)}
                         target="_blank" rel="noopener noreferrer"
-                        className="shrink-0 text-[11px] font-black text-white bg-[#25D366] hover:bg-[#1fb859] px-2.5 py-1.5 rounded-xl transition">
+                        className="shrink-0 text-[11px] font-black text-white px-2.5 py-1.5 rounded-xl transition hover:opacity-90"
+                        style={{ background: '#25D366' }}>
                         WA
                       </a>
                     </div>
@@ -780,18 +865,25 @@ export default function DashboardPage() {
 
               {/* LOW STOCK */}
               {lowStock.length > 0 && (
-                <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid #FDE68A' }}>
-                  <div className="flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100">
+                <div className="rounded-2xl overflow-hidden shadow-sm border" style={{ background: 'var(--surface)', borderColor: '#FDE68A' }}>
+                  <div className="flex items-center justify-between px-4 py-3.5 border-b"
+                    style={{ background: 'linear-gradient(135deg,#FFFBEB,#FEF3C7)', borderColor: '#FDE68A' }}>
                     <div className="flex items-center gap-2">
-                      <Package size={12} className="text-amber-600"/>
-                      <span className="text-xs font-black text-amber-800">Kam Stock</span>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#F59E0B' }}>
+                        <Package size={12} className="text-white"/>
+                      </div>
+                      <span className="text-sm font-black text-amber-900">Kam Stock</span>
                     </div>
-                    <button onClick={() => navigate('/products')} className="text-[11px] text-amber-700 font-black hover:underline">Manage →</button>
+                    <button onClick={() => navigate('/products')} className="text-[11px] font-black hover:underline" style={{ color: '#D97706' }}>Manage →</button>
                   </div>
                   <div className="px-4 py-3.5 flex flex-wrap gap-1.5">
                     {lowStock.map(p => (
-                      <span key={p.id}
-                        className={`text-[11px] font-black px-2.5 py-1 rounded-xl border ${p.stock === 0 ? 'bg-red-50 text-red-700 border-red-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                      <span key={p.id} className="text-[11px] font-black px-2.5 py-1 rounded-xl"
+                        style={{
+                          background: p.stock === 0 ? '#FEE2E2' : '#FEF3C7',
+                          color:      p.stock === 0 ? '#DC2626' : '#D97706',
+                          border:     `1px solid ${p.stock === 0 ? '#FECACA' : '#FDE68A'}`,
+                        }}>
                         {p.name} ({p.stock})
                       </span>
                     ))}
@@ -801,10 +893,13 @@ export default function DashboardPage() {
 
               {/* BIRTHDAYS */}
               {birthdays.length > 0 && (
-                <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid #FBCFE8' }}>
-                  <div className="flex items-center gap-2 px-4 py-3 bg-pink-50 border-b border-pink-100">
-                    <Gift size={12} className="text-pink-500"/>
-                    <span className="text-xs font-black text-pink-700">{birthdays.length} Birthday is hafte</span>
+                <div className="rounded-2xl overflow-hidden shadow-sm border" style={{ background: 'var(--surface)', borderColor: '#FBCFE8' }}>
+                  <div className="flex items-center gap-2 px-4 py-3.5 border-b"
+                    style={{ background: 'linear-gradient(135deg,#FDF2F8,#FCE7F3)', borderColor: '#FBCFE8' }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#EC4899' }}>
+                      <Gift size={12} className="text-white"/>
+                    </div>
+                    <span className="text-sm font-black text-pink-900">{birthdays.length} Birthday is hafte</span>
                   </div>
                   {birthdays.map((c, i) => {
                     const [, mm, dd] = c.dob.split('-');
@@ -812,20 +907,28 @@ export default function DashboardPage() {
                     const todayD = new Date(); todayD.setHours(0,0,0,0);
                     const isToday = bday.toDateString() === todayD.toDateString();
                     return (
-                      <div key={c.id} className={`flex items-center gap-2.5 px-4 py-3 ${i > 0 ? 'border-t border-slate-50' : ''}`}>
-                        <div className="w-7 h-7 bg-pink-100 rounded-full flex items-center justify-center text-[11px] font-black text-pink-600 shrink-0 select-none">
+                      <div key={c.id} className={`flex items-center gap-2.5 px-4 py-3 ${i > 0 ? 'border-t' : ''}`}
+                        style={{ borderColor: '#FDF2F8' }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black shrink-0"
+                          style={{ background: '#FCE7F3', color: '#DB2777' }}>
                           {c.name[0]}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <p className="text-xs font-bold truncate" style={{ color: 'var(--ink)' }}>{c.name}</p>
-                            {isToday && <span className="text-[9px] font-black bg-pink-100 border border-pink-200 text-pink-700 px-1.5 py-0.5 rounded shrink-0">Aaj!</span>}
+                            {isToday && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0"
+                                style={{ background: '#FCE7F3', color: '#DB2777', border: '1px solid #FBCFE8' }}>
+                                Aaj!
+                              </span>
+                            )}
                           </div>
                           {c.area && <p className="text-[10px]" style={{ color: 'var(--ink-dim)' }}>{c.area}</p>}
                         </div>
                         <a href={waLink(c.phone, `Assalamu Alaikum ${c.name}! Aaj aap ka birthday hai — bohat mubarak ho!`)}
                           target="_blank" rel="noopener noreferrer"
-                          className="shrink-0 text-[11px] font-black text-white bg-[#25D366] hover:bg-[#1fb859] px-2.5 py-1.5 rounded-xl transition">
+                          className="shrink-0 text-[11px] font-black text-white px-2.5 py-1.5 rounded-xl transition hover:opacity-90"
+                          style={{ background: '#25D366' }}>
                           WA
                         </a>
                       </div>
@@ -848,22 +951,23 @@ export default function DashboardPage() {
         return (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-              <div className="px-5 py-4 flex items-center justify-between" style={{ background: 'var(--ink)' }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: '#1E2A4A' }}>
                 <div>
                   <p className="text-white font-black text-sm">Cash Jama Karein</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Owner ko hand over karo</p>
+                  <p className="text-blue-300 text-xs mt-0.5">Owner ko hand over karo</p>
                 </div>
-                <button onClick={() => setShowHandover(false)} className="text-slate-400 hover:text-white transition"><X size={16}/></button>
+                <button onClick={() => setShowHandover(false)} className="text-blue-300 hover:text-white transition"><X size={16}/></button>
               </div>
               <div className="p-5 space-y-3">
-                <div className="rounded-xl px-4 py-3 ring-1 ring-slate-200" style={{ background: '#F8FAFC' }}>
+                <div className="rounded-xl px-4 py-3" style={{ background: '#F0F3FF', border: '1px solid #E0E7FF' }}>
                   <p className="text-[10px] font-medium" style={{ color: 'var(--ink-dim)' }}>System ka hisaab</p>
-                  <p className="text-2xl font-black tabular-nums" style={{ color: 'var(--ink)', fontFamily: "'Syne', sans-serif" }}>{pkr(bal)}</p>
+                  <p className="text-2xl font-black tabular-nums" style={{ color: '#1E2A4A', fontFamily: "'Syne', sans-serif" }}>{pkr(bal)}</p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--ink-dim)' }}>Actual Amount *</label>
                   <input type="number" value={handoverAmt} onChange={e => setHandoverAmt(e.target.value)} autoFocus
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-xl font-black tabular-nums focus:outline-none focus:border-emerald-400 transition"/>
+                    className="w-full border rounded-xl px-4 py-3 text-xl font-black tabular-nums focus:outline-none focus:border-indigo-400 transition"
+                    style={{ borderColor: '#E2E8F0' }}/>
                   {handoverAmt && amt !== bal && (
                     <p className={`text-xs mt-1.5 font-black ${diff < 0 ? 'text-red-500' : 'text-amber-500'}`}>
                       {pkr(Math.abs(diff))} {diff < 0 ? 'kam' : 'zyada'}
@@ -871,12 +975,15 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <textarea value={handoverNote} onChange={e => setHandoverNote(e.target.value)} rows={2} placeholder="Note (optional)…"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-emerald-400 transition"/>
+                  className="w-full border rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-indigo-400 transition"
+                  style={{ borderColor: '#E2E8F0' }}/>
               </div>
               <div className="flex gap-2 px-5 pb-5">
-                <button onClick={() => setShowHandover(false)} className="flex-1 py-2.5 text-sm font-bold border border-slate-200 rounded-xl hover:bg-slate-50 transition">Wapas</button>
+                <button onClick={() => setShowHandover(false)} className="flex-1 py-2.5 text-sm font-bold border rounded-xl hover:bg-slate-50 transition"
+                  style={{ borderColor: '#E2E8F0' }}>Wapas</button>
                 <button disabled={!handoverAmt || amt <= 0 || submitHandover.isPending} onClick={() => submitHandover.mutate()}
-                  className="flex-1 py-2.5 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl transition flex items-center justify-center gap-1.5">
+                  className="flex-1 py-2.5 text-sm font-black text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-1.5"
+                  style={{ background: '#10B981' }}>
                   {submitHandover.isPending ? <span className="animate-pulse">Jama ho raha…</span> : <><Send size={13}/> Jama Karein</>}
                 </button>
               </div>

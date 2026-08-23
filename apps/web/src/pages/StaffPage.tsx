@@ -544,31 +544,33 @@ function StaffCard({ member, balance }: { member: StaffMember; balance?: import(
 
       {/* Cash in Hand — owner only, shown when employee has unclaimed cash */}
       {isOwner && balance && pendingCash >= 1 && (
-        <div className={`mt-3 rounded-xl border px-3 py-2.5 ${balance.pendingHandover ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
-                Cash in Hand
-              </p>
-              <p className={`text-base font-black leading-tight ${balance.pendingHandover ? 'text-amber-700' : 'text-emerald-700'}`}>
-                {pkr(pendingCash)}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                Collected: {pkr(Number(balance.totalCollected))} · Confirmed: {pkr(Number(balance.totalConfirmed))}
-              </p>
+        <div className="mt-3" style={{ borderLeft: `3px solid ${balance.pendingHandover ? '#F59E0B' : '#10B981'}` }}>
+          <div className={`rounded-r-xl px-3 py-3 ${balance.pendingHandover ? 'bg-amber-50' : 'bg-emerald-50'}`}>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Haath Mein Cash</p>
+                <p className={`text-lg font-black leading-none ${balance.pendingHandover ? 'text-amber-700' : 'text-emerald-700'}`}
+                  style={{ fontFamily: "'Syne', sans-serif" }}>
+                  {pkr(pendingCash)}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReceive(true)}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-white text-xs font-bold rounded-xl transition shadow-sm ${
+                  balance.pendingHandover
+                    ? 'bg-amber-500 hover:bg-amber-600'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                <Banknote size={12} /> {balance.pendingHandover ? 'Confirm' : 'Cash Li'}
+              </button>
             </div>
-            <button
-              onClick={() => setShowReceive(true)}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
-            >
-              <Banknote size={13} /> Cash Li
-            </button>
+            {balance.pendingHandover && (
+              <p className="text-[10px] text-amber-600 mt-2 flex items-center gap-1">
+                <Clock size={9} /> Staff ne {pkr(Number(balance.pendingHandover.handedAmount))} submit kiya
+              </p>
+            )}
           </div>
-          {balance.pendingHandover && (
-            <p className="text-[10px] text-amber-600 mt-1.5 flex items-center gap-1">
-              <Clock size={10} /> Staff ne {pkr(Number(balance.pendingHandover.handedAmount))} submit kiya — confirm karein
-            </p>
-          )}
         </div>
       )}
 
@@ -714,47 +716,53 @@ function CashInHandCard({ balance, onSubmit }: { balance: StaffBalance | null | 
   const allClear = cashAmt < 1;
 
   return (
-    <div className={`rounded-2xl p-4 mb-4 border ${allClear ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-200'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-1">Cash in Hand</p>
-          <p className={`text-2xl font-bold ${allClear ? 'text-green-700' : 'text-amber-700'}`}>
-            {pkr(cashAmt)}
-          </p>
-          {balance && (
-            <p className="text-[11px] text-gray-400 mt-1">
-              Collected: {pkr(Number(balance.totalCollected))} &nbsp;·&nbsp; Confirmed: {pkr(Number(balance.totalConfirmed))}
+    <div className={`rounded-2xl overflow-hidden mb-5 border ${allClear ? 'border-emerald-200' : 'border-amber-200'}`}
+      style={{ background: allClear ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'linear-gradient(135deg,#fffbeb,#fef3c7)' }}>
+      <div className={`h-1 ${allClear ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Haath Mein Cash</p>
+            <p className={`text-3xl font-black leading-none ${allClear ? 'text-emerald-700' : 'text-amber-700'}`}
+              style={{ fontFamily: "'Syne', sans-serif" }}>
+              {pkr(cashAmt)}
             </p>
-          )}
+            {balance && (
+              <p className="text-[11px] text-gray-400 mt-2">
+                Collected: {pkr(Number(balance.totalCollected))} · Confirmed: {pkr(Number(balance.totalConfirmed))}
+              </p>
+            )}
+          </div>
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${allClear ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+            <Banknote size={22} className={allClear ? 'text-emerald-600' : 'text-amber-600'} />
+          </div>
         </div>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${allClear ? 'bg-green-100' : 'bg-amber-100'}`}>
-          <Banknote size={20} className={allClear ? 'text-green-600' : 'text-amber-600'} />
-        </div>
-      </div>
 
-      {allClear ? (
-        <p className="mt-3 text-xs text-green-600 font-medium flex items-center gap-1.5">
-          <CheckCircle size={12} /> Sab clear — koi pending cash nahi
-        </p>
-      ) : pending ? (
-        <div className="mt-3 bg-white/70 rounded-xl px-3 py-2.5 border border-amber-200">
-          <p className="text-[11px] font-semibold text-amber-700 flex items-center gap-1.5 mb-0.5">
-            <Clock size={11} /> Handover pending confirmation
-          </p>
-          <p className="text-xs text-gray-600">
-            {pkr(Number(pending.handedAmount))} submitted on{' '}
-            {new Date(pending.createdAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-          </p>
-          {pending.note && <p className="text-[10px] text-gray-400 italic mt-0.5">"{pending.note}"</p>}
-          <p className="text-[10px] text-amber-600 mt-1">Owner ka confirmation milne ka wait karo</p>
-        </div>
-      ) : (
-        <button
-          onClick={onSubmit}
-          className="mt-3 w-full py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition flex items-center justify-center gap-2">
-          <Wallet size={14} /> Cash Handover Submit Karo
-        </button>
-      )}
+        {allClear ? (
+          <div className="flex items-center gap-2 bg-emerald-100 rounded-xl px-3 py-2.5">
+            <CheckCircle size={14} className="text-emerald-600 shrink-0" />
+            <p className="text-xs font-semibold text-emerald-700">Sab clear — koi pending cash nahi</p>
+          </div>
+        ) : pending ? (
+          <div className="bg-white/80 rounded-xl p-3.5 border border-amber-200">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Clock size={13} className="text-amber-500 shrink-0" />
+              <p className="text-xs font-bold text-amber-700">Handover submit ho gaya — owner confirm karega</p>
+            </div>
+            <p className="text-[11px] text-gray-600">
+              {pkr(Number(pending.handedAmount))} ·{' '}
+              {new Date(pending.createdAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </p>
+            {pending.note && <p className="text-[10px] text-gray-400 italic mt-1">"{pending.note}"</p>}
+          </div>
+        ) : (
+          <button
+            onClick={onSubmit}
+            className="w-full py-3 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 active:scale-[0.98] rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+            <Wallet size={15} /> Cash Handover Submit Karo
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -769,70 +777,108 @@ function StaffBalanceGrid({
   onSelectStaff: (id: string) => void;
   onReceive: (b: StaffBalance) => void;
 }) {
-  const nonZero = balances.filter((b) => Number(b.pendingBalance) >= 1);
   if (balances.length === 0) return null;
 
+  const totalPending  = balances.reduce((s, b) => s + Number(b.pendingBalance), 0);
+  const pendingCount  = balances.filter((b) => b.pendingHandover).length;
+  const allClearCount = balances.filter((b) => Number(b.pendingBalance) < 1).length;
+
   return (
-    <div className="mb-5">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Staff Cash Balances</p>
+    <div className="mb-6">
+      {/* KPI summary row */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
+          <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1.5">Pending Cash</p>
+          <p className="text-xl font-black text-amber-700 leading-none"
+            style={{ fontFamily: "'Syne', sans-serif" }}>
+            {totalPending >= 100000
+              ? `${(totalPending / 100000).toFixed(1)}L`
+              : totalPending >= 1000
+              ? `${(totalPending / 1000).toFixed(totalPending % 1000 === 0 ? 0 : 1)}K`
+              : String(Math.round(totalPending))}
+          </p>
+        </div>
+        <div className={`border rounded-2xl px-4 py-3 ${pendingCount > 0 ? 'bg-orange-50 border-orange-100' : 'bg-gray-50 border-gray-100'}`}>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Confirm Baki</p>
+          <p className={`text-xl font-black leading-none ${pendingCount > 0 ? 'text-orange-600' : 'text-gray-300'}`}
+            style={{ fontFamily: "'Syne', sans-serif" }}>
+            {pendingCount}
+          </p>
+        </div>
+        <div className={`border rounded-2xl px-4 py-3 ${allClearCount === balances.length ? 'bg-emerald-50 border-emerald-100' : 'bg-gray-50 border-gray-100'}`}>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Clear</p>
+          <p className={`text-xl font-black leading-none ${allClearCount === balances.length ? 'text-emerald-600' : 'text-gray-500'}`}
+            style={{ fontFamily: "'Syne', sans-serif" }}>
+            {allClearCount}<span className="text-sm font-semibold text-gray-300">/{balances.length}</span>
+          </p>
+        </div>
+      </div>
+
+      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 px-0.5">Staff</p>
       <div className="space-y-2">
         {balances.map((b) => {
-          const bal      = Number(b.pendingBalance);
-          const allClear = bal < 1;
+          const bal         = Number(b.pendingBalance);
+          const allClear    = bal < 1;
+          const hasHandover = !!b.pendingHandover;
+
           return (
             <div
               key={b.staffId}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition ${
-                allClear ? 'bg-white border-gray-100' : 'bg-amber-50 border-amber-200'
-              }`}
+              className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow transition px-3 py-3"
+              style={{ borderLeft: `4px solid ${hasHandover ? '#F59E0B' : allClear ? '#34D399' : '#60A5FA'}` }}
             >
-              {/* Clickable left area — filters handover list */}
               <button
                 onClick={() => onSelectStaff(b.staffId)}
                 className="flex items-center gap-3 flex-1 min-w-0 text-left"
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${allClear ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-700'}`}>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
+                  hasHandover ? 'bg-amber-100 text-amber-700'
+                  : allClear  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-blue-100 text-blue-700'
+                }`}>
                   {b.staffName.slice(0, 1).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{b.staffName}</p>
-                  {b.pendingHandover ? (
-                    <p className="text-[10px] text-amber-600 flex items-center gap-1">
-                      <Clock size={9} /> Handover submit kia — confirm karein
-                    </p>
+                  {hasHandover ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700">
+                      <Clock size={9} /> Submit kia — confirm karein
+                    </span>
                   ) : allClear ? (
-                    <p className="text-[10px] text-green-600 flex items-center gap-1">
-                      <CheckCircle size={9} /> Sab clear hai
-                    </p>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+                      <CheckCircle size={9} /> Sab clear
+                    </span>
                   ) : (
-                    <p className="text-[10px] text-gray-400">Handover nahi kia abhi</p>
+                    <span className="text-[10px] text-gray-400">Handover nahi kia</span>
                   )}
                 </div>
-                <span className={`text-sm font-bold shrink-0 ${allClear ? 'text-gray-400' : 'text-amber-700'}`}>
+                <span className={`text-sm font-black shrink-0 ${allClear ? 'text-gray-300' : hasHandover ? 'text-amber-700' : 'text-gray-900'}`}
+                  style={{ fontFamily: "'Syne', sans-serif" }}>
                   {pkr(bal)}
                 </span>
               </button>
 
-              {/* Action button — only when cash is pending */}
               {!allClear && (
                 <button
                   onClick={() => onReceive(b)}
-                  className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl transition ${
-                    b.pendingHandover
-                      ? 'bg-amber-200 text-amber-800 hover:bg-amber-300'
-                      : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                  className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl transition ${
+                    hasHandover
+                      ? 'bg-amber-500 text-white hover:bg-amber-600'
+                      : 'bg-emerald-500 text-white hover:bg-emerald-600'
                   }`}
                 >
-                  {b.pendingHandover ? 'Confirm' : 'Cash Li'}
+                  {hasHandover ? 'Confirm' : 'Cash Li'}
                 </button>
               )}
             </div>
           );
         })}
-        {nonZero.length === 0 && (
-          <p className="text-xs text-green-600 text-center py-2 flex items-center justify-center gap-1.5">
-            <CheckCircle size={12} /> Sab staff ka cash clear hai
-          </p>
+
+        {balances.every((b) => Number(b.pendingBalance) < 1) && (
+          <div className="flex items-center justify-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl py-3">
+            <CheckCircle size={14} className="text-emerald-500" />
+            <p className="text-xs font-semibold text-emerald-600">Sab staff ka cash clear hai</p>
+          </div>
         )}
       </div>
     </div>
@@ -1078,23 +1124,27 @@ function HandoversSection() {
   const hasPendingHandover = isStaff && !!myBalance?.pendingHandover;
 
   return (
-    <div className="mt-8 pt-6 border-t border-gray-100">
+    <div className="py-1">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Wallet size={16} className="text-green-600" />
-          <h2 className="text-sm font-semibold text-gray-900">Cash Handovers</h2>
-          {pending.length > 0 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
-              {pending.length} pending
-            </span>
-          )}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
+            <Wallet size={18} className="text-emerald-600" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Cash Handover</h2>
+            <p className="text-[11px] mt-0.5">
+              {pending.length > 0
+                ? <span className="text-amber-600 font-semibold">{pending.length} pending confirmation</span>
+                : <span className="text-gray-400">Sab handovers track karen</span>}
+            </p>
+          </div>
         </div>
         {isStaff && !hasPendingHandover && (
           <button
             onClick={() => setShowSubmit(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition">
-            <Wallet size={12} /> Submit Handover
+            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] rounded-xl transition shadow-sm">
+            <Wallet size={14} /> Submit
           </button>
         )}
       </div>
@@ -1118,25 +1168,30 @@ function HandoversSection() {
 
       {/* ── Filter chip (owner filtered to one staff) ── */}
       {isOwner && filterStaffId && (
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs text-gray-500">
-            Showing: {allBalances.find((b) => b.staffId === filterStaffId)?.staffName ?? filterStaffId}
-          </span>
-          <button
-            onClick={() => setFilterStaffId(undefined)}
-            className="text-[10px] text-blue-500 hover:underline">
-            Clear filter
-          </button>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-full px-3 py-1.5">
+            <span className="text-xs font-semibold text-blue-700">
+              {allBalances.find((b) => b.staffId === filterStaffId)?.staffName ?? filterStaffId}
+            </span>
+            <button
+              onClick={() => setFilterStaffId(undefined)}
+              className="text-blue-400 hover:text-blue-700 transition">
+              <XIcon size={12} />
+            </button>
+          </div>
+          <span className="text-[10px] text-gray-400">ka handover history</span>
         </div>
       )}
 
       {/* ── Handover list ── */}
+      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 px-0.5">Handover History</p>
       {isLoading ? (
         <RowSkeleton rows={3} />
       ) : handovers.length === 0 ? (
-        <div className="text-center py-6 border border-dashed border-gray-200 rounded-xl text-gray-400">
-          <Wallet size={22} className="mx-auto mb-1.5 opacity-30" />
-          <p className="text-xs">{filterStaffId ? 'Is staff ka koi handover nahi' : 'Koi handover nahi abhi tak'}</p>
+        <div className="text-center py-10 bg-gray-50 border border-dashed border-gray-200 rounded-2xl">
+          <Wallet size={28} className="mx-auto mb-2 text-gray-300" />
+          <p className="text-sm font-semibold text-gray-400">{filterStaffId ? 'Is staff ka koi handover nahi' : 'Koi handover nahi abhi tak'}</p>
+          <p className="text-xs text-gray-300 mt-1">Handovers yahan track honge</p>
         </div>
       ) : (
         <>
@@ -1147,49 +1202,52 @@ function HandoversSection() {
                 ? Number(h.confirmedAmount) - Number(h.handedAmount)
                 : null;
               return (
-                <div key={h.id} className={`border rounded-xl p-3 bg-white ${h.status === 'DISPUTED' ? 'border-red-200 bg-red-50/30' : h.status === 'PENDING' ? 'border-amber-200' : 'border-gray-100'}`}>
-                  <div className="flex items-start gap-2">
+                <div key={h.id}
+                  className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"
+                  style={{ borderLeft: `4px solid ${h.status === 'DISPUTED' ? '#EF4444' : h.status === 'PENDING' ? '#F59E0B' : '#10B981'}` }}>
+                  <div className="flex items-start gap-3 p-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {isOwner && <p className="text-sm font-semibold text-gray-900">{h.staffName}</p>}
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        {isOwner && <p className="text-sm font-bold text-gray-900">{h.staffName}</p>}
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
                           {badge.icon} {badge.label}
                         </span>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-[10px] text-gray-400">
                           {new Date(h.handoverDate).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
                         </p>
                       </div>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <span className="text-sm font-bold text-gray-900">{pkr(Number(h.handedAmount))}</span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-base font-black text-gray-900"
+                          style={{ fontFamily: "'Syne', sans-serif" }}>
+                          {pkr(Number(h.handedAmount))}
+                        </span>
                         {h.confirmedAmount && (
-                          <span className={`text-xs ${shortfall != null && shortfall < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                            → confirmed {pkr(Number(h.confirmedAmount))}
+                          <span className={`text-xs font-semibold ${shortfall != null && shortfall < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                            → {pkr(Number(h.confirmedAmount))}
                             {shortfall != null && Math.abs(shortfall) >= 1 && (
-                              <span className="ml-1">({shortfall < 0 ? '-' : '+'}{pkr(Math.abs(shortfall))})</span>
+                              <span className="ml-1 text-[10px]">({shortfall < 0 ? '-' : '+'}{pkr(Math.abs(shortfall))})</span>
                             )}
                           </span>
                         )}
                       </div>
-                      {h.note && <p className="text-xs text-gray-400 mt-0.5 italic truncate">"{h.note}"</p>}
-                      {h.ownerNote && <p className="text-xs text-red-500 mt-0.5 italic truncate">Owner: "{h.ownerNote}"</p>}
+                      {h.note && <p className="text-[11px] text-gray-400 mt-1 italic truncate">"{h.note}"</p>}
+                      {h.ownerNote && <p className="text-[11px] text-red-500 mt-0.5 italic truncate">Owner: "{h.ownerNote}"</p>}
                     </div>
 
-                    <div className="flex flex-col gap-1 shrink-0">
-                      {/* Owner: review PENDING */}
+                    <div className="flex flex-col gap-1.5 shrink-0">
                       {isOwner && h.status === 'PENDING' && (
                         <button
                           onClick={() => setConfirmTarget(h)}
-                          className="px-2.5 py-1 text-xs font-semibold text-green-700 border border-green-200 rounded-lg hover:bg-green-50 transition">
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">
                           Review
                         </button>
                       )}
-                      {/* Owner: reopen DISPUTED */}
                       {isOwner && h.status === 'DISPUTED' && (
                         <button
                           onClick={() => reopenMutation.mutate(h.id)}
                           disabled={reopenMutation.isPending}
                           title="Reopen as Pending"
-                          className="px-2.5 py-1 text-xs font-semibold text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-50 transition flex items-center gap-1 disabled:opacity-50">
+                          className="px-3 py-1.5 text-xs font-bold text-amber-700 border border-amber-200 rounded-xl hover:bg-amber-50 transition flex items-center gap-1.5 disabled:opacity-50">
                           <RotateCcw size={10} /> Reopen
                         </button>
                       )}
@@ -1202,7 +1260,7 @@ function HandoversSection() {
           {handovers.length > 8 && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition">
+              className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition">
               {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               {expanded ? 'Kam dikhao' : `${handovers.length - 8} aur dikhao`}
             </button>
@@ -2015,7 +2073,9 @@ export default function StaffPage() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto" style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
 
       {/* ── Sticky header + tabs ── */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 pt-5 pb-0 sm:px-6">
