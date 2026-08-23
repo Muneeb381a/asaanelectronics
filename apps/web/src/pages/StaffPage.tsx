@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark, Briefcase, UserCheck, UserMinus, Calculator, MinusCircle, PlusCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions, type CollectionEntry } from '../api/staff.api.ts';
+import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions, type CollectionEntry, type StaffBriefingRow } from '../api/staff.api.ts';
 import { agentPortfolioApi, type PortfolioRow, type DeductionRow } from '../api/agentPortfolio.api.ts';
 import { attendanceApi } from '../api/attendance.api.ts';
 import { handoversApi, type Handover, type StaffBalance } from '../api/handovers.api.ts';
@@ -2489,7 +2489,238 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
   );
 }
 
-type PageTab = 'team' | 'agent' | 'haazri' | 'finance' | 'collections' | 'portfolio';
+// ── Staff Briefing ────────────────────────────────────────────────────────────
+
+function SetTargetModal({ staff, currentRow, onClose }: { staff: StaffMember; currentRow?: StaffBriefingRow; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [daily,   setDaily]   = useState(currentRow?.dailyTarget   ? String(currentRow.dailyTarget)   : '');
+  const [monthly, setMonthly] = useState(currentRow?.monthlyTarget ? String(currentRow.monthlyTarget) : '');
+
+  const mutation = useMutation({
+    mutationFn: () => staffApi.setTarget(staff.id, {
+      daily:   daily   ? Number(daily)   : undefined,
+      monthly: monthly ? Number(monthly) : undefined,
+    }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['staff-briefing'] });
+      toast.success(`${staff.name} ka target set ho gaya`);
+      onClose();
+    },
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Target set nahi hua')),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Target Set Karo</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{staff.name}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Daily Target (PKR)</label>
+          <input
+            type="number" min="0" value={daily} onChange={(e) => setDaily(e.target.value)}
+            placeholder="e.g. 30000"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Monthly Target (PKR)</label>
+          <input
+            type="number" min="0" value={monthly} onChange={(e) => setMonthly(e.target.value)}
+            placeholder="e.g. 600000"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition"
+          />
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5">
+            {mutation.isPending ? 'Saving…' : <><Check size={14} /> Save Target</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BriefingCard({ row, staff, onSetTarget }: { row: StaffBriefingRow; staff?: StaffMember; onSetTarget: () => void }) {
+  const dailyPct   = row.dailyTarget   > 0 ? Math.min(100, Math.round(row.todayCollected  / row.dailyTarget   * 100)) : null;
+  const monthlyPct = row.monthlyTarget > 0 ? Math.min(100, Math.round(row.monthCollected  / row.monthlyTarget * 100)) : null;
+  const hitDaily   = dailyPct   !== null && dailyPct   >= 100;
+  const hitMonthly = monthlyPct !== null && monthlyPct >= 100;
+
+  const isFrozen = staff?.frozenUntil && new Date(staff.frozenUntil) > new Date();
+
+  return (
+    <div className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 ${isFrozen ? 'border-red-100 opacity-60' : 'border-gray-100'}`}>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-bold text-gray-900 text-sm">{row.name}</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {row.todayCount} payment{row.todayCount !== 1 ? 's' : ''} aaj · {row.monthCount} is mahine
+          </p>
+          {isFrozen && <span className="text-[10px] font-bold text-red-500 uppercase tracking-wide">Frozen</span>}
+        </div>
+        <button
+          onClick={onSetTarget}
+          className="shrink-0 flex items-center gap-1 text-[11px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition"
+        >
+          <TrendingUp size={11} /> Target
+        </button>
+      </div>
+
+      {/* Today progress */}
+      <div>
+        <div className="flex justify-between items-baseline mb-1">
+          <span className="text-xs font-semibold text-gray-600">Aaj</span>
+          <span className={`text-xs font-bold ${hitDaily ? 'text-emerald-600' : 'text-gray-700'}`}>
+            {pkr(row.todayCollected)}{row.dailyTarget > 0 ? ` / ${pkr(row.dailyTarget)}` : ''}
+          </span>
+        </div>
+        {dailyPct !== null ? (
+          <>
+            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${hitDaily ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                style={{ width: `${dailyPct}%` }}
+              />
+            </div>
+            <p className={`text-[11px] mt-1 font-semibold ${hitDaily ? 'text-emerald-600' : 'text-gray-400'}`}>
+              {hitDaily
+                ? '✓ Daily target poora!'
+                : `${dailyPct}% — ${pkr(row.dailyTarget - row.todayCollected)} baqi`}
+            </p>
+          </>
+        ) : (
+          <p className="text-[11px] text-gray-300 italic">Daily target set nahi</p>
+        )}
+      </div>
+
+      {/* This month progress */}
+      <div>
+        <div className="flex justify-between items-baseline mb-1">
+          <span className="text-xs font-semibold text-gray-600">Is Mahine</span>
+          <span className={`text-xs font-bold ${hitMonthly ? 'text-emerald-600' : 'text-gray-700'}`}>
+            {pkr(row.monthCollected)}{row.monthlyTarget > 0 ? ` / ${pkr(row.monthlyTarget)}` : ''}
+          </span>
+        </div>
+        {monthlyPct !== null ? (
+          <>
+            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${hitMonthly ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                style={{ width: `${monthlyPct}%` }}
+              />
+            </div>
+            <p className={`text-[11px] mt-1 font-semibold ${hitMonthly ? 'text-emerald-600' : 'text-gray-400'}`}>
+              {hitMonthly
+                ? '✓ Monthly target poora!'
+                : `${monthlyPct}% — ${pkr(row.monthlyTarget - row.monthCollected)} baqi`}
+            </p>
+          </>
+        ) : (
+          <p className="text-[11px] text-gray-300 italic">Monthly target set nahi</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BriefingSection({ staff }: { staff: StaffMember[] }) {
+  const qc = useQueryClient();
+  const [targetStaff, setTargetStaff] = useState<StaffMember | null>(null);
+
+  const { data: briefing = [], isLoading } = useQuery<StaffBriefingRow[]>({
+    queryKey: ['staff-briefing'],
+    queryFn:  staffApi.getBriefing,
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
+  const staffMap = new Map(staff.map((s) => [s.id, s]));
+
+  // Aggregate totals
+  const totalToday  = briefing.reduce((s, r) => s + r.todayCollected,  0);
+  const totalMonth  = briefing.reduce((s, r) => s + r.monthCollected,  0);
+  const hitDailyCount   = briefing.filter((r) => r.dailyTarget   > 0 && r.todayCollected  >= r.dailyTarget).length;
+  const hitMonthlyCount = briefing.filter((r) => r.monthlyTarget > 0 && r.monthCollected  >= r.monthlyTarget).length;
+  const withDailyTarget = briefing.filter((r) => r.dailyTarget > 0).length;
+  const withMonthlyTarget = briefing.filter((r) => r.monthlyTarget > 0).length;
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Aaj ka Briefing</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Har agent ka collection aur target progress</p>
+        </div>
+        <button
+          onClick={() => void qc.invalidateQueries({ queryKey: ['staff-briefing'] })}
+          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition"
+        >
+          <RotateCcw size={12} /> Refresh
+        </button>
+      </div>
+
+      {/* Summary strip */}
+      {!isLoading && briefing.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          {[
+            { label: 'Aaj Total', value: pkr(totalToday), color: 'bg-blue-50 border-blue-200 text-blue-700' },
+            { label: 'Is Mahine',  value: pkr(totalMonth),  color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+            { label: 'Daily ✓',   value: `${hitDailyCount}/${withDailyTarget}`,    color: hitDailyCount === withDailyTarget && withDailyTarget > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-600' },
+            { label: 'Monthly ✓', value: `${hitMonthlyCount}/${withMonthlyTarget}`, color: hitMonthlyCount === withMonthlyTarget && withMonthlyTarget > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-600' },
+          ].map(({ label, value, color }) => (
+            <div key={label} className={`rounded-xl border px-4 py-3 ${color}`}>
+              <p className="text-[10px] font-bold uppercase tracking-wide opacity-70">{label}</p>
+              <p className="text-lg font-black mt-0.5 tabular-nums">{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => <CardSkeleton key={i} className="h-52" />)}
+        </div>
+      ) : briefing.length === 0 ? (
+        <EmptyState icon={<TrendingUp size={28} />} title="No staff members" description="Add staff to track their daily briefing" />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {briefing.map((row) => (
+            <BriefingCard
+              key={row.id}
+              row={row}
+              staff={staffMap.get(row.id)}
+              onSetTarget={() => setTargetStaff(staffMap.get(row.id) ?? null)}
+            />
+          ))}
+        </div>
+      )}
+
+      {targetStaff && (
+        <SetTargetModal
+          staff={targetStaff}
+          currentRow={briefing.find((r) => r.id === targetStaff.id)}
+          onClose={() => setTargetStaff(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+type PageTab = 'team' | 'agent' | 'haazri' | 'finance' | 'collections' | 'portfolio' | 'briefing';
 
 export default function StaffPage() {
   const { user } = useAuthStore();
@@ -2517,6 +2748,7 @@ export default function StaffPage() {
     { key: 'agent',       label: 'Agent',      icon: <Wallet size={14} /> },
     { key: 'haazri',      label: 'Haazri',     icon: <CalendarCheck size={14} /> },
     ...(isOwner ? [
+      { key: 'briefing' as PageTab,    label: 'Briefing',   icon: <TrendingUp size={14} />, ownerOnly: true },
       { key: 'finance' as PageTab,     label: 'Finance',    icon: <Banknote size={14} />, ownerOnly: true },
       { key: 'collections' as PageTab, label: 'Collections', icon: <BarChart2 size={14} />, ownerOnly: true },
       { key: 'portfolio' as PageTab,   label: 'Portfolio',  icon: <Briefcase size={14} />, ownerOnly: true },
@@ -2614,6 +2846,9 @@ export default function StaffPage() {
 
         {/* PORTFOLIO */}
         {activeTab === 'portfolio' && isOwner && <PortfolioSection staff={staff} />}
+
+        {/* BRIEFING */}
+        {activeTab === 'briefing' && isOwner && <BriefingSection staff={staff} />}
 
       </div>
 

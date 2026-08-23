@@ -12,6 +12,7 @@ export interface SellerSettings {
   expenseBudgets?: Partial<Record<ExpenseCategory, number>>;
   lateFeePerDay?: number;
   lateFeeGraceDays?: number;
+  staffTargets?: Record<string, { daily?: number; monthly?: number }>;
 }
 
 export interface Seller {

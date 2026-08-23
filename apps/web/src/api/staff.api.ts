@@ -144,6 +144,17 @@ export interface CollectionReport {
   staff: CollectionStaffRow[];
 }
 
+export interface StaffBriefingRow {
+  id:             string;
+  name:           string;
+  todayCollected: number;
+  todayCount:     number;
+  monthCollected: number;
+  monthCount:     number;
+  dailyTarget:    number;
+  monthlyTarget:  number;
+}
+
 export const staffApi = {
   list: () =>
     api.get<{ data: StaffMember[] }>('/staff').then((r) => r.data.data),
@@ -191,4 +202,11 @@ export const staffApi = {
   collections: (from: string, to: string) =>
     api.get<{ data: CollectionReport }>('/staff/collections', { params: { from, to } })
       .then((r) => r.data.data),
+
+  // Daily briefing + targets
+  getBriefing: (): Promise<StaffBriefingRow[]> =>
+    api.get('/staff/briefing').then((r) => r.data.data),
+
+  setTarget: (id: string, target: { daily?: number; monthly?: number }) =>
+    api.patch(`/staff/${id}/target`, target).then((r) => r.data.data),
 };

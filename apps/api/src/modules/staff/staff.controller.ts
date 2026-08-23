@@ -145,6 +145,22 @@ export async function deleteSalaryPayment(req: AuthRequest, res: Response, next:
   } catch (e) { next(e); }
 }
 
+// ── Daily Briefing ────────────────────────────────────────────────────────────
+
+export async function getBriefing(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    success(res, await svc.getBriefing(req.user!.sellerId!));
+  } catch (e) { next(e); }
+}
+
+export async function setStaffTarget(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { daily, monthly } = req.body as { daily?: number; monthly?: number };
+    const data = await svc.setTarget(req.user!.sellerId!, req.params['id']!, { daily, monthly });
+    success(res, data);
+  } catch (e) { next(e); }
+}
+
 // ── Collections Report ────────────────────────────────────────────────────────
 
 export async function getCollections(req: AuthRequest, res: Response, next: NextFunction) {

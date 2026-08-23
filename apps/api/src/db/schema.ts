@@ -80,6 +80,7 @@ export const sellers = pgTable('sellers', {
     expenseBudgets?: Partial<Record<'RENT' | 'SALARY' | 'UTILITY' | 'PURCHASE' | 'MAINTENANCE' | 'TRANSPORT' | 'OTHER', number>>;
     lateFeePerDay?: number;
     lateFeeGraceDays?: number;
+    staffTargets?: Record<string, { daily?: number; monthly?: number }>;
   }>(),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
 });

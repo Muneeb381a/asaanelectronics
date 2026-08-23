@@ -6,6 +6,7 @@ import {
   listStaff, createStaff, updatePermissions, updateProfile, removeStaff, freezeStaff, unfreezeStaff,
   getCommissions, payCommission, deleteCommissionPayment,
   listSalaries, paySalary, deleteSalaryPayment,
+  getBriefing, setStaffTarget,
   getCollections,
 } from './staff.controller.js';
 
@@ -31,6 +32,10 @@ router.delete('/commissions/pay',  requireOwner, deleteCommissionPayment);
 router.get('/salaries',         requireOwner, listSalaries);
 router.post('/salaries/pay',    requireOwner, paySalary);
 router.delete('/salaries/pay',  requireOwner, deleteSalaryPayment);
+
+// Daily briefing + targets
+router.get('/briefing',           requireOwner, getBriefing);
+router.patch('/:id/target',       requireOwner, setStaffTarget);
 
 // Collections report
 router.get('/collections',      requireOwner, getCollections);

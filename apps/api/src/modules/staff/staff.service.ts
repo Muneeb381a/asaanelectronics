@@ -380,6 +380,108 @@ export class StaffService {
 
   // ── Collections Report ────────────────────────────────────────────────────────
 
+  // ── Daily Briefing ───────────────────────────────────────────────────────────
+
+  async getBriefing(sellerId: string) {
+    const seller = await db.query.sellers.findFirst({
+      where: eq(sellers.id, sellerId),
+      columns: { settings: true },
+    });
+    const targets = (seller?.settings?.staffTargets ?? {}) as Record<string, { daily?: number; monthly?: number }>;
+
+    // PKT = UTC+5; compute today start, end, month start in UTC
+    const nowUTC     = new Date();
+    const offsetMs   = 5 * 60 * 60 * 1000;
+    const nowPKT     = new Date(nowUTC.getTime() + offsetMs);
+    const pktYMD     = nowPKT.toISOString().slice(0, 10);
+    const todayStart = new Date(pktYMD + 'T00:00:00.000+05:00');
+    const todayEnd   = new Date(pktYMD + 'T23:59:59.999+05:00');
+    const monthStart = new Date(pktYMD.slice(0, 7) + '-01T00:00:00.000+05:00');
+
+    const rows = await db.execute<{
+      id:              string;
+      name:            string;
+      today_collected: string;
+      today_count:     number;
+      month_collected: string;
+      month_count:     number;
+    }>(sql`
+      WITH today_stats AS (
+        SELECT p.collected_by,
+          COALESCE(SUM(p.amount::numeric), 0)::text AS today_collected,
+          COUNT(*)::int                              AS today_count
+        FROM payments p
+        JOIN installments i ON i.id = p.installment_id
+        JOIN customers c    ON c.id = i.customer_id
+        WHERE c.seller_id = ${sellerId}
+          AND p.deleted_at IS NULL
+          AND p.paid_on >= ${todayStart.toISOString()}
+          AND p.paid_on <  ${todayEnd.toISOString()}
+          AND p.collected_by IS NOT NULL
+        GROUP BY p.collected_by
+      ),
+      month_stats AS (
+        SELECT p.collected_by,
+          COALESCE(SUM(p.amount::numeric), 0)::text AS month_collected,
+          COUNT(*)::int                              AS month_count
+        FROM payments p
+        JOIN installments i ON i.id = p.installment_id
+        JOIN customers c    ON c.id = i.customer_id
+        WHERE c.seller_id = ${sellerId}
+          AND p.deleted_at IS NULL
+          AND p.paid_on >= ${monthStart.toISOString()}
+          AND p.collected_by IS NOT NULL
+        GROUP BY p.collected_by
+      )
+      SELECT
+        u.id,
+        u.name,
+        COALESCE(t.today_collected, '0') AS today_collected,
+        COALESCE(t.today_count, 0)::int  AS today_count,
+        COALESCE(m.month_collected, '0') AS month_collected,
+        COALESCE(m.month_count, 0)::int  AS month_count
+      FROM users u
+      LEFT JOIN today_stats t ON t.collected_by = u.id
+      LEFT JOIN month_stats m ON m.collected_by = u.id
+      WHERE u.seller_id = ${sellerId}
+        AND u.role = 'SELLER_STAFF'
+      ORDER BY COALESCE(t.today_collected, '0')::numeric DESC, u.name
+    `);
+
+    return rows.map((r) => {
+      const t = targets[r.id] ?? {};
+      return {
+        id:             r.id,
+        name:           r.name,
+        todayCollected: Number(r.today_collected),
+        todayCount:     Number(r.today_count),
+        monthCollected: Number(r.month_collected),
+        monthCount:     Number(r.month_count),
+        dailyTarget:    t.daily   ?? 0,
+        monthlyTarget:  t.monthly ?? 0,
+      };
+    });
+  }
+
+  async setTarget(sellerId: string, staffId: string, target: { daily?: number; monthly?: number }) {
+    const staff = await db.query.users.findFirst({
+      where: and(eq(users.id, staffId), eq(users.sellerId, sellerId), eq(users.role, 'SELLER_STAFF')),
+      columns: { id: true },
+    });
+    if (!staff) throw new AppError('Staff member not found', 404);
+
+    const seller = await db.query.sellers.findFirst({
+      where: eq(sellers.id, sellerId),
+      columns: { settings: true },
+    });
+    const current  = seller?.settings ?? {};
+    const existing = (current.staffTargets ?? {}) as Record<string, { daily?: number; monthly?: number }>;
+    await db.update(sellers).set({
+      settings: { ...current, staffTargets: { ...existing, [staffId]: target } },
+    }).where(eq(sellers.id, sellerId));
+    return target;
+  }
+
   async collections(sellerId: string, from: string, to: string) {
     // Use PKT (UTC+5) local midnight so Pakistani morning payments aren't missed
     const fromDate = new Date(from + 'T00:00:00.000+05:00');
