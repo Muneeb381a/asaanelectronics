@@ -239,6 +239,26 @@ export class CustomersService {
         fileNumber: customers.fileNumber,
         riskScore,
         lifecycleStage: lifecycleSQL,
+        paymentGrade: sql<string>`COALESCE((
+          SELECT
+            CASE
+              WHEN COUNT(*) FILTER (WHERE i.status = 'DEFAULTED') > 0 THEN 'D'
+              WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (
+                CASE WHEN i.payment_frequency = 'daily'
+                  THEN i.start_date + (i.months || ' days')::interval
+                  ELSE i.start_date + (i.months || ' months')::interval
+                END) < NOW()) > 1 THEN 'C'
+              WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (
+                CASE WHEN i.payment_frequency = 'daily'
+                  THEN i.start_date + (i.months || ' days')::interval
+                  ELSE i.start_date + (i.months || ' months')::interval
+                END) < NOW()) = 1 THEN 'B'
+              WHEN COUNT(*) FILTER (WHERE i.status = 'COMPLETED') > 0 THEN 'A'
+              ELSE NULL
+            END
+          FROM installments i
+          WHERE i.customer_id = ${customers.id} AND i.deleted_at IS NULL
+        ), NULL)`,
       }).from(customers).where(where).limit(limit).offset((page - 1) * limit)
         .orderBy(orderExpr),
       lifecycle
@@ -247,10 +267,15 @@ export class CustomersService {
             .then((r) => r[0]!.count),
     ]);
 
+    const gradeLabel: Record<string, string> = {
+      A: 'Excellent', B: 'Good', C: 'Fair', D: 'Poor',
+    };
     const data = rows.map((r) => ({
       ...r,
       riskScore: Number(r.riskScore),
       riskLabel: riskLabel(Number(r.riskScore)),
+      paymentGrade: r.paymentGrade as 'A' | 'B' | 'C' | 'D' | null,
+      paymentGradeLabel: r.paymentGrade ? gradeLabel[r.paymentGrade] : null,
     }));
     return { data, total, page, limit };
   }

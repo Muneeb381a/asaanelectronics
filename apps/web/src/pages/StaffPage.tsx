@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark, Briefcase, UserCheck, UserMinus, Calculator, MinusCircle, PlusCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions, type CollectionEntry } from '../api/staff.api.ts';
+import { agentPortfolioApi, type PortfolioRow, type DeductionRow } from '../api/agentPortfolio.api.ts';
 import { attendanceApi } from '../api/attendance.api.ts';
 import { handoversApi, type Handover, type StaffBalance } from '../api/handovers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -2039,7 +2040,456 @@ function CollectionsSection() {
   );
 }
 
-type PageTab = 'team' | 'agent' | 'haazri' | 'finance' | 'collections';
+// ── Portfolio Section ─────────────────────────────────────────────────────────
+
+function AssignCustomerModal({
+  staff,
+  onClose,
+}: {
+  staff: StaffMember[];
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [agentId, setAgentId] = useState('');
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const { data: customers } = useQuery({
+    queryKey: ['customers-portfolio-search', customerQuery],
+    queryFn: () =>
+      fetch(`/api/customers?search=${encodeURIComponent(customerQuery)}&limit=10`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      }).then((r) => r.json()).then((j) => j.data as { data: { id: string; name: string; phone: string }[] }),
+    enabled: customerQuery.length > 1,
+    staleTime: 10_000,
+  });
+
+  const mut = useMutation({
+    mutationFn: () => agentPortfolioApi.assign({ customerId, agentId, notes: notes || undefined }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['agent-portfolio'] });
+      toast.success('Customer assign ho gaya!');
+      onClose();
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-900">Customer Assign Karo</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+        </div>
+
+        {/* Agent select */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Field Agent *</label>
+          <select value={agentId} onChange={(e) => setAgentId(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400">
+            <option value="">— Select karo —</option>
+            {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+
+        {/* Customer search */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Customer *</label>
+          <input
+            value={customerQuery}
+            onChange={(e) => { setCustomerQuery(e.target.value); setCustomerId(''); }}
+            placeholder="Naam ya phone se dhundho…"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400"
+          />
+          {customers?.data && customers.data.length > 0 && !customerId && (
+            <div className="mt-1 border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+              {customers.data.map((c) => (
+                <button key={c.id} type="button"
+                  onClick={() => { setCustomerId(c.id); setCustomerQuery(`${c.name} · ${c.phone}`); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b last:border-b-0">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-gray-400 ml-2">{c.phone}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {customerId && (
+            <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+              <Check size={11} /> Customer select ho gaya
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Notes (optional)</label>
+          <input value={notes} onChange={(e) => setNotes(e.target.value)}
+            placeholder="Koi khaas baat…"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400" />
+        </div>
+
+        <button
+          onClick={() => mut.mutate()}
+          disabled={!agentId || !customerId || mut.isPending}
+          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition">
+          {mut.isPending ? 'Assigning…' : 'Assign Karo'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AgentDeductionsModal({
+  staffId, staffName, month,
+  onClose,
+}: {
+  staffId: string; staffName: string; month: string;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [type, setType] = useState<'ADVANCE' | 'DAMAGE' | 'OTHER'>('ADVANCE');
+  const [amount, setAmount] = useState('');
+  const [desc, setDesc] = useState('');
+
+  const { data: deductions = [], isLoading } = useQuery({
+    queryKey: ['agent-deductions', staffId, month],
+    queryFn: () => agentPortfolioApi.listDeductions(staffId, month),
+    staleTime: 30_000,
+  });
+
+  const addMut = useMutation({
+    mutationFn: () => agentPortfolioApi.addDeduction({
+      staffId, month, type, amount: Number(amount), description: desc,
+    }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['agent-deductions', staffId, month] });
+      void qc.invalidateQueries({ queryKey: ['agent-salary-summary'] });
+      toast.success('Deduction add ho gayi');
+      setAmount(''); setDesc('');
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (id: string) => agentPortfolioApi.deleteDeduction(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['agent-deductions', staffId, month] });
+      void qc.invalidateQueries({ queryKey: ['agent-salary-summary'] });
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  const total = deductions.reduce((s, d) => s + Number(d.amount), 0);
+
+  const typeLabels: Record<string, string> = {
+    UNCOLLECTED: 'Nahi Nikala', ADVANCE: 'Advance', DAMAGE: 'Nuqsan', OTHER: 'Aur',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">{staffName} ki Deductions</h3>
+            <p className="text-xs text-gray-400">{month}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
+        </div>
+
+        {total > 0 && (
+          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+            <p className="text-xs text-gray-400">Total deductions</p>
+            <p className="text-lg font-black text-red-600" style={{ fontFamily: "'Syne', sans-serif" }}>
+              − {pkr(total)}
+            </p>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+        ) : deductions.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-2">Koi deduction nahi</p>
+        ) : (
+          <div className="space-y-2">
+            {deductions.map((d) => (
+              <div key={d.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-700 truncate">{d.description}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {typeLabels[d.type] ?? d.type}
+                    {d.customer_name && <span> · {d.customer_name}</span>}
+                  </p>
+                </div>
+                <span className="text-xs font-black text-red-600 shrink-0" style={{ fontFamily: "'Syne', sans-serif" }}>
+                  −{pkr(Number(d.amount))}
+                </span>
+                <button onClick={() => delMut.mutate(d.id)} disabled={delMut.isPending}
+                  className="text-gray-300 hover:text-red-400 transition">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="border-t border-gray-100 pt-4 space-y-3">
+          <p className="text-xs font-semibold text-gray-500">Manual Deduction Add Karo</p>
+          <div className="flex gap-2">
+            {(['ADVANCE', 'DAMAGE', 'OTHER'] as const).map((t) => (
+              <button key={t} onClick={() => setType(t)}
+                className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg border transition ${
+                  type === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300'
+                }`}>
+                {typeLabels[t]}
+              </button>
+            ))}
+          </div>
+          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
+            placeholder="Amount (PKR)"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          <input value={desc} onChange={(e) => setDesc(e.target.value)}
+            placeholder="Wajah / description"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          <button onClick={() => addMut.mutate()}
+            disabled={!amount || !desc || addMut.isPending}
+            className="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition">
+            {addMut.isPending ? 'Adding…' : '+ Deduction Lagao'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PortfolioSection({ staff }: { staff: StaffMember[] }) {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  const [view, setView] = useState<'assignments' | 'salary'>('assignments');
+  const [filterAgent, setFilterAgent] = useState('');
+  const [showAssign, setShowAssign] = useState(false);
+  const [deductionTarget, setDeductionTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const { data: portfolio = [], isLoading: loadingPortfolio } = useQuery({
+    queryKey: ['agent-portfolio', filterAgent],
+    queryFn: () => agentPortfolioApi.list(filterAgent || undefined),
+    staleTime: 30_000,
+  });
+
+  const { data: salaryData, isLoading: loadingSalary } = useQuery({
+    queryKey: ['agent-salary-summary', month],
+    queryFn: () => agentPortfolioApi.salarySummary(month),
+    staleTime: 30_000,
+    enabled: view === 'salary',
+  });
+
+  const unassignMut = useMutation({
+    mutationFn: (id: string) => agentPortfolioApi.unassign(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['agent-portfolio'] });
+      toast.success('Unassign ho gaya');
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  const calcMut = useMutation({
+    mutationFn: () => agentPortfolioApi.calculateUncollected(month),
+    onSuccess: (d) => {
+      void qc.invalidateQueries({ queryKey: ['agent-salary-summary', month] });
+      toast.success(`${d.created} naye deductions calculate hue`);
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  // Group portfolio by agent
+  const byAgent = new Map<string, { agentId: string; agentName: string; rows: PortfolioRow[] }>();
+  for (const row of portfolio) {
+    if (!byAgent.has(row.agent_id)) {
+      byAgent.set(row.agent_id, { agentId: row.agent_id, agentName: row.agent_name, rows: [] });
+    }
+    byAgent.get(row.agent_id)!.rows.push(row);
+  }
+
+  return (
+    <div style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+      {/* Sub-tabs */}
+      <div className="flex gap-1 mb-5">
+        {([['assignments', 'Assignments', <UserCheck size={13} />], ['salary', 'Salary Review', <Calculator size={13} />]] as const).map(([key, label, icon]) => (
+          <button key={key} onClick={() => setView(key as typeof view)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition ${
+              view === key
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300'
+            }`}>
+            {icon}{label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── ASSIGNMENTS view ── */}
+      {view === 'assignments' && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <select value={filterAgent} onChange={(e) => setFilterAgent(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:border-blue-400">
+                <option value="">Sab agents</option>
+                {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <span className="text-xs text-gray-400">{portfolio.length} assignments</span>
+            </div>
+            <button onClick={() => setShowAssign(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition">
+              <UserCheck size={13} /> Assign Karo
+            </button>
+          </div>
+
+          {loadingPortfolio ? (
+            <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+          ) : portfolio.length === 0 ? (
+            <div className="text-center py-12">
+              <Briefcase size={32} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-sm font-semibold text-gray-500">Koi assignment nahi</p>
+              <p className="text-xs text-gray-400 mt-1">Oopar "Assign Karo" button se customer assign karein</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {[...byAgent.values()].map((agent) => (
+                <div key={agent.agentId} className="rounded-2xl border border-gray-100 overflow-hidden"
+                  style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
+                  <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-black flex items-center justify-center">
+                        {agent.agentName.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-semibold text-gray-800">{agent.agentName}</span>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
+                        {agent.rows.length} customer{agent.rows.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {agent.rows.map((row) => (
+                      <div key={row.id} className="flex items-center gap-3 px-5 py-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800">{row.customer_name}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {row.customer_phone ?? '—'}
+                            {row.installment_amount && (
+                              <span className="ml-2 text-indigo-600 font-semibold">
+                                {pkr(Number(row.installment_amount))}/mo
+                              </span>
+                            )}
+                            {row.installment_status && row.installment_status !== 'ACTIVE' && (
+                              <span className="ml-2 text-amber-500">{row.installment_status}</span>
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => unassignMut.mutate(row.id)}
+                          disabled={unassignMut.isPending}
+                          className="text-gray-300 hover:text-red-400 transition disabled:opacity-50">
+                          <UserMinus size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── SALARY REVIEW view ── */}
+      {view === 'salary' && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Calculator size={15} className="text-indigo-600" />
+              <h2 className="text-sm font-semibold text-gray-800">Monthly Salary Review</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <button
+                onClick={() => calcMut.mutate()}
+                disabled={calcMut.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition disabled:opacity-50">
+                {calcMut.isPending ? 'Calculate ho raha…' : <><Calculator size={11} /> Auto-Calculate</>}
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-xs text-amber-700">
+            <strong>Auto-Calculate</strong> — jo agents assigned customers se installment nahi nikaal sake unki salary se wo amount automatically deduct ho jati hai.
+          </div>
+
+          {loadingSalary ? (
+            <div className="space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+          ) : !salaryData?.staff.length ? (
+            <p className="text-sm text-gray-400 text-center py-8">Koi staff nahi</p>
+          ) : (
+            <div className="space-y-3">
+              {salaryData.staff.map((row) => (
+                <div key={row.id} className="rounded-2xl border border-gray-100 px-5 py-4"
+                  style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{row.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {row.portfolioSize} customers assigned
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setDeductionTarget({ id: row.id, name: row.name })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
+                      <MinusCircle size={11} /> Deductions
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="text-center bg-gray-50 rounded-xl px-2 py-2">
+                      <p className="text-[10px] text-gray-400 mb-0.5">Base Salary</p>
+                      <p className="text-sm font-black text-gray-700" style={{ fontFamily: "'Syne', sans-serif" }}>
+                        {row.baseSalary > 0 ? pkr(row.baseSalary) : '—'}
+                      </p>
+                    </div>
+                    <div className="text-center bg-red-50 rounded-xl px-2 py-2">
+                      <p className="text-[10px] text-gray-400 mb-0.5">Deductions ({row.deductionCount})</p>
+                      <p className="text-sm font-black text-red-600" style={{ fontFamily: "'Syne', sans-serif" }}>
+                        {row.deductions > 0 ? `−${pkr(row.deductions)}` : '—'}
+                      </p>
+                    </div>
+                    <div className={`text-center rounded-xl px-2 py-2 ${row.netSalary > 0 ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                      <p className="text-[10px] text-gray-400 mb-0.5">Net Salary</p>
+                      <p className={`text-sm font-black ${row.netSalary > 0 ? 'text-emerald-700' : 'text-gray-400'}`}
+                        style={{ fontFamily: "'Syne', sans-serif" }}>
+                        {row.netSalary > 0 ? pkr(row.netSalary) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {showAssign && <AssignCustomerModal staff={staff} onClose={() => setShowAssign(false)} />}
+      {deductionTarget && (
+        <AgentDeductionsModal
+          staffId={deductionTarget.id}
+          staffName={deductionTarget.name}
+          month={month}
+          onClose={() => setDeductionTarget(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+type PageTab = 'team' | 'agent' | 'haazri' | 'finance' | 'collections' | 'portfolio';
 
 export default function StaffPage() {
   const { user } = useAuthStore();
@@ -2069,6 +2519,7 @@ export default function StaffPage() {
     ...(isOwner ? [
       { key: 'finance' as PageTab,     label: 'Finance',    icon: <Banknote size={14} />, ownerOnly: true },
       { key: 'collections' as PageTab, label: 'Collections', icon: <BarChart2 size={14} />, ownerOnly: true },
+      { key: 'portfolio' as PageTab,   label: 'Portfolio',  icon: <Briefcase size={14} />, ownerOnly: true },
     ] : []),
   ];
 
@@ -2160,6 +2611,9 @@ export default function StaffPage() {
 
         {/* COLLECTIONS */}
         {activeTab === 'collections' && isOwner && <CollectionsSection />}
+
+        {/* PORTFOLIO */}
+        {activeTab === 'portfolio' && isOwner && <PortfolioSection staff={staff} />}
 
       </div>
 

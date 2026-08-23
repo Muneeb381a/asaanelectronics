@@ -128,12 +128,13 @@ export default function DashboardLayout() {
   };
   const visibleBroadcasts = broadcasts.filter((b: Broadcast) => !dismissed.includes(b.id));
 
-  const overdueCount       = stats?.overdueCount       ?? 0;
-  const lowStockItems      = stats?.lowStockItems       ?? [];
-  const promisesDue        = stats?.promisesDueCount    ?? 0;
-  const guarantorRiskCount = stats?.guarantorRiskCount  ?? 0;
-  const budgetAlertsCount  = stats?.budgetAlertsCount   ?? 0;
-  const totalAlerts        = overdueCount + lowStockItems.length + promisesDue + guarantorRiskCount + budgetAlertsCount;
+  const overdueCount         = stats?.overdueCount         ?? 0;
+  const lowStockItems        = stats?.lowStockItems         ?? [];
+  const promisesDue          = stats?.promisesDueCount      ?? 0;
+  const guarantorRiskCount   = stats?.guarantorRiskCount    ?? 0;
+  const budgetAlertsCount    = stats?.budgetAlertsCount     ?? 0;
+  const pendingApprovalCount = isOwner ? (stats?.pendingApprovalCount ?? 0) : 0;
+  const totalAlerts          = overdueCount + lowStockItems.length + promisesDue + guarantorRiskCount + budgetAlertsCount + pendingApprovalCount;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -196,6 +197,16 @@ export default function DashboardLayout() {
     <div className="max-h-64 overflow-y-auto">
       {totalAlerts === 0 && (
         <p className="text-xs text-gray-400 text-center py-5">No alerts right now</p>
+      )}
+      {pendingApprovalCount > 0 && (
+        <button onClick={() => { navigate('/installments?status=PENDING'); setShowBell(false); }}
+          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-violet-50 transition text-left border-b border-gray-50">
+          <ClipboardCheck size={14} className="text-violet-600 mt-0.5 shrink-0"/>
+          <div>
+            <p className="text-sm font-medium text-gray-900">{pendingApprovalCount} installment{pendingApprovalCount !== 1 ? 's' : ''} pending approval</p>
+            <p className="text-xs text-gray-400">Staff ne banaya hai — approve karna zaruri hai</p>
+          </div>
+        </button>
       )}
       {overdueCount > 0 && (
         <button onClick={() => { navigate('/installments?status=ACTIVE'); setShowBell(false); }}

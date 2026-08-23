@@ -20,6 +20,7 @@ export interface Stats {
   overdueAmount: number;
   monthlyActiveCount: number;
   dailyActiveCount: number;
+  pendingApprovalCount: number;
   monthlyActiveRemaining: number;
   dailyActiveRemaining: number;
   recentInstallments: RecentInstallment[];
@@ -80,15 +81,27 @@ export interface DueTodayAccount {
   monthly:       number;
 }
 
+export interface PendingApproval {
+  id:           string;
+  customerName: string;
+  customerPhone: string;
+  productName:  string;
+  monthly:      number;
+  totalAmount:  number;
+  createdAt:    string;
+}
+
 export interface DailyBriefing {
-  dueToday:         number;
-  dueTomorrow:      number;
-  overdueTotal:     number;
-  promisesToday:    number;
-  collectedToday:   number;
-  defaultedCount:   number;
-  urgentAccounts:   UrgentAccount[];
-  dueTodayAccounts: DueTodayAccount[];
+  dueToday:             number;
+  dueTomorrow:          number;
+  overdueTotal:         number;
+  promisesToday:        number;
+  collectedToday:       number;
+  defaultedCount:       number;
+  urgentAccounts:       UrgentAccount[];
+  dueTodayAccounts:     DueTodayAccount[];
+  pendingApprovalCount: number;
+  pendingApprovals:     PendingApproval[];
 }
 
 export interface StaffTodayCollection {

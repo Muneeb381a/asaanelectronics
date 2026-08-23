@@ -656,18 +656,40 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
 
           {selectedCustomer && (() => {
             const vs = VSTATUS[selectedCustomer.verificationStatus ?? 'PENDING'];
+            const pg = fetchedCustomer?.paymentGrade;
+            const gradeStyle: Record<string, { bg: string; text: string; label: string }> = {
+              A: { bg: '#DCFCE7', text: '#15803D', label: 'A — Excellent' },
+              B: { bg: '#DBEAFE', text: '#1D4ED8', label: 'B — Good' },
+              C: { bg: '#FEF3C7', text: '#B45309', label: 'C — Fair' },
+              D: { bg: '#FEE2E2', text: '#B91C1C', label: 'D — Poor' },
+            };
+            const gs = pg ? gradeStyle[pg] : null;
             return (
-              <div className="mt-2 flex items-center gap-2.5 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
-                <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                  {selectedCustomer.name[0].toUpperCase()}
+              <div className="mt-2 space-y-1.5">
+                <div className="flex items-center gap-2.5 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    {selectedCustomer.name[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{selectedCustomer.name}</p>
+                    <p className="text-xs text-gray-400">{selectedCustomer.phone} · {selectedCustomer.cnicMasked}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${vs.cls}`}>
+                    {vs.icon}{vs.label}
+                  </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{selectedCustomer.name}</p>
-                  <p className="text-xs text-gray-400">{selectedCustomer.phone} · {selectedCustomer.cnicMasked}</p>
-                </div>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${vs.cls}`}>
-                  {vs.icon}{vs.label}
-                </span>
+                {gs && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold"
+                    style={{ background: gs.bg, borderColor: gs.bg, color: gs.text }}>
+                    <span className="font-black text-sm">{pg}</span>
+                    <span>{fetchedCustomer?.paymentGradeLabel ?? gs.label}</span>
+                    {fetchedCustomer?.installmentSummary && (
+                      <span className="ml-auto font-normal opacity-70">
+                        {fetchedCustomer.installmentSummary.completed} complete · {fetchedCustomer.installmentSummary.overdue} late
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })()}

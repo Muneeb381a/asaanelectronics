@@ -728,6 +728,86 @@ function ScheduleModal({ inst, shopName, onClose }: { inst: Installment; shopNam
   );
 }
 
+function EarlySettlementModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
+  const qc = useQueryClient();
+  const pkr = (v: number) => 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+
+  const { data: settlement, isLoading } = useQuery({
+    queryKey: ['settlement', inst.id],
+    queryFn:  () => installmentsApi.getSettlement(inst.id),
+    staleTime: 30_000,
+  });
+
+  const payMutation = useMutation({
+    mutationFn: () => import('../api/payments.api.ts').then(m =>
+      m.paymentsApi.create({
+        installmentId: inst.id,
+        amount: settlement!.settlementAmount,
+        method: 'CASH',
+        note: 'Early Settlement — Poora amount diya',
+      })
+    ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['installments'] });
+      toast.success('Settlement record ho gayi! Installment complete.');
+      onClose();
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">Early Settlement</h3>
+            <p className="text-xs text-gray-400">{inst.customerName} · {inst.productName}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={16} />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="h-24 bg-gray-100 rounded-xl animate-pulse" />
+        ) : settlement ? (
+          <>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Remaining balance</span>
+                <span className="font-semibold">{pkr(settlement.remaining)}</span>
+              </div>
+              {settlement.discountPercent > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-emerald-600">Discount ({settlement.discountPercent}%)</span>
+                  <span className="font-semibold text-emerald-600">− {pkr(settlement.discountAmount)}</span>
+                </div>
+              )}
+              <div className="border-t border-emerald-200 pt-2 flex justify-between">
+                <span className="font-bold text-gray-800">Aaj dena hoga</span>
+                <span className="text-xl font-black text-emerald-700" style={{ fontFamily: "'Syne', sans-serif" }}>
+                  {pkr(settlement.settlementAmount)}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 text-center">
+              Yeh amount record karny se installment complete ho jayegi.
+            </p>
+            <button
+              onClick={() => payMutation.mutate()}
+              disabled={payMutation.isPending}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition disabled:opacity-50">
+              {payMutation.isPending ? 'Record ho raha…' : `✓ ${pkr(settlement.settlementAmount)} Jama Karo`}
+            </button>
+          </>
+        ) : (
+          <p className="text-sm text-red-500 text-center">Settlement load nahi hui</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RescheduleModal({ inst, onClose }: { inst: Installment; onClose: () => void }) {
   const qc = useQueryClient();
   const [mode, setMode] = useState<'months' | 'monthly'>('months');
@@ -1414,6 +1494,7 @@ export default function InstallmentsPage() {
   const [editInst, setEditInst] = useState<Installment | null>(null);
   const [jazzCashInst, setJazzCashInst] = useState<Installment | null>(null);
   const [repoInst, setRepoInst] = useState<Installment | null>(null);
+  const [settlementInst, setSettlementInst] = useState<Installment | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [approveConfirm, setApproveConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -1742,12 +1823,22 @@ export default function InstallmentsPage() {
                     </div>
 
                     {/* Row 2: product */}
-                    <p className="text-xs text-gray-600 mb-3">
-                      <span className="font-medium">{inst.productName}</span>
-                      {inst.imeiNumber && (
-                        <span className="text-gray-400 font-mono"> · IMEI: {inst.imeiNumber}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                      <p className="text-xs text-gray-600">
+                        <span className="font-medium">{inst.productName}</span>
+                        {inst.imeiNumber && (
+                          <span className="text-gray-400 font-mono"> · IMEI: {inst.imeiNumber}</span>
+                        )}
+                      </p>
+                      {isOwner && Number(inst.profitMarkup ?? 0) > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
+                          Faida {pkr(inst.profitMarkup!)}
+                          {inst.cashPrice && Number(inst.cashPrice) > 0 && (
+                            <> · {((Number(inst.profitMarkup) / Number(inst.cashPrice)) * 100).toFixed(0)}%</>
+                          )}
+                        </span>
                       )}
-                    </p>
+                    </div>
 
                     {/* Row 3: amount chips */}
                     <div className="grid grid-cols-3 gap-2 mb-3">
@@ -1879,6 +1970,14 @@ export default function InstallmentsPage() {
                       <p className="text-gray-700">{inst.productName}</p>
                       {inst.imeiNumber && (
                         <p className="text-[11px] text-gray-400 font-mono mt-0.5">IMEI: {inst.imeiNumber}</p>
+                      )}
+                      {isOwner && Number(inst.profitMarkup ?? 0) > 0 && (
+                        <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 mt-0.5">
+                          Faida {pkr(inst.profitMarkup!)}
+                          {inst.cashPrice && Number(inst.cashPrice) > 0 && (
+                            <> · {((Number(inst.profitMarkup) / Number(inst.cashPrice)) * 100).toFixed(0)}%</>
+                          )}
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-900">{pkr(inst.totalAmount)}</td>
@@ -2094,6 +2193,12 @@ export default function InstallmentsPage() {
                 Reschedule
               </button>
             )}
+            {inst.status === 'ACTIVE' && isOwner && (
+              <button onClick={() => { close(); setSettlementInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-emerald-700 hover:bg-emerald-50 transition font-medium">
+                Early Settlement — Poora Dein
+              </button>
+            )}
             {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && isOwner && (
               <button onClick={() => { close(); setWaiverInst(inst); }}
                 className="w-full text-left px-3 py-2 text-xs text-amber-600 hover:bg-amber-50 transition">
@@ -2224,6 +2329,9 @@ export default function InstallmentsPage() {
 
       {/* Payment modal */}
       {payInst && <PaymentModal inst={payInst} onClose={() => setPayInst(null)} />}
+
+      {/* Early Settlement modal */}
+      {settlementInst && <EarlySettlementModal inst={settlementInst} onClose={() => setSettlementInst(null)} />}
 
       {/* Reschedule modal */}
       {rescheduleInst && <RescheduleModal inst={rescheduleInst} onClose={() => setRescheduleInst(null)} />}

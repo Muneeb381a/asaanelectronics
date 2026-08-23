@@ -398,13 +398,14 @@ export class StatsService {
         ))
         .groupBy(expenses.category),
 
-      // Monthly vs daily active split
+      // Monthly vs daily active split + pending count
       db
         .select({
-          monthlyCount:     sql<number>`COUNT(*) FILTER (WHERE ${installments.paymentFrequency} = 'monthly')::int`,
-          dailyCount:       sql<number>`COUNT(*) FILTER (WHERE ${installments.paymentFrequency} = 'daily')::int`,
-          monthlyRemaining: sql<string>`COALESCE(SUM(CASE WHEN ${installments.paymentFrequency} = 'monthly' THEN ${installments.remaining}::numeric ELSE 0 END), 0)::text`,
-          dailyRemaining:   sql<string>`COALESCE(SUM(CASE WHEN ${installments.paymentFrequency} = 'daily'   THEN ${installments.remaining}::numeric ELSE 0 END), 0)::text`,
+          monthlyCount:     sql<number>`COUNT(*) FILTER (WHERE ${installments.paymentFrequency} = 'monthly' AND ${installments.status} = 'ACTIVE')::int`,
+          dailyCount:       sql<number>`COUNT(*) FILTER (WHERE ${installments.paymentFrequency} = 'daily'   AND ${installments.status} = 'ACTIVE')::int`,
+          pendingCount:     sql<number>`COUNT(*) FILTER (WHERE ${installments.status} = 'PENDING')::int`,
+          monthlyRemaining: sql<string>`COALESCE(SUM(CASE WHEN ${installments.paymentFrequency} = 'monthly' AND ${installments.status} = 'ACTIVE' THEN ${installments.remaining}::numeric ELSE 0 END), 0)::text`,
+          dailyRemaining:   sql<string>`COALESCE(SUM(CASE WHEN ${installments.paymentFrequency} = 'daily'   AND ${installments.status} = 'ACTIVE' THEN ${installments.remaining}::numeric ELSE 0 END), 0)::text`,
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -538,6 +539,7 @@ export class StatsService {
       overdueAmount:    Number(overdueCount[0]?.amount ?? 0),
       monthlyActiveCount:     Number(fs?.monthlyCount     ?? 0),
       dailyActiveCount:       Number(fs?.dailyCount       ?? 0),
+      pendingApprovalCount:   Number(fs?.pendingCount     ?? 0),
       monthlyActiveRemaining: Number(fs?.monthlyRemaining ?? 0),
       dailyActiveRemaining:   Number(fs?.dailyRemaining   ?? 0),
       recentInstallments: recent,
@@ -719,7 +721,7 @@ export class StatsService {
   }
 
   async getDailyBriefing(sellerId: string) {
-    const [rows, urgentRows, dueTodayRows] = await Promise.all([
+    const [rows, urgentRows, dueTodayRows, pendingRows] = await Promise.all([
       db.execute<{
         due_today:       number;
         due_tomorrow:    number;
@@ -859,6 +861,23 @@ export class StatsService {
         ORDER BY next_due ASC
         LIMIT 20
       `),
+
+      // Pending installments awaiting owner approval
+      db.execute<{ id: string; customer_name: string; customer_phone: string; product_name: string; monthly: string; total_amount: string; created_at: string }>(sql`
+        SELECT i.id, c.name AS customer_name, c.phone AS customer_phone,
+          p.name AS product_name, i.monthly::text, i.total_amount::text,
+          i.created_at::text
+        FROM installments i
+        INNER JOIN customers c ON c.id = i.customer_id
+        INNER JOIN products  p ON p.id = i.product_id
+        WHERE c.seller_id = ${sellerId}
+          AND i.status = 'PENDING'
+          AND i.deleted_at IS NULL
+          AND c.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+        ORDER BY i.created_at DESC
+        LIMIT 10
+      `),
     ]);
 
     const r = rows[0] ?? { due_today: 0, due_tomorrow: 0, overdue_total: 0, promises_today: 0, collected_today: '0', defaulted_count: 0 };
@@ -881,6 +900,16 @@ export class StatsService {
         customerName:  u.customer_name,
         customerPhone: u.customer_phone,
         monthly:       Number(u.monthly),
+      })),
+      pendingApprovalCount: pendingRows.length,
+      pendingApprovals: pendingRows.map((p) => ({
+        id:           p.id,
+        customerName: p.customer_name,
+        customerPhone: p.customer_phone,
+        productName:  p.product_name,
+        monthly:      Number(p.monthly),
+        totalAmount:  Number(p.total_amount),
+        createdAt:    p.created_at,
       })),
     };
   }

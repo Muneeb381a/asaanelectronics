@@ -904,6 +904,51 @@ export const superAdminAuditLogs = pgTable('super_admin_audit_logs', {
 ]);
 
 
+// ── Customer–Agent Assignment ─────────────────────────────────────────────────
+// Tracks which field agent is responsible for collecting from which customer.
+export const customerAssignments = pgTable('customer_assignments', {
+  id:             text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:       text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  customerId:     text('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  agentId:        text('agent_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  assignedAt:     timestamp('assigned_at').defaultNow().notNull(),
+  unassignedAt:   timestamp('unassigned_at'),           // null = currently active
+  assignedById:   text('assigned_by_id').references(() => users.id, { onDelete: 'set null' }),
+  notes:          text('notes'),
+  createdAt:      timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_assignments_seller').on(t.sellerId),
+  index('idx_assignments_agent').on(t.agentId),
+  index('idx_assignments_customer').on(t.customerId),
+  index('idx_assignments_active').on(t.agentId, t.unassignedAt),
+]);
+
+// ── Salary Deductions ─────────────────────────────────────────────────────────
+// Line items that reduce an agent's salary for a given month.
+export const salaryDeductionTypeEnum = pgEnum('salary_deduction_type', [
+  'UNCOLLECTED',   // auto: assigned customer did not pay this month
+  'ADVANCE',       // manual: salary advance already taken
+  'DAMAGE',        // manual: equipment/item damage
+  'OTHER',         // manual: anything else
+]);
+
+export const salaryDeductions = pgTable('salary_deductions', {
+  id:             text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:       text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  staffId:        text('staff_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  month:          text('month').notNull(),               // "2026-08" — the salary month
+  type:           salaryDeductionTypeEnum('type').notNull(),
+  amount:         decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  description:    text('description').notNull(),
+  installmentId:  text('installment_id').references(() => installments.id, { onDelete: 'set null' }),
+  customerId:     text('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  createdById:    text('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:      timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_sal_ded_seller_month').on(t.sellerId, t.month),
+  index('idx_sal_ded_staff_month').on(t.staffId, t.month),
+]);
+
 // ── SaaS Admin: broadcast announcements ───────────────────────────────────────
 export const adminBroadcasts = pgTable('admin_broadcasts', {
   id:         text('id').primaryKey().$defaultFn(() => randomUUID()),

@@ -6,10 +6,11 @@ import {
   X, Send, CheckCircle, PhoneCall, Wallet,
   Clock, ChevronRight, Plus,
   TrendingDown, Gift, Package, Bell,
-  Users, ArrowUpRight,
+  Users, ArrowUpRight, CheckSquare,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
+import { installmentsApi } from '../api/installments.api.ts';
 import { recoveryApi } from '../api/recovery.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { customersApi } from '../api/customers.api.ts';
@@ -149,6 +150,15 @@ export default function DashboardPage() {
     queryKey: ['promises-due'], queryFn: recoveryApi.promisesDue,
     enabled: pDueCount > 0, staleTime: 60_000,
   });
+  const approveMut = useMutation({
+    mutationFn: (id: string) => installmentsApi.approve(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['daily-briefing'] });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success('Installment approve ho gaya');
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Masla ho gaya'),
+  });
   const { data: shop } = useQuery({
     queryKey: ['shop-me'], queryFn: sellersApi.getMe,
     staleTime: 5 * 60_000, enabled: isOwner,
@@ -172,7 +182,8 @@ export default function DashboardPage() {
   const dailyPct       = dailyTarget ? Math.min(100, Math.round((todayTotal / dailyTarget) * 100)) : 0;
   const bOverdue       = briefing?.overdueTotal   ?? 0;
   const bDueToday      = briefing?.dueToday       ?? 0;
-  const totalWork      = bOverdue + bDueToday + pDueCount;
+  const bPending       = isOwner ? (briefing?.pendingApprovalCount ?? 0) : 0;
+  const totalWork      = bOverdue + bDueToday + pDueCount + bPending;
   const allClear       = !!briefing && totalWork === 0;
   const kpiOverdue     = d?.overdueCount ?? 0;
 
@@ -377,6 +388,7 @@ export default function DashboardPage() {
                 </div>
                 {briefing && totalWork > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {bPending  > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE' }}>{bPending} approve</span>}
                     {bOverdue  > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{bOverdue} late</span>}
                     {bDueToday > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>{bDueToday} aaj</span>}
                     {pDueCount > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>{pDueCount} wada</span>}
@@ -386,6 +398,39 @@ export default function DashboardPage() {
 
               {!briefing ? <RowSkeleton rows={5}/> : (
                 <>
+                  {/* PENDING APPROVALS — owner only */}
+                  {isOwner && briefing.pendingApprovals && briefing.pendingApprovals.length > 0 && (
+                    <>
+                      <div className="px-5 py-2.5 flex items-center gap-2"
+                        style={{ background: '#F5F3FF', borderBottom: '1px solid #EDE9FE' }}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0"/>
+                        <span className="text-[11px] font-black text-violet-700 uppercase tracking-wider">Approve Karein ({briefing.pendingApprovalCount})</span>
+                      </div>
+                      {briefing.pendingApprovals.map((p, i) => (
+                        <div key={p.id}
+                          className={`flex items-center gap-3 pl-5 pr-4 py-3.5 hover:bg-violet-50/40 transition ${i > 0 ? 'border-t' : ''}`}
+                          style={{ borderColor: '#F5F3FF', borderLeft: '3px solid #C4B5FD' }}>
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0"
+                            style={{ background: '#EDE9FE', color: '#7C3AED' }}>
+                            {p.customerName[0]?.toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold truncate" style={{ color: '#0F172A' }}>{p.customerName}</p>
+                            <p className="text-[11px] truncate" style={{ color: '#64748B' }}>{p.productName} · {pkr(p.totalAmount)}</p>
+                          </div>
+                          <button
+                            disabled={approveMut.isPending && approveMut.variables === p.id}
+                            onClick={() => approveMut.mutate(p.id)}
+                            className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition disabled:opacity-50"
+                            style={{ background: '#7C3AED' }}>
+                            <CheckSquare size={11}/>
+                            {approveMut.isPending && approveMut.variables === p.id ? '…' : 'Approve'}
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
                   {briefing.urgentAccounts.length > 0 && (
                     <>
                       <div className="px-5 py-2.5 flex items-center gap-2" style={{ background: '#FEF2F2', borderBottom: '1px solid #FEE2E2' }}>
@@ -508,6 +553,45 @@ export default function DashboardPage() {
                 </>
               )}
             </div>
+
+            {/* OVERDUE AGING BUCKETS */}
+            {isOwner && d?.agingBuckets && (d.agingBuckets.days0_7 > 0 || d.agingBuckets.days8_30 > 0 || d.agingBuckets.days31_90 > 0 || d.agingBuckets.days90plus > 0) && (
+              <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #F0F0F5' }}>
+                <div className="px-6 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid #F5F5FA' }}>
+                  <Clock size={14} style={{ color: '#DC2626' }} />
+                  <h2 className="text-[15px] font-black" style={{ color: '#1A1A2E' }}>Overdue Breakdown</h2>
+                  <span className="ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                    {(d.agingBuckets.days0_7 + d.agingBuckets.days8_30 + d.agingBuckets.days31_90 + d.agingBuckets.days90plus)} total
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-gray-50">
+                  {[
+                    { label: '1–7 din', value: d.agingBuckets.days0_7,   bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' },
+                    { label: '8–30 din', value: d.agingBuckets.days8_30,  bg: '#FFF7ED', color: '#C2410C', border: '#FDBA74' },
+                    { label: '31–90 din', value: d.agingBuckets.days31_90, bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' },
+                    { label: '90+ din', value: d.agingBuckets.days90plus, bg: '#FFF1F2', color: '#9F1239', border: '#FDA4AF' },
+                  ].map((b) => (
+                    <div key={b.label} className="flex flex-col items-center py-5 px-3"
+                      style={{ background: b.value > 0 ? b.bg : '#FAFAFA' }}>
+                      <p className="text-[1.5rem] font-black tabular-nums leading-none"
+                        style={{ color: b.value > 0 ? b.color : '#CBD5E1', fontFamily: "'Syne', sans-serif" }}>
+                        {b.value}
+                      </p>
+                      <p className="text-[11px] font-semibold mt-1.5" style={{ color: b.value > 0 ? b.color : '#94A3B8' }}>{b.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {d.agingBuckets.days31_90 + d.agingBuckets.days90plus > 0 && (
+                  <div className="px-5 py-3 flex items-center gap-2 border-t border-red-50">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 animate-pulse"/>
+                    <p className="text-[11px] font-semibold" style={{ color: '#DC2626' }}>
+                      {d.agingBuckets.days31_90 + d.agingBuckets.days90plus} accounts 30+ din se overdue — fori action zaruri hai
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* STAFF COLLECTIONS — "Top Products" table style from Figma */}
             {isOwner && (

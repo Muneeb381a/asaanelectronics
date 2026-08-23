@@ -107,6 +107,23 @@ function RiskBadge({ score, label }: { score: number; label: RiskLabel }) {
   );
 }
 
+const GRADE_STYLE: Record<string, { bg: string; text: string }> = {
+  A: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  B: { bg: 'bg-blue-100',    text: 'text-blue-700'    },
+  C: { bg: 'bg-amber-100',   text: 'text-amber-700'   },
+  D: { bg: 'bg-red-100',     text: 'text-red-700'     },
+};
+
+function GradeBadge({ grade }: { grade: 'A' | 'B' | 'C' | 'D' | null | undefined }) {
+  if (!grade) return null;
+  const s = GRADE_STYLE[grade];
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${s.bg} ${s.text}`}>
+      Grade {grade}
+    </span>
+  );
+}
+
 const LIFECYCLE_META: Record<LifecycleStage, { label: string; cls: string; dot: string }> = {
   LEAD:     { label: 'Lead',     cls: 'bg-slate-100  text-slate-600',  dot: 'bg-slate-400'  },
   VERIFIED: { label: 'Verified', cls: 'bg-blue-100   text-blue-700',   dot: 'bg-blue-500'   },
@@ -1869,6 +1886,7 @@ export default function CustomersPage() {
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <LifecycleBadge stage={c.lifecycleStage ?? 'LEAD'} />
                         <RiskBadge score={c.riskScore ?? 0} label={c.riskLabel ?? 'GOOD'} />
+                        <GradeBadge grade={c.paymentGrade} />
                         <VerifBadge status={c.verificationStatus ?? 'PENDING'} />
                       </div>
                       <p className="text-xs text-gray-500 mt-1.5">
@@ -1973,6 +1991,7 @@ export default function CustomersPage() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <LifecycleBadge stage={c.lifecycleStage ?? 'LEAD'} />
                           <RiskBadge score={c.riskScore ?? 0} label={c.riskLabel ?? 'GOOD'} />
+                          <GradeBadge grade={c.paymentGrade} />
                           {c.tags?.slice(0, 2).map((t) => (
                             <span key={t} className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-medium cursor-pointer" onClick={() => setTagFilter(t)}>#{t}</span>
                           ))}
