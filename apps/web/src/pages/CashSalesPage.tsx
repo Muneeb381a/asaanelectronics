@@ -564,7 +564,13 @@ export default function CashSalesPage() {
                       </div>
                       <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-50">
                         {products.length === 0 ? (
-                          <p className="text-xs text-slate-400 text-center py-5">Koi product nahi mila</p>
+                          <div className="py-5 text-center">
+                            <p className="text-xs text-slate-400 mb-2">Koi product nahi mila</p>
+                            <a href="/stock-receive" target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-black text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition">
+                              ⚠ Maal Aya pe receive karo →
+                            </a>
+                          </div>
                         ) : products.map(p => (
                           <button key={p.id} type="button" onClick={() => selectProduct(p)} disabled={p.stock < 1}
                             className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 transition text-left disabled:opacity-40 disabled:cursor-not-allowed">
@@ -574,9 +580,15 @@ export default function CashSalesPage() {
                             </div>
                             <div className="text-right shrink-0 ml-3">
                               <p className="text-sm font-black text-slate-900 tabular-nums">PKR {Number(p.price).toLocaleString()}</p>
-                              <p className={`text-xs font-bold ${p.stock < 1 ? 'text-red-500' : 'text-slate-400'}`}>
-                                {p.stock < 1 ? 'Stock khatam' : `Stock: ${p.stock}`}
-                              </p>
+                              {p.stock < 1 ? (
+                                <a href="/stock-receive" target="_blank" rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className="text-[10px] font-black text-amber-600 hover:underline">
+                                  Stock khatam · Receive karo →
+                                </a>
+                              ) : (
+                                <p className="text-xs font-bold text-slate-400">Stock: {p.stock}</p>
+                              )}
                             </div>
                           </button>
                         ))}

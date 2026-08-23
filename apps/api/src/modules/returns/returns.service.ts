@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { customers, installments, products, returns } from '../../db/schema.js';
+import { customers, installments, products, returns, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 
 type CreateBody = {
@@ -164,6 +164,20 @@ export class ReturnsService {
           resolvedByUserId:     userId,
           ...(body.notes && { notes: body.notes }),
         }).where(eq(returns.id, id)).returning();
+
+        // Ledger DEBIT for refund — money leaving the business
+        if (body.refundAmount && body.refundAmount > 0) {
+          await tx.insert(ledgerEntries).values({
+            sellerId,
+            type:        'DEBIT',
+            category:    'RETURN',
+            amount:      String(body.refundAmount),
+            description: `Return refund — ${ret.productName} (${body.resolutionType})`,
+            referenceId: id,
+            refType:     'MANUAL',
+          });
+        }
+
         return updated;
       });
     }

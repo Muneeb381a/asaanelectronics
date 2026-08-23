@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ShieldCheck, ShieldX, Clock, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, ShieldCheck, ShieldX, Clock, X, CheckCircle2, AlertTriangle, UserPlus, Loader2 } from 'lucide-react';
 import { customersApi } from '../../api/customers.api.ts';
 import { guarantorsApi } from '../../api/guarantors.api.ts';
 import { productsApi } from '../../api/products.api.ts';
@@ -220,6 +220,83 @@ function SearchableSelect({
   );
 }
 
+function QuickAddCustomerPanel({
+  prefillName,
+  onCreated,
+  onCancel,
+}: {
+  prefillName: string;
+  onCreated: (id: string, name: string) => void;
+  onCancel: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName]   = useState(prefillName);
+  const [phone, setPhone] = useState('');
+  const [cnic, setCnic]   = useState('');
+  const [err, setErr]     = useState('');
+
+  const mut = useMutation({
+    mutationFn: () => customersApi.create({ name: name.trim(), phone: phone.trim(), cnic: cnic.trim() || undefined } as Parameters<typeof customersApi.create>[0]),
+    onSuccess: (customer) => {
+      void qc.invalidateQueries({ queryKey: ['customers-form-search'] });
+      onCreated(customer.id, customer.name);
+    },
+    onError: () => setErr('Save nahi hua — phone ya CNIC check karo'),
+  });
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr('');
+    if (!name.trim()) return setErr('Naam zaruri hai');
+    if (!/^03\d{9}$/.test(phone.trim())) return setErr('Valid 11-digit number chahiye (03XXXXXXXXX)');
+    mut.mutate();
+  }
+
+  return (
+    <form onSubmit={submit}
+      className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-black text-indigo-700 flex items-center gap-1.5">
+          <UserPlus size={13}/> Naya Customer — Quick Add
+        </p>
+        <button type="button" onClick={onCancel} className="text-indigo-400 hover:text-indigo-700 transition">
+          <X size={14}/>
+        </button>
+      </div>
+
+      <div>
+        <p className="text-[11px] font-medium text-indigo-600 mb-1">Naam *</p>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Customer ka poora naam"
+          className={`${inp} bg-white`} autoFocus/>
+      </div>
+      <div>
+        <p className="text-[11px] font-medium text-indigo-600 mb-1">Phone *</p>
+        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="03XXXXXXXXX"
+          className={`${inp} bg-white`} type="tel"/>
+      </div>
+      <div>
+        <p className="text-[11px] font-medium text-indigo-600 mb-1">CNIC <span className="font-normal text-indigo-400">(optional)</span></p>
+        <input value={cnic} onChange={e => setCnic(e.target.value)} placeholder="XXXXX-XXXXXXX-X"
+          className={`${inp} bg-white`}/>
+      </div>
+
+      {err && <p className="text-xs text-red-600 font-medium">{err}</p>}
+
+      <div className="flex gap-2 pt-1">
+        <button type="button" onClick={onCancel}
+          className="flex-1 py-2 text-xs font-bold border border-indigo-200 rounded-lg text-indigo-500 hover:bg-white transition">
+          Cancel
+        </button>
+        <button type="submit" disabled={mut.isPending}
+          className="flex-1 py-2 text-xs font-black text-white rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 transition flex items-center justify-center gap-1.5">
+          {mut.isPending ? <><Loader2 size={12} className="animate-spin"/> Saving…</> : <><UserPlus size={12}/> Customer Banao</>}
+        </button>
+      </div>
+      <p className="text-[10px] text-indigo-400 text-center">Baaki details (guarantor, docs) baad mein Customers page se add kar sakte ho</p>
+    </form>
+  );
+}
+
 export default function InstallmentForm({ onSubmit, isPending, onCancel, murabahaMode = false, lockedCustomerId, lockedCustomerName: _lockedCustomerName }: Props) {
   const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -237,14 +314,19 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
   const [dpIsFirst, setDpIsFirst] = useState(false);
   const [calcMode, setCalcMode]   = useState<'duration' | 'amount'>('duration');
   const [amountInput, setAmountInput] = useState<number | ''>('');
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   const [
     customerId, productId, totalAmount, downPayment, months, startDate,
     cashPrice, profitMarkup, paymentFrequency, paymentDueDay,
+    g1PhoneInput, g2PhoneInput,
   ] = useWatch({
     control,
-    name: ['customerId', 'productId', 'totalAmount', 'downPayment', 'months', 'startDate', 'cashPrice', 'profitMarkup', 'paymentFrequency', 'paymentDueDay'],
+    name: ['customerId', 'productId', 'totalAmount', 'downPayment', 'months', 'startDate', 'cashPrice', 'profitMarkup', 'paymentFrequency', 'paymentDueDay', 'guarantor1.phone', 'guarantor2.phone'],
   });
+
+  const debouncedG1Phone = useDebounce(g1PhoneInput ?? '', 600);
+  const debouncedG2Phone = useDebounce(g2PhoneInput ?? '', 600);
 
   const isDaily = paymentFrequency === 'daily';
   // Show murabaha-style fields when shop has murabaha mode OR when daily frequency is selected
@@ -319,6 +401,22 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     enabled: !!g2Phone && !!customerId && g2Phone !== g1Phone,
     staleTime: 60_000,
   });
+  // Phone-based guarantor lookup — autofill name+relation from existing records
+  const { data: g1Lookup } = useQuery({
+    queryKey: ['guarantor-lookup', debouncedG1Phone],
+    queryFn: () => guarantorsApi.list(debouncedG1Phone),
+    enabled: debouncedG1Phone.length >= 10,
+    staleTime: 60_000,
+  });
+  const { data: g2Lookup } = useQuery({
+    queryKey: ['guarantor-lookup', debouncedG2Phone],
+    queryFn: () => guarantorsApi.list(debouncedG2Phone),
+    enabled: debouncedG2Phone.length >= 10 && debouncedG2Phone !== debouncedG1Phone,
+    staleTime: 60_000,
+  });
+  const g1Match = g1Lookup?.find(g => g.phone === debouncedG1Phone);
+  const g2Match = g2Lookup?.find(g => g.phone === debouncedG2Phone);
+
   type GWarn = { name: string; activeCount: number; defaultedCount: number };
   const guarantorWarnings: GWarn[] = [
     g1List?.find((g) => g.phone === g1Phone),
@@ -420,6 +518,40 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     setCalcMode('duration');
   }, [paymentFrequency]);
 
+  // Auto-fill guarantor fields from the customer record when a customer is selected
+  useEffect(() => {
+    if (!fetchedCustomer) return;
+    const g1 = {
+      name:     fetchedCustomer.guarantorName     ?? '',
+      phone:    fetchedCustomer.guarantorPhone    ?? '',
+      cnic:     fetchedCustomer.guarantorCnic     ?? '',
+      relation: fetchedCustomer.guarantorRelation ?? '',
+      address:  fetchedCustomer.guarantorAddress  ?? '',
+    };
+    const g2 = {
+      name:     fetchedCustomer.guarantor2Name     ?? '',
+      phone:    fetchedCustomer.guarantor2Phone    ?? '',
+      cnic:     fetchedCustomer.guarantor2Cnic     ?? '',
+      relation: fetchedCustomer.guarantor2Relation ?? '',
+      address:  fetchedCustomer.guarantor2Address  ?? '',
+    };
+    if (g1.name || g1.phone) {
+      setValue('guarantor1.name',     g1.name);
+      setValue('guarantor1.phone',    g1.phone);
+      setValue('guarantor1.cnic',     g1.cnic);
+      setValue('guarantor1.relation', g1.relation);
+      setValue('guarantor1.address',  g1.address);
+    }
+    if (g2.name || g2.phone) {
+      setValue('guarantor2.name',     g2.name);
+      setValue('guarantor2.phone',    g2.phone);
+      setValue('guarantor2.cnic',     g2.cnic);
+      setValue('guarantor2.relation', g2.relation);
+      setValue('guarantor2.address',  g2.address);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedCustomer?.id]);
+
   // Future installment count (excludes the down payment month when dpIsFirst)
   const futureMonths = dpIsFirst ? (months ?? 1) - 1 : (months ?? 0);
 
@@ -495,11 +627,32 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
               sublabel: `${c.phone} · ${c.cnicMasked}`,
             })) ?? []}
             value={customerId ?? ''}
-            onChange={(id) => setValue('customerId', id, { shouldValidate: true })}
-            onQueryChange={setCustomerQuery}
+            onChange={(id) => { setValue('customerId', id, { shouldValidate: true }); setShowQuickAdd(false); }}
+            onQueryChange={(q) => { setCustomerQuery(q); setShowQuickAdd(false); }}
             placeholder="Naam, mobile number ya CNIC sy search karo…"
             error={errors.customerId?.message}
           />
+
+          {/* Quick-add trigger: shown when user has typed but no results found */}
+          {customerQuery.trim() && !customerId && customers?.data.length === 0 && !showQuickAdd && (
+            <button type="button" onClick={() => setShowQuickAdd(true)}
+              className="mt-2 w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition text-xs font-black">
+              <UserPlus size={13}/>
+              <span>"{customerQuery}" ko naya customer register karo</span>
+            </button>
+          )}
+
+          {showQuickAdd && (
+            <QuickAddCustomerPanel
+              prefillName={customerQuery}
+              onCreated={(id, name) => {
+                setValue('customerId', id, { shouldValidate: true });
+                setCustomerQuery(name);
+                setShowQuickAdd(false);
+              }}
+              onCancel={() => setShowQuickAdd(false)}
+            />
+          )}
 
           {selectedCustomer && (() => {
             const vs = VSTATUS[selectedCustomer.verificationStatus ?? 'PENDING'];
@@ -566,6 +719,16 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
             }
             <span className="ml-auto text-gray-400">Stock: <span className={`font-semibold ${selectedProduct.stock === 0 ? 'text-red-500' : selectedProduct.stock <= 3 ? 'text-amber-500' : 'text-gray-700'}`}>{selectedProduct.stock}</span></span>
           </div>
+        )}
+
+        {/* Out-of-stock warning with stock-receive link */}
+        {selectedProduct?.stock === 0 && (
+          <a href="/stock-receive" target="_blank" rel="noopener noreferrer"
+            className="mt-2 flex items-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-amber-300 bg-amber-50 text-xs text-amber-700 font-bold hover:bg-amber-100 transition">
+            <span className="text-amber-500">⚠</span>
+            Stock khatam ho gaya — Maal Aya pe record karo (naya tab mein)
+            <span className="ml-auto text-amber-400">→ Stock Receive</span>
+          </a>
         )}
       </div>
 
@@ -1040,6 +1203,12 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">Zamaanat Dahanday · Guarantors</p>
           <div className="flex-1 h-px bg-gray-100" />
         </div>
+        {fetchedCustomer?.guarantorName && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100 text-xs text-emerald-700">
+            <CheckCircle2 size={12} className="shrink-0"/>
+            Customer ke record se guarantor details auto-fill ho gayi — check kar lo
+          </div>
+        )}
 
         {/* Guarantor 1 — required */}
         <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5 space-y-3">
@@ -1048,6 +1217,14 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
             <p className="text-xs font-semibold text-blue-800">Pehla Zamaanat Dahinday <span className="text-red-500">*</span></p>
             <span className="ml-auto text-[10px] text-blue-400 font-normal">Lazmi hai</span>
           </div>
+          {g1Match?.name && (
+            <button type="button"
+              onClick={() => { setValue('guarantor1.name', g1Match.name!); if (g1Match.relation) setValue('guarantor1.relation', g1Match.relation); }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-100 transition text-left">
+              <CheckCircle2 size={12} className="shrink-0"/>
+              <span><span className="font-bold">{g1Match.name}</span> — yeh number pehle se system mein hai ({g1Match.activeCount} active). Naam fill karein?</span>
+            </button>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <Label>Naam <span className="text-red-400">*</span></Label>
@@ -1081,6 +1258,14 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
             <p className="text-xs font-semibold text-gray-600">Doosra Zamaanat Dahinday</p>
             <span className="ml-auto text-[10px] text-gray-400 font-normal">Optional</span>
           </div>
+          {g2Match?.name && (
+            <button type="button"
+              onClick={() => { setValue('guarantor2.name', g2Match.name!); if (g2Match.relation) setValue('guarantor2.relation', g2Match.relation); }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-100 transition text-left">
+              <CheckCircle2 size={12} className="shrink-0"/>
+              <span><span className="font-bold">{g2Match.name}</span> — yeh number pehle se system mein hai. Naam fill karein?</span>
+            </button>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <Label>Naam</Label>

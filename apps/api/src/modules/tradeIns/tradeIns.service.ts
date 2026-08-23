@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { tradeIns, customers } from '../../db/schema.js';
+import { tradeIns, customers, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 
 type TradeInStatus = 'in_stock' | 'sold' | 'disposed';
@@ -92,43 +92,77 @@ export class TradeInsService {
   }
 
   async create(sellerId: string, body: CreateTradeInBody) {
-    const [row] = await db.insert(tradeIns).values({
-      sellerId,
-      customerId:    body.customerId    ?? null,
-      installmentId: body.installmentId ?? null,
-      cashSaleId:    body.cashSaleId    ?? null,
-      deviceName:    body.deviceName,
-      brand:         body.brand         ?? null,
-      model:         body.model         ?? null,
-      imei:          body.imei          ?? null,
-      color:         body.color         ?? null,
-      storageGb:     body.storageGb     ?? null,
-      condition:     body.condition,
-      assessedValue: String(body.assessedValue),
-      notes:         body.notes         ?? null,
-    }).returning();
-    return row!;
+    return db.transaction(async (tx) => {
+      const [row] = await tx.insert(tradeIns).values({
+        sellerId,
+        customerId:    body.customerId    ?? null,
+        installmentId: body.installmentId ?? null,
+        cashSaleId:    body.cashSaleId    ?? null,
+        deviceName:    body.deviceName,
+        brand:         body.brand         ?? null,
+        model:         body.model         ?? null,
+        imei:          body.imei          ?? null,
+        color:         body.color         ?? null,
+        storageGb:     body.storageGb     ?? null,
+        condition:     body.condition,
+        assessedValue: String(body.assessedValue),
+        notes:         body.notes         ?? null,
+      }).returning();
+
+      // Ledger DEBIT — money paid out to customer as trade-in value
+      if (body.assessedValue > 0) {
+        const label = [body.brand, body.model, body.deviceName].filter(Boolean).join(' ');
+        await tx.insert(ledgerEntries).values({
+          sellerId,
+          type:        'DEBIT',
+          category:    'TRADE_IN',
+          amount:      String(body.assessedValue),
+          description: `Trade-in purchase — ${label}`,
+          referenceId: row!.id,
+          refType:     'MANUAL',
+        });
+      }
+
+      return row!;
+    });
   }
 
   async update(id: string, sellerId: string, body: UpdateTradeInBody) {
     const existing = await db.query.tradeIns.findFirst({
       where: and(eq(tradeIns.id, id), eq(tradeIns.sellerId, sellerId)),
-      columns: { id: true },
+      columns: { id: true, status: true, deviceName: true, brand: true, model: true },
     });
     if (!existing) throw new AppError('Trade-in not found', 404);
 
     const patch: Record<string, unknown> = {};
-    if (body.status       !== undefined) patch['status']       = body.status;
-    if (body.condition    !== undefined) patch['condition']    = body.condition;
-    if (body.notes        !== undefined) patch['notes']        = body.notes;
+    if (body.status        !== undefined) patch['status']        = body.status;
+    if (body.condition     !== undefined) patch['condition']     = body.condition;
+    if (body.notes         !== undefined) patch['notes']         = body.notes;
     if (body.assessedValue !== undefined) patch['assessedValue'] = String(body.assessedValue);
-    if (body.soldPrice    !== undefined) {
+    if (body.soldPrice     !== undefined) {
       patch['soldPrice'] = String(body.soldPrice);
       if (body.status === 'sold') patch['soldAt'] = new Date();
     }
 
-    const [updated] = await db.update(tradeIns).set(patch).where(eq(tradeIns.id, id)).returning();
-    return updated!;
+    return db.transaction(async (tx) => {
+      const [updated] = await tx.update(tradeIns).set(patch).where(eq(tradeIns.id, id)).returning();
+
+      // When marked as sold — ledger CREDIT for sale proceeds
+      if (body.status === 'sold' && existing.status !== 'sold' && body.soldPrice) {
+        const label = [existing.brand, existing.model, existing.deviceName].filter(Boolean).join(' ');
+        await tx.insert(ledgerEntries).values({
+          sellerId,
+          type:        'CREDIT',
+          category:    'TRADE_IN',
+          amount:      String(body.soldPrice),
+          description: `Trade-in device sold — ${label}`,
+          referenceId: id,
+          refType:     'MANUAL',
+        });
+      }
+
+      return updated!;
+    });
   }
 
   async remove(id: string, sellerId: string) {

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import {
   ArrowLeft, Plus, Trash2, Copy, ChevronDown,
   Package, Smartphone, Bike, AlertCircle, CheckCircle2,
-  ClipboardList,
+  ClipboardList, UserPlus, X, Loader2,
 } from 'lucide-react';
 import { suppliersApi } from '../api/suppliers.api.ts';
 import { productsApi, type BulkReceiveUnit } from '../api/products.api.ts';
@@ -88,7 +88,11 @@ export default function StockReceivePage() {
   const navigate    = useNavigate();
   const qc          = useQueryClient();
   // ── step 1 state ──
-  const [supplierId,   setSupplierId]   = useState('');
+  const [supplierId,      setSupplierId]      = useState('');
+  const [showQuickSupplier, setShowQuickSupplier] = useState(false);
+  const [quickSupName,    setQuickSupName]    = useState('');
+  const [quickSupPhone,   setQuickSupPhone]   = useState('');
+  const [quickSupErr,     setQuickSupErr]     = useState('');
   const [productName,  setProductName]  = useState('');
   const [category,     setCategory]     = useState('');
   const [brand,        setBrand]        = useState('');
@@ -117,6 +121,18 @@ export default function StockReceivePage() {
     queryKey: ['product-categories'],
     queryFn:  productsApi.getCategories,
     staleTime: 5 * 60_000,
+  });
+
+  const quickSupplierMut = useMutation({
+    mutationFn: () => suppliersApi.create({ name: quickSupName.trim(), phone: quickSupPhone.trim() || undefined }),
+    onSuccess: (s) => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] });
+      setSupplierId(s.id);
+      setShowQuickSupplier(false);
+      setQuickSupName(''); setQuickSupPhone(''); setQuickSupErr('');
+      toast.success(`Supplier "${s.name}" save ho gaya`);
+    },
+    onError: () => setQuickSupErr('Save nahi hua — dobara try karein'),
   });
 
   // mutation
@@ -328,13 +344,46 @@ export default function StockReceivePage() {
             <div className="sm:col-span-2 lg:col-span-1">
               <label className="block text-xs font-black text-slate-600 mb-1.5">Supplier</label>
               <div className="relative">
-                <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}
+                <select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setShowQuickSupplier(false); }}
                   className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 bg-white transition cursor-pointer appearance-none">
                   <option value="">— Supplier select karein (optional)</option>
                   {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
+
+              {/* Quick-add supplier button */}
+              {!showQuickSupplier && !supplierId && (
+                <button type="button" onClick={() => setShowQuickSupplier(true)}
+                  className="mt-2 flex items-center gap-1.5 text-xs font-black text-indigo-600 hover:text-indigo-800 transition">
+                  <UserPlus size={12}/> Naya supplier add karo
+                </button>
+              )}
+
+              {/* Inline quick-add panel */}
+              {showQuickSupplier && (
+                <div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-black text-indigo-700 flex items-center gap-1"><UserPlus size={12}/> Naya Supplier</p>
+                    <button type="button" onClick={() => { setShowQuickSupplier(false); setQuickSupErr(''); }} className="text-indigo-400 hover:text-indigo-700"><X size={13}/></button>
+                  </div>
+                  <input value={quickSupName} onChange={e => setQuickSupName(e.target.value)} placeholder="Naam *"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-400 bg-white" autoFocus/>
+                  <input value={quickSupPhone} onChange={e => setQuickSupPhone(e.target.value)} placeholder="Phone (optional)"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-400 bg-white" type="tel"/>
+                  {quickSupErr && <p className="text-xs text-red-600">{quickSupErr}</p>}
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => { setShowQuickSupplier(false); setQuickSupErr(''); }}
+                      className="flex-1 py-1.5 text-xs border border-indigo-200 rounded-lg text-indigo-500 hover:bg-white transition">Cancel</button>
+                    <button type="button" disabled={!quickSupName.trim() || quickSupplierMut.isPending}
+                      onClick={() => { setQuickSupErr(''); if (!quickSupName.trim()) return setQuickSupErr('Naam zaruri hai'); quickSupplierMut.mutate(); }}
+                      className="flex-1 py-1.5 text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60 transition flex items-center justify-center gap-1">
+                      {quickSupplierMut.isPending ? <><Loader2 size={11} className="animate-spin"/> Saving…</> : <><UserPlus size={11}/> Save</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {supplierId && (
                 <div className="mt-1.5 space-y-1.5">
                   <div>

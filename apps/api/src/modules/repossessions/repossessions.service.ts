@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { repossessions, customers, installments } from '../../db/schema.js';
+import { repossessions, customers, installments, products, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 
 type RepoStatus = 'in_stock' | 'sold' | 'disposed' | 'returned';
@@ -92,9 +92,9 @@ export class RepossessionsService {
   async create(sellerId: string, body: CreateRepossessionBody) {
     // Verify the installment belongs to this seller and get customer + product info
     const [instRow] = await db.execute<{
-      id: string; customer_id: string; remaining: string; product_name: string; imei_number: string | null;
+      id: string; customer_id: string; remaining: string; product_name: string; imei_number: string | null; product_id: string;
     }>(sql`
-      SELECT i.id, i.customer_id, i.remaining, p.name AS product_name, i.imei_number
+      SELECT i.id, i.customer_id, i.remaining, p.name AS product_name, i.imei_number, i.product_id
       FROM installments i
       JOIN customers c ON c.id = i.customer_id
       JOIN products p ON p.id = i.product_id
@@ -111,7 +111,7 @@ export class RepossessionsService {
     });
     if (existing) throw new AppError('This installment has already been repossessed', 409);
 
-    // Create repossession + update installment status in one transaction
+    // Create repossession + update installment status + restore stock in one transaction
     const [repo] = await db.transaction(async (tx) => {
       const [row] = await tx.insert(repossessions).values({
         sellerId,
@@ -133,6 +133,24 @@ export class RepossessionsService {
         .set({ status: 'CLOSED' })
         .where(eq(installments.id, body.installmentId));
 
+      // Restore product stock — device is physically back in shop
+      await tx.update(products)
+        .set({ stock: sql`${products.stock} + 1` })
+        .where(eq(products.id, instRow.product_id));
+
+      // Ledger DEBIT for any amount recovered (cash paid by customer at repossession)
+      if ((body.amountRecovered ?? 0) > 0) {
+        await tx.insert(ledgerEntries).values({
+          sellerId,
+          type:        'CREDIT',
+          category:    'REPOSSESSION',
+          amount:      String(body.amountRecovered),
+          description: `Repossession recovery — ${instRow.product_name}`,
+          referenceId: row!.id,
+          refType:     'MANUAL',
+        });
+      }
+
       return [row!];
     });
 
@@ -142,22 +160,44 @@ export class RepossessionsService {
   async update(id: string, sellerId: string, body: UpdateRepossessionBody) {
     const existing = await db.query.repossessions.findFirst({
       where: and(eq(repossessions.id, id), eq(repossessions.sellerId, sellerId)),
-      columns: { id: true },
+      columns: { id: true, status: true, deviceName: true },
     });
     if (!existing) throw new AppError('Repossession not found', 404);
 
     const patch: Record<string, unknown> = {};
-    if (body.status       !== undefined) patch['status']       = body.status;
-    if (body.condition    !== undefined) patch['condition']    = body.condition;
-    if (body.notes        !== undefined) patch['notes']        = body.notes;
+    if (body.status        !== undefined) patch['status']        = body.status;
+    if (body.condition     !== undefined) patch['condition']     = body.condition;
+    if (body.notes         !== undefined) patch['notes']         = body.notes;
     if (body.assessedValue !== undefined) patch['assessedValue'] = String(body.assessedValue);
-    if (body.soldPrice    !== undefined) {
+    if (body.soldPrice     !== undefined) {
       patch['soldPrice'] = String(body.soldPrice);
       if (body.status === 'sold') patch['soldAt'] = new Date();
     }
 
-    const [updated] = await db.update(repossessions).set(patch).where(eq(repossessions.id, id)).returning();
-    return updated!;
+    return db.transaction(async (tx) => {
+      const [updated] = await tx.update(repossessions).set(patch).where(eq(repossessions.id, id)).returning();
+
+      // When marked as sold — ledger CREDIT for sale proceeds; stock -1 (leaving shop again)
+      if (body.status === 'sold' && existing.status !== 'sold' && body.soldPrice) {
+        await tx.update(products)
+          .set({ stock: sql`GREATEST(${products.stock} - 1, 0)` })
+          .where(eq(
+            products.id,
+            sql`(SELECT product_id FROM installments WHERE id = (SELECT installment_id FROM repossessions WHERE id = ${id}))`,
+          ));
+        await tx.insert(ledgerEntries).values({
+          sellerId,
+          type:        'CREDIT',
+          category:    'REPOSSESSION',
+          amount:      String(body.soldPrice),
+          description: `Repossessed device sold — ${existing.deviceName}`,
+          referenceId: id,
+          refType:     'MANUAL',
+        });
+      }
+
+      return updated!;
+    });
   }
 
   async remove(id: string, sellerId: string) {
