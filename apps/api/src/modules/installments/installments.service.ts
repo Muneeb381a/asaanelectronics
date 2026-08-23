@@ -18,6 +18,14 @@ function normalizePhone(raw: string): string {
   return digits;
 }
 
+type GuarantorBody = {
+  name:      string;
+  phone:     string;
+  cnic?:     string;
+  relation?: string;
+  address?:  string;
+};
+
 type CreateBody = {
   customerId:        string;
   productId:         string;
@@ -30,6 +38,8 @@ type CreateBody = {
   profitMarkup?:     number;
   paymentFrequency?: 'monthly' | 'daily';
   paymentDueDay?:    number;
+  guarantor1:        GuarantorBody;
+  guarantor2?:       Partial<GuarantorBody>;
 };
 
 export class InstallmentsService {
@@ -320,6 +330,16 @@ export class InstallmentsService {
           profitMarkup:     body.profitMarkup  != null ? String(body.profitMarkup) : null,
           paymentFrequency: freq,
           paymentDueDay:    body.paymentDueDay ?? 10,
+          guarantorName:     body.guarantor1.name,
+          guarantorPhone:    body.guarantor1.phone,
+          guarantorCnic:     body.guarantor1.cnic     ?? null,
+          guarantorRelation: body.guarantor1.relation ?? null,
+          guarantorAddress:  body.guarantor1.address  ?? null,
+          guarantor2Name:     body.guarantor2?.name     ?? null,
+          guarantor2Phone:    body.guarantor2?.phone    ?? null,
+          guarantor2Cnic:     body.guarantor2?.cnic     ?? null,
+          guarantor2Relation: body.guarantor2?.relation ?? null,
+          guarantor2Address:  body.guarantor2?.address  ?? null,
         })
         .returning();
 

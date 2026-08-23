@@ -336,6 +336,18 @@ export const installments = pgTable('installments', {
   letterSentAt:    timestamp('letter_sent_at'),
   biometricStatus: biometricStatusEnum('biometric_status'),
   biometricDoneAt: timestamp('biometric_done_at'),
+  // Guarantor 1 (required on new installments)
+  guarantorName:     text('guarantor_name'),
+  guarantorPhone:    text('guarantor_phone'),
+  guarantorCnic:     text('guarantor_cnic'),
+  guarantorRelation: text('guarantor_relation'),
+  guarantorAddress:  text('guarantor_address'),
+  // Guarantor 2 (optional)
+  guarantor2Name:     text('guarantor2_name'),
+  guarantor2Phone:    text('guarantor2_phone'),
+  guarantor2Cnic:     text('guarantor2_cnic'),
+  guarantor2Relation: text('guarantor2_relation'),
+  guarantor2Address:  text('guarantor2_address'),
 }, (t) => [
   index('idx_installments_customer').on(t.customerId),
   index('idx_installments_status').on(t.status),

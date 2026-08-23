@@ -127,6 +127,13 @@
       "when": 1751932800000,
       "tag": "0017_admin_broadcasts",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787475704202,
+      "tag": "0018_add_installment_guarantors",
+      "breakpoints": true
     }
   ]
 }

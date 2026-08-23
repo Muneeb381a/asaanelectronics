@@ -11,6 +11,14 @@ import { productUnitsApi } from '../../api/productUnits.api.ts';
 import { fmtDate } from '../../utils/dateFormat.ts';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 
+const guarantorSchema = z.object({
+  name:     z.string().min(1, 'Naam zaruri hai'),
+  phone:    z.string().min(10, 'Valid phone number dalo'),
+  cnic:     z.string().optional(),
+  relation: z.string().optional(),
+  address:  z.string().optional(),
+});
+
 const formSchema = z.object({
   customerId:        z.string().min(1, 'Select a customer'),
   productId:         z.string().min(1, 'Select a product'),
@@ -23,6 +31,8 @@ const formSchema = z.object({
   profitMarkup:      z.number({ invalid_type_error: 'Required' }).min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
   paymentDueDay:     z.number().int().min(1).max(31).default(10),
+  guarantor1:        guarantorSchema,
+  guarantor2:        guarantorSchema.partial().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -1020,6 +1030,81 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           )}
         </div>
       )}
+
+      <Divider />
+
+      {/* Guarantors — required per installment */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-px bg-gray-100" />
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">Zamaanat Dahanday · Guarantors</p>
+          <div className="flex-1 h-px bg-gray-100" />
+        </div>
+
+        {/* Guarantor 1 — required */}
+        <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
+            <p className="text-xs font-semibold text-blue-800">Pehla Zamaanat Dahinday <span className="text-red-500">*</span></p>
+            <span className="ml-auto text-[10px] text-blue-400 font-normal">Lazmi hai</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <Label>Naam <span className="text-red-400">*</span></Label>
+              <input type="text" placeholder="Pura naam" {...register('guarantor1.name')} className={inp} />
+              {errors.guarantor1?.name && <p className="text-xs text-red-500 mt-1">{errors.guarantor1.name.message}</p>}
+            </div>
+            <div>
+              <Label>Phone <span className="text-red-400">*</span></Label>
+              <input type="tel" placeholder="03xx-xxxxxxx" {...register('guarantor1.phone')} className={inp} />
+              {errors.guarantor1?.phone && <p className="text-xs text-red-500 mt-1">{errors.guarantor1.phone.message}</p>}
+            </div>
+            <div>
+              <Label>CNIC <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <input type="text" placeholder="xxxxx-xxxxxxx-x" {...register('guarantor1.cnic')} className={inp} />
+            </div>
+            <div>
+              <Label>Rishtah <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <input type="text" placeholder="e.g. Bhai, Dost, Uncle" {...register('guarantor1.relation')} className={inp} />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Pata <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <input type="text" placeholder="Ghar ka pata" {...register('guarantor1.address')} className={inp} />
+            </div>
+          </div>
+        </div>
+
+        {/* Guarantor 2 — optional */}
+        <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-gray-400 text-white text-[10px] font-bold flex items-center justify-center shrink-0">2</span>
+            <p className="text-xs font-semibold text-gray-600">Doosra Zamaanat Dahinday</p>
+            <span className="ml-auto text-[10px] text-gray-400 font-normal">Optional</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <Label>Naam</Label>
+              <input type="text" placeholder="Pura naam" {...register('guarantor2.name')} className={inp} />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <input type="tel" placeholder="03xx-xxxxxxx" {...register('guarantor2.phone')} className={inp} />
+            </div>
+            <div>
+              <Label>CNIC</Label>
+              <input type="text" placeholder="xxxxx-xxxxxxx-x" {...register('guarantor2.cnic')} className={inp} />
+            </div>
+            <div>
+              <Label>Rishtah</Label>
+              <input type="text" placeholder="e.g. Bhai, Dost, Uncle" {...register('guarantor2.relation')} className={inp} />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Pata</Label>
+              <input type="text" placeholder="Ghar ka pata" {...register('guarantor2.address')} className={inp} />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="flex gap-2 pt-1">

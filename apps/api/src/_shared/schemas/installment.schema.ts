@@ -3,6 +3,14 @@ import { z } from 'zod';
 // 1095 = 3 years in days (daily plans can run longer than 365 days)
 const MONTHS_MAX = 1095;
 
+const guarantorSchema = z.object({
+  name:     z.string().min(1, 'Guarantor name required'),
+  phone:    z.string().min(10, 'Valid phone required'),
+  cnic:     z.string().optional(),
+  relation: z.string().optional(),
+  address:  z.string().optional(),
+});
+
 export const createInstallmentSchema = z.object({
   customerId:        z.string(),
   productId:         z.string(),
@@ -14,6 +22,8 @@ export const createInstallmentSchema = z.object({
   cashPrice:         z.number().positive().optional(),
   profitMarkup:      z.number().min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
+  guarantor1:        guarantorSchema,
+  guarantor2:        guarantorSchema.partial().optional(),
 });
 
 export type CreateInstallmentInput = z.infer<typeof createInstallmentSchema>;
