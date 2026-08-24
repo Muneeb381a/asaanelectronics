@@ -239,26 +239,14 @@ export class CustomersService {
         fileNumber: customers.fileNumber,
         riskScore,
         lifecycleStage: lifecycleSQL,
-        paymentGrade: sql<string>`COALESCE((
-          SELECT
-            CASE
-              WHEN COUNT(*) FILTER (WHERE i.status = 'DEFAULTED') > 0 THEN 'D'
-              WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (
-                CASE WHEN i.payment_frequency = 'daily'
-                  THEN i.start_date + (i.months || ' days')::interval
-                  ELSE i.start_date + (i.months || ' months')::interval
-                END) < NOW()) > 1 THEN 'C'
-              WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (
-                CASE WHEN i.payment_frequency = 'daily'
-                  THEN i.start_date + (i.months || ' days')::interval
-                  ELSE i.start_date + (i.months || ' months')::interval
-                END) < NOW()) = 1 THEN 'B'
-              WHEN COUNT(*) FILTER (WHERE i.status = 'COMPLETED') > 0 THEN 'A'
-              ELSE NULL
-            END
-          FROM installments i
-          WHERE i.customer_id = ${customers.id} AND i.deleted_at IS NULL
-        ), NULL)`,
+        paymentGrade: sql<string>`CASE ${lifecycleSQL}
+          WHEN 'DEFAULT'  THEN 'D'
+          WHEN 'AT_RISK'  THEN 'C'
+          WHEN 'ACTIVE'   THEN 'B'
+          WHEN 'REPEAT'   THEN 'A'
+          WHEN 'CLOSED'   THEN 'A'
+          ELSE NULL
+        END`,
       }).from(customers).where(where).limit(limit).offset((page - 1) * limit)
         .orderBy(orderExpr),
       lifecycle
