@@ -239,14 +239,6 @@ export class CustomersService {
         fileNumber: customers.fileNumber,
         riskScore,
         lifecycleStage: lifecycleSQL,
-        paymentGrade: sql<string>`CASE ${lifecycleSQL}
-          WHEN 'DEFAULT'  THEN 'D'
-          WHEN 'AT_RISK'  THEN 'C'
-          WHEN 'ACTIVE'   THEN 'B'
-          WHEN 'REPEAT'   THEN 'A'
-          WHEN 'CLOSED'   THEN 'A'
-          ELSE NULL
-        END`,
       }).from(customers).where(where).limit(limit).offset((page - 1) * limit)
         .orderBy(orderExpr),
       lifecycle
@@ -258,13 +250,21 @@ export class CustomersService {
     const gradeLabel: Record<string, string> = {
       A: 'Excellent', B: 'Good', C: 'Fair', D: 'Poor',
     };
-    const data = rows.map((r) => ({
-      ...r,
-      riskScore: Number(r.riskScore),
-      riskLabel: riskLabel(Number(r.riskScore)),
-      paymentGrade: r.paymentGrade as 'A' | 'B' | 'C' | 'D' | null,
-      paymentGradeLabel: r.paymentGrade ? gradeLabel[r.paymentGrade] : null,
-    }));
+    const data = rows.map((r) => {
+      const stage = r.lifecycleStage as string | null;
+      const paymentGrade: 'A' | 'B' | 'C' | 'D' | null =
+        stage === 'DEFAULT' ? 'D' :
+        stage === 'AT_RISK' ? 'C' :
+        (stage === 'ACTIVE' || stage === 'REPEAT') ? 'B' :
+        stage === 'CLOSED' ? 'A' : null;
+      return {
+        ...r,
+        riskScore: Number(r.riskScore),
+        riskLabel: riskLabel(Number(r.riskScore)),
+        paymentGrade,
+        paymentGradeLabel: paymentGrade ? gradeLabel[paymentGrade] : null,
+      };
+    });
     return { data, total, page, limit };
   }
 
