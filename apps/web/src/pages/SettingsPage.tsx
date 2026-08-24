@@ -5,8 +5,9 @@ import {
   Monitor, Smartphone, Tablet, AlertTriangle, Trash2, LogOut, Shield,
   Users, TrendingUp, BookOpen, Plus, CreditCard, KeyRound, Eye, EyeOff, Target,
   MessageSquare, Pencil, Check, X, Settings, Store, Wallet, Lock, ChevronRight,
-  BadgeCheck, Zap, Package,
+  BadgeCheck, Zap, Package, Globe,
 } from 'lucide-react';
+import { setTimezone as applyTimezone } from '../utils/dateFormat.ts';
 import { sellersApi, type PaymentAccount, type PaymentAccountType } from '../api/sellers.api.ts';
 import { whatsappTemplatesApi, type WhatsappTemplate, TEMPLATE_VARS } from '../api/whatsappTemplates.api.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -275,6 +276,7 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
   const [lateFeePerDay,  setLateFeePerDay] = useState('');
   const [lateFeeGrace,   setLateFeeGrace]  = useState('');
   const [budgets, setBudgets]              = useState<Partial<Record<string,string>>>({});
+  const [tz, setTz]                        = useState('Asia/Karachi');
 
   useEffect(() => {
     if (shop) {
@@ -286,6 +288,7 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
       setLateFeeGrace(String(shop.settings?.lateFeeGraceDays??''));
       const eb = shop.settings?.expenseBudgets??{};
       setBudgets(Object.fromEntries(Object.entries(eb).map(([k,v])=>[k,String(v??'')])));
+      setTz(shop.settings?.timezone ?? 'Asia/Karachi');
     }
   }, [shop]);
 
@@ -302,9 +305,15 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
         lateFeePerDay:    lateFeePerDay  ? Number(lateFeePerDay)  : undefined,
         lateFeeGraceDays: lateFeeGrace   ? Number(lateFeeGrace)   : undefined,
         expenseBudgets: Object.keys(expenseBudgets).length ? expenseBudgets : undefined,
+        timezone: tz,
       }});
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey:['shop-me'] }); qc.invalidateQueries({ queryKey:['dashboard'] }); toast.success('Settings save ho gaye'); },
+    onSuccess: () => {
+      applyTimezone(tz);
+      qc.invalidateQueries({ queryKey:['shop-me'] });
+      qc.invalidateQueries({ queryKey:['dashboard'] });
+      toast.success('Settings save ho gaye');
+    },
     onError: (e) => toast.error(getErrorMessage(e,'Save nahi hua')),
   });
 
@@ -318,6 +327,7 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
     commission    !== String(shop.settings?.commissionRate??'')  ||
     lateFeePerDay !== String(shop.settings?.lateFeePerDay??'')   ||
     lateFeeGrace  !== String(shop.settings?.lateFeeGraceDays??'') ||
+    tz            !== (shop.settings?.timezone ?? 'Asia/Karachi') ||
     budgetDirty
   );
 
@@ -426,6 +436,27 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
         </div>
       </Card>
 
+      {/* Timezone */}
+      <Card>
+        <CardHeader icon={Globe} iconBg="bg-violet-50" iconColor="text-violet-600" title="Time Zone" subtitle="App mein tamam dates aur times is timezone k hisaab sy dikhenge"/>
+        <div className="p-6 space-y-3">
+          <div className="max-w-xs">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Select Timezone</label>
+            <select value={tz} onChange={e=>setTz(e.target.value)} className={inp}>
+              <option value="Asia/Karachi">Pakistan Standard Time — UTC+5:00 (Asia/Karachi)</option>
+              <option value="Asia/Kabul">Afghanistan Time — UTC+4:30 (Asia/Kabul)</option>
+              <option value="Asia/Dubai">Gulf Standard Time — UTC+4:00 (Asia/Dubai)</option>
+              <option value="Asia/Riyadh">Arabia Standard Time — UTC+3:00 (Asia/Riyadh)</option>
+              <option value="Asia/Calcutta">India Standard Time — UTC+5:30 (Asia/Kolkata)</option>
+              <option value="Europe/London">UK Time — UTC+0/+1 (Europe/London)</option>
+              <option value="America/New_York">Eastern Time — UTC-5/-4 (America/New_York)</option>
+              <option value="America/Los_Angeles">Pacific Time — UTC-8/-7 (America/Los_Angeles)</option>
+            </select>
+          </div>
+          <p className="text-xs text-slate-400">Default: Pakistan Standard Time. Save karne ke baad dates page reload bina update ho jayenge.</p>
+        </div>
+      </Card>
+
       {/* Save */}
       <div className="flex items-center gap-3">
         <button onClick={()=>mutation.mutate()} disabled={!dirty||mutation.isPending}
@@ -440,6 +471,7 @@ function TargetsSection({ shop }: { shop: Awaited<ReturnType<typeof sellersApi.g
             setCommission(String(shop?.settings?.commissionRate??''));
             setLateFeePerDay(String(shop?.settings?.lateFeePerDay??''));
             setLateFeeGrace(String(shop?.settings?.lateFeeGraceDays??''));
+            setTz(shop?.settings?.timezone ?? 'Asia/Karachi');
             const eb=shop?.settings?.expenseBudgets??{};
             setBudgets(Object.fromEntries(Object.entries(eb).map(([k,v])=>[k,String(v??'')])));
           }} className="text-sm text-slate-400 hover:text-slate-700 transition">Discard</button>

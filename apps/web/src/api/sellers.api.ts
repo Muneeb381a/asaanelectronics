@@ -13,6 +13,7 @@ export interface SellerSettings {
   lateFeePerDay?: number;
   lateFeeGraceDays?: number;
   staffTargets?: Record<string, { daily?: number; monthly?: number }>;
+  timezone?: string;
 }
 
 export interface Seller {

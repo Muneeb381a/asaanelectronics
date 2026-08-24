@@ -11,6 +11,8 @@ import {
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
 import { statsApi } from '../api/stats.api.ts';
+import { sellersApi } from '../api/sellers.api.ts';
+import { setTimezone } from '../utils/dateFormat.ts';
 import { profileApi } from '../api/profile.api.ts';
 import { billingApi } from '../api/billing.api.ts';
 import { broadcastsApi, type Broadcast } from '../api/broadcasts.api.ts';
@@ -115,6 +117,16 @@ export default function DashboardLayout() {
     staleTime: 5 * 60_000,
     enabled: user?.role !== 'SUPER_ADMIN',
   });
+
+  const { data: shopMe } = useQuery({
+    queryKey: ['shop-me'],
+    queryFn: sellersApi.getMe,
+    staleTime: 5 * 60_000,
+    enabled: isOwner,
+  });
+  useEffect(() => {
+    setTimezone(shopMe?.settings?.timezone ?? 'Asia/Karachi');
+  }, [shopMe?.settings?.timezone]);
 
   const getDismissed = useCallback(() => {
     try { return JSON.parse(localStorage.getItem('dismissed_broadcasts') ?? '[]') as string[]; }

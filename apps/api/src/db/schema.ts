@@ -81,6 +81,7 @@ export const sellers = pgTable('sellers', {
     lateFeePerDay?: number;
     lateFeeGraceDays?: number;
     staffTargets?: Record<string, { daily?: number; monthly?: number }>;
+    timezone?: string;
   }>(),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
 });

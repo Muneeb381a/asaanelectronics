@@ -46,7 +46,7 @@ export class SellersService {
     };
   }
 
-  async update(sellerId: string, body: { shopName?: string; phone?: string; address?: string; murabahaMode?: boolean; settings?: { dailyTarget?: number; weeklyTarget?: number; monthlyTarget?: number; commissionRate?: number; expenseBudgets?: Record<string, number>; lateFeePerDay?: number; lateFeeGraceDays?: number; staffTargets?: Record<string, { daily?: number; monthly?: number }> } }) {
+  async update(sellerId: string, body: { shopName?: string; phone?: string; address?: string; murabahaMode?: boolean; settings?: { dailyTarget?: number; weeklyTarget?: number; monthlyTarget?: number; commissionRate?: number; expenseBudgets?: Record<string, number>; lateFeePerDay?: number; lateFeeGraceDays?: number; staffTargets?: Record<string, { daily?: number; monthly?: number }>; timezone?: string } }) {
     const [updated] = await db
       .update(sellers)
       .set(body)
