@@ -137,49 +137,16 @@ export class CustomersService {
       ? and(lifecycleCond, eq(customers.verificationStatus, verificationStatus as 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED'))
       : lifecycleCond;
 
-    // Single correlated subquery aggregates all installment stats in one pass
-    // (replaces 4 separate EXISTS/COUNT subqueries — 4× faster at scale)
     const riskScore = sql<number>`LEAST(100, (
-      SELECT (
-        CASE
-          WHEN MAX(CASE WHEN i.status = 'DEFAULTED' THEN 1 ELSE 0 END) = 1 THEN 40
-          WHEN MAX(CASE WHEN i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (
-            CASE WHEN i.payment_frequency = 'daily'
-              THEN i.start_date + (i.months || ' days')::interval
-              ELSE i.start_date + (i.months || ' months')::interval
-            END) < NOW() THEN 1 ELSE 0 END) = 1 THEN 22
-          ELSE 0
-        END
-        +
-        CASE
-          WHEN ${customers.guarantorName} IS NULL THEN 20
-          WHEN ${customers.guarantor2Cnic} IS NOT NULL THEN 0
-          WHEN ${customers.guarantorCnic}  IS NOT NULL THEN 8
-          ELSE 14
-        END
-        +
-        CASE ${customers.verificationStatus}
-          WHEN 'APPROVED'     THEN 0
-          WHEN 'UNDER_REVIEW' THEN 8
-          WHEN 'PENDING'      THEN 15
-          WHEN 'REJECTED'     THEN 20
-          ELSE 15
-        END
-        +
-        CASE
-          WHEN ${customers.occupation} IS NULL AND ${customers.employer} IS NULL THEN 10
-          WHEN ${customers.employer}   IS NULL THEN 5
-          ELSE 0
-        END
-        +
-        CASE
-          WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE' AND i.deleted_at IS NULL) >= 3 THEN 10
-          WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE' AND i.deleted_at IS NULL) = 2  THEN 5
-          ELSE 0
-        END
-      )::int
-      FROM installments i
-      WHERE i.customer_id = ${customers.id} AND i.deleted_at IS NULL
+      CASE
+        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL) THEN 40
+        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (CASE WHEN i.payment_frequency = 'daily' THEN i.start_date + (i.months || ' days')::interval ELSE i.start_date + (i.months || ' months')::interval END) < NOW()) THEN 22
+        ELSE 0
+      END
+      + CASE WHEN ${customers.guarantorName} IS NULL THEN 20 WHEN ${customers.guarantor2Cnic} IS NOT NULL THEN 0 WHEN ${customers.guarantorCnic} IS NOT NULL THEN 8 ELSE 14 END
+      + CASE ${customers.verificationStatus} WHEN 'APPROVED' THEN 0 WHEN 'UNDER_REVIEW' THEN 8 WHEN 'PENDING' THEN 15 WHEN 'REJECTED' THEN 20 ELSE 15 END
+      + CASE WHEN ${customers.occupation} IS NULL AND ${customers.employer} IS NULL THEN 10 WHEN ${customers.employer} IS NULL THEN 5 ELSE 0 END
+      + COALESCE((SELECT CASE WHEN COUNT(*) >= 3 THEN 10 WHEN COUNT(*) >= 2 THEN 5 ELSE 0 END FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL), 0)
     )::int)`;
 
     const sortColMap: Record<string, typeof customers.createdAt | typeof customers.name> = {
