@@ -740,7 +740,7 @@ function EarlySettlementModal({ inst, onClose }: { inst: Installment; onClose: (
 
   const payMutation = useMutation({
     mutationFn: () => import('../api/payments.api.ts').then(m =>
-      m.paymentsApi.create({
+      m.paymentsApi.record({
         installmentId: inst.id,
         amount: settlement!.settlementAmount,
         method: 'CASH',

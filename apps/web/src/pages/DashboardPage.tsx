@@ -170,6 +170,7 @@ export default function DashboardPage() {
 
   /* ── derived ── */
   const d              = dash?.stats;
+  const agingBuckets   = dash?.reports?.agingBuckets;
   const today          = fmtDate(new Date());
   const todayTotal     = (d?.todayCollections ?? 0) + (d?.todayCashSales ?? 0);
   const monthTotal     = (d?.monthCollections ?? 0) + (d?.monthCashSales ?? 0);
@@ -555,22 +556,22 @@ export default function DashboardPage() {
             </div>
 
             {/* OVERDUE AGING BUCKETS */}
-            {isOwner && d?.agingBuckets && (d.agingBuckets.days0_7 > 0 || d.agingBuckets.days8_30 > 0 || d.agingBuckets.days31_90 > 0 || d.agingBuckets.days90plus > 0) && (
+            {isOwner && agingBuckets && (agingBuckets.days0_7 > 0 || agingBuckets.days8_30 > 0 || agingBuckets.days31_90 > 0 || agingBuckets.days90plus > 0) && (
               <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #F0F0F5' }}>
                 <div className="px-6 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid #F5F5FA' }}>
                   <Clock size={14} style={{ color: '#DC2626' }} />
                   <h2 className="text-[15px] font-black" style={{ color: '#1A1A2E' }}>Overdue Breakdown</h2>
                   <span className="ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full"
                     style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
-                    {(d.agingBuckets.days0_7 + d.agingBuckets.days8_30 + d.agingBuckets.days31_90 + d.agingBuckets.days90plus)} total
+                    {(agingBuckets.days0_7 + agingBuckets.days8_30 + agingBuckets.days31_90 + agingBuckets.days90plus)} total
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-gray-50">
                   {[
-                    { label: '1–7 din', value: d.agingBuckets.days0_7,   bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' },
-                    { label: '8–30 din', value: d.agingBuckets.days8_30,  bg: '#FFF7ED', color: '#C2410C', border: '#FDBA74' },
-                    { label: '31–90 din', value: d.agingBuckets.days31_90, bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' },
-                    { label: '90+ din', value: d.agingBuckets.days90plus, bg: '#FFF1F2', color: '#9F1239', border: '#FDA4AF' },
+                    { label: '1–7 din', value: agingBuckets.days0_7,   bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' },
+                    { label: '8–30 din', value: agingBuckets.days8_30,  bg: '#FFF7ED', color: '#C2410C', border: '#FDBA74' },
+                    { label: '31–90 din', value: agingBuckets.days31_90, bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' },
+                    { label: '90+ din', value: agingBuckets.days90plus, bg: '#FFF1F2', color: '#9F1239', border: '#FDA4AF' },
                   ].map((b) => (
                     <div key={b.label} className="flex flex-col items-center py-5 px-3"
                       style={{ background: b.value > 0 ? b.bg : '#FAFAFA' }}>
@@ -582,11 +583,11 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
-                {d.agingBuckets.days31_90 + d.agingBuckets.days90plus > 0 && (
+                {agingBuckets.days31_90 + agingBuckets.days90plus > 0 && (
                   <div className="px-5 py-3 flex items-center gap-2 border-t border-red-50">
                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 animate-pulse"/>
                     <p className="text-[11px] font-semibold" style={{ color: '#DC2626' }}>
-                      {d.agingBuckets.days31_90 + d.agingBuckets.days90plus} accounts 30+ din se overdue — fori action zaruri hai
+                      {agingBuckets.days31_90 + agingBuckets.days90plus} accounts 30+ din se overdue — fori action zaruri hai
                     </p>
                   </div>
                 )}
