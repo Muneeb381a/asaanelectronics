@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
 import { verificationsApi, type AvoStat } from '../api/verifications.api.ts';
-import { reportsApi, type AreaRow, type AgingBucket, type HeatmapDay, type ForecastMonth, type CohortRow } from '../api/reports.api.ts';
+import { reportsApi, type AreaRow, type AgingBucket, type HeatmapDay, type ForecastMonth, type CohortRow, type MonthlyCustomerRow } from '../api/reports.api.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { sellersApi } from '../api/sellers.api.ts';
@@ -10,7 +10,7 @@ import { useAuthStore } from '../store/auth.store.ts';
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle,
   BarChart3, Send, UserCheck, MapPin, Activity, Gift, CalendarDays,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, FileText, Printer,
 } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
@@ -264,6 +264,27 @@ export default function ReportsPage() {
     if (hmMonth === 12) { setHmYear((y) => y + 1); setHmMonth(1); }
     else setHmMonth((m) => m + 1);
   }
+
+  // Monthly statement state — separate month picker
+  const [stmtYear,  setStmtYear]  = useState(now.getFullYear());
+  const [stmtMonth, setStmtMonth] = useState(now.getMonth() + 1);
+
+  function prevStmtMonth() {
+    if (stmtMonth === 1) { setStmtYear((y) => y - 1); setStmtMonth(12); }
+    else setStmtMonth((m) => m - 1);
+  }
+  function nextStmtMonth() {
+    if (stmtYear === now.getFullYear() && stmtMonth === now.getMonth() + 1) return;
+    if (stmtMonth === 12) { setStmtYear((y) => y + 1); setStmtMonth(1); }
+    else setStmtMonth((m) => m + 1);
+  }
+
+  const { data: stmtRows = [], isFetching: stmtLoading } = useQuery<MonthlyCustomerRow[]>({
+    queryKey: ['monthly-customers', stmtYear, stmtMonth],
+    queryFn:  () => reportsApi.getMonthlyCustomers(stmtYear, stmtMonth),
+    staleTime: 5 * 60_000,
+    enabled:  canReports,
+  });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reports'],
@@ -1009,6 +1030,189 @@ export default function ReportsPage() {
             })()}
           </div>
         )}
+
+        {/* ── Monthly Statement ── */}
+        <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-hidden" id="monthly-statement">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
+                <FileText size={15} className="text-blue-600"/>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">Monthly Statement</p>
+                <p className="text-xs text-slate-400">Tamam active installments — payment status is mahine ka</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Month navigator */}
+              <div className="flex items-center gap-1 border border-slate-200 rounded-xl overflow-hidden">
+                <button onClick={prevStmtMonth} className="p-1.5 hover:bg-slate-100 transition text-slate-500">
+                  <ChevronLeft size={15}/>
+                </button>
+                <span className="text-sm font-bold text-slate-700 min-w-[110px] text-center">
+                  {MONTH_NAMES_SHORT[stmtMonth - 1]} {stmtYear}
+                </span>
+                <button
+                  onClick={nextStmtMonth}
+                  disabled={stmtYear === now.getFullYear() && stmtMonth === now.getMonth() + 1}
+                  className="p-1.5 hover:bg-slate-100 transition text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight size={15}/>
+                </button>
+              </div>
+              {/* Print */}
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+              >
+                <Printer size={13}/>
+                Print
+              </button>
+            </div>
+          </div>
+
+          {stmtLoading ? (
+            <div className="py-12 text-center">
+              <div className="inline-flex items-center gap-2 text-sm text-slate-400">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"/>
+                Loading…
+              </div>
+            </div>
+          ) : stmtRows.length === 0 ? (
+            <div className="py-16 text-center text-slate-400 text-sm">
+              Is mahine koi active installment nahi mili
+            </div>
+          ) : (() => {
+            const paid    = stmtRows.filter((r) => r.status === 'Paid');
+            const pending = stmtRows.filter((r) => r.status === 'Pending');
+            const def     = stmtRows.filter((r) => r.status === 'Defaulted');
+            const totalExpected  = stmtRows.reduce((s, r) => s + r.rupees, 0);
+            const totalCollected = stmtRows.reduce((s, r) => s + r.paidAmount, 0);
+            const totalRemaining = stmtRows.reduce((s, r) => s + r.remaining, 0);
+            const totalPortfolio = stmtRows.reduce((s, r) => s + r.totalAmount, 0);
+
+            return (
+              <>
+                {/* Summary chips */}
+                <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap gap-3">
+                  {[
+                    { label: 'Total Plans',     value: String(stmtRows.length),   color: 'bg-slate-50 border-slate-200 text-slate-700' },
+                    { label: 'Paid',            value: String(paid.length),        color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+                    { label: 'Pending',         value: String(pending.length),     color: 'bg-amber-50 border-amber-200 text-amber-700' },
+                    { label: 'Defaulted',       value: String(def.length),         color: 'bg-red-50 border-red-200 text-red-600' },
+                    { label: 'Is Mahine Wصول', value: pkr(totalCollected),        color: 'bg-blue-50 border-blue-200 text-blue-700' },
+                    { label: 'Baqi Balance',    value: pkr(totalRemaining),        color: 'bg-orange-50 border-orange-200 text-orange-700' },
+                    { label: 'Total Portfolio', value: pkr(totalPortfolio),        color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className={`px-4 py-2.5 rounded-xl border ${color} min-w-[110px]`}>
+                      <p className="text-[10px] font-bold uppercase tracking-wide opacity-60">{label}</p>
+                      <p className="text-base font-black mt-0.5 tabular-nums">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">#</th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Invoice</th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Customer</th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Product</th>
+                        <th className="text-right px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Total</th>
+                        <th className="text-right px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Ab Tak Wصول</th>
+                        <th className="text-right px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Is Mahine</th>
+                        <th className="text-right px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Baqi</th>
+                        <th className="text-center px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wide">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {stmtRows.map((r) => {
+                        const statusStyle =
+                          r.status === 'Paid'      ? 'bg-emerald-100 text-emerald-700' :
+                          r.status === 'Defaulted' ? 'bg-red-100 text-red-600'         :
+                                                     'bg-amber-100 text-amber-700';
+                        const rowStyle =
+                          r.status === 'Defaulted' ? 'bg-red-50/30 hover:bg-red-50/60' :
+                          r.status === 'Paid'      ? 'hover:bg-emerald-50/40'           :
+                                                     'hover:bg-slate-50/60';
+                        return (
+                          <tr key={r.clientId + r.srNo} className={`transition ${rowStyle}`}>
+                            <td className="px-4 py-3 text-xs text-slate-400 font-medium">{r.srNo}</td>
+                            <td className="px-4 py-3 text-xs font-mono text-slate-500">{r.clientId}</td>
+                            <td className="px-4 py-3">
+                              <p className="text-sm font-semibold text-slate-900 leading-tight">{r.customerName}</p>
+                              <p className="text-[11px] text-slate-400">{r.customerPhone}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="text-xs font-medium text-slate-700 max-w-[160px] truncate" title={r.productName}>{r.productName}</p>
+                              <p className="text-[10px] text-slate-400">{r.paymentFrequency === 'daily' ? 'Daily' : 'Monthly'} · {pkr(r.monthlyAmount)}/{r.paymentFrequency === 'daily' ? 'day' : 'mo'}</p>
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-slate-800 text-xs">{pkr(r.totalAmount)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-blue-700 text-xs">{pkr(r.paidSinceStart)}</td>
+                            <td className="px-4 py-3 text-right">
+                              {r.paidAmount > 0
+                                ? <span className="font-bold text-emerald-600 text-xs">{pkr(r.paidAmount)}</span>
+                                : <span className="text-xs text-slate-300">—</span>
+                              }
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-orange-600 text-xs">{pkr(r.remaining)}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusStyle}`}>
+                                {r.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="border-t-2 border-slate-200 bg-slate-50">
+                      <tr>
+                        <td colSpan={4} className="px-4 py-3 text-xs font-black text-slate-700">
+                          Total ({stmtRows.length} plans)
+                        </td>
+                        <td className="px-4 py-3 text-right text-xs font-black text-slate-800">{pkr(totalPortfolio)}</td>
+                        <td className="px-4 py-3 text-right text-xs font-black text-blue-700">{pkr(stmtRows.reduce((s,r) => s+r.paidSinceStart, 0))}</td>
+                        <td className="px-4 py-3 text-right text-xs font-black text-emerald-700">{pkr(totalCollected)}</td>
+                        <td className="px-4 py-3 text-right text-xs font-black text-orange-700">{pkr(totalRemaining)}</td>
+                        <td className="px-4 py-3 text-center text-xs text-slate-400">
+                          {paid.length}P · {pending.length}⏳ · {def.length}❌
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Collection rate bar */}
+                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50">
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-slate-500 shrink-0">Is mahine collection rate:</p>
+                    <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          totalExpected > 0 && (totalCollected / totalExpected) >= 0.8
+                            ? 'bg-emerald-500'
+                            : totalExpected > 0 && (totalCollected / totalExpected) >= 0.5
+                              ? 'bg-amber-500'
+                              : 'bg-red-500'
+                        }`}
+                        style={{ width: totalExpected > 0 ? `${Math.min(100, (totalCollected / totalExpected) * 100).toFixed(1)}%` : '0%' }}
+                      />
+                    </div>
+                    <p className="text-xs font-black text-slate-700 tabular-nums shrink-0">
+                      {totalExpected > 0 ? `${Math.round((totalCollected / totalExpected) * 100)}%` : '—'}
+                    </p>
+                    <p className="text-xs text-slate-400 shrink-0">
+                      {pkr(totalCollected)} / {pkr(totalExpected)}
+                    </p>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </div>
 
       </div>
 

@@ -19,6 +19,9 @@ export type MonthlyCustomerRow = {
   clientId:          string;
   customerName:      string;
   customerPhone:     string;
+  productName:       string;
+  totalAmount:       number;
+  paidSinceStart:    number;
   rupees:            number;
   paidAmount:        number;
   monthlyAmount:     number;
@@ -173,6 +176,8 @@ export class ReportsService {
       invoiceNumber:    installments.invoiceNumber,
       customerName:     customers.name,
       customerPhone:    customers.phone,
+      productName:      products.name,
+      totalAmount:      installments.totalAmount,
       monthly:          installments.monthly,
       remaining:        installments.remaining,
       paymentFrequency: installments.paymentFrequency,
@@ -185,6 +190,7 @@ export class ReportsService {
       .select(instCols)
       .from(installments)
       .innerJoin(customers, eq(installments.customerId, customers.id))
+      .innerJoin(products,  eq(installments.productId,  products.id))
       .where(and(
         eq(customers.sellerId,      sellerId),
         isNull(installments.deletedAt),
@@ -223,6 +229,7 @@ export class ReportsService {
           .select(instCols)
           .from(installments)
           .innerJoin(customers, eq(installments.customerId, customers.id))
+          .innerJoin(products,  eq(installments.productId,  products.id))
           .where(and(
             eq(customers.sellerId, sellerId),
             isNull(installments.deletedAt),
@@ -264,6 +271,8 @@ export class ReportsService {
     return all.map((r, idx) => {
       const paid        = payMap.get(r.id) ?? 0;
       const monthly     = Number(r.monthly);
+      const totalAmt    = Number(r.totalAmount);
+      const remaining   = Number(r.remaining);
       const expectedAmt = (r.paymentFrequency ?? 'monthly') === 'daily'
         ? monthly * daysInMonth
         : monthly;
@@ -273,10 +282,13 @@ export class ReportsService {
         clientId:         r.invoiceNumber ?? '—',
         customerName:     r.customerName,
         customerPhone:    r.customerPhone,
+        productName:      r.productName,
+        totalAmount:      totalAmt,
+        paidSinceStart:   totalAmt - remaining,
         rupees:           status === 'Paid' ? paid : expectedAmt,
         paidAmount:       paid,
         monthlyAmount:    monthly,
-        remaining:        Number(r.remaining),
+        remaining,
         status,
         paymentFrequency: (r.paymentFrequency ?? 'monthly') as 'monthly' | 'daily',
       };

@@ -29,6 +29,9 @@ export type MonthlyCustomerRow = {
   clientId:         string;
   customerName:     string;
   customerPhone:    string;
+  productName:      string;
+  totalAmount:      number;
+  paidSinceStart:   number;
   rupees:           number;
   paidAmount:       number;
   monthlyAmount:    number;
