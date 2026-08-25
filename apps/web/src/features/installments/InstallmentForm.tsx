@@ -19,6 +19,17 @@ const guarantorSchema = z.object({
   address:  z.string().optional(),
 });
 
+// When all guarantor fields are empty strings, treat the whole object as absent.
+// This prevents Zod's min(1)/min(10) checks from triggering on empty inputs.
+const optionalGuarantor = z.preprocess(
+  (v) => {
+    if (typeof v !== 'object' || !v) return undefined;
+    const obj = v as Record<string, string>;
+    return Object.values(obj).some((s) => s?.trim()) ? v : undefined;
+  },
+  guarantorSchema.partial().optional(),
+);
+
 const formSchema = z.object({
   customerId:        z.string().min(1, 'Select a customer'),
   productId:         z.string().min(1, 'Select a product'),
@@ -31,8 +42,8 @@ const formSchema = z.object({
   profitMarkup:      z.number({ invalid_type_error: 'Required' }).min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
   paymentDueDay:     z.number().int().min(1).max(31).default(10),
-  guarantor1:        guarantorSchema.partial().optional(),
-  guarantor2:        guarantorSchema.partial().optional(),
+  guarantor1:        optionalGuarantor,
+  guarantor2:        optionalGuarantor,
 });
 
 type FormData = z.infer<typeof formSchema>;
