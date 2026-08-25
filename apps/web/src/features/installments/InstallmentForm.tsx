@@ -31,7 +31,7 @@ const formSchema = z.object({
   profitMarkup:      z.number({ invalid_type_error: 'Required' }).min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
   paymentDueDay:     z.number().int().min(1).max(31).default(10),
-  guarantor1:        guarantorSchema,
+  guarantor1:        guarantorSchema.partial().optional(),
   guarantor2:        guarantorSchema.partial().optional(),
 });
 
@@ -1232,12 +1232,12 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           </div>
         )}
 
-        {/* Guarantor 1 — required */}
+        {/* Guarantor 1 — optional */}
         <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5 space-y-3">
           <div className="flex items-center gap-2">
             <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
-            <p className="text-xs font-semibold text-blue-800">Pehla Zamaanat Dahinday <span className="text-red-500">*</span></p>
-            <span className="ml-auto text-[10px] text-blue-400 font-normal">Lazmi hai</span>
+            <p className="text-xs font-semibold text-blue-800">Pehla Zamaanat Dahinday</p>
+            <span className="ml-auto text-[10px] text-blue-400 font-normal">Optional</span>
           </div>
           {g1Match?.name && (
             <button type="button"
@@ -1249,14 +1249,12 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <Label>Naam <span className="text-red-400">*</span></Label>
+              <Label>Naam</Label>
               <input type="text" placeholder="Pura naam" {...register('guarantor1.name')} className={inp} />
-              {errors.guarantor1?.name && <p className="text-xs text-red-500 mt-1">{errors.guarantor1.name.message}</p>}
             </div>
             <div>
-              <Label>Phone <span className="text-red-400">*</span></Label>
+              <Label>Phone</Label>
               <input type="tel" placeholder="03xx-xxxxxxx" {...register('guarantor1.phone')} className={inp} />
-              {errors.guarantor1?.phone && <p className="text-xs text-red-500 mt-1">{errors.guarantor1.phone.message}</p>}
             </div>
             <div>
               <Label>CNIC <span className="text-gray-400 font-normal">(optional)</span></Label>
