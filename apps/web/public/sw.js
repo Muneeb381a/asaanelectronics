@@ -51,7 +51,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests: network-first, fall back to cached root
+  // Navigation requests: network-first, fall back to cached shell
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -60,12 +60,19 @@ self.addEventListener('fetch', (event) => {
           caches.open(SHELL_CACHE).then((c) => c.put(req, clone));
           return res;
         })
-        .catch(() => caches.match('/').then((c) => c ?? caches.match('/index.html')))
+        .catch(() =>
+          caches.match('/').then((c) =>
+            c ?? caches.match('/index.html').then((c2) =>
+              c2 ?? new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } })
+            )
+          )
+        )
     );
     return;
   }
 
   // Static assets (JS, CSS, images): cache-first (content-hashed filenames are immutable)
+  // Falls back to network; if network also fails (e.g. stale chunk after new deploy), returns 408
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
@@ -75,7 +82,9 @@ self.addEventListener('fetch', (event) => {
           caches.open(SHELL_CACHE).then((c) => c.put(req, clone));
         }
         return res;
-      });
+      }).catch(() =>
+        new Response('', { status: 408, statusText: 'Request Timeout' })
+      );
     })
   );
 });
