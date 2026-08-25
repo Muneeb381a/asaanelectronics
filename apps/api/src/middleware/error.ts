@@ -47,6 +47,5 @@ export function errorMiddleware(
   }
 
   console.error('[Unhandled error]', err);
-  const detail = err.code ? `DB error ${err.code}: ${err.message}` : err.message;
-  res.status(500).json({ success: false, data: null, error: 'Internal server error', detail });
+  res.status(500).json({ success: false, data: null, error: 'Internal server error' });
 }
