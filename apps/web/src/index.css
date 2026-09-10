@@ -1,11 +1,17 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
 :root {
   color-scheme: light;
 }
 
 /* iOS safe area — bottom padding for home indicator */
 body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   padding-bottom: env(safe-area-inset-bottom);
 }
 
