@@ -192,12 +192,12 @@ export default function DashboardPage() {
   const staffTodayMax = staffToday.length > 0 ? Math.max(...staffToday.map(s => s.total)) : 0;
 
   return (
-    <div style={{ background: '#F8FAFF', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", minHeight: '100vh' }}>
+    <div style={{ background: '#F8FAFF', minHeight: '100vh' }}>
 
       {/* Fonts */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
       <style>{`
         :root { --ink: #0F172A; --ink-dim: #64748B; --surface: #FFFFFF; --accent: #6366F1; }
@@ -285,7 +285,7 @@ export default function DashboardPage() {
                       <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: '#FFB5C8' }}>
                         <ArrowUpRight size={17} style={{ color: '#E11D48' }}/>
                       </div>
-                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E', fontFamily: "'Syne', sans-serif" }}>
+                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E' }}>
                         {pkrSh(todayTotal)}
                       </p>
                       <p className="text-xs font-semibold mt-1.5" style={{ color: '#64748B' }}>Aaj Aya</p>
@@ -299,7 +299,7 @@ export default function DashboardPage() {
                       <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: '#FDBA74' }}>
                         <TrendingDown size={17} style={{ color: '#C2410C', transform: 'rotate(180deg)' }}/>
                       </div>
-                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E', fontFamily: "'Syne', sans-serif" }}>
+                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E' }}>
                         {pkrSh(monthTotal)}
                       </p>
                       <p className="text-xs font-semibold mt-1.5" style={{ color: '#64748B' }}>Is Mahine</p>
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                       <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: '#86EFAC' }}>
                         <CheckCircle size={17} style={{ color: '#16A34A' }}/>
                       </div>
-                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E', fontFamily: "'Syne', sans-serif" }}>
+                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E' }}>
                         {d?.activeCount ?? 0}
                       </p>
                       <p className="text-xs font-semibold mt-1.5" style={{ color: '#64748B' }}>Active Plans</p>
@@ -329,7 +329,7 @@ export default function DashboardPage() {
                         style={{ background: kpiOverdue > 0 ? '#FCA5A5' : '#C4B5FD' }}>
                         <Users size={17} style={{ color: kpiOverdue > 0 ? '#DC2626' : '#7C3AED' }}/>
                       </div>
-                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: kpiOverdue > 0 ? '#DC2626' : '#1A1A2E', fontFamily: "'Syne', sans-serif" }}>
+                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: kpiOverdue > 0 ? '#DC2626' : '#1A1A2E' }}>
                         {kpiOverdue > 0 ? kpiOverdue : '✓'}
                       </p>
                       <p className="text-xs font-semibold mt-1.5" style={{ color: '#64748B' }}>Overdue</p>
@@ -366,7 +366,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>{myBal.pendingHandover ? 'Handover Pending' : 'Cash Haath Mein'}</p>
-                  <p className="text-2xl font-black tabular-nums" style={{ color: '#1A1A2E', fontFamily: "'Syne', sans-serif" }}>{pkr(Number(myBal.pendingBalance))}</p>
+                  <p className="text-2xl font-black tabular-nums" style={{ color: '#1A1A2E' }}>{pkr(Number(myBal.pendingBalance))}</p>
                 </div>
                 {!myBal.pendingHandover && (
                   <button onClick={() => { setHandoverAmt(String(Number(myBal.pendingBalance))); setShowHandover(true); }}
@@ -576,7 +576,7 @@ export default function DashboardPage() {
                     <div key={b.label} className="flex flex-col items-center py-5 px-3"
                       style={{ background: b.value > 0 ? b.bg : '#FAFAFA' }}>
                       <p className="text-[1.5rem] font-black tabular-nums leading-none"
-                        style={{ color: b.value > 0 ? b.color : '#CBD5E1', fontFamily: "'Syne', sans-serif" }}>
+                        style={{ color: b.value > 0 ? b.color : '#CBD5E1' }}>
                         {b.value}
                       </p>
                       <p className="text-[11px] font-semibold mt-1.5" style={{ color: b.value > 0 ? b.color : '#94A3B8' }}>{b.label}</p>
@@ -642,7 +642,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-black tabular-nums" style={{ color: has ? '#1A1A2E' : '#CBD5E1', fontFamily: "'Syne', sans-serif" }}>
+                            <p className="text-sm font-black tabular-nums" style={{ color: has ? '#1A1A2E' : '#CBD5E1' }}>
                               {has ? pkrSh(staff.total) : '—'}
                             </p>
                             <p className="text-[10px] font-bold mt-0.5" style={{ color: has ? col : '#CBD5E1' }}>
@@ -655,7 +655,7 @@ export default function DashboardPage() {
                     {staffToday.some(s => s.total > 0) && (
                       <div className="flex items-center justify-between px-6 py-3.5" style={{ background: '#FAFBFF', borderTop: '1px solid #F5F5FA' }}>
                         <p className="text-xs font-bold" style={{ color: '#64748B' }}>Kul Aaj Ki Collection</p>
-                        <p className="font-black tabular-nums" style={{ color: '#1A1A2E', fontFamily: "'Syne', sans-serif", fontSize: '1rem' }}>
+                        <p className="font-black tabular-nums" style={{ color: '#1A1A2E', fontSize: '1rem' }}>
                           {pkr(staffToday.reduce((a, s) => a + s.total, 0))}
                         </p>
                       </div>
@@ -749,7 +749,7 @@ export default function DashboardPage() {
                         style={{ borderColor: '#F5F5FA' }}>
                         <p className="text-xs font-semibold" style={{ color: '#64748B' }}>{row.label}</p>
                         <div className="text-right">
-                          <p className="text-base font-black tabular-nums" style={{ color: row.color, fontFamily: "'Syne', sans-serif" }}>{row.value}</p>
+                          <p className="text-base font-black tabular-nums" style={{ color: row.color }}>{row.value}</p>
                           <p className="text-[10px]" style={{ color: '#94A3B8' }}>{row.sub}</p>
                         </div>
                       </div>
@@ -771,7 +771,7 @@ export default function DashboardPage() {
                         <p className="text-[11px] font-medium" style={{ color: '#94A3B8' }}>Staff ke paas</p>
                       </div>
                     </div>
-                    <span className="font-black tabular-nums text-sm" style={{ color: '#D97706', fontFamily: "'Syne', sans-serif" }}>{pkrSh(fieldTotal)}</span>
+                    <span className="font-black tabular-nums text-sm" style={{ color: '#D97706' }}>{pkrSh(fieldTotal)}</span>
                   </div>
                   {staffCash.map((s, i) => (
                     <div key={s.staffId} className={`flex items-center gap-2.5 px-5 py-3 ${i > 0 ? 'border-t' : ''}`} style={{ borderColor: '#F5F5FA' }}>
@@ -920,7 +920,7 @@ export default function DashboardPage() {
               <div className="p-5 space-y-3">
                 <div className="rounded-xl px-4 py-3" style={{ background: '#EEF2FF', border: '1px solid #E0E7FF' }}>
                   <p className="text-[10px] font-medium" style={{ color: '#64748B' }}>System ka hisaab</p>
-                  <p className="text-2xl font-black tabular-nums" style={{ color: '#0F172A', fontFamily: "'Syne', sans-serif" }}>{pkr(bal)}</p>
+                  <p className="text-2xl font-black tabular-nums" style={{ color: '#0F172A' }}>{pkr(bal)}</p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold mb-1.5" style={{ color: '#64748B' }}>Actual Amount *</label>
