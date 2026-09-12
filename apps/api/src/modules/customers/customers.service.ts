@@ -562,11 +562,13 @@ export class CustomersService {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sellerId}))`);
 
       const [{ nextSeq }] = await tx.execute<{ nextSeq: number }>(sql`
-        SELECT COALESCE(MAX(CAST(file_number AS INTEGER)), 0) + 1 AS "nextSeq"
+        SELECT COALESCE(MAX(
+          CASE WHEN file_number ~ '^\d+$' THEN CAST(file_number AS INTEGER) ELSE NULL END
+        ), 0) + 1 AS "nextSeq"
         FROM customers
         WHERE seller_id = ${sellerId}
       `);
-      const fileNumber = String(nextSeq).padStart(4, '0');
+      const fileNumber = String(nextSeq ?? 1).padStart(4, '0');
 
       const [row] = await tx
         .insert(customers)
@@ -680,7 +682,7 @@ export class CustomersService {
         ...(body.guarantor2ShopName !== undefined && { guarantor2ShopName: body.guarantor2ShopName }),
         ...(body.guarantor2ShopAddress !== undefined && { guarantor2ShopAddress: body.guarantor2ShopAddress }),
         ...(body.tags !== undefined && { tags: body.tags }),
-        ...(body.dob !== undefined && { dob: body.dob }),
+        ...(body.dob !== undefined && { dob: body.dob || null }),
         ...(body.referredById !== undefined && { referredById: body.referredById }),
       })
       .where(and(eq(customers.id, id), eq(customers.sellerId, sellerId)))

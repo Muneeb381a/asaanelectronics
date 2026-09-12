@@ -544,10 +544,10 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
             <Field label="Full Name" error={errors.name?.message}>
               <input {...register('name')} placeholder="Muhammad Ali" className={inp} />
             </Field>
-            <Field label={isEdit ? 'CNIC (leave blank to keep)' : 'CNIC'} error={errors.cnic?.message} optional={isEdit}>
-              <input {...register('cnic')} placeholder="XXXXX-XXXXXXX-X" maxLength={15} className={inp}
+            <Field label={isEdit ? 'ID Card Number (CNIC)' : 'CNIC'} error={errors.cnic?.message} optional={isEdit}>
+              <input {...register('cnic')} placeholder={isEdit ? (customer.cnicMasked ?? 'XXXXX-XXXXXXX-X') : 'XXXXX-XXXXXXX-X'} maxLength={15} className={inp}
                 onChange={(e) => { e.target.value = formatCnic(e.target.value); register('cnic').onChange(e); }} />
-              {isEdit && <p className="text-xs text-gray-400 mt-1">Current: {customer.cnicMasked}</p>}
+              {isEdit && <p className="text-xs text-gray-400 mt-1">Current: {customer.cnicMasked} — leave blank to keep unchanged, or enter new CNIC to update</p>}
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Father Name" optional>
