@@ -8,11 +8,16 @@ import { signCustomerToken } from '../../utils/jwt.js';
 export class PortalService {
   async login(cnic: string, phone: string) {
     const [hmacHash, legacyHash] = hashCnicBoth(cnic);
+    // Normalize to digits-only so "0303-1234567" matches "03031234567"
+    const phoneDigits = phone.replace(/\D/g, '');
 
     const customer = await db.query.customers.findFirst({
       where: and(
         or(eq(customers.cnicHash, hmacHash), eq(customers.cnicHash, legacyHash)),
-        eq(customers.phone, phone),
+        or(
+          eq(customers.phone, phone),
+          sql`REGEXP_REPLACE(${customers.phone}, '[^0-9]', '', 'g') = ${phoneDigits}`,
+        ),
         isNull(customers.deletedAt),
       ),
     });
