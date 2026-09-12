@@ -2,8 +2,8 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 const schema = z.object({
-  DATABASE_URL: z.string().url(),
-  DIRECT_URL: z.string().url(),
+  DATABASE_URL: z.string().min(10),
+  DIRECT_URL: z.string().min(10),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
   JWT_OTP_SECRET: z.string().min(32),
@@ -19,7 +19,7 @@ const schema = z.object({
   JAZZCASH_INTEGRITY_SALT: z.string().optional(),
   JAZZCASH_RETURN_URL:    z.string().optional(),
   JAZZCASH_SANDBOX:       z.coerce.boolean().default(true),
-  NADRA_API_URL:          z.string().url().optional(),
+  NADRA_API_URL:          z.string().optional(),
   NADRA_API_KEY:          z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
