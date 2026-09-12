@@ -5,7 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Eye, EyeOff, RefreshCw, Shield, BarChart3, Zap,
-  CreditCard, AlertCircle, Crown, Store, CheckCircle2,
+  CreditCard, AlertCircle, Crown, Store, CheckCircle2, ShieldCheck,
 } from 'lucide-react';
 import { loginSchema, type LoginInput } from '@assaan/shared';
 import { authApi } from '../api/auth.api.ts';
@@ -477,6 +477,22 @@ export default function LoginPage() {
               Assaan Electronics
             </span>
           </div>
+
+          {/* Customer Portal button — always visible */}
+          {step !== 'otp' && (
+            <div className="mb-5">
+              <Link
+                to="/portal"
+                className="flex items-center justify-center gap-2.5 w-full py-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100 hover:border-emerald-300 transition-all"
+              >
+                <ShieldCheck size={16} className="text-emerald-600"/>
+                Apni Installment Check Karein
+              </Link>
+              <p className="text-center text-xs text-gray-400 mt-2">
+                Customer hain? CNIC se apna account dekho
+              </p>
+            </div>
+          )}
 
           {step === 'otp' ? (
             <OtpStep
