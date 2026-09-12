@@ -3,7 +3,7 @@ import {
   CreditCard, Users, Package, BarChart3, Shield, Smartphone,
   Check, ArrowRight, Star, Zap, TrendingUp, Clock, PhoneCall,
   Banknote, AlertTriangle, FileText, UserCheck, BookOpen,
-  ChevronRight, Wallet,
+  ChevronRight, Wallet, ShieldCheck,
 } from 'lucide-react';
 
 const PLATFORM_WHATSAPP = '923001234567';
@@ -227,12 +227,17 @@ export default function LandingPage() {
             <Link to="/contact"     className="text-sm text-gray-400 hover:text-white transition">Contact</Link>
           </nav>
           <div className="flex items-center gap-2">
+            <Link to="/portal"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition">
+              <ShieldCheck size={14} />
+              <span className="hidden sm:inline">Customer Portal</span>
+            </Link>
             <Link to="/login"
               className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition">
               Sign in
             </Link>
             <Link to="/register"
-              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition shadow-sm shadow-blue-900/50">
+              className="hidden sm:block px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition shadow-sm shadow-blue-900/50">
               Get started free
             </Link>
           </div>
