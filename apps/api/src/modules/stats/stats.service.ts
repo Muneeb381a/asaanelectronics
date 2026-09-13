@@ -466,11 +466,6 @@ export class StatsService {
         LIMIT 10
       `),
 
-      // Total registered customers
-      db.select({ total: count() })
-        .from(customers)
-        .where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt))),
-
       // This month's expected installment collection (target)
       db.execute<{ target: string }>(sql`
         WITH bounds AS (
@@ -524,6 +519,11 @@ export class StatsService {
               )) + 1) || ' days')::interval) < (SELECT me FROM bounds)::timestamp
         ) t
       `),
+
+      // Total registered customers
+      db.select({ total: count() })
+        .from(customers)
+        .where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt))),
     ]);
 
     const budgetLimits = (sellerRow?.settings?.expenseBudgets ?? {}) as Partial<Record<string, number>>;
