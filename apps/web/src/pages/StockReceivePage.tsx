@@ -63,12 +63,21 @@ function pkr(n: number) {
   return n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
-const LETTER_OPTIONS    = ['NONE','FIRST_NOTICE','SECOND_NOTICE','LEGAL_NOTICE','FILED'] as const;
-const BIO_OPTIONS       = ['PENDING','SELLER_DONE','BUYER_DONE','COMPLETED','NOT_REQUIRED'] as const;
 const STORAGE_OPTIONS   = ['2','4','6','8','12','16','32','64','128','256','512'] as const;
 const RAM_OPTIONS       = ['1','2','3','4','6','8','12','16'] as const;
 const WARRANTY_OPTIONS  = ['3','6','12','18','24','36'] as const;
 const CONDITION_OPTIONS = ['NEW','OPEN_BOX','REFURBISHED','USED'] as const;
+
+// WHERE the vehicle transfer file/letter currently is
+const FILE_LOCATION_OPTIONS: { value: string; label: string }[] = [
+  { value: 'WITH_SHOP',     label: 'Dukaan Pe'        },
+  { value: 'WITH_CUSTOMER', label: 'Customer k Paas'  },
+  { value: 'WITH_RTO',      label: 'RTO/Excise Pe'    },
+  { value: 'WITH_NADRA',    label: 'NADRA Pe'         },
+  { value: 'IN_TRANSFER',   label: 'Transfer Ho Raha' },
+  { value: 'WITH_COURT',    label: 'Court Mein'       },
+  { value: 'WITH_POLICE',   label: 'Police k Paas'    },
+];
 const NETWORK_OPTIONS   = ['4G','5G','3G'] as const;
 const PAYMENT_METHODS   = ['CASH','BANK','CHEQUE','CREDIT'] as const;
 
@@ -696,7 +705,7 @@ export default function StockReceivePage() {
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Buy Price</th>
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Sale Price <span className="text-red-500">*</span></th>
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Inst Price</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Letter</th>
+                      <th className="px-3 py-2.5 text-left font-black text-slate-500">File Location</th>
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Biometric</th>
                       <th className="px-3 py-2.5 w-16" />
                     </tr>
@@ -748,13 +757,39 @@ export default function StockReceivePage() {
                               onChange={(e) => updateRow(row._id, 'installmentPrice', e.target.value)}
                               className={inp} placeholder={defInst || '0'} />
                           </td>
-                          <td className="px-2 py-1.5 min-w-[100px]">
-                            <Sel value={row.letterStatus} onChange={(v) => updateRow(row._id, 'letterStatus', v)}
-                              options={LETTER_OPTIONS} placeholder="Letter" />
+                          <td className="px-2 py-1.5 min-w-[130px]">
+                            <select
+                              value={row.vehicleFileLocation}
+                              onChange={(e) => updateRow(row._id, 'vehicleFileLocation', e.target.value)}
+                              className={`${inp} text-[11px]`}
+                            >
+                              <option value="">-- Kahan Hai? --</option>
+                              {FILE_LOCATION_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
                           </td>
-                          <td className="px-2 py-1.5 min-w-[110px]">
-                            <Sel value={row.biometricStatus} onChange={(v) => updateRow(row._id, 'biometricStatus', v)}
-                              options={BIO_OPTIONS} placeholder="Bio" />
+                          <td className="px-2 py-1.5 min-w-[100px]">
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => updateRow(row._id, 'biometricStatus', row.biometricStatus === 'COMPLETED' ? '' : 'COMPLETED')}
+                                className={`flex-1 py-1 rounded text-[11px] font-semibold transition ${
+                                  row.biometricStatus === 'COMPLETED'
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                }`}
+                              >Haan</button>
+                              <button
+                                type="button"
+                                onClick={() => updateRow(row._id, 'biometricStatus', row.biometricStatus === 'PENDING' ? '' : 'PENDING')}
+                                className={`flex-1 py-1 rounded text-[11px] font-semibold transition ${
+                                  row.biometricStatus === 'PENDING'
+                                    ? 'bg-red-400 text-white'
+                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                }`}
+                              >Nahi</button>
+                            </div>
                           </td>
                           <td className="px-2 py-1.5">
                             <div className="flex items-center gap-1">

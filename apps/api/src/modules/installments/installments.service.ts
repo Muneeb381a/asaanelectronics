@@ -210,10 +210,11 @@ export class InstallmentsService {
         chassisNumber:      products.chassisNumber,
         engineNumber:       products.engineNumber,
         registrationNumber: products.registrationNumber,
-        letterStatus:      installments.letterStatus,
-        letterSentAt:      installments.letterSentAt,
-        biometricStatus:   installments.biometricStatus,
-        biometricDoneAt:   installments.biometricDoneAt,
+        letterStatus:        installments.letterStatus,
+        letterSentAt:        installments.letterSentAt,
+        biometricStatus:     installments.biometricStatus,
+        biometricDoneAt:     installments.biometricDoneAt,
+        vehicleFileLocation: installments.vehicleFileLocation,
         isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
           CASE WHEN ${installments.paymentFrequency} = 'daily'
             THEN (${installments.startDate} + (${installments.months} || ' days')::interval) < now()
@@ -1117,8 +1118,9 @@ export class InstallmentsService {
     id: string,
     sellerId: string,
     body: {
-      letterStatus?:   'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED';
-      biometricStatus?: 'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED';
+      letterStatus?:       'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED';
+      biometricStatus?:    'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED';
+      vehicleFileLocation?: 'WITH_SHOP' | 'WITH_CUSTOMER' | 'WITH_RTO' | 'WITH_NADRA' | 'IN_TRANSFER' | 'WITH_COURT' | 'WITH_POLICE';
     },
   ) {
     const [existing] = await db
@@ -1136,6 +1138,9 @@ export class InstallmentsService {
     if (body.biometricStatus !== undefined) {
       patch.biometricStatus = body.biometricStatus;
       patch.biometricDoneAt = body.biometricStatus === 'COMPLETED' ? new Date() : null;
+    }
+    if (body.vehicleFileLocation !== undefined) {
+      patch.vehicleFileLocation = body.vehicleFileLocation;
     }
     if (Object.keys(patch).length === 0) throw new AppError('No fields to update', 400);
 

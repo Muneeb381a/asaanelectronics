@@ -112,7 +112,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const setDeleteConfirmId = (id: string | null) => { setReversalId(id); if (!id) setReversalReason(''); };
 
   const fieldsMutation = useMutation({
-    mutationFn: (body: { letterStatus?: string; biometricStatus?: string }) =>
+    mutationFn: (body: { letterStatus?: string; biometricStatus?: string; vehicleFileLocation?: string }) =>
       installmentsApi.updateFields(inst.id, body),
     onSuccess: (updated) => {
       qc.setQueryData(['installment-single', inst.id], updated);
@@ -749,6 +749,35 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                               : 'text-gray-600 border-gray-200 hover:border-indigo-300 bg-white'
                           }`}>
                           {s === 'PENDING' ? 'Pending' : s === 'SELLER_DONE' ? 'Seller Done' : s === 'BUYER_DONE' ? 'Buyer Done' : s === 'COMPLETED' ? 'Completed' : 'Not Req.'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-500 mb-1.5">File / Letter Location</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {([
+                        { value: 'WITH_SHOP',     label: 'Dukaan Pe'        },
+                        { value: 'WITH_CUSTOMER', label: 'Customer k Paas'  },
+                        { value: 'WITH_RTO',      label: 'RTO/Excise'       },
+                        { value: 'WITH_NADRA',    label: 'NADRA Pe'         },
+                        { value: 'IN_TRANSFER',   label: 'Transfer Ho Raha' },
+                        { value: 'WITH_COURT',    label: 'Court Mein'       },
+                        { value: 'WITH_POLICE',   label: 'Police k Paas'    },
+                      ] as const).map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={fieldsMutation.isPending}
+                          onClick={() => fieldsMutation.mutate({ vehicleFileLocation: opt.value })}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition disabled:opacity-50 ${
+                            freshInst.vehicleFileLocation === opt.value
+                              ? opt.value === 'WITH_COURT'  ? 'bg-red-600 text-white border-red-600'
+                                : opt.value === 'WITH_POLICE' ? 'bg-orange-500 text-white border-orange-500'
+                                : 'bg-indigo-600 text-white border-indigo-600'
+                              : 'text-gray-600 border-gray-200 hover:border-indigo-300 bg-white'
+                          }`}>
+                          {opt.label}
                         </button>
                       ))}
                     </div>

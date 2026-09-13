@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import {
   X, Send, CheckCircle, PhoneCall, Wallet,
   Clock, ChevronRight, Plus,
-  TrendingDown, Gift, Package, Bell,
+  Gift, Package, Bell,
   Users, ArrowUpRight, CheckSquare, TrendingUp, AlertTriangle, BadgeCheck,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';

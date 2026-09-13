@@ -34,10 +34,11 @@ export interface Installment {
   chassisNumber:      string | null;
   engineNumber:       string | null;
   registrationNumber: string | null;
-  letterStatus:       'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED' | null;
-  letterSentAt:       string | null;
-  biometricStatus:    'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED' | null;
-  biometricDoneAt:    string | null;
+  letterStatus:        'NONE' | 'FIRST_NOTICE' | 'SECOND_NOTICE' | 'LEGAL_NOTICE' | 'FILED' | null;
+  letterSentAt:        string | null;
+  biometricStatus:     'PENDING' | 'SELLER_DONE' | 'BUYER_DONE' | 'COMPLETED' | 'NOT_REQUIRED' | null;
+  biometricDoneAt:     string | null;
+  vehicleFileLocation: 'WITH_SHOP' | 'WITH_CUSTOMER' | 'WITH_RTO' | 'WITH_NADRA' | 'IN_TRANSFER' | 'WITH_COURT' | 'WITH_POLICE' | null;
   daysOverdue?:       number;
 }
 
@@ -152,7 +153,7 @@ export const installmentsApi = {
   collectionSchedule: (days: number = 7) =>
     api.get<{ data: CollectionSchedule }>('/installments/collection-schedule', { params: { days } }).then(unwrap<CollectionSchedule>),
 
-  updateFields: (id: string, body: { letterStatus?: string; biometricStatus?: string }) =>
+  updateFields: (id: string, body: { letterStatus?: string; biometricStatus?: string; vehicleFileLocation?: string }) =>
     api.patch<{ data: Installment }>(`/installments/${id}/fields`, body).then(unwrap<Installment>),
 };
 
