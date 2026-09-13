@@ -501,45 +501,45 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
               </div>
             )}
 
-            {/* CNIC upload at top — auto-fills fields below */}
-            {!isEdit && (
-              <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 space-y-2">
-                <p className="text-xs font-semibold text-blue-700">Upload ID Card — details will auto-fill below</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <PhotoUpload label="CNIC Front" folder="assaan/cnic" value={cnicFrontUrl}
-                    hasError={!!errors.cnicFrontUrl} compact
-                    onChange={(v, hash, extracted) => {
-                      setCnicFrontUrl(v);
-                      if (hash) setCnicFrontHash(hash);
-                      setValue('cnicFrontUrl', v ?? undefined, { shouldValidate: true });
-                      if (v && extracted) {
-                        const filled: string[] = [];
-                        if (extracted.cnic)       { setValue('cnic',       formatCnic(extracted.cnic), { shouldValidate: true }); filled.push('CNIC'); }
-                        if (extracted.name)       { setValue('name',       extracted.name,             { shouldValidate: true }); filled.push('Name'); }
-                        if (extracted.fatherName) { setValue('fatherName', extracted.fatherName,       { shouldValidate: true }); filled.push('Father Name'); }
-                        if (extracted.expiryDate) { setValue('cnicExpiry', extracted.expiryDate,       { shouldValidate: true }); filled.push('Expiry'); }
-                        if (filled.length) setAutoFillHint(`Auto-filled: ${filled.join(', ')} — please verify`);
-                      } else if (!v) { setAutoFillHint(null); }
-                    }} />
-                  <PhotoUpload label="CNIC Back" folder="assaan/cnic" value={cnicBackUrl}
-                    hasError={!!errors.cnicBackUrl} compact
-                    onChange={(v, hash, extracted) => {
-                      setCnicBackUrl(v);
-                      if (hash) setCnicBackHash(hash);
-                      setValue('cnicBackUrl', v ?? undefined, { shouldValidate: true });
-                      if (v && extracted?.address) {
-                        setValue('address', extracted.address, { shouldValidate: true });
-                        setAutoFillHint((prev) => prev ? `${prev}, Address` : 'Auto-filled from ID card: Address — please verify');
-                      }
-                    }} />
-                </div>
-                {autoFillHint && (
-                  <p className="text-xs text-blue-600 flex items-center gap-1">
-                    <Check size={11} className="shrink-0" /> {autoFillHint}
-                  </p>
-                )}
+            {/* CNIC photos — shown in both create and edit mode */}
+            <div className={`rounded-xl border p-3 space-y-2 ${isEdit ? 'border-gray-200 bg-gray-50/60' : 'border-blue-100 bg-blue-50/60'}`}>
+              <p className="text-xs font-semibold text-gray-700">
+                {isEdit ? 'ID Card Photos' : 'Upload ID Card — details will auto-fill below'}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <PhotoUpload label="CNIC Front" folder="assaan/cnic" value={cnicFrontUrl}
+                  hasError={!!errors.cnicFrontUrl} compact
+                  onChange={(v, hash, extracted) => {
+                    setCnicFrontUrl(v);
+                    if (hash) setCnicFrontHash(hash);
+                    setValue('cnicFrontUrl', v ?? undefined, { shouldValidate: true });
+                    if (v && extracted) {
+                      const filled: string[] = [];
+                      if (extracted.cnic)       { setValue('cnic',       formatCnic(extracted.cnic), { shouldValidate: true }); filled.push('CNIC'); }
+                      if (extracted.name)       { setValue('name',       extracted.name,             { shouldValidate: true }); filled.push('Name'); }
+                      if (extracted.fatherName) { setValue('fatherName', extracted.fatherName,       { shouldValidate: true }); filled.push('Father Name'); }
+                      if (extracted.expiryDate) { setValue('cnicExpiry', extracted.expiryDate,       { shouldValidate: true }); filled.push('Expiry'); }
+                      if (filled.length) setAutoFillHint(`Auto-filled: ${filled.join(', ')} — please verify`);
+                    } else if (!v) { setAutoFillHint(null); }
+                  }} />
+                <PhotoUpload label="CNIC Back" folder="assaan/cnic" value={cnicBackUrl}
+                  hasError={!!errors.cnicBackUrl} compact
+                  onChange={(v, hash, extracted) => {
+                    setCnicBackUrl(v);
+                    if (hash) setCnicBackHash(hash);
+                    setValue('cnicBackUrl', v ?? undefined, { shouldValidate: true });
+                    if (v && extracted?.address) {
+                      setValue('address', extracted.address, { shouldValidate: true });
+                      setAutoFillHint((prev) => prev ? `${prev}, Address` : 'Auto-filled from ID card: Address — please verify');
+                    }
+                  }} />
               </div>
-            )}
+              {autoFillHint && (
+                <p className="text-xs text-blue-600 flex items-center gap-1">
+                  <Check size={11} className="shrink-0" /> {autoFillHint}
+                </p>
+              )}
+            </div>
 
             <Field label="Full Name" error={errors.name?.message}>
               <input {...register('name')} placeholder="Muhammad Ali" className={inp} />
