@@ -6,7 +6,7 @@ import {
   X, Send, CheckCircle, PhoneCall, Wallet,
   Clock, ChevronRight, Plus,
   TrendingDown, Gift, Package, Bell,
-  Users, ArrowUpRight, CheckSquare,
+  Users, ArrowUpRight, CheckSquare, TrendingUp, AlertTriangle, BadgeCheck,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
@@ -272,69 +272,101 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                {/* 4 KPI sub-cards — exactly like Figma */}
+                {/* ── 4 KPI Cards ── */}
                 {isLoading ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6">
-                    {[0,1,2,3].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: '#F5F5FA' }}/>)}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-5">
+                    {[0,1,2,3].map(i => <div key={i} className="h-32 rounded-2xl animate-pulse" style={{ background: '#F5F5FA' }}/>)}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-5">
 
-                    {/* Aaj Aya — pink like Figma "Total Sales" */}
-                    <div className="rounded-2xl p-4" style={{ background: '#FFF0F3' }}>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: '#FFB5C8' }}>
-                        <ArrowUpRight size={17} style={{ color: '#E11D48' }}/>
+                    {/* 1 — Total Customers */}
+                    <button onClick={() => navigate('/customers')}
+                      className="relative rounded-2xl p-4 text-left overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-lg"
+                      style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)', border: '1px solid #C7D2FE' }}>
+                      <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full opacity-20"
+                        style={{ background: '#6366F1' }}/>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                        style={{ background: '#6366F1', boxShadow: '0 4px 12px rgba(99,102,241,0.35)' }}>
+                        <Users size={16} color="#fff"/>
                       </div>
-                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E' }}>
-                        {pkrSh(todayTotal)}
+                      <p className="text-[1.6rem] font-black tabular-nums leading-none" style={{ color: '#3730A3' }}>
+                        {(d?.totalCustomers ?? 0).toLocaleString()}
                       </p>
-                      <p className="text-xs font-semibold mt-1.5" style={{ color: '#64748B' }}>Aaj Aya</p>
-                      {dailyTarget && dailyPct > 0 && (
-                        <p className="text-[11px] font-bold mt-1" style={{ color: '#10B981' }}>+{dailyPct}% target ka</p>
-                      )}
-                    </div>
-
-                    {/* Is Mahine — orange like Figma "Total Order" */}
-                    <div className="rounded-2xl p-4" style={{ background: '#FFF7ED' }}>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: '#FDBA74' }}>
-                        <TrendingDown size={17} style={{ color: '#C2410C', transform: 'rotate(180deg)' }}/>
-                      </div>
-                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E' }}>
-                        {pkrSh(monthTotal)}
-                      </p>
-                      <p className="text-xs font-semibold mt-1.5" style={{ color: '#64748B' }}>Is Mahine</p>
-                      <p className="text-[11px] font-bold mt-1" style={{ color: netFaida >= 0 ? '#10B981' : '#EF4444' }}>
-                        {netFaida >= 0 ? '+' : ''}{pkrSh(netFaida)} net
-                      </p>
-                    </div>
-
-                    {/* Active Plans — green like Figma "Product Sold" */}
-                    <div className="rounded-2xl p-4" style={{ background: '#F0FDF4' }}>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: '#86EFAC' }}>
-                        <CheckCircle size={17} style={{ color: '#16A34A' }}/>
-                      </div>
-                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: '#1A1A2E' }}>
-                        {d?.activeCount ?? 0}
-                      </p>
-                      <p className="text-xs font-semibold mt-1.5" style={{ color: '#64748B' }}>Active Plans</p>
-                      <p className="text-[11px] font-bold mt-1" style={{ color: '#10B981' }}>
+                      <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide" style={{ color: '#6366F1' }}>Total Customers</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: '#818CF8' }}>
                         {d?.newThisMonthCount ?? 0} naye is mahine
                       </p>
-                    </div>
+                    </button>
 
-                    {/* Overdue — purple like Figma "New Customers" */}
-                    <button className="rounded-2xl p-4 text-left w-full" onClick={() => navigate('/installments')}
-                      style={{ background: kpiOverdue > 0 ? '#FEF2F2' : '#F5F3FF' }}>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3"
-                        style={{ background: kpiOverdue > 0 ? '#FCA5A5' : '#C4B5FD' }}>
-                        <Users size={17} style={{ color: kpiOverdue > 0 ? '#DC2626' : '#7C3AED' }}/>
+                    {/* 2 — Active Installments */}
+                    <button onClick={() => navigate('/installments')}
+                      className="relative rounded-2xl p-4 text-left overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-lg"
+                      style={{ background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)', border: '1px solid #A7F3D0' }}>
+                      <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full opacity-20"
+                        style={{ background: '#10B981' }}/>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                        style={{ background: '#10B981', boxShadow: '0 4px 12px rgba(16,185,129,0.35)' }}>
+                        <BadgeCheck size={16} color="#fff"/>
                       </div>
-                      <p className="text-[1.3rem] font-black tabular-nums leading-none" style={{ color: kpiOverdue > 0 ? '#DC2626' : '#1A1A2E' }}>
-                        {kpiOverdue > 0 ? kpiOverdue : '✓'}
+                      <p className="text-[1.6rem] font-black tabular-nums leading-none" style={{ color: '#065F46' }}>
+                        {(d?.activeCount ?? 0).toLocaleString()}
                       </p>
-                      <p className="text-xs font-semibold mt-1.5" style={{ color: '#64748B' }}>Overdue</p>
-                      <p className="text-[11px] font-bold mt-1" style={{ color: kpiOverdue > 0 ? '#EF4444' : '#10B981' }}>
-                        {kpiOverdue > 0 ? `${pkrSh(d?.overdueAmount ?? 0)} baaki` : 'Sab clear hai'}
+                      <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide" style={{ color: '#10B981' }}>Active Plans</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: '#34D399' }}>
+                        {d?.monthlyActiveCount ?? 0} mahana · {d?.dailyActiveCount ?? 0} roz
+                      </p>
+                    </button>
+
+                    {/* 3 — Collected This Month */}
+                    <button onClick={() => navigate('/installments')}
+                      className="relative rounded-2xl p-4 text-left overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-lg"
+                      style={{ background: 'linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%)', border: '1px solid #99F6E4' }}>
+                      <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full opacity-20"
+                        style={{ background: '#0D9488' }}/>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                        style={{ background: '#0D9488', boxShadow: '0 4px 12px rgba(13,148,136,0.35)' }}>
+                        <TrendingUp size={16} color="#fff"/>
+                      </div>
+                      <p className="text-[1.6rem] font-black tabular-nums leading-none" style={{ color: '#134E4A' }}>
+                        {pkrSh(monthTotal)}
+                      </p>
+                      <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide" style={{ color: '#0D9488' }}>Is Mahine Aya</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: '#2DD4BF' }}>
+                        Aaj: {pkrSh(todayTotal)}
+                        {netFaida >= 0 && <span style={{ color: '#10B981' }}> · +{pkrSh(netFaida)} net</span>}
+                      </p>
+                    </button>
+
+                    {/* 4 — Total Pending */}
+                    <button onClick={() => navigate('/installments')}
+                      className="relative rounded-2xl p-4 text-left overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-lg"
+                      style={{
+                        background: kpiOverdue > 0
+                          ? 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)'
+                          : 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
+                        border: `1px solid ${kpiOverdue > 0 ? '#FECACA' : '#FDE68A'}`,
+                      }}>
+                      <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full opacity-20"
+                        style={{ background: kpiOverdue > 0 ? '#EF4444' : '#F59E0B' }}/>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                        style={{
+                          background: kpiOverdue > 0 ? '#EF4444' : '#F59E0B',
+                          boxShadow: `0 4px 12px ${kpiOverdue > 0 ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}`,
+                        }}>
+                        {kpiOverdue > 0 ? <AlertTriangle size={16} color="#fff"/> : <Clock size={16} color="#fff"/>}
+                      </div>
+                      <p className="text-[1.6rem] font-black tabular-nums leading-none"
+                        style={{ color: kpiOverdue > 0 ? '#991B1B' : '#78350F' }}>
+                        {pkrSh((d?.monthlyActiveRemaining ?? 0) + (d?.dailyActiveRemaining ?? 0))}
+                      </p>
+                      <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide"
+                        style={{ color: kpiOverdue > 0 ? '#EF4444' : '#F59E0B' }}>Total Pending</p>
+                      <p className="text-[10px] mt-0.5"
+                        style={{ color: kpiOverdue > 0 ? '#F87171' : '#FCD34D' }}>
+                        {kpiOverdue > 0
+                          ? `${kpiOverdue} overdue · ${pkrSh(d?.overdueAmount ?? 0)} late`
+                          : 'Koi overdue nahi'}
                       </p>
                     </button>
 

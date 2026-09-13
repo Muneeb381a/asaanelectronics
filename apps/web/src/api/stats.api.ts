@@ -34,6 +34,7 @@ export interface Stats {
   completedThisMonthValue: number;
   monthExpenseTotal: number;
   monthInstTarget: number;
+  totalCustomers: number;
   completingSoon: Array<{
     id: string;
     customerName: string;

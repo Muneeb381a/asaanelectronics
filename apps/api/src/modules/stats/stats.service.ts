@@ -228,10 +228,11 @@ export class StatsService {
         completingSoon:          [],
         monthExpenseTotal:       0,
         monthInstTarget:         0,
+        totalCustomers:          0,
       };
     }
 
-    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth, completingSoon, monthInstTarget] = await Promise.all([
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth, completingSoon, monthInstTarget, totalCustomersRow] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -465,6 +466,11 @@ export class StatsService {
         LIMIT 10
       `),
 
+      // Total registered customers
+      db.select({ total: count() })
+        .from(customers)
+        .where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt))),
+
       // This month's expected installment collection (target)
       db.execute<{ target: string }>(sql`
         WITH bounds AS (
@@ -561,7 +567,8 @@ export class StatsService {
         monthly:      Number(r.monthly),
         paymentsLeft: Number(r.payments_left),
       })),
-      monthInstTarget: Number((monthInstTarget[0] as { target: string } | undefined)?.target ?? 0),
+      monthInstTarget:  Number((monthInstTarget[0] as { target: string } | undefined)?.target ?? 0),
+      totalCustomers:   Number(totalCustomersRow[0]?.total ?? 0),
     };
   }
 
