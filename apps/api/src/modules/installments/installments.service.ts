@@ -214,7 +214,7 @@ export class InstallmentsService {
         letterSentAt:        installments.letterSentAt,
         biometricStatus:     installments.biometricStatus,
         biometricDoneAt:     installments.biometricDoneAt,
-        vehicleFileLocation: installments.vehicleFileLocation,
+        vehicleFileLocation: products.vehicleFileLocation,
         isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
           CASE WHEN ${installments.paymentFrequency} = 'daily'
             THEN (${installments.startDate} + (${installments.months} || ' days')::interval) < now()
@@ -1124,31 +1124,39 @@ export class InstallmentsService {
     },
   ) {
     const [existing] = await db
-      .select({ id: installments.id })
+      .select({ id: installments.id, productId: installments.productId })
       .from(installments)
       .innerJoin(customers, eq(installments.customerId, customers.id))
       .where(and(eq(installments.id, id), eq(customers.sellerId, sellerId), isNull(installments.deletedAt)));
     if (!existing) throw new AppError('Installment not found', 404);
 
-    const patch: Record<string, unknown> = {};
+    const instPatch: Record<string, unknown> = {};
     if (body.letterStatus !== undefined) {
-      patch.letterStatus = body.letterStatus;
-      patch.letterSentAt = body.letterStatus === 'NONE' ? null : new Date();
+      instPatch.letterStatus = body.letterStatus;
+      instPatch.letterSentAt = body.letterStatus === 'NONE' ? null : new Date();
     }
     if (body.biometricStatus !== undefined) {
-      patch.biometricStatus = body.biometricStatus;
-      patch.biometricDoneAt = body.biometricStatus === 'COMPLETED' ? new Date() : null;
+      instPatch.biometricStatus = body.biometricStatus;
+      instPatch.biometricDoneAt = body.biometricStatus === 'COMPLETED' ? new Date() : null;
+    }
+
+    if (body.vehicleFileLocation === undefined && Object.keys(instPatch).length === 0) {
+      throw new AppError('No fields to update', 400);
+    }
+
+    const updates: Promise<unknown>[] = [];
+    if (Object.keys(instPatch).length > 0) {
+      updates.push(db.update(installments).set(instPatch).where(eq(installments.id, id)));
     }
     if (body.vehicleFileLocation !== undefined) {
-      patch.vehicleFileLocation = body.vehicleFileLocation;
+      updates.push(
+        db.update(products)
+          .set({ vehicleFileLocation: body.vehicleFileLocation })
+          .where(eq(products.id, existing.productId)),
+      );
     }
-    if (Object.keys(patch).length === 0) throw new AppError('No fields to update', 400);
+    await Promise.all(updates);
 
-    const [updated] = await db
-      .update(installments)
-      .set(patch)
-      .where(eq(installments.id, id))
-      .returning();
-    return updated;
+    return this.getOne(id, sellerId);
   }
 }
