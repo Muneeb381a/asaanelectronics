@@ -96,25 +96,49 @@ function SupplierModal({ supplier, onClose }: { supplier?: Supplier; onClose: ()
 /* ══════════════════════════════════════════════════════════
    INVOICE MODAL
 ══════════════════════════════════════════════════════════ */
-interface LineItem { productId: string; productName: string; quantity: number; unitPrice: string; }
+interface LineItem {
+  productId:           string;
+  productName:         string;
+  quantity:            number;
+  unitPrice:           string;
+  // vehicle details (shown when toggled)
+  showVehicle:         boolean;
+  chassisNumber:       string;
+  engineNumber:        string;
+  color:               string;
+  modelYear:           string;
+  vehicleCondition:    'NEW' | 'USED' | '';
+  registrationNumber:  string;
+}
+
+const emptyLine = (): LineItem => ({
+  productId: '', productName: '', quantity: 1, unitPrice: '',
+  showVehicle: false, chassisNumber: '', engineNumber: '', color: '',
+  modelYear: '', vehicleCondition: '', registrationNumber: '',
+});
 
 function InvoiceModal({ supplierId, supplierName, onClose }: { supplierId: string; supplierName: string; onClose: () => void }) {
   const qc = useQueryClient();
   const [invoiceDate, setInvoiceDate] = useState(todayStr());
   const [paidAmount,  setPaidAmount]  = useState('');
   const [notes,       setNotes]       = useState('');
-  const [lines, setLines] = useState<LineItem[]>([{ productId: '', productName: '', quantity: 1, unitPrice: '' }]);
+  const [lines, setLines] = useState<LineItem[]>([emptyLine()]);
 
   const { data: productsData } = useQuery({ queryKey: ['products', 'invoice-picker'], queryFn: () => productsApi.list({ limit: 999 }), staleTime: 5 * 60_000 });
   const productList = productsData?.data ?? [];
   const total = lines.reduce((s, l) => s + l.quantity * (parseFloat(l.unitPrice) || 0), 0);
 
-  const addLine    = () => setLines(p => [...p, { productId: '', productName: '', quantity: 1, unitPrice: '' }]);
+  const addLine    = () => setLines(p => [...p, emptyLine()]);
   const removeLine = (i: number) => setLines(p => p.filter((_, j) => j !== i));
   const updateLine = (i: number, patch: Partial<LineItem>) => setLines(p => p.map((l, j) => j === i ? { ...l, ...patch } : l));
   const pickProduct = (i: number, productId: string) => {
     const p = productList.find(p => p.id === productId);
-    if (p) updateLine(i, { productId: p.id, productName: p.name, unitPrice: p.purchasePrice ?? '' });
+    if (p) updateLine(i, {
+      productId: p.id, productName: p.name, unitPrice: p.purchasePrice ?? '',
+      chassisNumber: p.chassisNumber ?? '', engineNumber: p.engineNumber ?? '',
+      color: p.color ?? '', modelYear: p.modelYear ? String(p.modelYear) : '',
+      vehicleCondition: p.vehicleCondition ?? '', registrationNumber: p.registrationNumber ?? '',
+    });
     else    updateLine(i, { productId: '', productName: '', unitPrice: '' });
   };
 
@@ -122,7 +146,18 @@ function InvoiceModal({ supplierId, supplierName, onClose }: { supplierId: strin
 
   const mut = useMutation({
     mutationFn: () => {
-      const payload: CreateInvoiceLine[] = lines.map(l => ({ productId: l.productId || undefined, productName: l.productName.trim(), quantity: l.quantity, unitPrice: parseFloat(l.unitPrice) }));
+      const payload: CreateInvoiceLine[] = lines.map(l => ({
+        productId:          l.productId || undefined,
+        productName:        l.productName.trim(),
+        quantity:           l.quantity,
+        unitPrice:          parseFloat(l.unitPrice),
+        chassisNumber:      l.chassisNumber.trim()      || undefined,
+        engineNumber:       l.engineNumber.trim()       || undefined,
+        color:              l.color.trim()              || undefined,
+        modelYear:          l.modelYear ? Number(l.modelYear) : undefined,
+        vehicleCondition:   (l.vehicleCondition as 'NEW' | 'USED') || undefined,
+        registrationNumber: l.registrationNumber.trim() || undefined,
+      }));
       return suppliersApi.createInvoice(supplierId, { invoiceDate, paidAmount: paidAmount ? Number(paidAmount) : 0, description: notes.trim() || undefined, lines: payload });
     },
     onSuccess: () => {
@@ -175,30 +210,91 @@ function InvoiceModal({ supplierId, supplierName, onClose }: { supplierId: strin
             </div>
             <div className="space-y-2">
               {lines.map((line, i) => (
-                <div key={i} className="grid gap-2 items-start" style={{ gridTemplateColumns: '1fr 56px 100px 80px 28px' }}>
-                  <div className="flex flex-col gap-1">
-                    <select value={line.productId} onChange={e => pickProduct(i, e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white">
-                      <option value="">— custom —</option>
-                      {productList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    {!line.productId && (
-                      <input value={line.productName} onChange={e => updateLine(i, { productName: e.target.value })}
-                        className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400"
-                        placeholder="Product naam" />
-                    )}
+                <div key={i} className="border border-slate-100 rounded-xl p-2 space-y-2">
+                  {/* ── main row ── */}
+                  <div className="grid gap-2 items-start" style={{ gridTemplateColumns: '1fr 56px 100px 80px 28px' }}>
+                    <div className="flex flex-col gap-1">
+                      <select value={line.productId} onChange={e => pickProduct(i, e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white">
+                        <option value="">— custom —</option>
+                        {productList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                      {!line.productId && (
+                        <input value={line.productName} onChange={e => updateLine(i, { productName: e.target.value })}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400"
+                          placeholder="Product naam" />
+                      )}
+                    </div>
+                    <input type="number" value={line.quantity} min={1} onChange={e => updateLine(i, { quantity: Math.max(1, Number(e.target.value)) })}
+                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400" />
+                    <input type="number" value={line.unitPrice} min={0} onChange={e => updateLine(i, { unitPrice: e.target.value })}
+                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400" placeholder="PKR" />
+                    <span className="text-xs font-bold text-slate-700 text-right tabular-nums pt-1.5">
+                      {line.unitPrice ? pkr(line.quantity * parseFloat(line.unitPrice)) : '—'}
+                    </span>
+                    <button onClick={() => removeLine(i)} disabled={lines.length === 1}
+                      className="pt-1.5 text-slate-300 hover:text-red-400 disabled:opacity-20 transition flex justify-center">
+                      <X size={13} />
+                    </button>
                   </div>
-                  <input type="number" value={line.quantity} min={1} onChange={e => updateLine(i, { quantity: Math.max(1, Number(e.target.value)) })}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400" />
-                  <input type="number" value={line.unitPrice} min={0} onChange={e => updateLine(i, { unitPrice: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400" placeholder="PKR" />
-                  <span className="text-xs font-bold text-slate-700 text-right tabular-nums pt-1.5">
-                    {line.unitPrice ? pkr(line.quantity * parseFloat(line.unitPrice)) : '—'}
-                  </span>
-                  <button onClick={() => removeLine(i)} disabled={lines.length === 1}
-                    className="pt-1.5 text-slate-300 hover:text-red-400 disabled:opacity-20 transition flex justify-center">
-                    <X size={13} />
+
+                  {/* ── vehicle details toggle ── */}
+                  <button
+                    type="button"
+                    onClick={() => updateLine(i, { showVehicle: !line.showVehicle })}
+                    className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-blue-600 transition"
+                  >
+                    {line.showVehicle ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                    Vehicle Details {line.chassisNumber || line.engineNumber ? '✓' : '(chassis, engine, color…)'}
                   </button>
+
+                  {line.showVehicle && (
+                    <div className="bg-slate-50 rounded-lg p-2.5 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Chassis #</label>
+                          <input value={line.chassisNumber} onChange={e => updateLine(i, { chassisNumber: e.target.value })}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white font-mono"
+                            placeholder="ABC123..." />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Engine #</label>
+                          <input value={line.engineNumber} onChange={e => updateLine(i, { engineNumber: e.target.value })}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white font-mono"
+                            placeholder="ENG456..." />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Color</label>
+                          <input value={line.color} onChange={e => updateLine(i, { color: e.target.value })}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white"
+                            placeholder="Red" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Model Year</label>
+                          <input type="number" value={line.modelYear} onChange={e => updateLine(i, { modelYear: e.target.value })}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white"
+                            placeholder="2024" min={1950} max={2030} />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Condition</label>
+                          <select value={line.vehicleCondition} onChange={e => updateLine(i, { vehicleCondition: e.target.value as 'NEW' | 'USED' | '' })}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white">
+                            <option value="">—</option>
+                            <option value="NEW">New</option>
+                            <option value="USED">Used</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Registration #</label>
+                        <input value={line.registrationNumber} onChange={e => updateLine(i, { registrationNumber: e.target.value })}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white font-mono"
+                          placeholder="LEA-1234" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -136,6 +136,12 @@ export class SuppliersService {
       quantity: number;
       unitPrice: number;
       notes?: string;
+      chassisNumber?: string;
+      engineNumber?: string;
+      color?: string;
+      modelYear?: number;
+      vehicleCondition?: 'NEW' | 'USED';
+      registrationNumber?: string;
     }>;
   }) {
     const sup = await db.query.suppliers.findFirst({
@@ -189,7 +195,15 @@ export class SuppliersService {
           if (line.productId) {
             await tx
               .update(products)
-              .set({ stock: sql`${products.stock} + ${line.quantity}` })
+              .set({
+                stock:              sql`${products.stock} + ${line.quantity}`,
+                ...(line.chassisNumber      && { chassisNumber:      line.chassisNumber }),
+                ...(line.engineNumber       && { engineNumber:       line.engineNumber }),
+                ...(line.color              && { color:              line.color }),
+                ...(line.modelYear          && { modelYear:          line.modelYear }),
+                ...(line.vehicleCondition   && { vehicleCondition:   line.vehicleCondition }),
+                ...(line.registrationNumber && { registrationNumber: line.registrationNumber }),
+              })
               .where(and(eq(products.id, line.productId), eq(products.sellerId, sellerId)));
           }
         }

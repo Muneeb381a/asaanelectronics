@@ -39,11 +39,18 @@ export interface SupplierInvoice {
 }
 
 export interface CreateInvoiceLine {
-  productId?:  string;
-  productName: string;
-  quantity:    number;
-  unitPrice:   number;
-  notes?:      string;
+  productId?:          string;
+  productName:         string;
+  quantity:            number;
+  unitPrice:           number;
+  notes?:              string;
+  // vehicle details
+  chassisNumber?:      string;
+  engineNumber?:       string;
+  color?:              string;
+  modelYear?:          number;
+  vehicleCondition?:   'NEW' | 'USED';
+  registrationNumber?: string;
 }
 
 export interface PnLData {
