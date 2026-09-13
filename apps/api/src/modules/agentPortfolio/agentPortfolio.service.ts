@@ -25,13 +25,13 @@ export async function listAgentPortfolio(sellerId: string, agentId?: string) {
       ca.assigned_at,
       ca.notes,
       i.id             AS installment_id,
-      i.monthly_amount AS installment_amount,
+      i.monthly        AS installment_amount,
       i.status         AS installment_status
     FROM customer_assignments ca
     JOIN users u     ON u.id  = ca.agent_id
     JOIN customers c ON c.id  = ca.customer_id
     LEFT JOIN LATERAL (
-      SELECT id, monthly_amount, status
+      SELECT id, monthly, status
       FROM installments
       WHERE customer_id = ca.customer_id
         AND deleted_at IS NULL
@@ -207,12 +207,12 @@ export async function calculateUncollectedDeductions(sellerId: string, createdBy
       ca.customer_id,
       c.name         AS customer_name,
       i.id           AS installment_id,
-      i.monthly_amount
+      i.monthly      AS monthly_amount
     FROM customer_assignments ca
     JOIN users u     ON u.id = ca.agent_id
     JOIN customers c ON c.id = ca.customer_id
     LEFT JOIN LATERAL (
-      SELECT id, monthly_amount
+      SELECT id, monthly
       FROM installments
       WHERE customer_id = ca.customer_id
         AND deleted_at IS NULL
@@ -234,8 +234,7 @@ export async function calculateUncollectedDeductions(sellerId: string, createdBy
     SELECT DISTINCT i.customer_id
     FROM payments p
     JOIN installments i ON i.id = p.installment_id
-    WHERE i.seller_id = ${sellerId}
-      AND i.customer_id = ANY(${customerIds})
+    WHERE i.customer_id = ANY(${customerIds})
       AND p.paid_on >= ${fromDate.toISOString()}
       AND p.paid_on <  ${toDate.toISOString()}
       AND p.deleted_at IS NULL

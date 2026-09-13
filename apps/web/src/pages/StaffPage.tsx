@@ -4,6 +4,7 @@ import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions, type CollectionEntry, type StaffBriefingRow } from '../api/staff.api.ts';
 import { agentPortfolioApi, type PortfolioRow } from '../api/agentPortfolio.api.ts';
+import { customersApi } from '../api/customers.api.ts';
 import { attendanceApi } from '../api/attendance.api.ts';
 import { handoversApi, type Handover, type StaffBalance } from '../api/handovers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
@@ -2057,10 +2058,7 @@ function AssignCustomerModal({
 
   const { data: customers } = useQuery({
     queryKey: ['customers-portfolio-search', customerQuery],
-    queryFn: () =>
-      fetch(`/api/customers?search=${encodeURIComponent(customerQuery)}&limit=10`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      }).then((r) => r.json()).then((j) => j.data as { data: { id: string; name: string; phone: string }[] }),
+    queryFn: () => customersApi.list({ search: customerQuery, limit: 10 }),
     enabled: customerQuery.length > 1,
     staleTime: 10_000,
   });
