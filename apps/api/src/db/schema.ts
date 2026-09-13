@@ -705,14 +705,17 @@ export const suppliers = pgTable('suppliers', {
 ]);
 
 export const supplierInvoices = pgTable('supplier_invoices', {
-  id:           text('id').primaryKey().$defaultFn(() => randomUUID()),
-  supplierId:   text('supplier_id').notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
-  sellerId:     text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
-  totalAmount:  decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
-  paidAmount:   decimal('paid_amount',  { precision: 12, scale: 2 }).default('0').notNull(),
-  description:  text('description').notNull(),
-  invoiceDate:  date('invoice_date').notNull(),
-  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
+  supplierId:    text('supplier_id').notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
+  sellerId:      text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  totalAmount:   decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+  paidAmount:    decimal('paid_amount',  { precision: 12, scale: 2 }).default('0').notNull(),
+  description:   text('description').notNull(),
+  invoiceDate:   date('invoice_date').notNull(),
+  invoiceNumber: text('invoice_number'),
+  paymentMethod: text('payment_method'),
+  dueDate:       date('due_date'),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
   index('idx_sup_inv_supplier').on(t.supplierId),
   index('idx_sup_inv_seller').on(t.sellerId),

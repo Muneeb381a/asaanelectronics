@@ -19,6 +19,7 @@ interface RowData {
   _id:              string;
   // identifiers
   imeiNumber:       string;
+  imei2:            string;
   chassisNumber:    string;
   engineNumber:     string;
   registrationNumber: string;
@@ -26,9 +27,10 @@ interface RowData {
   color:            string;
   modelYear:        string;
   vehicleCondition: 'NEW' | 'USED' | '';
+  condition:        'NEW' | 'OPEN_BOX' | 'REFURBISHED' | 'USED' | '';  // mobile condition
   // prices
   purchasePrice:    string;
-  price:            string;         // sale price
+  price:            string;
   installmentPrice: string;
   // status (vehicle)
   letterStatus:     string;
@@ -36,6 +38,9 @@ interface RowData {
   vehicleFileLocation: string;
   // phone
   storageGb:        string;
+  ramGb:            string;
+  network:          '4G' | '5G' | '3G' | '';
+  warrantyMonths:   string;
   // misc
   description:      string;
 }
@@ -46,11 +51,11 @@ function uid() { return Math.random().toString(36).slice(2); }
 
 function emptyRow(): RowData {
   return {
-    _id: uid(), imeiNumber: '', chassisNumber: '', engineNumber: '',
+    _id: uid(), imeiNumber: '', imei2: '', chassisNumber: '', engineNumber: '',
     registrationNumber: '', color: '', modelYear: '', vehicleCondition: '',
-    purchasePrice: '', price: '', installmentPrice: '',
+    condition: '', purchasePrice: '', price: '', installmentPrice: '',
     letterStatus: '', biometricStatus: '', vehicleFileLocation: '',
-    storageGb: '', description: '',
+    storageGb: '', ramGb: '', network: '', warrantyMonths: '', description: '',
   };
 }
 
@@ -58,9 +63,14 @@ function pkr(n: number) {
   return n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
-const LETTER_OPTIONS  = ['NONE','FIRST_NOTICE','SECOND_NOTICE','LEGAL_NOTICE','FILED'] as const;
-const BIO_OPTIONS     = ['PENDING','SELLER_DONE','BUYER_DONE','COMPLETED','NOT_REQUIRED'] as const;
-const STORAGE_OPTIONS = ['2','4','6','8','12','16','32','64','128','256','512'] as const;
+const LETTER_OPTIONS    = ['NONE','FIRST_NOTICE','SECOND_NOTICE','LEGAL_NOTICE','FILED'] as const;
+const BIO_OPTIONS       = ['PENDING','SELLER_DONE','BUYER_DONE','COMPLETED','NOT_REQUIRED'] as const;
+const STORAGE_OPTIONS   = ['2','4','6','8','12','16','32','64','128','256','512'] as const;
+const RAM_OPTIONS       = ['1','2','3','4','6','8','12','16'] as const;
+const WARRANTY_OPTIONS  = ['3','6','12','18','24','36'] as const;
+const CONDITION_OPTIONS = ['NEW','OPEN_BOX','REFURBISHED','USED'] as const;
+const NETWORK_OPTIONS   = ['4G','5G','3G'] as const;
+const PAYMENT_METHODS   = ['CASH','BANK','CHEQUE','CREDIT'] as const;
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
@@ -88,11 +98,11 @@ export default function StockReceivePage() {
   const navigate    = useNavigate();
   const qc          = useQueryClient();
   // ── step 1 state ──
-  const [supplierId,      setSupplierId]      = useState('');
+  const [supplierId,        setSupplierId]        = useState('');
   const [showQuickSupplier, setShowQuickSupplier] = useState(false);
-  const [quickSupName,    setQuickSupName]    = useState('');
-  const [quickSupPhone,   setQuickSupPhone]   = useState('');
-  const [quickSupErr,     setQuickSupErr]     = useState('');
+  const [quickSupName,      setQuickSupName]      = useState('');
+  const [quickSupPhone,     setQuickSupPhone]     = useState('');
+  const [quickSupErr,       setQuickSupErr]       = useState('');
   const [productName,  setProductName]  = useState('');
   const [category,     setCategory]     = useState('');
   const [brand,        setBrand]        = useState('');
@@ -101,6 +111,9 @@ export default function StockReceivePage() {
   const [qty,          setQty]          = useState('1');
   const [invoiceDate,  setInvoiceDate]  = useState(() => new Date().toISOString().slice(0, 10));
   const [paidAmount,   setPaidAmount]   = useState('0');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK' | 'CHEQUE' | 'CREDIT' | ''>('CASH');
+  const [dueDate,       setDueDate]       = useState('');
 
   // default prices (fill-all)
   const [defBuy,  setDefBuy]  = useState('');
@@ -139,9 +152,12 @@ export default function StockReceivePage() {
   const saveMutation = useMutation({
     mutationFn: (units: BulkReceiveUnit[]) =>
       productsApi.bulkReceive({
-        supplierId:  supplierId || undefined,
-        invoiceDate: invoiceDate || undefined,
-        paidAmount:  paidAmount ? Number(paidAmount) : 0,
+        supplierId:    supplierId || undefined,
+        invoiceDate:   invoiceDate || undefined,
+        paidAmount:    paidAmount ? Number(paidAmount) : 0,
+        invoiceNumber: invoiceNumber.trim() || undefined,
+        paymentMethod: paymentMethod || undefined,
+        dueDate:       dueDate || undefined,
         units,
       }),
     onSuccess: (created) => {
@@ -165,7 +181,7 @@ export default function StockReceivePage() {
   const duplicateRow = (id: string) => {
     setRows((prev) => {
       const idx = prev.findIndex((r) => r._id === id);
-      const copy = { ...prev[idx]!, _id: uid(), imeiNumber: '', chassisNumber: '' };
+      const copy = { ...prev[idx]!, _id: uid(), imeiNumber: '', imei2: '', chassisNumber: '' };
       const next = [...prev];
       next.splice(idx + 1, 0, copy);
       return next;
@@ -252,8 +268,15 @@ export default function StockReceivePage() {
         stock:            1,
         minStock:         1,
         description:      r.description || undefined,
+        warrantyMonths:   r.warrantyMonths ? Number(r.warrantyMonths) : undefined,
+        // mobile
+        imeiNumber:       r.imeiNumber  || undefined,
+        imei2:            r.imei2       || undefined,
+        ramGb:            (productType === 'mobile' && r.ramGb)   ? Number(r.ramGb)   : undefined,
+        condition:        (productType === 'mobile' && r.condition) ? (r.condition as BulkReceiveUnit['condition']) : undefined,
+        network:          (productType === 'mobile' && r.network)  ? (r.network as BulkReceiveUnit['network'])  : undefined,
         attributes:       (productType === 'mobile' && r.storageGb) ? { storageGb: Number(r.storageGb) } : undefined,
-        imeiNumber:       r.imeiNumber       || undefined,
+        // vehicle
         chassisNumber:    r.chassisNumber    || undefined,
         engineNumber:     r.engineNumber     || undefined,
         registrationNumber: r.registrationNumber || undefined,
@@ -386,17 +409,47 @@ export default function StockReceivePage() {
 
               {supplierId && (
                 <div className="mt-1.5 space-y-1.5">
-                  <div>
-                    <label className="block text-xs font-black text-slate-600 mb-1">Invoice Date</label>
-                    <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 mb-1">Invoice Date</label>
+                      <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 mb-1">Bill / Invoice No.</label>
+                      <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition font-mono"
+                        placeholder="e.g. INV-1234" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-black text-slate-600 mb-1">Paid Amount (PKR)</label>
-                    <input type="number" min="0" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition tabular-nums"
-                      placeholder="0" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 mb-1">Payment</label>
+                      <div className="relative">
+                        <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition appearance-none bg-white cursor-pointer">
+                          <option value="">— Select —</option>
+                          {PAYMENT_METHODS.map((m) => (
+                            <option key={m} value={m}>{m === 'CASH' ? 'Cash' : m === 'BANK' ? 'Bank Transfer' : m === 'CHEQUE' ? 'Cheque' : 'Credit (Udhaar)'}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 mb-1">Paid Amount (PKR)</label>
+                      <input type="number" min="0" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition tabular-nums"
+                        placeholder="0" />
+                    </div>
                   </div>
+                  {(paymentMethod === 'CREDIT' || (paidAmount && Number(paidAmount) < totalPurchase && totalPurchase > 0)) && (
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 mb-1">Due Date <span className="text-amber-500">(baki raqam kab milegi?)</span></label>
+                      <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-amber-200 rounded-xl outline-none focus:border-amber-400 transition bg-amber-50" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -523,13 +576,18 @@ export default function StockReceivePage() {
             {/* ── Mobile Table ── */}
             {productType === 'mobile' && (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] text-xs">
+                <table className="w-full min-w-[1300px] text-xs">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
                       <th className="px-3 py-2.5 text-left font-black text-slate-500 w-8">#</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">IMEI <span className="text-red-500">*</span></th>
+                      <th className="px-3 py-2.5 text-left font-black text-slate-500">IMEI 1 <span className="text-red-500">*</span></th>
+                      <th className="px-3 py-2.5 text-left font-black text-slate-500">IMEI 2</th>
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Color</th>
+                      <th className="px-3 py-2.5 text-left font-black text-slate-500">RAM</th>
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Storage</th>
+                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Network</th>
+                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Condition</th>
+                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Warranty</th>
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Buy Price</th>
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Sale Price <span className="text-red-500">*</span></th>
                       <th className="px-3 py-2.5 text-left font-black text-slate-500">Inst Price</th>
@@ -539,25 +597,49 @@ export default function StockReceivePage() {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {rows.map((row, i) => {
-                      const imeiDup = rows.some((r, j) => j !== i && r.imeiNumber && r.imeiNumber === row.imeiNumber);
+                      const imeiDup  = rows.some((r, j) => j !== i && r.imeiNumber && r.imeiNumber === row.imeiNumber);
+                      const imei2Dup = row.imei2 && rows.some((r, j) => j !== i && r.imeiNumber === row.imei2);
                       return (
                         <tr key={row._id} className="hover:bg-slate-50/50 transition">
                           <td className="px-3 py-2 text-slate-400 font-bold">{i + 1}</td>
-                          <td className="px-2 py-1.5 min-w-[150px]">
+                          <td className="px-2 py-1.5 min-w-[145px]">
                             <div className="relative">
                               <input value={row.imeiNumber} onChange={(e) => updateRow(row._id, 'imeiNumber', e.target.value)}
                                 className={`${inp} ${imeiDup ? 'border-red-400 bg-red-50' : ''} font-mono`}
-                                placeholder="15-digit IMEI" maxLength={20} inputMode="numeric" />
+                                placeholder="IMEI 1" maxLength={20} inputMode="numeric" />
                               {imeiDup && <AlertCircle size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500" />}
                             </div>
                           </td>
-                          <td className="px-2 py-1.5 min-w-[90px]">
+                          <td className="px-2 py-1.5 min-w-[130px]">
+                            <div className="relative">
+                              <input value={row.imei2} onChange={(e) => updateRow(row._id, 'imei2', e.target.value)}
+                                className={`${inp} ${imei2Dup ? 'border-amber-400 bg-amber-50' : ''} font-mono`}
+                                placeholder="IMEI 2 (optional)" maxLength={20} inputMode="numeric" />
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5 min-w-[85px]">
                             <input value={row.color} onChange={(e) => updateRow(row._id, 'color', e.target.value)}
                               className={inp} placeholder="Black" />
                           </td>
-                          <td className="px-2 py-1.5 min-w-[80px]">
+                          <td className="px-2 py-1.5 min-w-[70px]">
+                            <Sel value={row.ramGb} onChange={(v) => updateRow(row._id, 'ramGb', v)}
+                              options={RAM_OPTIONS} placeholder="GB" />
+                          </td>
+                          <td className="px-2 py-1.5 min-w-[76px]">
                             <Sel value={row.storageGb} onChange={(v) => updateRow(row._id, 'storageGb', v)}
                               options={STORAGE_OPTIONS} placeholder="GB" />
+                          </td>
+                          <td className="px-2 py-1.5 min-w-[68px]">
+                            <Sel value={row.network} onChange={(v) => updateRow(row._id, 'network', v)}
+                              options={NETWORK_OPTIONS} placeholder="—" />
+                          </td>
+                          <td className="px-2 py-1.5 min-w-[100px]">
+                            <Sel value={row.condition} onChange={(v) => updateRow(row._id, 'condition', v)}
+                              options={CONDITION_OPTIONS} placeholder="—" />
+                          </td>
+                          <td className="px-2 py-1.5 min-w-[78px]">
+                            <Sel value={row.warrantyMonths} onChange={(v) => updateRow(row._id, 'warrantyMonths', v)}
+                              options={WARRANTY_OPTIONS} placeholder="None" />
                           </td>
                           <td className="px-2 py-1.5 min-w-[100px]">
                             <input type="number" min="0" value={row.purchasePrice}
@@ -575,9 +657,9 @@ export default function StockReceivePage() {
                               onChange={(e) => updateRow(row._id, 'installmentPrice', e.target.value)}
                               className={inp} placeholder={defInst || '0'} />
                           </td>
-                          <td className="px-2 py-1.5 min-w-[120px]">
+                          <td className="px-2 py-1.5 min-w-[110px]">
                             <input value={row.description} onChange={(e) => updateRow(row._id, 'description', e.target.value)}
-                              className={inp} placeholder="Optional note" />
+                              className={inp} placeholder="Note" />
                           </td>
                           <td className="px-2 py-1.5">
                             <div className="flex items-center gap-1">

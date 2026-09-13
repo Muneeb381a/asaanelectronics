@@ -62,7 +62,14 @@ export interface BulkReceiveUnit {
   minStock?:        number;
   description?:     string;
   attributes?:      Record<string, unknown>;
+  warrantyMonths?:  number;
+  // mobile
   imeiNumber?:      string;
+  imei2?:           string;
+  ramGb?:           number;
+  condition?:       'NEW' | 'OPEN_BOX' | 'REFURBISHED' | 'USED';
+  network?:         '4G' | '5G' | '3G';
+  // vehicle
   chassisNumber?:   string;
   engineNumber?:    string;
   registrationNumber?: string;
@@ -74,10 +81,13 @@ export interface BulkReceiveUnit {
 }
 
 export interface BulkReceiveInput {
-  supplierId?:  string;
-  invoiceDate?: string;
-  paidAmount?:  number;
-  units:        BulkReceiveUnit[];
+  supplierId?:    string;
+  invoiceDate?:   string;
+  paidAmount?:    number;
+  invoiceNumber?: string;
+  paymentMethod?: 'CASH' | 'BANK' | 'CHEQUE' | 'CREDIT';
+  dueDate?:       string;
+  units:          BulkReceiveUnit[];
 }
 
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;

@@ -71,6 +71,7 @@ export class SuppliersService {
       id: string; supplier_id: string; seller_id: string;
       total_amount: string; paid_amount: string;
       description: string; invoice_date: string; created_at: string;
+      invoice_number: string | null; payment_method: string | null; due_date: string | null;
       lines: Array<{
         id: string; productId: string | null; productName: string;
         quantity: number; unitPrice: string; notes: string | null;
@@ -79,6 +80,7 @@ export class SuppliersService {
       SELECT
         si.id, si.supplier_id, si.seller_id, si.total_amount, si.paid_amount,
         si.description, si.invoice_date, si.created_at,
+        si.invoice_number, si.payment_method, si.due_date,
         COALESCE(
           json_agg(
             json_build_object(
@@ -100,16 +102,19 @@ export class SuppliersService {
     `);
 
     return rows.map((r) => ({
-      id:          r.id,
-      supplierId:  r.supplier_id,
-      sellerId:    r.seller_id,
-      totalAmount: Number(r.total_amount),
-      paidAmount:  Number(r.paid_amount),
-      outstanding: Number(r.total_amount) - Number(r.paid_amount),
-      description: r.description,
-      invoiceDate: r.invoice_date,
-      createdAt:   r.created_at,
-      lines:       (r.lines ?? []).map((l) => ({
+      id:            r.id,
+      supplierId:    r.supplier_id,
+      sellerId:      r.seller_id,
+      totalAmount:   Number(r.total_amount),
+      paidAmount:    Number(r.paid_amount),
+      outstanding:   Number(r.total_amount) - Number(r.paid_amount),
+      description:   r.description,
+      invoiceDate:   r.invoice_date,
+      invoiceNumber: r.invoice_number ?? null,
+      paymentMethod: r.payment_method ?? null,
+      dueDate:       r.due_date ?? null,
+      createdAt:     r.created_at,
+      lines:         (r.lines ?? []).map((l) => ({
         id:          l.id,
         productId:   l.productId,
         productName: l.productName,

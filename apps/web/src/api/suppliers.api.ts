@@ -23,16 +23,19 @@ export interface SupplierInvoiceLine {
 }
 
 export interface SupplierInvoice {
-  id:          string;
-  supplierId:  string;
-  sellerId:    string;
-  totalAmount: number;
-  paidAmount:  number;
-  outstanding: number;
-  description: string;
-  invoiceDate: string;
-  createdAt:   string;
-  lines:       SupplierInvoiceLine[];
+  id:            string;
+  supplierId:    string;
+  sellerId:      string;
+  totalAmount:   number;
+  paidAmount:    number;
+  outstanding:   number;
+  description:   string;
+  invoiceDate:   string;
+  invoiceNumber: string | null;
+  paymentMethod: string | null;
+  dueDate:       string | null;
+  createdAt:     string;
+  lines:         SupplierInvoiceLine[];
 }
 
 export interface CreateInvoiceLine {

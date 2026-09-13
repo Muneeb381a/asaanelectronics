@@ -12,15 +12,20 @@ export interface BulkReceiveUnit {
   model?:           string;
   color?:           string;
   purchasePrice?:   number;
-  price:            number;   // sale price
+  price:            number;
   installmentPrice?: number;
   stock?:           number;
   minStock?:        number;
   description?:     string;
   attributes?:      Record<string, unknown>;
-  // mobile
+  warrantyMonths?:  number;
+  // mobile-specific (stored in attributes)
   imeiNumber?:      string;
-  // vehicle
+  imei2?:           string;
+  ramGb?:           number;
+  condition?:       'NEW' | 'OPEN_BOX' | 'REFURBISHED' | 'USED';
+  network?:         '4G' | '5G' | '3G';
+  // vehicle-specific
   chassisNumber?:   string;
   engineNumber?:    string;
   registrationNumber?: string;
@@ -32,10 +37,13 @@ export interface BulkReceiveUnit {
 }
 
 export interface BulkReceiveInput {
-  supplierId?:  string;
-  invoiceDate?: string;
-  paidAmount?:  number;
-  units:        BulkReceiveUnit[];
+  supplierId?:    string;
+  invoiceDate?:   string;
+  paidAmount?:    number;
+  invoiceNumber?: string;
+  paymentMethod?: 'CASH' | 'BANK' | 'CHEQUE' | 'CREDIT';
+  dueDate?:       string;
+  units:          BulkReceiveUnit[];
 }
 
 export class ProductsService {
@@ -199,32 +207,40 @@ export class ProductsService {
       const created = await tx
         .insert(products)
         .values(
-          input.units.map((u) => ({
-            id:                 randomUUID(),
-            sellerId,
-            name:               u.name,
-            category:           u.category ?? null,
-            brand:              u.brand ?? null,
-            model:              u.model ?? null,
-            color:              u.color ?? null,
-            price:              String(u.price),
-            installmentPrice:   u.installmentPrice != null ? String(u.installmentPrice) : null,
-            purchasePrice:      u.purchasePrice   != null ? String(u.purchasePrice)   : null,
-            stock:              u.stock ?? 1,
-            minStock:           u.minStock ?? 1,
-            description:        u.description ?? null,
-            attributes:         u.attributes ?? null,
-            supplierId:         input.supplierId ?? null,
-            imeiNumber:         u.imeiNumber       ?? null,
-            chassisNumber:      u.chassisNumber    ?? null,
-            engineNumber:       u.engineNumber     ?? null,
-            registrationNumber: u.registrationNumber ?? null,
-            vehicleCondition:   u.vehicleCondition ?? null,
-            modelYear:          u.modelYear        ?? null,
-            letterStatus:       u.letterStatus     ?? null,
-            biometricStatus:    u.biometricStatus  ?? null,
-            vehicleFileLocation: u.vehicleFileLocation ?? null,
-          })),
+          input.units.map((u) => {
+            const attrs: Record<string, unknown> = { ...(u.attributes ?? {}) };
+            if (u.imei2)     attrs['imei2']     = u.imei2;
+            if (u.ramGb)     attrs['ramGb']     = u.ramGb;
+            if (u.condition) attrs['condition'] = u.condition;
+            if (u.network)   attrs['network']   = u.network;
+            return {
+              id:                 randomUUID(),
+              sellerId,
+              name:               u.name,
+              category:           u.category ?? null,
+              brand:              u.brand ?? null,
+              model:              u.model ?? null,
+              color:              u.color ?? null,
+              price:              String(u.price),
+              installmentPrice:   u.installmentPrice != null ? String(u.installmentPrice) : null,
+              purchasePrice:      u.purchasePrice   != null ? String(u.purchasePrice)   : null,
+              stock:              u.stock ?? 1,
+              minStock:           u.minStock ?? 1,
+              description:        u.description ?? null,
+              warrantyMonths:     u.warrantyMonths ?? null,
+              attributes:         Object.keys(attrs).length ? attrs : null,
+              supplierId:         input.supplierId ?? null,
+              imeiNumber:         u.imeiNumber       ?? null,
+              chassisNumber:      u.chassisNumber    ?? null,
+              engineNumber:       u.engineNumber     ?? null,
+              registrationNumber: u.registrationNumber ?? null,
+              vehicleCondition:   u.vehicleCondition ?? null,
+              modelYear:          u.modelYear        ?? null,
+              letterStatus:       u.letterStatus     ?? null,
+              biometricStatus:    u.biometricStatus  ?? null,
+              vehicleFileLocation: u.vehicleFileLocation ?? null,
+            };
+          }),
         )
         .returning();
 
@@ -236,13 +252,16 @@ export class ProductsService {
         const [invoice] = await tx
           .insert(supplierInvoices)
           .values({
-            id:          randomUUID(),
+            id:            randomUUID(),
             sellerId,
-            supplierId:  input.supplierId,
-            totalAmount: String(totalAmount),
-            paidAmount:  String(input.paidAmount ?? 0),
-            description: desc,
-            invoiceDate: input.invoiceDate,
+            supplierId:    input.supplierId,
+            totalAmount:   String(totalAmount),
+            paidAmount:    String(input.paidAmount ?? 0),
+            description:   desc,
+            invoiceDate:   input.invoiceDate,
+            invoiceNumber: input.invoiceNumber ?? null,
+            paymentMethod: input.paymentMethod ?? null,
+            dueDate:       input.dueDate ?? null,
           })
           .returning();
 
