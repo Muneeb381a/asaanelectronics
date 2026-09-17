@@ -1,3 +1,4 @@
+import { PageHeader, btn, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -433,23 +434,10 @@ export default function ReturnsPage() {
   const pendingCount = rows.filter((r) => r.status === 'PENDING').length;
 
   return (
-    <div className="px-4 py-5 sm:p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <RotateCcw size={20} className="text-gray-400" />
-            Returns & Exchanges
-          </h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Product returns, damage reports, and replacement workflow
-          </p>
-        </div>
-        <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition shadow-sm shadow-blue-200">
-          <Plus size={15} />
-          New Request
-        </button>
+    <div className={shell.default}>
+      <div className="mb-6">
+        <PageHeader title="Returns & Exchanges" subtitle="Product returns, damage reports and replacements" icon={RotateCcw}
+          actions={<button onClick={() => setShowCreate(true)} className={btn.primary}><Plus size={15} /> New request</button>} />
       </div>
 
       {/* Status tabs + search */}

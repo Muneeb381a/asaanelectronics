@@ -1,3 +1,4 @@
+import { PageHeader, btn, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -254,32 +255,17 @@ export default function CashSalesPage() {
   return (
     <div className="bg-canvas">
 
-      {/* ══ DARK HEADER ══ */}
-      <div className="bg-slate-950 shadow-lg shadow-slate-950/20">
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5">
-          <div>
-            <div className="flex items-center gap-2">
-              <ShoppingCart size={15} className="text-emerald-400"/>
-              <h1 className="text-[15px] font-black text-white">Cash Sales</h1>
-              {salesTotal > 0 && (
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">{salesTotal} records</span>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">Bina installment direct sale</p>
-          </div>
-          <button onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition shadow-sm shadow-emerald-900">
-            <Plus size={13}/> Naya Cash Sale
-          </button>
-        </div>
+      <div className={`${shell.wide} !pb-0`}>
+        <PageHeader title="Cash Sales" subtitle={`Bina installment direct sale${salesTotal > 0 ? ` · ${salesTotal} records` : ''}`} icon={ShoppingCart}
+          actions={<button onClick={() => setShowModal(true)} className={btn.success}><Plus size={14}/> Naya cash sale</button>} />
       </div>
 
       {/* ══ KPI STRIP ══ */}
-      <div className="bg-white border-b border-slate-200 shadow-sm">
+      <div className="bg-white border-y border-gray-200 mt-5">
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100">
           <div className="px-5 py-3.5 border-l-[3px] border-emerald-500">
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.18em]">Aaj Ki Revenue</p>
-            <p className="text-2xl xl:text-3xl font-black text-slate-900 tabular-nums leading-none mt-1.5">
+            <p className="text-2xl xl:text-3xl font-bold text-slate-900 tabular-nums leading-none mt-1.5">
               {pkrSh(stats?.todayCashSales ?? todayRevenue)}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">
@@ -288,14 +274,14 @@ export default function CashSalesPage() {
           </div>
           <div className="px-5 py-3.5 border-l-[3px] border-blue-500">
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.18em]">Is Mahine</p>
-            <p className="text-2xl xl:text-3xl font-black text-slate-900 tabular-nums leading-none mt-1.5">
+            <p className="text-2xl xl:text-3xl font-bold text-slate-900 tabular-nums leading-none mt-1.5">
               {pkrSh(stats?.monthCashSales ?? 0)}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">{pkr(stats?.monthCashSales ?? 0)}</p>
           </div>
           <div className="px-5 py-3.5 border-l-[3px] border-violet-400">
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.18em]">Kul Records</p>
-            <p className="text-2xl xl:text-3xl font-black text-slate-900 tabular-nums leading-none mt-1.5">{salesTotal}</p>
+            <p className="text-2xl xl:text-3xl font-bold text-slate-900 tabular-nums leading-none mt-1.5">{salesTotal}</p>
             <p className="text-[10px] text-slate-400 mt-1">sab mila kar</p>
           </div>
           <div className="px-5 py-3.5 border-l-[3px] border-slate-200">
@@ -305,7 +291,7 @@ export default function CashSalesPage() {
                 const cnt = allSales.filter(s => s.method === m).length;
                 if (!cnt) return null;
                 return (
-                  <span key={m} className={`text-[10px] font-black px-1.5 py-0.5 rounded ${METHOD_COLORS[m].pill}`}>
+                  <span key={m} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${METHOD_COLORS[m].pill}`}>
                     {METHOD_LABELS[m]} {cnt}
                   </span>
                 );
@@ -334,12 +320,12 @@ export default function CashSalesPage() {
           {/* Method filter pills */}
           <div className="flex gap-1.5 flex-wrap">
             <button onClick={() => setMethodFilter('ALL')}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition ${methodFilter === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${methodFilter === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               Sab
             </button>
             {METHODS.map(m => (
               <button key={m} onClick={() => setMethodFilter(m)}
-                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-black transition ${methodFilter === m ? `${METHOD_COLORS[m].pill} ring-2 ring-offset-1 ring-current` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition ${methodFilter === m ? `${METHOD_COLORS[m].pill} ring-2 ring-offset-1 ring-current` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 {METHOD_ICONS[m]} {METHOD_LABELS[m]}
               </button>
             ))}
@@ -351,7 +337,7 @@ export default function CashSalesPage() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <TrendingUp size={14} className="text-slate-500"/>
-              <h2 className="text-sm font-black text-slate-900">
+              <h2 className="text-sm font-bold text-slate-900">
                 {methodFilter !== 'ALL' ? `${METHOD_LABELS[methodFilter]} Sales` : 'Tamam Sales'}
               </h2>
               {methodFilter !== 'ALL' && (
@@ -373,7 +359,7 @@ export default function CashSalesPage() {
                 <ShoppingCart size={20} className="text-slate-300"/>
               </div>
               <div>
-                <p className="text-sm font-black text-slate-600">{listSearch ? 'Kuch nahi mila' : 'Koi sale nahi'}</p>
+                <p className="text-sm font-bold text-slate-600">{listSearch ? 'Kuch nahi mila' : 'Koi sale nahi'}</p>
                 <p className="text-xs text-slate-400 mt-1">{listSearch ? 'Alag search try karo' : '"Naya Cash Sale" par click karo'}</p>
               </div>
             </div>
@@ -383,7 +369,7 @@ export default function CashSalesPage() {
                 <div key={group.key}>
                   {/* Date group header */}
                   <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 border-y border-slate-100 sticky top-0 z-10">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{group.label}</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{group.label}</p>
                     <div className="flex-1 border-t border-slate-200"/>
                     <p className="text-[10px] text-slate-400 tabular-nums">
                       {pkrSh(group.items.reduce((a, s) => a + Number(s.amount), 0))} total
@@ -405,7 +391,7 @@ export default function CashSalesPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-bold text-slate-900 truncate">{s.productName}</p>
                           {s.quantity > 1 && (
-                            <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">×{s.quantity}</span>
+                            <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">×{s.quantity}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
@@ -423,13 +409,13 @@ export default function CashSalesPage() {
 
                       {/* Amount + method */}
                       <div className="text-right shrink-0 mr-2 hidden sm:block">
-                        <p className="text-base font-black text-slate-900 tabular-nums">{pkr(Number(s.amount))}</p>
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${METHOD_COLORS[s.method].pill}`}>
+                        <p className="text-base font-bold text-slate-900 tabular-nums">{pkr(Number(s.amount))}</p>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${METHOD_COLORS[s.method].pill}`}>
                           {METHOD_LABELS[s.method]}
                         </span>
                       </div>
                       {/* Amount on mobile */}
-                      <p className="text-sm font-black text-slate-900 tabular-nums shrink-0 sm:hidden">{pkrSh(Number(s.amount))}</p>
+                      <p className="text-sm font-bold text-slate-900 tabular-nums shrink-0 sm:hidden">{pkrSh(Number(s.amount))}</p>
 
                       {/* Actions */}
                       <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition">
@@ -479,12 +465,12 @@ export default function CashSalesPage() {
               {salesPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
                   <button onClick={() => setListPage(p => Math.max(1, p - 1))} disabled={listPage === 1}
-                    className="flex items-center gap-1 text-xs font-black px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
                     <ChevronLeft size={13}/> Pehla
                   </button>
                   <span className="text-xs text-slate-500 tabular-nums">{listPage} / {salesPages}</span>
                   <button onClick={() => setListPage(p => Math.min(salesPages, p + 1))} disabled={listPage === salesPages}
-                    className="flex items-center gap-1 text-xs font-black px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
                     Agla <ChevronRight size={13}/>
                   </button>
                 </div>
@@ -499,12 +485,12 @@ export default function CashSalesPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="flex items-center justify-between px-5 py-4 bg-slate-950 shrink-0">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <div>
-                <p className="text-white font-black text-sm">Naya Cash Sale</p>
-                <p className="text-slate-400 text-xs mt-0.5">Product chunein aur amount bharen</p>
+                <p className="text-gray-900 font-semibold text-sm">Naya Cash Sale</p>
+                <p className="text-gray-500 text-xs mt-0.5">Product chunein aur amount bharen</p>
               </div>
-              <button onClick={closeModal} className="text-slate-400 hover:text-white transition p-1">
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-700 transition p-1">
                 <X size={16}/>
               </button>
             </div>
@@ -516,7 +502,7 @@ export default function CashSalesPage() {
                   <CheckCircle2 size={26} className="text-emerald-600"/>
                 </div>
                 <div className="text-center">
-                  <p className="font-black text-slate-900 text-base">Sale ho gayi!</p>
+                  <p className="font-bold text-slate-900 text-base">Sale ho gayi!</p>
                   <p className="text-sm font-bold text-emerald-600 tabular-nums mt-0.5">{pkr(Number(lastSale.amount))}</p>
                   <p className="text-sm text-slate-500 mt-0.5">{lastSale.productName}</p>
                   {lastSale.customerName && <p className="text-xs text-slate-400 mt-0.5">{lastSale.customerName}</p>}
@@ -529,7 +515,7 @@ export default function CashSalesPage() {
                       method: lastSale.method, imeiNumber: lastSale.imeiNumber, note: lastSale.note,
                       soldAt: lastSale.createdAt, saleId: lastSale.id,
                     })}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl text-sm font-black text-slate-700 hover:bg-slate-50 transition">
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
                     <Printer size={14}/> Print
                   </button>
                   <a href={cashSaleWhatsappUrl({
@@ -539,12 +525,12 @@ export default function CashSalesPage() {
                       method: lastSale.method, imeiNumber: lastSale.imeiNumber, note: lastSale.note, soldAt: lastSale.createdAt,
                     })}
                     target="_blank" rel="noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-sm font-black transition">
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl text-sm font-bold transition">
                     <MessageCircle size={14}/> WhatsApp
                   </a>
                 </div>
                 <button onClick={closeModal}
-                  className="w-full py-2.5 border border-slate-200 text-slate-600 text-sm font-black rounded-xl hover:bg-slate-50 transition">
+                  className="w-full py-2.5 border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition">
                   Done
                 </button>
               </div>
@@ -555,15 +541,15 @@ export default function CashSalesPage() {
               <form id="cs-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                 {/* Product selector */}
                 <div>
-                  <label className="block text-xs font-black text-slate-600 mb-1.5">Product <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Product <span className="text-red-500">*</span></label>
                   {selectedProd ? (
                     <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl">
                       <div>
-                        <p className="text-sm font-black text-blue-900">{selectedProd.name}</p>
+                        <p className="text-sm font-bold text-blue-900">{selectedProd.name}</p>
                         <p className="text-xs text-blue-600 mt-0.5">Stock: {selectedProd.stock} · PKR {Number(selectedProd.price).toLocaleString()}</p>
                       </div>
                       <button type="button" onClick={() => { setSelectedProd(null); setForm(initForm()); }}
-                        className="text-xs font-black text-blue-600 hover:text-blue-800 shrink-0 ml-3">Change</button>
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 shrink-0 ml-3">Change</button>
                     </div>
                   ) : (
                     <>
@@ -578,7 +564,7 @@ export default function CashSalesPage() {
                           <div className="py-5 text-center">
                             <p className="text-xs text-slate-400 mb-2">Koi product nahi mila</p>
                             <a href="/stock-receive" target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-black text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition">
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition">
                               ⚠ Maal Aya pe receive karo →
                             </a>
                           </div>
@@ -590,11 +576,11 @@ export default function CashSalesPage() {
                               {(p.brand || p.model) && <p className="text-xs text-slate-400">{[p.brand, p.model].filter(Boolean).join(' ')}</p>}
                             </div>
                             <div className="text-right shrink-0 ml-3">
-                              <p className="text-sm font-black text-slate-900 tabular-nums">PKR {Number(p.price).toLocaleString()}</p>
+                              <p className="text-sm font-bold text-slate-900 tabular-nums">PKR {Number(p.price).toLocaleString()}</p>
                               {p.stock < 1 ? (
                                 <a href="/stock-receive" target="_blank" rel="noopener noreferrer"
                                   onClick={e => e.stopPropagation()}
-                                  className="text-[10px] font-black text-amber-600 hover:underline">
+                                  className="text-[10px] font-bold text-amber-600 hover:underline">
                                   Stock khatam · Receive karo →
                                 </a>
                               ) : (
@@ -613,26 +599,26 @@ export default function CashSalesPage() {
                     {/* Qty + Amount */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-black text-slate-600 mb-1.5">Quantity</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Quantity</label>
                         <input type="number" min={1} max={selectedProd.stock} value={form.quantity}
                           onChange={e => setForm(f => ({ ...f, quantity: Math.max(1, Number(e.target.value)) }))}
                           className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" required/>
                       </div>
                       <div>
-                        <label className="block text-xs font-black text-slate-600 mb-1.5">Amount (PKR) <span className="text-red-500">*</span></label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Amount (PKR) <span className="text-red-500">*</span></label>
                         <input type="number" min={1} value={form.amount}
                           onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-black tabular-nums focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" required/>
+                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-bold tabular-nums focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" required/>
                       </div>
                     </div>
 
                     {/* Payment method */}
                     <div>
-                      <label className="block text-xs font-black text-slate-600 mb-1.5">Payment Method</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">Payment Method</label>
                       <div className="flex gap-1.5 flex-wrap">
                         {METHODS.map(m => (
                           <button key={m} type="button" onClick={() => setForm(f => ({ ...f, method: m }))}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-black transition ${
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition ${
                               form.method === m
                                 ? `${METHOD_COLORS[m].pill} ring-2 ring-offset-1 ring-current border-transparent`
                                 : 'border-slate-200 text-slate-500 hover:border-slate-300'
@@ -646,13 +632,13 @@ export default function CashSalesPage() {
                     {/* Customer */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-black text-slate-600 mb-1.5">Customer <span className="font-normal text-slate-400">(optional)</span></label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Customer <span className="font-normal text-slate-400">(optional)</span></label>
                         <input type="text" value={form.customerName} onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
                           placeholder="Walk-in customer"
                           className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
                       </div>
                       <div>
-                        <label className="block text-xs font-black text-slate-600 mb-1.5">Phone <span className="font-normal text-slate-400">(optional)</span></label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Phone <span className="font-normal text-slate-400">(optional)</span></label>
                         <input type="tel" value={form.customerPhone} onChange={e => setForm(f => ({ ...f, customerPhone: e.target.value }))}
                           placeholder="03XX-XXXXXXX"
                           className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
@@ -668,7 +654,7 @@ export default function CashSalesPage() {
                         </div>
                       ) : isVehicle ? (
                         <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
-                          <p className="text-[10px] font-black text-indigo-700 uppercase tracking-wide mb-2">Vehicle IDs</p>
+                          <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-2">Vehicle IDs</p>
                           <div className="space-y-1.5">
                             <div><p className="text-[9px] text-slate-500">Chassis</p><p className="text-xs font-mono font-bold text-slate-900">{selectedProd?.chassisNumber ?? '—'}</p></div>
                             {selectedProd?.engineNumber && <div><p className="text-[9px] text-slate-500">Engine</p><p className="text-xs font-mono font-bold text-slate-900">{selectedProd.engineNumber}</p></div>}
@@ -677,7 +663,7 @@ export default function CashSalesPage() {
                         </div>
                       ) : (
                         <div>
-                          <label className="block text-xs font-black text-slate-600 mb-1.5">IMEI <span className="font-normal text-slate-400">(optional)</span></label>
+                          <label className="block text-xs font-bold text-slate-600 mb-1.5">IMEI <span className="font-normal text-slate-400">(optional)</span></label>
                           <input type="text" inputMode="numeric" maxLength={15} value={form.imeiNumber}
                             onChange={e => setForm(f => ({ ...f, imeiNumber: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
                             placeholder="15-digit IMEI"
@@ -700,7 +686,7 @@ export default function CashSalesPage() {
                         </div>
                       )}
                       <div>
-                        <label className="block text-xs font-black text-slate-600 mb-1.5">Note <span className="font-normal text-slate-400">(optional)</span></label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">Note <span className="font-normal text-slate-400">(optional)</span></label>
                         <input type="text" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                           placeholder="Kuch aur…"
                           className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
@@ -715,11 +701,11 @@ export default function CashSalesPage() {
             {!lastSale && (
               <div className="px-5 py-4 border-t border-slate-100 flex gap-3 shrink-0">
                 <button type="button" onClick={closeModal}
-                  className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-black rounded-xl hover:bg-slate-50 transition">
+                  className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition">
                   Cancel
                 </button>
                 <button type="submit" form="cs-form" disabled={!selectedProd || !form.amount || createMutation.isPending}
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-black rounded-xl transition flex items-center justify-center gap-1.5">
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5">
                   {createMutation.isPending ? <span className="animate-pulse">Ho raha…</span> : <><CheckCircle2 size={14}/> Sale Record Karo</>}
                 </button>
               </div>
@@ -779,27 +765,27 @@ function EditModal({
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-5 py-4 bg-slate-950 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div>
-            <p className="text-white font-black text-sm">Sale Edit Karo</p>
-            <p className="text-slate-400 text-xs mt-0.5">{sale.productName} · Qty {sale.quantity}</p>
+            <p className="text-gray-900 font-semibold text-sm">Sale Edit Karo</p>
+            <p className="text-gray-500 text-xs mt-0.5">{sale.productName} · Qty {sale.quantity}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition p-1"><X size={16}/></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition p-1"><X size={16}/></button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Amount (PKR)</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Amount (PKR)</label>
             <input type="number" min="1" autoFocus value={amount} onChange={e => setAmount(e.target.value)}
-              className="w-full px-3 py-3 border border-slate-200 rounded-xl text-lg font-black tabular-nums focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"/>
+              className="w-full px-3 py-3 border border-slate-200 rounded-xl text-lg font-bold tabular-nums focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"/>
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Payment Method</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Payment Method</label>
             <div className="flex flex-wrap gap-1.5">
               {METHODS.map(m => (
                 <button key={m} type="button" onClick={() => setMethod(m)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black border transition ${
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
                     method === m
                       ? `${METHOD_COLORS[m].pill} ring-2 ring-offset-1 ring-current border-transparent`
                       : 'border-slate-200 text-slate-500 hover:border-slate-300'
@@ -811,22 +797,22 @@ function EditModal({
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Customer Name</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Customer Name</label>
             <input type="text" placeholder="Walk-in" value={customerName} onChange={e => setCustomerName(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Phone</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Phone</label>
             <input type="tel" placeholder="03xx-xxxxxxx" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">IMEI / Serial</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">IMEI / Serial</label>
             <input type="text" placeholder="Optional" value={imeiNumber} onChange={e => setImeiNumber(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-blue-400 transition"/>
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Note</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Note</label>
             <input type="text" placeholder="Optional" value={note} onChange={e => setNote(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
           </div>
@@ -834,11 +820,11 @@ function EditModal({
 
         <div className="flex gap-3 px-5 py-4 border-t border-slate-100 shrink-0">
           <button onClick={onClose}
-            className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-black rounded-xl hover:bg-slate-50 transition">
+            className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition">
             Wapas
           </button>
           <button onClick={handleSave} disabled={isPending || !amount}
-            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-black rounded-xl transition flex items-center justify-center gap-1.5">
+            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5">
             {isPending ? <span className="animate-pulse">Save ho raha…</span> : <><Pencil size={13}/> Save Karo</>}
           </button>
         </div>

@@ -1,3 +1,4 @@
+import { PageHeader, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -239,19 +240,9 @@ export default function AuditLogPage() {
   function resetPage() { setPage(1); }
 
   return (
-    <div className="px-4 py-5 sm:p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <ShieldCheck size={20} className="text-indigo-600" />
-            Audit Log
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Full record of every sensitive action in your shop</p>
-        </div>
-        {total > 0 && (
-          <span className="text-sm text-gray-400 mt-1 shrink-0">{total.toLocaleString()} events</span>
-        )}
+    <div className={shell.default}>
+      <div className="mb-6">
+        <PageHeader title="Audit Log" subtitle={total > 0 ? `${total.toLocaleString()} events · har sensitive action ka record` : 'Har sensitive action ka record'} icon={ShieldCheck} />
       </div>
 
       {/* Filters */}

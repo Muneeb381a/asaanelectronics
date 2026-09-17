@@ -601,7 +601,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                         Late Fee Accumulated
                       </p>
                       <p className="text-[11px] text-amber-700 mt-0.5">
-                        {Math.max(0, daysOverdue - lateFeeGraceDays)} din × PKR {lateFeePerDay}/din = <span className="font-black">{pkr(accumulatedLateFee)}</span>
+                        {Math.max(0, daysOverdue - lateFeeGraceDays)} din × PKR {lateFeePerDay}/din = <span className="font-bold">{pkr(accumulatedLateFee)}</span>
                       </p>
                     </div>
                     <button

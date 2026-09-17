@@ -1,3 +1,4 @@
+import { PageHeader } from '../components/ui/Page';
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -882,18 +883,14 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col min-h-full bg-canvas">
       {/* Header */}
-      <div className="bg-slate-950 border-b border-white/5">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
-          <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center shrink-0"><Settings size={16} className="text-white" /></div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-white leading-tight">Settings</h1>
-            <p className="text-[11px] text-slate-400 leading-tight truncate">{shop?.shopName ?? 'Loading…'}{usage && <> · <span className="text-slate-300">{usage.planLabel}</span></>}</p>
-          </div>
-          <div className="hidden sm:flex items-center gap-2.5 shrink-0 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10">
-            <div className="w-6 h-6 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">{initials}</div>
-            <p className="text-xs font-medium text-slate-300">{user?.name}</p>
-          </div>
-        </div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-6 pb-4 w-full">
+        <PageHeader title="Settings" subtitle={<>{shop?.shopName ?? 'Loading…'}{usage && <> · {usage.planLabel} plan</>}</>} icon={Settings}
+          actions={
+            <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 bg-white rounded-xl ring-1 ring-gray-200">
+              <div className="w-6 h-6 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">{initials}</div>
+              <p className="text-xs font-medium text-gray-700">{user?.name}</p>
+            </div>
+          } />
       </div>
 
       {/* Tabs */}

@@ -1,3 +1,4 @@
+import { shell } from '../components/ui/Page';
 ﻿import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
@@ -785,7 +786,7 @@ function EarlySettlementModal({ inst, onClose }: { inst: Installment; onClose: (
               )}
               <div className="border-t border-emerald-200 pt-2 flex justify-between">
                 <span className="font-bold text-gray-800">Aaj dena hoga</span>
-                <span className="text-xl font-black text-emerald-700" style={{ fontFamily: "'Syne', sans-serif" }}>
+                <span className="text-xl font-bold text-emerald-700">
                   {pkr(settlement.settlementAmount)}
                 </span>
               </div>
@@ -1625,14 +1626,14 @@ export default function InstallmentsPage() {
   });
 
   return (
-    <div className="px-4 py-5 sm:p-6">
+    <div className={shell.wide}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Installments</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{data?.total ?? 0} total</p>
+          <h1 className="text-xl font-bold text-gray-900 leading-tight">Installments</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{data?.total ?? 0} plans</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowReminders(true)}
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition">

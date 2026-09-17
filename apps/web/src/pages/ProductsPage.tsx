@@ -1,3 +1,4 @@
+import { PageHeader, btn, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -294,23 +295,12 @@ export default function ProductsPage() {
   const criticalSlow   = intelligence?.slowMoving.filter((s) => s.severity === 'CRITICAL').length ?? 0;
 
   return (
-    <div className="px-4 py-5 sm:p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Products</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{data?.total ?? 0} items</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/stock-receive')}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black rounded-lg transition flex items-center gap-1.5">
-            <Package size={14} /> Maal Aya
-          </button>
-          <button onClick={() => setModal({ mode: 'add' })}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-            + Add product
-          </button>
-        </div>
+    <div className={shell.wide}>
+      <div className="mb-5">
+        <PageHeader title="Products" subtitle={`${data?.total ?? 0} items in catalog`} icon={Package} actions={<>
+          <button onClick={() => navigate('/stock-receive')} className={btn.success}><Package size={14} /> Maal Aya</button>
+          <button onClick={() => setModal({ mode: 'add' })} className={btn.primary}>+ Add product</button>
+        </>} />
       </div>
 
       {/* Tabs */}

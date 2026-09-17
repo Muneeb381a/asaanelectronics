@@ -330,7 +330,7 @@ export default function StockReceivePage() {
   // ─── render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-full bg-canvas">
 
       {/* ── Header ── */}
       <div className="sticky top-0 z-20 bg-white border-b border-slate-100 shadow-sm">
@@ -340,7 +340,7 @@ export default function StockReceivePage() {
               <ArrowLeft size={18} />
             </button>
             <div>
-              <h1 className="text-lg font-black text-slate-900">Maal Aya — Stock Receive</h1>
+              <h1 className="text-lg font-bold text-slate-900">Maal Aya — Stock Receive</h1>
               <p className="text-xs text-slate-400">Supplier se maal aya tu yahan add karein</p>
             </div>
           </div>
@@ -348,7 +348,7 @@ export default function StockReceivePage() {
             <button
               onClick={handleSave}
               disabled={saveMutation.isPending}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm rounded-xl transition shadow-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition shadow-sm"
             >
               <CheckCircle2 size={15} />
               {saveMutation.isPending ? 'Save ho raha hai...' : `${rows.length} Products Save Karein`}
@@ -366,7 +366,7 @@ export default function StockReceivePage() {
               <ClipboardList size={15} className="text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-black text-slate-900">Step 1 — Setup</p>
+              <p className="text-sm font-bold text-slate-900">Step 1 — Setup</p>
               <p className="text-[11px] text-slate-400">Supplier, product aur quantity batao</p>
             </div>
           </div>
@@ -375,7 +375,7 @@ export default function StockReceivePage() {
 
             {/* Supplier */}
             <div className="sm:col-span-2 lg:col-span-1">
-              <label className="block text-xs font-black text-slate-600 mb-1.5">Supplier</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">Supplier</label>
               <div className="relative">
                 <select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setShowQuickSupplier(false); }}
                   className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 bg-white transition cursor-pointer appearance-none">
@@ -388,7 +388,7 @@ export default function StockReceivePage() {
               {/* Quick-add supplier button */}
               {!showQuickSupplier && !supplierId && (
                 <button type="button" onClick={() => setShowQuickSupplier(true)}
-                  className="mt-2 flex items-center gap-1.5 text-xs font-black text-indigo-600 hover:text-indigo-800 transition">
+                  className="mt-2 flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition">
                   <UserPlus size={12}/> Naya supplier add karo
                 </button>
               )}
@@ -397,7 +397,7 @@ export default function StockReceivePage() {
               {showQuickSupplier && (
                 <div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-black text-indigo-700 flex items-center gap-1"><UserPlus size={12}/> Naya Supplier</p>
+                    <p className="text-xs font-bold text-indigo-700 flex items-center gap-1"><UserPlus size={12}/> Naya Supplier</p>
                     <button type="button" onClick={() => { setShowQuickSupplier(false); setQuickSupErr(''); }} className="text-indigo-400 hover:text-indigo-700"><X size={13}/></button>
                   </div>
                   <input value={quickSupName} onChange={e => setQuickSupName(e.target.value)} placeholder="Naam *"
@@ -410,7 +410,7 @@ export default function StockReceivePage() {
                       className="flex-1 py-1.5 text-xs border border-indigo-200 rounded-lg text-indigo-500 hover:bg-white transition">Cancel</button>
                     <button type="button" disabled={!quickSupName.trim() || quickSupplierMut.isPending}
                       onClick={() => { setQuickSupErr(''); if (!quickSupName.trim()) return setQuickSupErr('Naam zaruri hai'); quickSupplierMut.mutate(); }}
-                      className="flex-1 py-1.5 text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60 transition flex items-center justify-center gap-1">
+                      className="flex-1 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60 transition flex items-center justify-center gap-1">
                       {quickSupplierMut.isPending ? <><Loader2 size={11} className="animate-spin"/> Saving…</> : <><UserPlus size={11}/> Save</>}
                     </button>
                   </div>
@@ -421,12 +421,12 @@ export default function StockReceivePage() {
                 <div className="mt-1.5 space-y-1.5">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-black text-slate-600 mb-1">Invoice Date</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Invoice Date</label>
                       <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition" />
                     </div>
                     <div>
-                      <label className="block text-xs font-black text-slate-600 mb-1">Bill / Invoice No.</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Bill / Invoice No.</label>
                       <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition font-mono"
                         placeholder="e.g. INV-1234" />
@@ -434,7 +434,7 @@ export default function StockReceivePage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-black text-slate-600 mb-1">Payment</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Payment</label>
                       <div className="relative">
                         <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
                           className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition appearance-none bg-white cursor-pointer">
@@ -447,7 +447,7 @@ export default function StockReceivePage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-black text-slate-600 mb-1">Paid Amount (PKR)</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Paid Amount (PKR)</label>
                       <input type="number" min="0" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition tabular-nums"
                         placeholder="0" />
@@ -455,7 +455,7 @@ export default function StockReceivePage() {
                   </div>
                   {(paymentMethod === 'CREDIT' || (paidAmount && Number(paidAmount) < totalPurchase && totalPurchase > 0)) && (
                     <div>
-                      <label className="block text-xs font-black text-slate-600 mb-1">Due Date <span className="text-amber-500">(baki raqam kab milegi?)</span></label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Due Date <span className="text-amber-500">(baki raqam kab milegi?)</span></label>
                       <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-amber-200 rounded-xl outline-none focus:border-amber-400 transition bg-amber-50" />
                     </div>
@@ -467,7 +467,7 @@ export default function StockReceivePage() {
             {/* Product info */}
             <div className="sm:col-span-2 lg:col-span-2 space-y-2.5">
               <div>
-                <label className="block text-xs font-black text-slate-600 mb-1.5">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">
                   Product Name <span className="text-red-500">*</span>
                 </label>
                 <input value={productName} onChange={(e) => setProductName(e.target.value)}
@@ -476,7 +476,7 @@ export default function StockReceivePage() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-xs font-black text-slate-600 mb-1">Category</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Category</label>
                   <CategoryCombobox
                     value={category}
                     onChange={setCategory}
@@ -485,13 +485,13 @@ export default function StockReceivePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-slate-600 mb-1">Brand</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Brand</label>
                   <input value={brand} onChange={(e) => setBrand(e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition"
                     placeholder="Samsung..." />
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-slate-600 mb-1">Model</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Model</label>
                   <input value={model} onChange={(e) => setModel(e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 transition"
                     placeholder="A15..." />
@@ -502,7 +502,7 @@ export default function StockReceivePage() {
             {/* Type + Qty */}
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-black text-slate-600 mb-1.5">Product Type</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Product Type</label>
                 <div className="flex flex-col gap-1.5">
                   {(['mobile', 'vehicle', 'other'] as ProductType[]).map((t) => (
                     <button key={t} type="button" onClick={() => setProductType(t)}
@@ -518,12 +518,12 @@ export default function StockReceivePage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-black text-slate-600 mb-1.5">Kitne Units? <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Kitne Units? <span className="text-red-500">*</span></label>
                 <input type="number" min="1" max="100" value={qty} onChange={(e) => setQty(e.target.value)}
-                  className="w-full px-3 py-2.5 text-lg font-black border border-slate-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition text-center tabular-nums" />
+                  className="w-full px-3 py-2.5 text-lg font-bold border border-slate-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition text-center tabular-nums" />
               </div>
               <button onClick={generateTable}
-                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-sm rounded-xl transition flex items-center justify-center gap-2">
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2">
                 <Plus size={15} /> Table Banao
               </button>
             </div>
@@ -534,9 +534,9 @@ export default function StockReceivePage() {
             <div className="px-5 pb-5">
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-black text-blue-800">Default Prices — Ek baar fill karo, sab rows pe apply karo</p>
+                  <p className="text-sm font-bold text-blue-800">Default Prices — Ek baar fill karo, sab rows pe apply karo</p>
                   <button onClick={applyDefaults}
-                    className="text-xs font-black text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition">
+                    className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition">
                     Sab Rows Pe Apply ↓
                   </button>
                 </div>
@@ -549,7 +549,7 @@ export default function StockReceivePage() {
                     <div key={label}>
                       <label className="block text-[11px] font-bold text-blue-600 mb-1">{label}</label>
                       <input type="number" min="0" value={val} onChange={(e) => set(e.target.value)}
-                        className="w-full px-3 py-2 text-sm font-black border border-blue-200 rounded-xl outline-none focus:border-blue-500 bg-white transition tabular-nums"
+                        className="w-full px-3 py-2 text-sm font-bold border border-blue-200 rounded-xl outline-none focus:border-blue-500 bg-white transition tabular-nums"
                         placeholder={ph} />
                     </div>
                   ))}
@@ -564,7 +564,7 @@ export default function StockReceivePage() {
           <div id="stock-table" className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
               <div>
-                <p className="text-sm font-black text-slate-900">Step 2 — Har Unit Ki Details</p>
+                <p className="text-sm font-bold text-slate-900">Step 2 — Har Unit Ki Details</p>
                 <p className="text-[11px] text-slate-400">
                   {rows.length} units · {productName} · {productType === 'mobile' ? 'IMEI required' : productType === 'vehicle' ? 'Chassis required' : 'Optional serial'}
                 </p>
@@ -572,12 +572,12 @@ export default function StockReceivePage() {
               <div className="flex items-center gap-2">
                 {productType === 'mobile' && (
                   <button onClick={pasteImeis}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition">
                     <Copy size={12} /> IMEIs Paste Karo
                   </button>
                 )}
                 <button onClick={addRow}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition">
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition">
                   <Plus size={12} /> Row Add
                 </button>
               </div>
@@ -589,19 +589,19 @@ export default function StockReceivePage() {
                 <table className="w-full min-w-[1300px] text-xs">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500 w-8">#</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">IMEI 1 <span className="text-red-500">*</span></th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">IMEI 2</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Color</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">RAM</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Storage</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Network</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Condition</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Warranty</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Buy Price</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Sale Price <span className="text-red-500">*</span></th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Inst Price</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Notes</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500 w-8">#</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">IMEI 1 <span className="text-red-500">*</span></th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">IMEI 2</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Color</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">RAM</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Storage</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Network</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Condition</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Warranty</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Buy Price</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Sale Price <span className="text-red-500">*</span></th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Inst Price</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Notes</th>
                       <th className="px-3 py-2.5 w-16" />
                     </tr>
                   </thead>
@@ -697,17 +697,17 @@ export default function StockReceivePage() {
                 <table className="w-full min-w-[1100px] text-xs">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500 w-8">#</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Chassis No <span className="text-red-500">*</span></th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Engine No</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Year</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Color</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Condition</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Buy Price</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Sale Price <span className="text-red-500">*</span></th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Inst Price</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">File Location</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Biometric</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500 w-8">#</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Chassis No <span className="text-red-500">*</span></th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Engine No</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Year</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Color</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Condition</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Buy Price</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Sale Price <span className="text-red-500">*</span></th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Inst Price</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">File Location</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Biometric</th>
                       <th className="px-3 py-2.5 w-16" />
                     </tr>
                   </thead>
@@ -818,13 +818,13 @@ export default function StockReceivePage() {
                 <table className="w-full min-w-[780px] text-xs">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500 w-8">#</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Serial / Code</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Color</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Buy Price</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Sale Price <span className="text-red-500">*</span></th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Inst Price</th>
-                      <th className="px-3 py-2.5 text-left font-black text-slate-500">Notes</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500 w-8">#</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Serial / Code</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Color</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Buy Price</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Sale Price <span className="text-red-500">*</span></th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Inst Price</th>
+                      <th className="px-3 py-2.5 text-left font-bold text-slate-500">Notes</th>
                       <th className="px-3 py-2.5 w-16" />
                     </tr>
                   </thead>
@@ -882,7 +882,7 @@ export default function StockReceivePage() {
             {/* Add row footer */}
             <div className="px-5 py-3 border-t border-slate-50">
               <button onClick={addRow}
-                className="flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-blue-600 transition">
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 transition">
                 <Plus size={13} /> Aur row add karein
               </button>
             </div>
@@ -907,7 +907,7 @@ export default function StockReceivePage() {
               ].map(({ label, val, cls }) => (
                 <div key={label} className="bg-white/8 rounded-2xl p-4">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-                  <p className={`text-xl lg:text-2xl font-black tabular-nums ${cls}`}>{val}</p>
+                  <p className={`text-xl lg:text-2xl font-bold tabular-nums ${cls}`}>{val}</p>
                 </div>
               ))}
             </div>
@@ -918,7 +918,7 @@ export default function StockReceivePage() {
                   : 'Supplier select nahi kia — sirf products add honge'}
               </p>
               <button onClick={handleSave} disabled={saveMutation.isPending}
-                className="flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black text-base rounded-xl transition shadow-lg shadow-blue-900/30">
+                className="flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-base rounded-xl transition shadow-lg shadow-blue-900/30">
                 <CheckCircle2 size={18} />
                 {saveMutation.isPending ? 'Save ho raha hai...' : `${rows.length} Products Save Karein`}
               </button>

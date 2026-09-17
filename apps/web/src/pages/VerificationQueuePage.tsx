@@ -1,3 +1,4 @@
+import { shell } from '../components/ui/Page';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -349,13 +350,13 @@ export default function VerificationQueuePage() {
   const done    = queue.filter((c) => c.verificationStatus !== 'UNDER_REVIEW');
 
   return (
-    <div className="px-4 py-5 sm:p-6 max-w-2xl mx-auto">
+    <div className={shell.narrow}>
 
       {/* Header */}
-      <div className="mb-5 flex items-start justify-between">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">My Verifications</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{pending.length} pending · {done.length} completed</p>
+          <h1 className="text-xl font-bold text-gray-900 leading-tight">My Verifications</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{pending.length} pending · {done.length} completed</p>
         </div>
         {pendingCount > 0 && (
           <button onClick={sync} disabled={!isOnline || syncing}

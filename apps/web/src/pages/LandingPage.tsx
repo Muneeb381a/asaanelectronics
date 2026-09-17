@@ -590,7 +590,7 @@ export default function LandingPage() {
                       <div className={`w-11 h-11 ${c.bg} rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform`}>
                         <step.icon size={20} className="text-white" />
                       </div>
-                      <span className={`text-3xl font-black ${c.num} select-none`}>{step.number}</span>
+                      <span className={`text-3xl font-bold ${c.num} select-none`}>{step.number}</span>
                     </div>
                     <h3 className="font-bold text-white text-base mb-2">{step.title}</h3>
                     <p className="text-sm text-gray-400 leading-relaxed mb-4">{step.desc}</p>
@@ -770,7 +770,7 @@ export default function LandingPage() {
             {testimonials.map((t) => (
               <div key={t.name}
                 className="bg-white/[0.04] border border-white/8 rounded-2xl p-6 hover:bg-white/[0.07] transition-all duration-200 flex flex-col">
-                <div className="text-4xl font-black text-blue-500/20 leading-none mb-3 select-none">"</div>
+                <div className="text-4xl font-bold text-blue-500/20 leading-none mb-3 select-none">"</div>
                 <div className="flex gap-0.5 mb-4">
                   {Array.from({ length: t.stars }).map((_, i) => (
                     <Star key={i} size={13} className="text-amber-400 fill-amber-400" />

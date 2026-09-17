@@ -1,3 +1,4 @@
+import { PageHeader, btn, shell } from '../components/ui/Page';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
@@ -1738,16 +1739,10 @@ export default function CustomersPage() {
 
   // ── Full view (owner + permitted staff) ───────────────────────────────────────
   return (
-    <div className="px-4 py-5 sm:p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Customers</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{data?.total ?? 0} registered</p>
-        </div>
-        <button onClick={() => setModal({ mode: 'add' })}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-          + Add customer
-        </button>
+    <div className={shell.wide}>
+      <div className="mb-6">
+        <PageHeader title="Customers" subtitle={`${data?.total ?? 0} registered`}
+          actions={<button onClick={() => setModal({ mode: 'add' })} className={btn.primary}>+ Add customer</button>} />
       </div>
 
       <div className="flex items-center gap-3 mb-4 flex-wrap">

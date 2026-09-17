@@ -273,7 +273,7 @@ function QuickAddCustomerPanel({
     <form onSubmit={submit}
       className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-black text-indigo-700 flex items-center gap-1.5">
+        <p className="text-xs font-bold text-indigo-700 flex items-center gap-1.5">
           <UserPlus size={13}/> Naya Customer — Quick Add
         </p>
         <button type="button" onClick={onCancel} className="text-indigo-400 hover:text-indigo-700 transition">
@@ -305,7 +305,7 @@ function QuickAddCustomerPanel({
           Cancel
         </button>
         <button type="submit" disabled={mut.isPending}
-          className="flex-1 py-2 text-xs font-black text-white rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 transition flex items-center justify-center gap-1.5">
+          className="flex-1 py-2 text-xs font-bold text-white rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 transition flex items-center justify-center gap-1.5">
           {mut.isPending ? <><Loader2 size={12} className="animate-spin"/> Saving…</> : <><UserPlus size={12}/> Customer Banao</>}
         </button>
       </div>
@@ -662,7 +662,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
           {/* Quick-add trigger: shown when user has typed but no results found */}
           {customerQuery.trim() && !customerId && customers?.data.length === 0 && !showQuickAdd && (
             <button type="button" onClick={() => setShowQuickAdd(true)}
-              className="mt-2 w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition text-xs font-black">
+              className="mt-2 w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition text-xs font-bold">
               <UserPlus size={13}/>
               <span>"{customerQuery}" ko naya customer register karo</span>
             </button>
@@ -707,7 +707,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
                 {gs && (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold"
                     style={{ background: gs.bg, borderColor: gs.bg, color: gs.text }}>
-                    <span className="font-black text-sm">{pg}</span>
+                    <span className="font-bold text-sm">{pg}</span>
                     <span>{fetchedCustomer?.paymentGradeLabel ?? gs.label}</span>
                     {fetchedCustomer?.installmentSummary && (
                       <span className="ml-auto font-normal opacity-70">

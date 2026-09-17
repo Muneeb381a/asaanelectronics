@@ -307,7 +307,7 @@ export default function GlobalSearch({ open, onClose }: Props) {
                           <span className="text-[11px] font-bold uppercase tracking-wider">Assaan Credit Score</span>
                         </div>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black">{score}</span>
+                          <span className="text-2xl font-bold">{score}</span>
                           <span className="text-xs font-semibold opacity-60">/ 100</span>
                         </div>
                       </div>

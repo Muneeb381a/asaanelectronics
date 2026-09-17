@@ -1,3 +1,4 @@
+import { PageHeader, btn, shell } from '../components/ui/Page';
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -521,26 +522,12 @@ export default function ImeiPage() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Package size={20} className="text-blue-600" /> Serial Inventory
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Track every unit — phones by IMEI, bikes by chassis, laptops by serial number</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowBulk(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
-            <Upload size={14} /> Bulk IMEI
-          </button>
-          <button onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition">
-            <Plus size={14} /> Add Unit
-          </button>
-        </div>
-      </div>
+    <div className={`${shell.wide} space-y-5`}>
+      <PageHeader title="Serials / IMEI" subtitle="Har unit ka record — phones by IMEI, bikes by chassis/engine, laptops by serial" icon={Package}
+        actions={<>
+          <button onClick={() => setShowBulk(true)} className={btn.secondary}><Upload size={14} /> Bulk IMEI</button>
+          <button onClick={() => setShowAdd(true)} className={btn.primary}><Plus size={14} /> Add unit</button>
+        </>} />
 
       {/* Stats strip */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">

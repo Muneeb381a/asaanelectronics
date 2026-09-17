@@ -1,3 +1,4 @@
+import { PageHeader, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, Phone, User, ChevronDown, ChevronUp, Search } from 'lucide-react';
@@ -106,15 +107,8 @@ export default function GuarantorsPage() {
   const totalActive    = guarantors.reduce((s, g) => s + g.activeCount, 0);
 
   return (
-    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-5">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Shield size={22} className="text-blue-600" />
-          Guarantors
-        </h1>
-        <p className="text-sm text-gray-500 mt-0.5">All guarantors registered across your customers</p>
-      </div>
+    <div className={`${shell.default} space-y-5`}>
+      <PageHeader title="Guarantors" subtitle="All guarantors registered across your customers" icon={Shield} />
 
       {/* Summary stats */}
       {!isLoading && guarantors.length > 0 && (

@@ -1,3 +1,4 @@
+import { PageHeader, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -97,7 +98,7 @@ function KpiTile({ label, value, cls, border }: { label: string; value: string; 
   return (
     <div className={`bg-white rounded-xl ring-1 ring-slate-200 px-4 py-3.5 border-l-[3px] ${border}`}>
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
-      <p className={`text-xl font-black tabular-nums leading-none mt-1.5 ${cls}`}>{value}</p>
+      <p className={`text-xl font-bold tabular-nums leading-none mt-1.5 ${cls}`}>{value}</p>
     </div>
   );
 }
@@ -124,7 +125,7 @@ function BalanceTab() {
       {/* Main balance */}
       <div className={`rounded-2xl p-8 text-center ${balance >= 0 ? 'bg-linear-to-br from-blue-600 to-indigo-700' : 'bg-linear-to-br from-red-500 to-rose-700'}`}>
         <p className="text-sm font-bold text-white/70 mb-1">Shop Wallet Balance</p>
-        <p className="text-5xl font-black text-white tracking-tight tabular-nums">{fmtSh(balance)}</p>
+        <p className="text-5xl font-bold text-white tracking-tight tabular-nums">{fmtSh(balance)}</p>
         <p className="text-xs text-white/50 mt-2 tabular-nums">{fmt(balance)}</p>
         <p className="text-xs text-white/60 mt-1">Tamam waqt · paise aye minus paise gaye</p>
       </div>
@@ -136,9 +137,9 @@ function BalanceTab() {
             <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
               <ArrowUpCircle size={16} className="text-emerald-600"/>
             </div>
-            <p className="text-sm font-black text-slate-700">Total Aya</p>
+            <p className="text-sm font-bold text-slate-700">Total Aya</p>
           </div>
-          <p className="text-3xl font-black text-emerald-600 tabular-nums leading-none">{fmtSh(credits)}</p>
+          <p className="text-3xl font-bold text-emerald-600 tabular-nums leading-none">{fmtSh(credits)}</p>
           <p className="text-xs text-slate-400 mt-1.5 tabular-nums">{fmt(credits)}</p>
         </div>
         <div className="bg-white rounded-2xl ring-1 ring-slate-200 p-5">
@@ -146,9 +147,9 @@ function BalanceTab() {
             <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center">
               <ArrowDownCircle size={16} className="text-red-500"/>
             </div>
-            <p className="text-sm font-black text-slate-700">Total Gaya</p>
+            <p className="text-sm font-bold text-slate-700">Total Gaya</p>
           </div>
-          <p className="text-3xl font-black text-red-500 tabular-nums leading-none">{fmtSh(debits)}</p>
+          <p className="text-3xl font-bold text-red-500 tabular-nums leading-none">{fmtSh(debits)}</p>
           <p className="text-xs text-slate-400 mt-1.5 tabular-nums">{fmt(debits)}</p>
         </div>
       </div>
@@ -177,11 +178,11 @@ function CashBookTab() {
         <DateRow from={from} to={to} onFrom={setFrom} onTo={setTo}
           extra={
             <div className="ml-auto flex gap-2 text-sm">
-              <span className="font-black text-emerald-600 tabular-nums">+{fmtSh(totalIn)}</span>
+              <span className="font-bold text-emerald-600 tabular-nums">+{fmtSh(totalIn)}</span>
               <span className="text-slate-300">·</span>
-              <span className="font-black text-red-500 tabular-nums">-{fmtSh(totalOut)}</span>
+              <span className="font-bold text-red-500 tabular-nums">-{fmtSh(totalOut)}</span>
               <span className="text-slate-300">·</span>
-              <span className={`font-black tabular-nums ${net >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{net >= 0 ? '+' : ''}{fmtSh(net)}</span>
+              <span className={`font-bold tabular-nums ${net >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{net >= 0 ? '+' : ''}{fmtSh(net)}</span>
             </div>
           }/>
       </div>
@@ -193,10 +194,10 @@ function CashBookTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Description</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Category</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -205,11 +206,11 @@ function CashBookTab() {
                     <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap tabular-nums">{e.date.slice(0, 10)}</td>
                     <td className="px-4 py-3 text-sm text-slate-800 max-w-xs truncate">{e.description}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded ${CATEGORY_COLORS[e.category] ?? 'bg-slate-100 text-slate-500'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${CATEGORY_COLORS[e.category] ?? 'bg-slate-100 text-slate-500'}`}>
                         {e.category}
                       </span>
                     </td>
-                    <td className={`px-4 py-3 text-right font-black text-sm whitespace-nowrap tabular-nums ${e.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-500'}`}>
+                    <td className={`px-4 py-3 text-right font-bold text-sm whitespace-nowrap tabular-nums ${e.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-500'}`}>
                       {e.type === 'CREDIT' ? '+' : '-'}{fmtSh(Number(e.amount))}
                     </td>
                   </tr>
@@ -257,9 +258,9 @@ function DailyTab() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
-                      <th className="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Description</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Category</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -267,9 +268,9 @@ function DailyTab() {
                       <tr key={e.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 text-sm text-slate-800 max-w-xs truncate">{e.description}</td>
                         <td className="px-4 py-3">
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded ${CATEGORY_COLORS[e.category] ?? 'bg-slate-100 text-slate-500'}`}>{e.category}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${CATEGORY_COLORS[e.category] ?? 'bg-slate-100 text-slate-500'}`}>{e.category}</span>
                         </td>
-                        <td className={`px-4 py-3 text-right font-black whitespace-nowrap tabular-nums ${e.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <td className={`px-4 py-3 text-right font-bold whitespace-nowrap tabular-nums ${e.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-500'}`}>
                           {e.type === 'CREDIT' ? '+' : '-'}{fmtSh(Number(e.amount))}
                         </td>
                       </tr>
@@ -314,25 +315,25 @@ function PLTab() {
             <div className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
                 <BarChart3 size={13} className="text-slate-500"/>
-                <p className="text-sm font-black text-slate-900">Monthly Breakdown</p>
+                <p className="text-sm font-bold text-slate-900">Monthly Breakdown</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Month</th>
-                      <th className="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Revenue</th>
-                      <th className="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Expenses</th>
-                      <th className="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Profit</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Month</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Revenue</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expenses</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Profit</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {data.monthly.map(m => (
                       <tr key={m.month} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 font-black text-slate-900">{m.label}</td>
+                        <td className="px-4 py-3 font-bold text-slate-900">{m.label}</td>
                         <td className="px-4 py-3 text-right font-bold text-emerald-600 tabular-nums">{fmtSh(m.revenue)}</td>
                         <td className="px-4 py-3 text-right font-bold text-red-500 tabular-nums">{fmtSh(m.expenses)}</td>
-                        <td className={`px-4 py-3 text-right font-black tabular-nums ${m.profit >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{fmtSh(m.profit)}</td>
+                        <td className={`px-4 py-3 text-right font-bold tabular-nums ${m.profit >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{fmtSh(m.profit)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -345,7 +346,7 @@ function PLTab() {
             <div className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
                 <TrendingDown size={13} className="text-slate-500"/>
-                <p className="text-sm font-black text-slate-900">Category ke hisaab se Kharcha</p>
+                <p className="text-sm font-bold text-slate-900">Category ke hisaab se Kharcha</p>
               </div>
               <div className="p-4 space-y-3">
                 {data.byCategory.map(c => {
@@ -353,8 +354,8 @@ function PLTab() {
                   return (
                     <div key={c.category}>
                       <div className="flex justify-between text-sm mb-1.5">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded ${CATEGORY_COLORS[c.category] ?? 'bg-slate-100 text-slate-500'}`}>{c.category}</span>
-                        <span className="font-black text-slate-900 tabular-nums">{fmtSh(c.total)} <span className="text-slate-400 font-bold">({pct.toFixed(0)}%)</span></span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${CATEGORY_COLORS[c.category] ?? 'bg-slate-100 text-slate-500'}`}>{c.category}</span>
+                        <span className="font-bold text-slate-900 tabular-nums">{fmtSh(c.total)} <span className="text-slate-400 font-bold">({pct.toFixed(0)}%)</span></span>
                       </div>
                       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div className="h-full bg-rose-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }}/>
@@ -428,9 +429,9 @@ function ExpensesTab() {
     <div>
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <DateRow from={from} to={to} onFrom={setFrom} onTo={setTo}
-          extra={expenses.length > 0 ? <span className="text-sm font-black text-red-500 tabular-nums ml-2">{fmtSh(totalExpenses)} total</span> : undefined}/>
+          extra={expenses.length > 0 ? <span className="text-sm font-bold text-red-500 tabular-nums ml-2">{fmtSh(totalExpenses)} total</span> : undefined}/>
         <button onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition shadow-sm">
+          className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
           <Plus size={13}/> Naya Kharcha
         </button>
       </div>
@@ -439,35 +440,35 @@ function ExpensesTab() {
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 bg-slate-950">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <div>
-                <p className="text-white font-black text-sm">Naya Kharcha</p>
-                <p className="text-slate-400 text-xs mt-0.5">Expense record karo</p>
+                <p className="text-gray-900 font-semibold text-sm">Naya Kharcha</p>
+                <p className="text-gray-500 text-xs mt-0.5">Expense record karo</p>
               </div>
-              <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-white transition p-1"><X size={16}/></button>
+              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-700 transition p-1"><X size={16}/></button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-black text-slate-600 mb-1.5">Category</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Category</label>
                   <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as ExpenseCategory }))}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition bg-white">
                     {EXPENSE_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-slate-600 mb-1.5">Amount (PKR) *</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Amount (PKR) *</label>
                   <input type="number" min="1" placeholder="e.g. 5000" autoFocus value={form.amount}
                     onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black tabular-nums focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"/>
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold tabular-nums focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"/>
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-slate-600 mb-1.5">Date</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Date</label>
                   <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-blue-400 transition"/>
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-slate-600 mb-1.5">Description <span className="font-normal text-slate-400">(optional)</span></label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Description <span className="font-normal text-slate-400">(optional)</span></label>
                   <input type="text" placeholder="e.g. May ka rent" value={form.description}
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 transition"/>
@@ -475,11 +476,11 @@ function ExpensesTab() {
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setShowForm(false)}
-                  className="flex-1 py-2.5 text-sm font-black border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition">
+                  className="flex-1 py-2.5 text-sm font-bold border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition">
                   Cancel
                 </button>
                 <button onClick={() => createMutation.mutate()} disabled={!form.amount || Number(form.amount) <= 0 || createMutation.isPending}
-                  className="flex-1 py-2.5 text-sm font-black text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-xl transition flex items-center justify-center gap-1.5">
+                  className="flex-1 py-2.5 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-xl transition flex items-center justify-center gap-1.5">
                   {createMutation.isPending ? <span className="animate-pulse">Saving…</span> : <><CheckCircle2 size={13}/> Save Karo</>}
                 </button>
               </div>
@@ -496,10 +497,10 @@ function ExpensesTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Category</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Description</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Amount</th>
                   <th className="px-4 py-3"/>
                 </tr>
               </thead>
@@ -508,12 +509,12 @@ function ExpensesTab() {
                   <tr key={e.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap tabular-nums">{e.date.slice(0, 10)}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded ${CATEGORY_COLORS[e.category] ?? 'bg-slate-100 text-slate-500'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${CATEGORY_COLORS[e.category] ?? 'bg-slate-100 text-slate-500'}`}>
                         {e.category}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{e.description ?? '—'}</td>
-                    <td className="px-4 py-3 text-right font-black text-red-500 tabular-nums">{fmtSh(Number(e.amount))}</td>
+                    <td className="px-4 py-3 text-right font-bold text-red-500 tabular-nums">{fmtSh(Number(e.amount))}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => setDeleteConfirm({ open: true, id: e.id })} disabled={deleteMutation.isPending}
                         className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
@@ -572,10 +573,10 @@ function JournalTab() {
           {entries.map(je => (
             <div key={je.id} className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
-                <p className="text-sm font-black text-slate-900 truncate">{je.memo}</p>
+                <p className="text-sm font-bold text-slate-900 truncate">{je.memo}</p>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
                   {je.refType && (
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">{je.refType}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">{je.refType}</span>
                   )}
                   <span className="text-[10px] text-slate-400 whitespace-nowrap">{fmtDateTime(je.postedAt)}</span>
                 </div>
@@ -584,17 +585,17 @@ function JournalTab() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-slate-400">
-                      <th className="px-4 py-2 text-left font-black">Account</th>
-                      <th className="px-4 py-2 text-right font-black">Debit</th>
-                      <th className="px-4 py-2 text-right font-black">Credit</th>
+                      <th className="px-4 py-2 text-left font-bold">Account</th>
+                      <th className="px-4 py-2 text-right font-bold">Debit</th>
+                      <th className="px-4 py-2 text-right font-bold">Credit</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {je.lines.map((ln, i) => (
                       <tr key={i} className="hover:bg-slate-50">
                         <td className="px-4 py-2 text-slate-700">{ln.accountCode} — {ln.accountName}</td>
-                        <td className="px-4 py-2 text-right font-mono font-black text-blue-700 tabular-nums">{Number(ln.debit)  > 0 ? fmtSh(Number(ln.debit))  : ''}</td>
-                        <td className="px-4 py-2 text-right font-mono font-black text-emerald-600 tabular-nums">{Number(ln.credit) > 0 ? fmtSh(Number(ln.credit)) : ''}</td>
+                        <td className="px-4 py-2 text-right font-mono font-bold text-blue-700 tabular-nums">{Number(ln.debit)  > 0 ? fmtSh(Number(ln.debit))  : ''}</td>
+                        <td className="px-4 py-2 text-right font-mono font-bold text-emerald-600 tabular-nums">{Number(ln.credit) > 0 ? fmtSh(Number(ln.credit)) : ''}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -605,10 +606,10 @@ function JournalTab() {
           {pages > 1 && (
             <div className="flex items-center justify-center gap-3">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-4 py-2 text-xs font-black border border-slate-200 rounded-xl text-slate-600 hover:bg-white disabled:opacity-40 transition">Pehla</button>
+                className="px-4 py-2 text-xs font-bold border border-slate-200 rounded-xl text-slate-600 hover:bg-white disabled:opacity-40 transition">Pehla</button>
               <span className="text-xs text-slate-500">{page} / {pages}</span>
               <button onClick={() => setPage(p => Math.min(pages, p + 1))} disabled={page === pages}
-                className="px-4 py-2 text-xs font-black border border-slate-200 rounded-xl text-slate-600 hover:bg-white disabled:opacity-40 transition">Agla</button>
+                className="px-4 py-2 text-xs font-bold border border-slate-200 rounded-xl text-slate-600 hover:bg-white disabled:opacity-40 transition">Agla</button>
             </div>
           )}
         </div>
@@ -653,17 +654,17 @@ function AccountsTab() {
       {typeOrder.filter(t => groups[t]?.length).map(type => (
         <div key={type} className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
           <div className={`px-4 py-3 border-b border-slate-100 border-l-4 ${typeBorder[type]}`}>
-            <p className="text-sm font-black text-slate-900">{typeLabel[type]}</p>
+            <p className="text-sm font-bold text-slate-900">{typeLabel[type]}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="px-4 py-2.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Code</th>
-                  <th className="px-4 py-2.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Debit</th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Credit</th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Balance</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Code</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Name</th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Debit</th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Credit</th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Balance</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -671,9 +672,9 @@ function AccountsTab() {
                   <tr key={a.code} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">{a.code}</td>
                     <td className="px-4 py-2.5 text-slate-700 text-sm">{a.name}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-xs font-black text-blue-700 tabular-nums">{a.debit > 0 ? fmtSh(a.debit) : '—'}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-xs font-black text-emerald-600 tabular-nums">{a.credit > 0 ? fmtSh(a.credit) : '—'}</td>
-                    <td className={`px-4 py-2.5 text-right font-black text-sm tabular-nums ${a.balance < 0 ? 'text-red-500' : 'text-slate-900'}`}>{fmtSh(a.balance)}</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-bold text-blue-700 tabular-nums">{a.debit > 0 ? fmtSh(a.debit) : '—'}</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-bold text-emerald-600 tabular-nums">{a.credit > 0 ? fmtSh(a.credit) : '—'}</td>
+                    <td className={`px-4 py-2.5 text-right font-bold text-sm tabular-nums ${a.balance < 0 ? 'text-red-500' : 'text-slate-900'}`}>{fmtSh(a.balance)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -731,13 +732,13 @@ function ReconcileTab() {
 
       <div className="flex items-center justify-between bg-white rounded-2xl ring-1 ring-slate-200 px-4 py-3.5">
         <div>
-          <p className="text-sm font-black text-slate-900 flex items-center gap-2">
+          <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <ShieldCheck size={14} className="text-indigo-600"/> Automated Reconciliation
           </p>
           <p className="text-[10px] text-slate-400 mt-0.5">Daily 00:01 par run hota hai · ledger mismatches, drift, journal imbalance detect karta hai</p>
         </div>
         <button onClick={() => setConfirmOpen(true)} disabled={runMutation.isPending}
-          className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-black transition">
+          className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition">
           <RefreshCw size={13} className={runMutation.isPending ? 'animate-spin' : ''}/>
           {runMutation.isPending ? 'Running…' : 'Run Now'}
         </button>
@@ -762,7 +763,7 @@ function ReconcileTab() {
                 : <AlertTriangle size={22} className="text-red-500 shrink-0"/>
               }
               <div>
-                <p className={`font-black text-sm ${latest.status === 'OK' ? 'text-emerald-800' : 'text-red-800'}`}>
+                <p className={`font-bold text-sm ${latest.status === 'OK' ? 'text-emerald-800' : 'text-red-800'}`}>
                   {latest.status === 'OK' ? 'Sab checks pass — books balanced hain' : `${latest.anomalyCount} anomal${latest.anomalyCount === 1 ? 'y' : 'ies'} mili`}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
@@ -771,9 +772,9 @@ function ReconcileTab() {
               </div>
             </div>
             <div className="text-right text-xs text-slate-500 space-y-0.5 shrink-0 ml-3">
-              <div>Ledger: <span className="font-black text-slate-900 tabular-nums">{pkrFmt(latest.ledgerTotal)}</span></div>
-              <div>Payments: <span className="font-black text-slate-900 tabular-nums">{pkrFmt(latest.paymentsTotal)}</span></div>
-              {Number(latest.diff ?? 0) > 0 && <div className="text-red-600 font-black">Gap: {pkrFmt(latest.diff)}</div>}
+              <div>Ledger: <span className="font-bold text-slate-900 tabular-nums">{pkrFmt(latest.ledgerTotal)}</span></div>
+              <div>Payments: <span className="font-bold text-slate-900 tabular-nums">{pkrFmt(latest.paymentsTotal)}</span></div>
+              {Number(latest.diff ?? 0) > 0 && <div className="text-red-600 font-bold">Gap: {pkrFmt(latest.diff)}</div>}
             </div>
           </div>
           {latest.anomalies.length > 0 && (
@@ -781,10 +782,10 @@ function ReconcileTab() {
               {latest.anomalies.map((a, i) => (
                 <div key={i} className={`rounded-xl px-4 py-3 border ${a.severity === 'HIGH' ? 'bg-red-100 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] font-black uppercase tracking-wide ${a.severity === 'HIGH' ? 'text-red-700' : 'text-amber-700'}`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide ${a.severity === 'HIGH' ? 'text-red-700' : 'text-amber-700'}`}>
                       {a.severity} · {ANOMALY_META[a.type]?.label ?? a.type}
                     </span>
-                    <span className={`text-xs font-black tabular-nums ${a.severity === 'HIGH' ? 'text-red-600' : 'text-amber-600'}`}>
+                    <span className={`text-xs font-bold tabular-nums ${a.severity === 'HIGH' ? 'text-red-600' : 'text-amber-600'}`}>
                       Δ {fmtSh(Number(a.diff))}
                     </span>
                   </div>
@@ -797,7 +798,7 @@ function ReconcileTab() {
       ) : (
         <div className="text-center py-12 text-slate-400 bg-white rounded-2xl ring-1 ring-slate-200">
           <ShieldCheck size={28} className="mx-auto mb-3 opacity-30"/>
-          <p className="text-sm font-black text-slate-500">Koi run nahi hua abhi</p>
+          <p className="text-sm font-bold text-slate-500">Koi run nahi hua abhi</p>
           <p className="text-xs mt-1">"Run Now" par click karo books check karne ke liye</p>
         </div>
       )}
@@ -806,17 +807,17 @@ function ReconcileTab() {
         <div className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <Clock size={13} className="text-slate-500"/>
-            <p className="text-sm font-black text-slate-900">Run History</p>
+            <p className="text-sm font-bold text-slate-900">Run History</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="px-4 py-2.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                  <th className="px-4 py-2.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Trigger</th>
-                  <th className="px-4 py-2.5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Anomalies</th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Gap</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trigger</th>
+                  <th className="px-4 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Anomalies</th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gap</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -826,12 +827,12 @@ function ReconcileTab() {
                     <td className="px-4 py-2.5 text-xs text-slate-400">{h.trigger}</td>
                     <td className="px-4 py-2.5 text-center">
                       {h.status === 'OK'
-                        ? <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><CheckCircle2 size={9}/>OK</span>
-                        : <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-700 bg-red-50 px-2 py-0.5 rounded-full"><AlertTriangle size={9}/>{h.anomalyCount}</span>
+                        ? <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><CheckCircle2 size={9}/>OK</span>
+                        : <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full"><AlertTriangle size={9}/>{h.anomalyCount}</span>
                       }
                     </td>
                     <td className="px-4 py-2.5 text-right text-xs text-slate-500 tabular-nums">{h.anomalyCount}</td>
-                    <td className={`px-4 py-2.5 text-right text-xs font-black tabular-nums ${Number(h.diff ?? 0) > 0 ? 'text-red-500' : 'text-slate-300'}`}>
+                    <td className={`px-4 py-2.5 text-right text-xs font-bold tabular-nums ${Number(h.diff ?? 0) > 0 ? 'text-red-500' : 'text-slate-300'}`}>
                       {Number(h.diff ?? 0) > 0 ? fmtSh(Number(h.diff)) : '—'}
                     </td>
                   </tr>
@@ -857,36 +858,25 @@ export default function LedgerPage() {
   return (
     <div className="bg-canvas">
 
-      {/* Dark header */}
-      <div className="bg-slate-950 shadow-lg shadow-slate-950/20">
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5">
-          <div>
-            <div className="flex items-center gap-2">
-              <BookOpen size={15} className="text-blue-400"/>
-              <h1 className="text-[15px] font-black text-white">Accounting</h1>
+      <div className={`${shell.wide} !pb-0`}>
+        <PageHeader title="Accounting" subtitle="Ledger · Cash Book · P&L · Expenses" icon={BookOpen}
+          actions={
+            <div className="text-right">
+              <p className="text-[11px] text-gray-500 uppercase tracking-wide">Wallet balance</p>
+              <p className={`text-xl font-bold tabular-nums ${balance >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{balanceData ? fmtSh(balance) : '---'}</p>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">Ledger · Cash Book · P&L · Expenses</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Wallet Balance</p>
-            <p className={`text-xl font-black tabular-nums mt-0.5 ${balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {balanceData ? fmtSh(balance) : '---'}
-            </p>
-          </div>
-        </div>
+          } />
       </div>
 
       {/* Tab bar */}
-      <div className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="px-4 sm:px-6 py-2.5 flex gap-1 overflow-x-auto scrollbar-none">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-y border-gray-200 mt-5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex gap-1 overflow-x-auto scrollbar-none">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition shrink-0 ${
-                tab === id
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition shrink-0 ${
+                tab === id ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}>
-              <Icon size={12}/> {label}
+              <Icon size={13}/> {label}
             </button>
           ))}
         </div>

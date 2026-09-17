@@ -279,7 +279,7 @@ function OtpStep({ email, otpToken, onBack, onSuccess }: OtpStepProps) {
       </div>
 
       {/* Heading */}
-      <h1 className="text-2xl font-black text-white mb-1.5 tracking-tight">
+      <h1 className="text-2xl font-bold text-white mb-1.5 tracking-tight">
         {isSuccess ? 'Verified!' : 'Code daalo'}
       </h1>
       <p className="text-slate-500 text-sm mb-3">
@@ -326,7 +326,7 @@ function OtpStep({ email, otpToken, onBack, onSuccess }: OtpStepProps) {
                 onPaste={handlePaste}
                 disabled={isPending || isSuccess}
                 className={[
-                  'w-12 h-[68px] text-center text-[26px] font-black border-2 rounded-2xl outline-none',
+                  'w-12 h-[68px] text-center text-[26px] font-bold border-2 rounded-2xl outline-none',
                   'transition-all duration-200 select-none cursor-text',
                   lastTyped === i ? 'otp-digit-pop' : '',
                   boxCls,
@@ -401,7 +401,7 @@ function OtpStep({ email, otpToken, onBack, onSuccess }: OtpStepProps) {
                 style={{ transition: 'stroke-dashoffset 1s linear' }}
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-blue-400 tabular-nums">
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-blue-400 tabular-nums">
               {cooldown}
             </span>
           </div>

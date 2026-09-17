@@ -1,3 +1,4 @@
+import { PageHeader, btn, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileDown, RefreshCw, AlertTriangle, ShieldX, CalendarCheck, ShoppingCart, Undo2, Receipt, BarChart3, Users, Database, Loader2, ClipboardList, Phone, Wallet, ChevronDown, ChevronRight } from 'lucide-react';
@@ -649,21 +650,10 @@ export default function ExportsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* Page header */}
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Exports &amp; Reports</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Preview and download PDF reports</p>
-        </div>
-        <button
-          onClick={refetchCurrent}
-          disabled={isLoading}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+    <div className={shell.wide}>
+      <div className="mb-6">
+        <PageHeader title="Exports & Reports" subtitle="Preview, print and download CSV / PDF reports"
+          actions={<button onClick={refetchCurrent} disabled={isLoading} className={btn.secondary}><RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> Refresh</button>} />
       </div>
 
       {/* Tabs */}

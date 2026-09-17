@@ -1,3 +1,4 @@
+import { PageHeader, StatCard, btn } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi, type Reports } from '../api/stats.api.ts';
@@ -114,7 +115,7 @@ function AgingCard({
         <span className={`text-xs font-bold ${text}`}>{label}</span>
         <Icon size={15} className={text}/>
       </div>
-      <p className={`text-3xl font-black ${text}`}>{count}</p>
+      <p className={`text-3xl font-bold ${text}`}>{count}</p>
       <p className="text-xs text-slate-500">{sublabel}</p>
     </div>
   );
@@ -146,7 +147,7 @@ function ForecastSection({ months }: { months: ForecastMonth[] }) {
             <div key={m.month} className="flex flex-col gap-3">
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                 <p className="text-xs font-semibold text-slate-400 mb-1">{m.monthName.split(' ')[0]} {m.monthName.split(' ')[1]}</p>
-                <p className={`text-xl font-black ${textC[i]}`}>{pkr(m.expectedAmount)}</p>
+                <p className={`text-xl font-bold ${textC[i]}`}>{pkr(m.expectedAmount)}</p>
                 <p className="text-xs text-slate-400 mt-1">{m.installmentCount} installment{m.installmentCount !== 1 ? 's' : ''}</p>
                 {m.dailyAmount > 0 && (
                   <div className="mt-2 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
@@ -354,9 +355,9 @@ export default function ReportsPage() {
   if (isError) {
     return (
       <>
-        <div className="bg-slate-950 px-4 sm:px-6 lg:px-8 py-5">
-          <h1 className="text-xl font-black text-white flex items-center gap-2.5">
-            <BarChart3 size={20} className="text-blue-400"/>
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-5">
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
+            <BarChart3 size={20} className="text-blue-600"/>
             Analytics
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Last 12 months · All figures in PKR</p>
@@ -376,9 +377,9 @@ export default function ReportsPage() {
   if (isLoading || !data) {
     return (
       <>
-        <div className="bg-slate-950 px-4 sm:px-6 lg:px-8 py-5">
-          <h1 className="text-xl font-black text-white flex items-center gap-2.5">
-            <BarChart3 size={20} className="text-blue-400"/>
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-5">
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
+            <BarChart3 size={20} className="text-blue-600"/>
             Analytics
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Last 12 months · All figures in PKR</p>
@@ -414,82 +415,21 @@ export default function ReportsPage() {
   const momChange    = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null;
   const totalOverdue = agingBuckets.days8_30 + agingBuckets.days31_90 + agingBuckets.days90plus;
 
-  const rateColor =
-    collectionRate.rate >= 80 ? 'text-emerald-400' :
-    collectionRate.rate >= 60 ? 'text-amber-400'   : 'text-red-400';
-  const rateBg =
-    collectionRate.rate >= 80 ? 'bg-emerald-500/10 border-emerald-500/20' :
-    collectionRate.rate >= 60 ? 'bg-amber-500/10   border-amber-500/20'   :
-                                'bg-red-500/10     border-red-500/20';
-
   return (
     <>
-      {/* ── Dark hero header ── */}
-      <div className="bg-slate-950 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-black text-white flex items-center gap-2.5">
-                <BarChart3 size={20} className="text-blue-400"/>
-                Analytics
-              </h1>
-              <p className="text-slate-500 text-sm mt-0.5">Last 12 months · All figures in PKR</p>
-            </div>
-            {shopData && topDebtors.length > 0 && (
-              <button
-                onClick={() => setRemindAllConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl transition shadow-sm shadow-green-900/30 shrink-0"
-              >
-                <Send size={14}/>
-                Remind All ({topDebtors.length})
-              </button>
-            )}
-          </div>
-
-          {/* KPI chips */}
-          <div className="flex flex-wrap gap-2.5 mt-4">
-            {/* Collection rate */}
-            <div className={`px-4 py-2.5 rounded-xl border ${rateBg}`}>
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Collection Rate</p>
-              <p className={`text-2xl font-black leading-none mt-0.5 ${rateColor}`}>{collectionRate.rate}%</p>
-            </div>
-
-            {/* This month */}
-            <div className="px-4 py-2.5 rounded-xl border bg-blue-500/10 border-blue-500/20">
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">This Month</p>
-              <p className="text-2xl font-black text-blue-400 leading-none mt-0.5">{pkr(thisMonth)}</p>
-              {momChange !== null && (
-                <p className={`text-[10px] font-bold mt-0.5 flex items-center gap-0.5 ${momChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {momChange >= 0 ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
-                  {momChange >= 0 ? '+' : ''}{momChange}% vs last month
-                </p>
-              )}
-            </div>
-
-            {/* Overdue */}
-            <div className={`px-4 py-2.5 rounded-xl border ${totalOverdue > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Overdue</p>
-              <p className={`text-2xl font-black leading-none mt-0.5 ${totalOverdue > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                {totalOverdue}
-              </p>
-            </div>
-
-            {/* Active plans */}
-            <div className="px-4 py-2.5 rounded-xl border bg-white/5 border-white/10">
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Active Plans</p>
-              <p className="text-2xl font-black text-white leading-none mt-0.5">{agingBuckets.current}</p>
-            </div>
-
-            {/* Forecast */}
-            {forecastMonths[0] && (
-              <div className="px-4 py-2.5 rounded-xl border bg-indigo-500/10 border-indigo-500/20">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Next Month</p>
-                <p className="text-2xl font-black text-indigo-400 leading-none mt-0.5">
-                  {pkr(forecastMonths[0].expectedAmount)}
-                </p>
-              </div>
-            )}
-          </div>
+      {/* ── Header + KPIs ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 w-full">
+        <PageHeader title="Analytics" subtitle="Last 12 months · All figures in PKR" icon={BarChart3}
+          actions={shopData && topDebtors.length > 0 && (
+            <button onClick={() => setRemindAllConfirm(true)} className={btn.success}><Send size={14}/> Remind all ({topDebtors.length})</button>
+          )} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-5">
+          <StatCard label="Collection rate" value={`${collectionRate.rate}%`} tone={collectionRate.rate >= 80 ? 'emerald' : collectionRate.rate >= 50 ? 'amber' : 'red'} />
+          <StatCard label="This month" value={pkr(thisMonth)} tone="blue"
+            sub={momChange !== null ? <span className={momChange >= 0 ? 'text-emerald-600' : 'text-red-600'}>{momChange >= 0 ? '+' : ''}{momChange}% vs last month</span> : undefined} />
+          <StatCard label="Overdue" value={totalOverdue} tone={totalOverdue > 0 ? 'red' : 'emerald'} />
+          <StatCard label="Active plans" value={agingBuckets.current} tone="gray" />
+          {forecastMonths[0] && <StatCard label="Next month" value={pkr(forecastMonths[0].expectedAmount)} tone="violet" />}
         </div>
       </div>
 
@@ -516,7 +456,7 @@ export default function ReportsPage() {
           <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-6 flex flex-col justify-between">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">This Month</p>
-              <p className="text-3xl font-black text-slate-900">{pkr(thisMonth)}</p>
+              <p className="text-3xl font-bold text-slate-900">{pkr(thisMonth)}</p>
             </div>
             <div className="mt-4 space-y-1.5">
               {momChange !== null && (
@@ -541,7 +481,7 @@ export default function ReportsPage() {
               <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${totalOverdue > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                 Overdue Installments
               </p>
-              <p className={`text-3xl font-black ${totalOverdue > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+              <p className={`text-3xl font-bold ${totalOverdue > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
                 {totalOverdue}
               </p>
             </div>
@@ -605,7 +545,7 @@ export default function ReportsPage() {
               <div className="space-y-4">
                 {topProducts.map((p, i) => (
                   <div key={p.name} className="flex items-center gap-3">
-                    <span className={`w-6 h-6 rounded-lg text-[11px] font-black flex items-center justify-center shrink-0 ${
+                    <span className={`w-6 h-6 rounded-lg text-[11px] font-bold flex items-center justify-center shrink-0 ${
                       i === 0 ? 'bg-blue-100 text-blue-700' :
                       i === 1 ? 'bg-slate-100 text-slate-600' :
                       i === 2 ? 'bg-orange-100 text-orange-600' :
@@ -649,7 +589,7 @@ export default function ReportsPage() {
             <div className="divide-y divide-slate-50">
               {topDebtors.map((d, i) => (
                 <div key={d.phone + i} className="px-6 py-3.5 flex items-center gap-4 hover:bg-slate-50/60 transition">
-                  <span className={`w-7 h-7 rounded-xl text-xs font-black flex items-center justify-center shrink-0 ${
+                  <span className={`w-7 h-7 rounded-xl text-xs font-bold flex items-center justify-center shrink-0 ${
                     i === 0 ? 'bg-amber-100 text-amber-700' :
                     i === 1 ? 'bg-slate-100 text-slate-600' :
                     i === 2 ? 'bg-orange-100 text-orange-600' : 'bg-slate-50 text-slate-400'
@@ -659,7 +599,7 @@ export default function ReportsPage() {
                     <p className="text-xs text-slate-400">{d.phone} · {d.count} plan{d.count !== 1 ? 's' : ''}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-black text-orange-600 tabular-nums">{pkr(d.remaining)}</p>
+                    <p className="text-sm font-bold text-orange-600 tabular-nums">{pkr(d.remaining)}</p>
                     <p className="text-[10px] text-slate-400">remaining</p>
                   </div>
                   {shopData && (
@@ -802,13 +742,13 @@ export default function ReportsPage() {
                 </tbody>
                 <tfoot className="bg-slate-50 border-t border-slate-200">
                   <tr>
-                    <td className="px-6 py-3 text-xs font-black text-slate-700">Total</td>
-                    <td className="px-4 py-3 text-center text-xs font-black text-slate-700 tabular-nums">{areaRows.reduce((s,r) => s+r.customers, 0)}</td>
-                    <td className="px-4 py-3 text-center text-xs font-black text-blue-700 tabular-nums">{areaRows.reduce((s,r) => s+r.active, 0)}</td>
-                    <td className="px-4 py-3 text-center text-xs font-black text-red-600 tabular-nums">{areaRows.reduce((s,r) => s+r.overdue, 0)}</td>
-                    <td className="px-4 py-3 text-right text-xs font-black text-red-600 tabular-nums">{pkr(areaRows.reduce((s,r) => s+Number(r.overdueAmount), 0))}</td>
-                    <td className="px-4 py-3 text-right text-xs font-black text-emerald-700 tabular-nums">{pkr(areaRows.reduce((s,r) => s+Number(r.totalCollected), 0))}</td>
-                    <td className="px-6 py-3 text-right text-xs font-black text-orange-700 tabular-nums">{pkr(areaRows.reduce((s,r) => s+Number(r.remaining), 0))}</td>
+                    <td className="px-6 py-3 text-xs font-bold text-slate-700">Total</td>
+                    <td className="px-4 py-3 text-center text-xs font-bold text-slate-700 tabular-nums">{areaRows.reduce((s,r) => s+r.customers, 0)}</td>
+                    <td className="px-4 py-3 text-center text-xs font-bold text-blue-700 tabular-nums">{areaRows.reduce((s,r) => s+r.active, 0)}</td>
+                    <td className="px-4 py-3 text-center text-xs font-bold text-red-600 tabular-nums">{areaRows.reduce((s,r) => s+r.overdue, 0)}</td>
+                    <td className="px-4 py-3 text-right text-xs font-bold text-red-600 tabular-nums">{pkr(areaRows.reduce((s,r) => s+Number(r.overdueAmount), 0))}</td>
+                    <td className="px-4 py-3 text-right text-xs font-bold text-emerald-700 tabular-nums">{pkr(areaRows.reduce((s,r) => s+Number(r.totalCollected), 0))}</td>
+                    <td className="px-6 py-3 text-right text-xs font-bold text-orange-700 tabular-nums">{pkr(areaRows.reduce((s,r) => s+Number(r.remaining), 0))}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -840,10 +780,10 @@ export default function ReportsPage() {
                 const labelColor = isCurrent ? 'text-emerald-700' : isVeryLate ? 'text-red-700'  : 'text-orange-600';
                 return (
                   <div key={bucket} className={`px-5 py-4 text-center ${bgColor}`}>
-                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${labelColor}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${labelColor}`}>
                       {isCurrent ? 'Current' : `${bucket} days`}
                     </p>
-                    <p className={`text-2xl font-black ${textColor} tabular-nums`}>{count}</p>
+                    <p className={`text-2xl font-bold ${textColor} tabular-nums`}>{count}</p>
                     <p className="text-xs text-slate-500 mt-0.5 font-semibold tabular-nums">{pkr(amt)}</p>
                     <p className="text-[10px] text-slate-400">installments</p>
                   </div>
@@ -877,7 +817,7 @@ export default function ReportsPage() {
             <div className="divide-y divide-slate-50">
               {referralRows.slice(0, 10).map((r, i) => (
                 <div key={r.id} className="flex items-center gap-3 px-6 py-3 hover:bg-slate-50/60 transition">
-                  <span className={`w-7 h-7 flex items-center justify-center rounded-xl text-xs font-black shrink-0 ${
+                  <span className={`w-7 h-7 flex items-center justify-center rounded-xl text-xs font-bold shrink-0 ${
                     i === 0 ? 'bg-amber-100 text-amber-700' :
                     i === 1 ? 'bg-slate-100 text-slate-600' :
                     i === 2 ? 'bg-orange-100 text-orange-600' : 'bg-slate-50 text-slate-400'
@@ -891,7 +831,7 @@ export default function ReportsPage() {
                     {r.area && <p className="text-xs text-slate-400">{r.area}</p>}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-black text-pink-600">{r.referralCount} referral{r.referralCount !== 1 ? 's' : ''}</p>
+                    <p className="text-sm font-bold text-pink-600">{r.referralCount} referral{r.referralCount !== 1 ? 's' : ''}</p>
                     {r.activeCount > 0 && <p className="text-[10px] text-emerald-600">{r.activeCount} active</p>}
                   </div>
                 </div>
@@ -947,7 +887,7 @@ export default function ReportsPage() {
                   ].map(({ label, value, color }) => (
                     <div key={label} className={`px-4 py-3 rounded-xl border ${color} min-w-[120px]`}>
                       <p className="text-[10px] font-bold uppercase tracking-wide opacity-70">{label}</p>
-                      <p className="text-lg font-black mt-0.5 tabular-nums">{value}</p>
+                      <p className="text-lg font-bold mt-0.5 tabular-nums">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -1107,7 +1047,7 @@ export default function ReportsPage() {
                   ].map(({ label, value, color }) => (
                     <div key={label} className={`px-4 py-2.5 rounded-xl border ${color} min-w-[110px]`}>
                       <p className="text-[10px] font-bold uppercase tracking-wide opacity-60">{label}</p>
-                      <p className="text-base font-black mt-0.5 tabular-nums">{value}</p>
+                      <p className="text-base font-bold mt-0.5 tabular-nums">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -1170,13 +1110,13 @@ export default function ReportsPage() {
                     </tbody>
                     <tfoot className="border-t-2 border-slate-200 bg-slate-50">
                       <tr>
-                        <td colSpan={4} className="px-4 py-3 text-xs font-black text-slate-700">
+                        <td colSpan={4} className="px-4 py-3 text-xs font-bold text-slate-700">
                           Total ({stmtRows.length} plans)
                         </td>
-                        <td className="px-4 py-3 text-right text-xs font-black text-slate-800">{pkr(totalPortfolio)}</td>
-                        <td className="px-4 py-3 text-right text-xs font-black text-blue-700">{pkr(stmtRows.reduce((s,r) => s+r.paidSinceStart, 0))}</td>
-                        <td className="px-4 py-3 text-right text-xs font-black text-emerald-700">{pkr(totalCollected)}</td>
-                        <td className="px-4 py-3 text-right text-xs font-black text-orange-700">{pkr(totalRemaining)}</td>
+                        <td className="px-4 py-3 text-right text-xs font-bold text-slate-800">{pkr(totalPortfolio)}</td>
+                        <td className="px-4 py-3 text-right text-xs font-bold text-blue-700">{pkr(stmtRows.reduce((s,r) => s+r.paidSinceStart, 0))}</td>
+                        <td className="px-4 py-3 text-right text-xs font-bold text-emerald-700">{pkr(totalCollected)}</td>
+                        <td className="px-4 py-3 text-right text-xs font-bold text-orange-700">{pkr(totalRemaining)}</td>
                         <td className="px-4 py-3 text-center text-xs text-slate-400">
                           {paid.length}P · {pending.length}⏳ · {def.length}❌
                         </td>
@@ -1201,7 +1141,7 @@ export default function ReportsPage() {
                         style={{ width: totalExpected > 0 ? `${Math.min(100, (totalCollected / totalExpected) * 100).toFixed(1)}%` : '0%' }}
                       />
                     </div>
-                    <p className="text-xs font-black text-slate-700 tabular-nums shrink-0">
+                    <p className="text-xs font-bold text-slate-700 tabular-nums shrink-0">
                       {totalExpected > 0 ? `${Math.round((totalCollected / totalExpected) * 100)}%` : '—'}
                     </p>
                     <p className="text-xs text-slate-400 shrink-0">

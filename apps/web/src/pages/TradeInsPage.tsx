@@ -1,3 +1,4 @@
+import { PageHeader, btn, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftRight, Plus, X, Trash2, Pencil, Package } from 'lucide-react';
@@ -251,24 +252,9 @@ export default function TradeInsPage() {
   const rows = data?.data ?? [];
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <ArrowLeftRight size={22} className="text-blue-600" />
-            Trade-Ins
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Devices accepted in exchange</p>
-        </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition"
-        >
-          <Plus size={16} />
-          Add Trade-In
-        </button>
-      </div>
+    <div className={`${shell.default} space-y-5`}>
+      <PageHeader title="Trade-Ins" subtitle="Devices accepted in exchange" icon={ArrowLeftRight}
+        actions={<button onClick={() => setShowAdd(true)} className={btn.primary}><Plus size={15} /> Add trade-in</button>} />
 
       {/* Stats */}
       {stats && (

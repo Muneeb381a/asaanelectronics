@@ -1,3 +1,4 @@
+import { PageHeader, shell } from '../components/ui/Page';
 import { useQuery } from '@tanstack/react-query';
 import { Wallet, Users, CreditCard, Package, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { billingApi, type Plan } from '../api/billing.api.ts';
@@ -85,10 +86,9 @@ export default function BillingPage() {
     : 'Active';
 
   return (
-    <div className="px-4 py-5 sm:p-6 max-w-3xl mx-auto">
+    <div className={shell.narrow}>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Billing & Usage</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Your plan details and resource usage</p>
+        <PageHeader title="Billing & Usage" subtitle="Aap ka plan aur resource usage" icon={Wallet} />
       </div>
 
       {/* Plan card */}

@@ -171,7 +171,7 @@ export default function CategoryCombobox({
             onClick={() => select(query.trim())}
             className="w-full text-left px-3 py-2.5 text-sm text-blue-600 hover:bg-blue-50 transition border-t border-gray-100 flex items-center gap-2"
           >
-            <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[11px] font-black shrink-0">+</span>
+            <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[11px] font-bold shrink-0">+</span>
             <span className="min-w-0">&ldquo;<strong>{query.trim()}</strong>&rdquo; add karein</span>
           </button>
         )}
@@ -215,7 +215,7 @@ function GroupHeader({ emoji, label }: { emoji: string; label: string }) {
   return (
     <div className="px-3 py-1.5 flex items-center gap-1.5 bg-gray-50 border-b border-gray-100">
       <span className="text-sm leading-none">{emoji}</span>
-      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</span>
+      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</span>
     </div>
   );
 }

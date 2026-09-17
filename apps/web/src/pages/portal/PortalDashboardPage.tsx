@@ -115,7 +115,7 @@ function CreditScoreCard({ score }: { score: number }) {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`text-xl font-black ${meta.color}`}>{score}</span>
+            <span className={`text-xl font-bold ${meta.color}`}>{score}</span>
             <span className="text-[9px] text-gray-400 font-medium">/100</span>
           </div>
         </div>

@@ -552,8 +552,8 @@ function StaffCard({ member, balance }: { member: StaffMember; balance?: import(
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Haath Mein Cash</p>
-                <p className={`text-lg font-black leading-none ${balance.pendingHandover ? 'text-amber-700' : 'text-emerald-700'}`}
-                  style={{ fontFamily: "'Syne', sans-serif" }}>
+                <p className={`text-lg font-bold leading-none ${balance.pendingHandover ? 'text-amber-700' : 'text-emerald-700'}`}
+                 >
                   {pkr(pendingCash)}
                 </p>
               </div>
@@ -644,14 +644,14 @@ function DirectReceiveModal({ target, onClose }: { target: StaffBalance; onClose
         {/* System balance */}
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
           <p className="text-[11px] text-blue-400 font-semibold uppercase tracking-wide mb-0.5">System Balance (Cash)</p>
-          <p className="text-xl font-black text-blue-700">{pkr(systemBalance)}</p>
+          <p className="text-xl font-bold text-blue-700">{pkr(systemBalance)}</p>
         </div>
 
         {/* Staff's pending claim */}
         {target.pendingHandover && (
           <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
             <p className="text-[11px] text-amber-500 font-semibold uppercase tracking-wide mb-0.5">Staff ne submit kiya</p>
-            <p className="text-xl font-black text-amber-700">{pkr(Number(target.pendingHandover.handedAmount))}</p>
+            <p className="text-xl font-bold text-amber-700">{pkr(Number(target.pendingHandover.handedAmount))}</p>
             {target.pendingHandover.note && (
               <p className="text-xs text-gray-400 mt-1 italic">"{target.pendingHandover.note}"</p>
             )}
@@ -726,8 +726,8 @@ function CashInHandCard({ balance, onSubmit }: { balance: StaffBalance | null | 
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Haath Mein Cash</p>
-            <p className={`text-3xl font-black leading-none ${allClear ? 'text-emerald-700' : 'text-amber-700'}`}
-              style={{ fontFamily: "'Syne', sans-serif" }}>
+            <p className={`text-3xl font-bold leading-none ${allClear ? 'text-emerald-700' : 'text-amber-700'}`}
+             >
               {pkr(cashAmt)}
             </p>
             {balance && (
@@ -792,8 +792,8 @@ function StaffBalanceGrid({
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
           <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1.5">Pending Cash</p>
-          <p className="text-xl font-black text-amber-700 leading-none"
-            style={{ fontFamily: "'Syne', sans-serif" }}>
+          <p className="text-xl font-bold text-amber-700 leading-none"
+           >
             {totalPending >= 100000
               ? `${(totalPending / 100000).toFixed(1)}L`
               : totalPending >= 1000
@@ -803,15 +803,15 @@ function StaffBalanceGrid({
         </div>
         <div className={`border rounded-2xl px-4 py-3 ${pendingCount > 0 ? 'bg-orange-50 border-orange-100' : 'bg-gray-50 border-gray-100'}`}>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Confirm Baki</p>
-          <p className={`text-xl font-black leading-none ${pendingCount > 0 ? 'text-orange-600' : 'text-gray-300'}`}
-            style={{ fontFamily: "'Syne', sans-serif" }}>
+          <p className={`text-xl font-bold leading-none ${pendingCount > 0 ? 'text-orange-600' : 'text-gray-300'}`}
+           >
             {pendingCount}
           </p>
         </div>
         <div className={`border rounded-2xl px-4 py-3 ${allClearCount === balances.length ? 'bg-emerald-50 border-emerald-100' : 'bg-gray-50 border-gray-100'}`}>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Clear</p>
-          <p className={`text-xl font-black leading-none ${allClearCount === balances.length ? 'text-emerald-600' : 'text-gray-500'}`}
-            style={{ fontFamily: "'Syne', sans-serif" }}>
+          <p className={`text-xl font-bold leading-none ${allClearCount === balances.length ? 'text-emerald-600' : 'text-gray-500'}`}
+           >
             {allClearCount}<span className="text-sm font-semibold text-gray-300">/{balances.length}</span>
           </p>
         </div>
@@ -834,7 +834,7 @@ function StaffBalanceGrid({
                 onClick={() => onSelectStaff(b.staffId)}
                 className="flex items-center gap-3 flex-1 min-w-0 text-left"
               >
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                   hasHandover ? 'bg-amber-100 text-amber-700'
                   : allClear  ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-blue-100 text-blue-700'
@@ -855,8 +855,8 @@ function StaffBalanceGrid({
                     <span className="text-[10px] text-gray-400">Handover nahi kia</span>
                   )}
                 </div>
-                <span className={`text-sm font-black shrink-0 ${allClear ? 'text-gray-300' : hasHandover ? 'text-amber-700' : 'text-gray-900'}`}
-                  style={{ fontFamily: "'Syne', sans-serif" }}>
+                <span className={`text-sm font-bold shrink-0 ${allClear ? 'text-gray-300' : hasHandover ? 'text-amber-700' : 'text-gray-900'}`}
+                 >
                   {pkr(bal)}
                 </span>
               </button>
@@ -1220,8 +1220,8 @@ function HandoversSection() {
                         </p>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-base font-black text-gray-900"
-                          style={{ fontFamily: "'Syne', sans-serif" }}>
+                        <span className="text-base font-bold text-gray-900"
+                         >
                           {pkr(Number(h.handedAmount))}
                         </span>
                         {h.confirmedAmount && (
@@ -1566,7 +1566,7 @@ function CommissionSection() {
                     <p className="text-sm font-semibold text-gray-900">{row.userName}</p>
                     <span className="text-[10px] text-gray-400">{row.commissionRate}% rate · {row.payments} payments · {pkr(row.collected)} collected</span>
                   </div>
-                  <p className="text-lg font-black text-gray-900 mt-0.5">{pkr(row.commission)}</p>
+                  <p className="text-lg font-bold text-gray-900 mt-0.5">{pkr(row.commission)}</p>
                   {row.paid && (
                     <p className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
                       <BadgeCheck size={11} />
@@ -1609,7 +1609,7 @@ function CommissionSection() {
 
             <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
               <p className="text-[10px] text-gray-400 mb-0.5">Calculated commission</p>
-              <p className="text-xl font-black text-emerald-700">{pkr(payTarget.commission)}</p>
+              <p className="text-xl font-bold text-emerald-700">{pkr(payTarget.commission)}</p>
             </div>
 
             <div>
@@ -1748,7 +1748,7 @@ function SalarySection() {
             {payTarget.monthlySalary && (
               <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
                 <p className="text-[10px] text-gray-400 mb-0.5">Monthly salary</p>
-                <p className="text-xl font-black text-blue-700">{pkr(payTarget.monthlySalary)}</p>
+                <p className="text-xl font-bold text-blue-700">{pkr(payTarget.monthlySalary)}</p>
               </div>
             )}
 
@@ -1866,7 +1866,7 @@ function StaffCollectionCard({ row }: { row: { userId: string; userName: string;
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-lg font-black text-gray-900">{pkrShort(summary.grandTotal)}</p>
+          <p className="text-lg font-bold text-gray-900">{pkrShort(summary.grandTotal)}</p>
           <p className="text-[10px] text-gray-400">Total collected</p>
         </div>
       </div>
@@ -1879,7 +1879,7 @@ function StaffCollectionCard({ row }: { row: { userId: string; userName: string;
             <ArrowDownCircle size={11} className={summary.needsHandover > 0 ? 'text-orange-500' : 'text-gray-400'} />
             <p className="text-[10px] font-semibold text-gray-500">Haath Mein Cash</p>
           </div>
-          <p className={`text-sm font-black ${summary.needsHandover > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+          <p className={`text-sm font-bold ${summary.needsHandover > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
             {pkrShort(summary.needsHandover)}
           </p>
           <p className="text-[9px] text-gray-400 mt-0.5">Handover dena baqi</p>
@@ -1894,7 +1894,7 @@ function StaffCollectionCard({ row }: { row: { userId: string; userName: string;
                 <Landmark size={11} className={nonCash > 0 ? 'text-blue-500' : 'text-gray-400'} />
                 <p className="text-[10px] font-semibold text-gray-500">Bank / Digital</p>
               </div>
-              <p className={`text-sm font-black ${nonCash > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+              <p className={`text-sm font-bold ${nonCash > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
                 {pkrShort(nonCash)}
               </p>
               <p className="text-[9px] text-gray-400 mt-0.5">Bank mein — handover nahi chahiye</p>
@@ -2003,17 +2003,17 @@ function CollectionsSection() {
         <div className="flex items-center gap-3 mb-4 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
           <div className="flex-1">
             <p className="text-[10px] text-indigo-400 font-semibold uppercase tracking-wide">Total Collected</p>
-            <p className="text-xl font-black text-indigo-700">{pkr(totalCollected)}</p>
+            <p className="text-xl font-bold text-indigo-700">{pkr(totalCollected)}</p>
           </div>
           <div className="w-px h-10 bg-indigo-200" />
           <div className="flex-1">
             <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wide">Haath Mein</p>
-            <p className="text-xl font-black text-orange-600">{pkr(totalHandover)}</p>
+            <p className="text-xl font-bold text-orange-600">{pkr(totalHandover)}</p>
           </div>
           <div className="w-px h-10 bg-indigo-200" />
           <div className="flex-1">
             <p className="text-[10px] text-blue-400 font-semibold uppercase tracking-wide">Bank/Digital</p>
-            <p className="text-xl font-black text-blue-600">{pkr(totalCollected - totalHandover)}</p>
+            <p className="text-xl font-bold text-blue-600">{pkr(totalCollected - totalHandover)}</p>
           </div>
         </div>
       )}
@@ -2198,7 +2198,7 @@ function AgentDeductionsModal({
         {total > 0 && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
             <p className="text-xs text-gray-400">Total deductions</p>
-            <p className="text-lg font-black text-red-600" style={{ fontFamily: "'Syne', sans-serif" }}>
+            <p className="text-lg font-bold text-red-600">
               − {pkr(total)}
             </p>
           </div>
@@ -2219,7 +2219,7 @@ function AgentDeductionsModal({
                     {d.customer_name && <span> · {d.customer_name}</span>}
                   </p>
                 </div>
-                <span className="text-xs font-black text-red-600 shrink-0" style={{ fontFamily: "'Syne', sans-serif" }}>
+                <span className="text-xs font-bold text-red-600 shrink-0">
                   −{pkr(Number(d.amount))}
                 </span>
                 <button onClick={() => delMut.mutate(d.id)} disabled={delMut.isPending}
@@ -2310,7 +2310,7 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
   }
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div>
       {/* Sub-tabs */}
       <div className="flex gap-1 mb-5">
         {([['assignments', 'Assignments', <UserCheck size={13} />], ['salary', 'Salary Review', <Calculator size={13} />]] as const).map(([key, label, icon]) => (
@@ -2358,7 +2358,7 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
                   style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
                   <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-black flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
                         {agent.agentName.charAt(0).toUpperCase()}
                       </div>
                       <span className="text-sm font-semibold text-gray-800">{agent.agentName}</span>
@@ -2450,20 +2450,20 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-center bg-gray-50 rounded-xl px-2 py-2">
                       <p className="text-[10px] text-gray-400 mb-0.5">Base Salary</p>
-                      <p className="text-sm font-black text-gray-700" style={{ fontFamily: "'Syne', sans-serif" }}>
+                      <p className="text-sm font-bold text-gray-700">
                         {row.baseSalary > 0 ? pkr(row.baseSalary) : '—'}
                       </p>
                     </div>
                     <div className="text-center bg-red-50 rounded-xl px-2 py-2">
                       <p className="text-[10px] text-gray-400 mb-0.5">Deductions ({row.deductionCount})</p>
-                      <p className="text-sm font-black text-red-600" style={{ fontFamily: "'Syne', sans-serif" }}>
+                      <p className="text-sm font-bold text-red-600">
                         {row.deductions > 0 ? `−${pkr(row.deductions)}` : '—'}
                       </p>
                     </div>
                     <div className={`text-center rounded-xl px-2 py-2 ${row.netSalary > 0 ? 'bg-emerald-50' : 'bg-gray-50'}`}>
                       <p className="text-[10px] text-gray-400 mb-0.5">Net Salary</p>
-                      <p className={`text-sm font-black ${row.netSalary > 0 ? 'text-emerald-700' : 'text-gray-400'}`}
-                        style={{ fontFamily: "'Syne', sans-serif" }}>
+                      <p className={`text-sm font-bold ${row.netSalary > 0 ? 'text-emerald-700' : 'text-gray-400'}`}
+                       >
                         {row.netSalary > 0 ? pkr(row.netSalary) : '—'}
                       </p>
                     </div>
@@ -2683,7 +2683,7 @@ function BriefingSection({ staff }: { staff: StaffMember[] }) {
           ].map(({ label, value, color }) => (
             <div key={label} className={`rounded-xl border px-4 py-3 ${color}`}>
               <p className="text-[10px] font-bold uppercase tracking-wide opacity-70">{label}</p>
-              <p className="text-lg font-black mt-0.5 tabular-nums">{value}</p>
+              <p className="text-lg font-bold mt-0.5 tabular-nums">{value}</p>
             </div>
           ))}
         </div>
@@ -2755,9 +2755,7 @@ export default function StaffPage() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto" style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+    <div className="max-w-5xl mx-auto">
 
       {/* ── Sticky header + tabs ── */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 pt-5 pb-0 sm:px-6">
@@ -2794,7 +2792,7 @@ export default function StaffPage() {
                 {t.icon}
                 {t.label}
                 {hasBadge && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                     {pendingCount}
                   </span>
                 )}

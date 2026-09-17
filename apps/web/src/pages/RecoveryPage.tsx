@@ -236,7 +236,7 @@ function RecoveryPanel({ inst, stageData, lateFeeConfig }: { inst: Installment; 
             {lateFeeAmount > 0 && (
               <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium">
                 <AlertTriangle size={11} className="text-amber-500 shrink-0" />
-                Late fee accumulated: <span className="font-black ml-0.5">{pkr(lateFeeAmount)}</span>
+                Late fee accumulated: <span className="font-bold ml-0.5">{pkr(lateFeeAmount)}</span>
                 <span className="text-amber-500 font-normal ml-1">({Math.max(0, daysOverdue - lateFeeConfig!.graceDays)} days × PKR {lateFeeConfig!.perDay}/day)</span>
               </div>
             )}

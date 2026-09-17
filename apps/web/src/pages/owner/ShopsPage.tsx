@@ -1,3 +1,4 @@
+import { shell } from '../../components/ui/Page';
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -2053,13 +2054,13 @@ export default function ShopsPage() {
   const willActivate  = pendingToggle ? !pendingToggle.isActive : false;
 
   return (
-    <div className="px-4 py-5 sm:p-6 max-w-6xl mx-auto">
+    <div className={shell.wide}>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Shops</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Manage all registered shops</p>
+          <h1 className="text-xl font-bold text-gray-900 leading-tight">Shops</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage all registered shops</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowOnboardingPanel(true)} title="Onboarding checklist"

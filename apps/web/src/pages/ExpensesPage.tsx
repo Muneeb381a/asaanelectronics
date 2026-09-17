@@ -120,7 +120,7 @@ function AddModal({ onClose, expense, prefill }: {
               <m.icon size={15} className={m.color}/>
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-900">{isEdit ? 'Expense Edit Karo' : 'Naya Expense'}</h2>
+              <h2 className="text-sm font-bold text-slate-900">{isEdit ? 'Expense Edit Karo' : 'Naya Expense'}</h2>
               <p className="text-xs text-slate-500">{m.label} category selected</p>
             </div>
           </div>
@@ -130,13 +130,13 @@ function AddModal({ onClose, expense, prefill }: {
         <div className="p-6 space-y-5">
           {/* Category picker */}
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-2">Category</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Category</label>
             <div className="grid grid-cols-4 gap-2">
               {CATS.map((c) => {
                 const meta = CAT[c]; const sel = category === c;
                 return (
                   <button key={c} type="button" onClick={() => setCategory(c)}
-                    className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition text-[10px] font-black ${
+                    className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition text-[10px] font-bold ${
                       sel ? `${meta.bg} ${meta.color} border-current shadow-sm` : 'border-slate-100 text-slate-400 hover:border-slate-200 hover:bg-slate-50'
                     }`}>
                     <meta.icon size={16}/>
@@ -150,7 +150,7 @@ function AddModal({ onClose, expense, prefill }: {
           {/* Amount + Date row */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Amount (PKR) *</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Amount (PKR) *</label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">Rs</span>
                 <input type="number" min="1" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus
@@ -158,14 +158,14 @@ function AddModal({ onClose, expense, prefill }: {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Date</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Date</label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp}/>
             </div>
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Notes (optional)</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Notes (optional)</label>
             <input type="text" placeholder="e.g. June rent, HBL transfer" value={desc} onChange={(e) => setDesc(e.target.value)} className={inp}/>
           </div>
 
@@ -174,7 +174,7 @@ function AddModal({ onClose, expense, prefill }: {
             <div className="flex items-center gap-2.5">
               <RefreshCw size={13} className="text-slate-400 shrink-0"/>
               <div>
-                <p className="text-xs font-black text-slate-700">Recurring expense</p>
+                <p className="text-xs font-bold text-slate-700">Recurring expense</p>
                 <p className="text-[10px] text-slate-400">Har mahine suggest karega</p>
               </div>
             </div>
@@ -183,12 +183,12 @@ function AddModal({ onClose, expense, prefill }: {
           {isRecurring && (
             <div className="flex items-center gap-3">
               <div>
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-wide mb-1.5">Mahine ki tarikh</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Mahine ki tarikh</label>
                 <input type="number" value={recurrenceDay} onChange={(e) => setRecurrenceDay(e.target.value)} min="1" max="31" placeholder="1"
                   className={`${inp} w-20 text-center`}/>
               </div>
               <p className="text-xs text-slate-400 mt-4">
-                Har mahine <span className="font-black text-slate-700">{recurrenceDay || '1'}</span> tarikh ko suggest hoga
+                Har mahine <span className="font-bold text-slate-700">{recurrenceDay || '1'}</span> tarikh ko suggest hoga
               </p>
             </div>
           )}
@@ -196,7 +196,7 @@ function AddModal({ onClose, expense, prefill }: {
 
         <div className="px-6 pb-6">
           <button onClick={() => mutate()} disabled={!amount || isPending}
-            className={`w-full py-3 font-black text-sm rounded-xl transition flex items-center justify-center gap-2 ${
+            className={`w-full py-3 font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 ${
               amount ? `${m.bar} text-white shadow-sm hover:opacity-90` : 'bg-slate-100 text-slate-400 cursor-not-allowed'
             }`}>
             {isPending ? <><Loader2 size={14} className="animate-spin"/> Saving…</> : isEdit ? 'Save Changes' : 'Record Expense'}
@@ -226,7 +226,7 @@ function RecurringSuggestionsCard({ onAddExpense }: { onAddExpense: (s: Recurrin
           <div className="w-7 h-7 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
             <Bell size={13} className="text-amber-600"/>
           </div>
-          <p className="text-xs font-black text-amber-800">
+          <p className="text-xs font-bold text-amber-800">
             {suggestions.length} recurring expense{suggestions.length > 1 ? 's' : ''} — {monthName} mein log nahi hua
           </p>
         </div>
@@ -239,13 +239,13 @@ function RecurringSuggestionsCard({ onAddExpense }: { onAddExpense: (s: Recurrin
                   <meta.icon size={13} className={meta.color}/>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-slate-900 truncate">
+                  <p className="text-xs font-bold text-slate-900 truncate">
                     {meta.label}{s.description ? ` — ${s.description}` : ''}
                   </p>
                   <p className="text-[10px] text-slate-400 tabular-nums">Rs {Number(s.amount).toLocaleString()} · Din {s.recurrenceDay}</p>
                 </div>
                 <button onClick={() => onAddExpense(s)}
-                  className="shrink-0 px-3 py-1.5 text-[11px] font-black text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 transition">
+                  className="shrink-0 px-3 py-1.5 text-[11px] font-bold text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 transition">
                   Add
                 </button>
               </div>
@@ -275,7 +275,7 @@ function CategoryBreakdown({ expenses }: { expenses: Expense[] }) {
         <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center ring-1 ring-slate-100">
           <TrendingDown size={13} className="text-slate-500"/>
         </div>
-        <p className="text-xs font-black text-slate-700 uppercase tracking-wide">Category Breakdown</p>
+        <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Category Breakdown</p>
       </div>
       <div className="p-5 space-y-3.5">
         {byCategory.map(({ cat, total }) => {
@@ -289,10 +289,10 @@ function CategoryBreakdown({ expenses }: { expenses: Expense[] }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-xs font-black text-slate-800 truncate">{m.label}</span>
+                    <span className="text-xs font-bold text-slate-800 truncate">{m.label}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[10px] text-slate-400 tabular-nums">{pct}%</span>
-                      <span className="text-xs font-black text-slate-800 tabular-nums">{pkr(total)}</span>
+                      <span className="text-xs font-bold text-slate-800 tabular-nums">{pkr(total)}</span>
                     </div>
                   </div>
                   <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -324,7 +324,7 @@ function BudgetProgress({ expenses, budgets }: {
         <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center ring-1 ring-slate-100">
           <SlidersHorizontal size={13} className="text-slate-500"/>
         </div>
-        <p className="text-xs font-black text-slate-700 uppercase tracking-wide">Monthly Budgets</p>
+        <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Monthly Budgets</p>
       </div>
       <div className="p-5 space-y-4">
         {cats.map((cat) => {
@@ -342,8 +342,8 @@ function BudgetProgress({ expenses, budgets }: {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-black text-slate-800">{m.label}</span>
-                    <span className={`text-xs font-black tabular-nums ${over ? 'text-red-600' : 'text-slate-600'}`}>
+                    <span className="text-xs font-bold text-slate-800">{m.label}</span>
+                    <span className={`text-xs font-bold tabular-nums ${over ? 'text-red-600' : 'text-slate-600'}`}>
                       {pct}%
                     </span>
                   </div>
@@ -386,11 +386,11 @@ function PeriodLockPanel({ periods, viewedYear, viewedMonth, isOwner, onLock, on
           <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center ring-1 ring-slate-100">
             <Lock size={13} className="text-slate-500"/>
           </div>
-          <p className="text-xs font-black text-slate-700 uppercase tracking-wide">Period Locks</p>
+          <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Period Locks</p>
         </div>
         {isOwner && !isCurrentLocked && (
           <button onClick={onLock} disabled={isLocking}
-            className="flex items-center gap-1.5 text-[11px] font-black text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition disabled:opacity-40">
+            className="flex items-center gap-1.5 text-[11px] font-bold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition disabled:opacity-40">
             {isLocking ? <Loader2 size={10} className="animate-spin"/> : <Lock size={10}/>}
             Lock {MONTH_NAMES[viewedMonth - 1]}
           </button>
@@ -405,7 +405,7 @@ function PeriodLockPanel({ periods, viewedYear, viewedMonth, isOwner, onLock, on
               <div key={p.id} className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-amber-50 border border-amber-100 rounded-xl">
                 <div className="flex items-center gap-2">
                   <Lock size={11} className="text-amber-600 shrink-0"/>
-                  <span className="text-xs font-black text-amber-900">{MONTH_NAMES[p.month - 1]} {p.year}</span>
+                  <span className="text-xs font-bold text-amber-900">{MONTH_NAMES[p.month - 1]} {p.year}</span>
                 </div>
                 {isOwner && (
                   <button onClick={() => onUnlock(p.year, p.month)} disabled={isUnlocking}
@@ -429,8 +429,8 @@ function KpiCard({ label, value, sub, accent = false }: {
 }) {
   return (
     <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-4">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className={`text-xl font-black tabular-nums leading-tight ${accent ? 'text-red-600' : 'text-slate-900'}`}>{value}</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className={`text-xl font-bold tabular-nums leading-tight ${accent ? 'text-red-600' : 'text-slate-900'}`}>{value}</p>
       {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
     </div>
   );
@@ -513,30 +513,30 @@ export default function ExpensesPage() {
     <div className="flex flex-col min-h-full">
 
       {/* ── Sticky header ── */}
-      <div className="sticky top-0 z-20 bg-slate-950 border-b border-white/5 h-16 flex items-center px-4 sm:px-6 shrink-0 gap-3">
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 h-16 flex items-center px-4 sm:px-6 shrink-0 gap-3">
 
         {/* Title */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-            <Receipt size={15} className="text-white"/>
+          <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+            <Receipt size={15} className="text-blue-600"/>
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-sm font-black text-white leading-tight">Kharajat</h1>
-            <p className="text-[11px] text-slate-500 leading-tight">Expenses & outflows</p>
+            <h1 className="text-sm font-bold text-gray-900 leading-tight">Kharajat</h1>
+            <p className="text-[11px] text-gray-500 leading-tight">Expenses & outflows</p>
           </div>
         </div>
 
         {/* Month navigator */}
-        <div className="flex items-center gap-1 bg-white/5 rounded-xl border border-white/10 px-1 py-1 shrink-0">
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl border border-gray-200 px-1 py-1 shrink-0">
           <button onClick={() => { const n = navigateMonth(from, -1); setFrom(n.from); setTo(n.to); }}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/15 text-slate-400 hover:text-white transition">
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-gray-500 hover:text-gray-900 transition">
             <ChevronLeft size={14}/>
           </button>
-          <span className="text-xs font-black text-white px-2 min-w-[7rem] text-center tabular-nums">
+          <span className="text-xs font-bold text-gray-900 px-2 min-w-[7rem] text-center tabular-nums">
             {fmtMonthYear(new Date(from + 'T12:00:00'))}
           </span>
           <button onClick={() => { const n = navigateMonth(from, 1); setFrom(n.from); setTo(n.to); }}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/15 text-slate-400 hover:text-white transition">
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-gray-500 hover:text-gray-900 transition">
             <ChevronRight size={14}/>
           </button>
         </div>
@@ -544,22 +544,22 @@ export default function ExpensesPage() {
         {/* Right: lock + buttons */}
         <div className="flex items-center gap-2 shrink-0">
           {isViewedMonthLocked && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/15 rounded-lg border border-amber-500/20">
-              <Lock size={10} className="text-amber-400"/>
-              <span className="text-[10px] font-black text-amber-400">Locked</span>
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 rounded-lg border border-amber-200">
+              <Lock size={10} className="text-amber-700"/>
+              <span className="text-[10px] font-bold text-amber-700">Locked</span>
             </div>
           )}
           <button onClick={() => setShowRange(v => !v)}
-            className={`w-8 h-8 flex items-center justify-center rounded-xl transition ${showRange ? 'bg-white/20 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-xl transition ${showRange ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'}`}
             title="Custom date range">
             <CalendarDays size={14}/>
           </button>
           <button onClick={() => { setFrom(bounds.from); setTo(bounds.to); }}
-            className="hidden md:flex text-[11px] text-slate-400 hover:text-white font-medium transition px-2">
+            className="hidden md:flex text-[11px] text-gray-500 hover:text-gray-900 font-medium transition px-2">
             This month
           </button>
           <button onClick={() => setShowAdd(true)} disabled={isViewedMonthLocked}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-black rounded-xl transition shadow-sm shadow-blue-900/50">
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold rounded-xl transition shadow-sm shadow-blue-900/50">
             <Plus size={13}/> <span className="hidden sm:inline">Expense</span>
           </button>
         </div>
@@ -567,13 +567,13 @@ export default function ExpensesPage() {
 
       {/* Custom date range (collapsible) */}
       {showRange && (
-        <div className="bg-slate-900 border-b border-white/5 px-4 sm:px-6 py-3 flex items-center gap-3 flex-wrap">
-          <span className="text-xs text-slate-400 font-medium shrink-0">Custom range:</span>
+        <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 flex-wrap">
+          <span className="text-xs text-gray-600 font-medium shrink-0">Custom range:</span>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
-            className="bg-slate-800 border border-white/10 text-white text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-400"/>
-          <span className="text-slate-600 text-xs">to</span>
+            className="bg-white border border-gray-200 text-gray-900 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-400"/>
+          <span className="text-gray-400 text-xs">to</span>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
-            className="bg-slate-800 border border-white/10 text-white text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-400"/>
+            className="bg-white border border-gray-200 text-gray-900 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-400"/>
         </div>
       )}
 
@@ -590,7 +590,7 @@ export default function ExpensesPage() {
                 {isOwner && (
                   <button onClick={() => unlockMutation.mutate({ year: viewedYear, month: viewedMonth })}
                     disabled={unlockMutation.isPending}
-                    className="ml-2 font-black underline hover:no-underline transition disabled:opacity-50">
+                    className="ml-2 font-bold underline hover:no-underline transition disabled:opacity-50">
                     {unlockMutation.isPending ? 'Unlocking…' : 'Unlock karo'}
                   </button>
                 )}
@@ -620,7 +620,7 @@ export default function ExpensesPage() {
             <div className="col-span-2 bg-white/50 rounded-2xl ring-1 ring-slate-200 p-4 flex items-center gap-3">
               <SlidersHorizontal size={16} className="text-slate-300 shrink-0"/>
               <p className="text-xs text-slate-400">
-                Budget limits set karo <a href="/settings" className="text-blue-500 font-black hover:underline">Settings → Targets</a> mein
+                Budget limits set karo <a href="/settings" className="text-blue-500 font-bold hover:underline">Settings → Targets</a> mein
               </p>
             </div>
           )}
@@ -663,7 +663,7 @@ export default function ExpensesPage() {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 <button onClick={() => setFilter('ALL')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition ${filterCat === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${filterCat === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                   Sab ({expenses.length})
                 </button>
                 {CATS.filter((c) => expenses.some((e) => e.category === c)).map((c) => {
@@ -671,7 +671,7 @@ export default function ExpensesPage() {
                   const count = expenses.filter((e) => e.category === c).length;
                   return (
                     <button key={c} onClick={() => setFilter(c)}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition ${active ? `${meta.bg} ${meta.color} ring-1 ring-current` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${active ? `${meta.bg} ${meta.color} ring-1 ring-current` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                       <meta.icon size={10}/> {meta.label}
                       <span className="opacity-60">({count})</span>
                     </button>
@@ -709,7 +709,7 @@ export default function ExpensesPage() {
                   </p>
                   {!search && filterCat === 'ALL' && !isViewedMonthLocked && (
                     <button onClick={() => setShowAdd(true)}
-                      className="mt-3 px-4 py-2 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 transition">
+                      className="mt-3 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition">
                       Add Expense
                     </button>
                   )}
@@ -718,10 +718,10 @@ export default function ExpensesPage() {
                 <>
                   {/* List header */}
                   <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                       {filtered.length} entries
                     </p>
-                    <p className="text-[10px] font-black text-red-500 uppercase tracking-wide tabular-nums">
+                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide tabular-nums">
                       {pkr(filtered.reduce((s, e) => s + Number(e.amount), 0))}
                     </p>
                   </div>
@@ -740,16 +740,16 @@ export default function ExpensesPage() {
                           {/* Description + meta */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-sm font-black text-slate-900 truncate">
+                              <p className="text-sm font-bold text-slate-900 truncate">
                                 {e.description ?? meta.label}
                               </p>
                               {e.isRecurring && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 shrink-0">
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 shrink-0">
                                   <RefreshCw size={8}/> recurring
                                 </span>
                               )}
                               {locked && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-100 shrink-0">
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-100 shrink-0">
                                   <Lock size={8}/> locked
                                 </span>
                               )}
@@ -762,7 +762,7 @@ export default function ExpensesPage() {
                           </div>
 
                           {/* Amount */}
-                          <p className="text-sm font-black text-red-600 tabular-nums shrink-0">
+                          <p className="text-sm font-bold text-red-600 tabular-nums shrink-0">
                             {pkr(Number(e.amount))}
                           </p>
 
