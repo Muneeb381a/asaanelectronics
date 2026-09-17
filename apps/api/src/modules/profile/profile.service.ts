@@ -1,7 +1,8 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { users } from '../../db/schema.js';
+import { users, refreshTokens } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { invalidateSessionCache } from '../../middleware/auth.js';
 import { hashPassword, comparePassword } from '../../utils/hash.js';
 
 export class ProfileService {
@@ -32,7 +33,7 @@ export class ProfileService {
     return updated;
   }
 
-  async changePassword(userId: string, body: { currentPassword: string; newPassword: string }) {
+  async changePassword(userId: string, body: { currentPassword: string; newPassword: string }, keepSessionId?: string) {
     const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
     if (!user) throw new AppError('User not found', 404);
 
@@ -41,5 +42,9 @@ export class ProfileService {
 
     const hashed = await hashPassword(body.newPassword);
     await db.update(users).set({ password: hashed }).where(eq(users.id, userId));
+    await db.delete(refreshTokens).where(
+      keepSessionId ? and(eq(refreshTokens.userId, userId), ne(refreshTokens.id, keepSessionId)) : eq(refreshTokens.userId, userId),
+    );
+    invalidateSessionCache();
   }
 }

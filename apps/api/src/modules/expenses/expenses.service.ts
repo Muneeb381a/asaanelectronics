@@ -4,6 +4,7 @@ import { expenses, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { FinancialPeriodsService } from './financial-periods.service.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
+import { accountingSvc } from '../accounting/accounting.service.js';
 
 const periodsSvc = new FinancialPeriodsService();
 
@@ -81,6 +82,8 @@ export class ExpensesService {
         refType: 'EXPENSE',
       });
 
+      await accountingSvc.postExpenseEntry(sellerId, { expenseId: expense.id, amount: body.amount, category: body.category }, tx);
+
       return expense;
     }).then((row) => { clearSellerStatsCache(sellerId); return row; });
   }
@@ -124,6 +127,11 @@ export class ExpensesService {
         ...(date && { date }),
       }).where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'EXPENSE')));
 
+      if (amount || body.category) {
+        await accountingSvc.voidByRef(sellerId, 'EXPENSE', id, tx);
+        await accountingSvc.postExpenseEntry(sellerId, { expenseId: id, amount: Number(amount ?? existing.amount), category }, tx);
+      }
+
       return updated;
     }).then((row) => { clearSellerStatsCache(sellerId); return row; });
   }
@@ -143,6 +151,7 @@ export class ExpensesService {
       await tx.delete(ledgerEntries).where(
         and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'EXPENSE')),
       );
+      await accountingSvc.voidByRef(sellerId, 'EXPENSE', id, tx);
     });
     clearSellerStatsCache(sellerId);
     return existing;

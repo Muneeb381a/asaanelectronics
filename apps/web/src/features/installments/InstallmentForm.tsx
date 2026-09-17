@@ -58,6 +58,11 @@ interface Props {
 }
 
 const MONTH_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60];
+
+// toISOString() is UTC and flips to yesterday before 05:00 PKT
+function localDateInput(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 const DAY_OPTIONS   = [7, 10, 15, 20, 25, 30, 45, 60, 90, 120];
 const DOWN_PRESETS  = [10, 20, 25, 30, 50];
 
@@ -313,7 +318,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     resolver: zodResolver(formSchema),
     defaultValues: {
       months: 12,
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: localDateInput(),
       downPayment: 0,
       paymentFrequency: 'monthly',
       paymentDueDay: 10,

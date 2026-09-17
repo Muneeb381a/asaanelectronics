@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import multer from 'multer';
 import { createHash } from 'crypto';
 import { and, eq } from 'drizzle-orm';
-import { authenticate } from '../../middleware/auth.js';
+import { authenticate, requireSeller } from '../../middleware/auth.js';
 import { uploadToCloudinary } from '../../utils/cloudinary.js';
 import { extractDocumentData, type DocumentExtracted } from '../../utils/ocr.js';
 import { AppError } from '../../middleware/error.js';
@@ -23,7 +23,7 @@ const upload = multer({
   },
 });
 
-router.use(authenticate);
+router.use(authenticate, requireSeller);
 
 const ALLOWED_FOLDERS: Record<string, 'cnic' | 'cheque' | 'other'> = {
   'assaan/cnic':          'cnic',

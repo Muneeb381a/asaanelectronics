@@ -14,6 +14,6 @@ export async function updateProfile(req: AuthRequest, res: Response) {
 }
 
 export async function changePassword(req: AuthRequest, res: Response) {
-  await svc.changePassword(req.user!.userId, req.body);
+  await svc.changePassword(req.user!.userId, req.body, req.user!.sessionId);
   success(res, null);
 }

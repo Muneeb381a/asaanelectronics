@@ -6,6 +6,7 @@ import { customers, installments, ledgerEntries, payments, products } from '../.
 import { AppError } from '../../middleware/error.js';
 import { markUnitSoldInTx, markUnitAvailableInTx } from '../productUnits/productUnits.service.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
+import { accountingSvc } from '../accounting/accounting.service.js';
 import { fsm } from '../../utils/fsm.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
@@ -383,6 +384,10 @@ export class InstallmentsService {
         });
       }
 
+      await accountingSvc.postInstallmentEntry(sellerId, {
+        installmentId: installment.id, totalAmount: body.totalAmount, downPayment: body.downPayment,
+      }, tx);
+
       // Return names already in memory — avoids a follow-up getOne() in the controller
       return { ...installment, customerName: customer.name, productName: product.name };
     });
@@ -477,6 +482,9 @@ export class InstallmentsService {
       await tx.delete(ledgerEntries).where(
         and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'MANUAL')),
       );
+      await accountingSvc.voidByRef(sellerId, 'INSTALLMENT', id, tx);
+      await accountingSvc.voidByRef(sellerId, 'WAIVER', id, tx);
+      await accountingSvc.voidByRef(sellerId, 'PAYMENT', affectedPayments.map((p) => p.id), tx);
     });
     clearSellerStatsCache(sellerId);
     return row;
@@ -545,17 +553,8 @@ export class InstallmentsService {
         .where(eq(installments.id, id))
         .returning();
 
-      await tx.insert(ledgerEntries).values({
-        sellerId,
-        type: 'CREDIT',
-        category: 'WAIVER',
-        amount: String(body.amount.toFixed(2)),
-        description: body.reason
-          ? `Balance waiver: ${body.reason}`
-          : `Balance waiver on installment ${id.slice(-8)}`,
-        referenceId: id,
-        refType: 'MANUAL',
-      });
+      // Waiver moves no cash, so it must not hit the cash ledger (it inflated revenue before).
+      await accountingSvc.postWaiverEntry(sellerId, { installmentId: id, amount: body.amount, reason: body.reason }, tx);
 
       return updated;
     });
@@ -738,6 +737,7 @@ export class InstallmentsService {
         errors.push({ row: rr.rowNum, message: `Duplicate — installment for ${rr.row.customerName} (${rr.row.productName}) on this start date already exists` });
         continue;
       }
+      dupSet.add(dupKey);
       const remaining = rr.row.remaining !== undefined ? rr.row.remaining : rr.row.totalAmount - rr.row.downPayment;
       toInsert.push({
         customerId:       rr.customerId,

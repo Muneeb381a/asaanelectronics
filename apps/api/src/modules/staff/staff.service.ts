@@ -8,6 +8,7 @@ import {
 } from '../../db/schema.js';
 export type { StaffPermissions };
 import { AppError } from '../../middleware/error.js';
+import { invalidateSessionCache } from '../../middleware/auth.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
 
 export class StaffService {
@@ -111,6 +112,7 @@ export class StaffService {
     });
     if (!member) throw new AppError('Staff member not found', 404);
     await db.delete(users).where(eq(users.id, id));
+    invalidateSessionCache();
   }
 
   async freeze(id: string, sellerId: string, durationMonths: number | 'permanent') {
@@ -133,6 +135,7 @@ export class StaffService {
 
     if (!updated) throw new AppError('Staff member not found', 404);
     await db.delete(refreshTokens).where(eq(refreshTokens.userId, id));
+    invalidateSessionCache();
     return updated;
   }
 

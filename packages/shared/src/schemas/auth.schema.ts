@@ -16,6 +16,34 @@ export const changePasswordSchema = z.object({
   newPassword:     z.string().min(8, 'New password must be at least 8 characters').max(128),
 });
 
+export const verifyOtpSchema = z.object({
+  otpToken: z.string().min(1).max(4096),
+  code:     z.string().min(4).max(8),
+});
+
+export const resendOtpSchema = z.object({
+  otpToken: z.string().min(1).max(4096),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email').max(255),
+});
+
+export const resetPasswordSchema = z.object({
+  email:       z.string().email('Invalid email').max(255),
+  code:        z.string().min(4).max(8),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters').max(128),
+});
+
+export const refreshTokenSchema = z.object({
+  token: z.string().min(1).max(4096),
+});
+
+export const updateProfileSchema = z.object({
+  name:  z.string().min(2).max(100).optional(),
+  email: z.string().email('Invalid email').max(255).optional(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

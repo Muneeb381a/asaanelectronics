@@ -21,6 +21,8 @@ const schema = z.object({
   JAZZCASH_SANDBOX:       z.coerce.boolean().default(true),
   NADRA_API_URL:          z.string().optional(),
   NADRA_API_KEY:          z.string().optional(),
+  CRON_SECRET:            z.string().min(16).optional(),
+  REQUEST_SIGNING_SECRET: z.string().min(16).optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
 });

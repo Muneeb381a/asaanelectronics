@@ -1636,7 +1636,7 @@ export default function InstallmentsPage() {
           <button
             onClick={() => setShowReminders(true)}
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm rounded-lg transition">
-            <MessageCircle size={14} /> Reminders
+            <MessageCircle size={14} /> Overdue Reminders
           </button>
           <button
             disabled={isExporting}
@@ -1682,7 +1682,7 @@ export default function InstallmentsPage() {
             className="flex items-center gap-1.5 px-3 py-2 border border-green-200 text-green-700 hover:bg-green-50 text-sm rounded-lg transition font-medium"
             title="Send WhatsApp reminders to overdue customers"
           >
-            <MessageCircle size={14} /> Reminders
+            <MessageCircle size={14} /> Batch WhatsApp
           </button>
           {isOwner && (
             <button onClick={() => setShowImport(true)}

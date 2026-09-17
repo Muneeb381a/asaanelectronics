@@ -66,7 +66,7 @@ export async function refresh(req: Request, res: Response) {
 }
 
 export async function changePassword(req: AuthRequest, res: Response) {
-  await svc.changePassword(req.user!.userId, (req.body as { currentPassword: string }).currentPassword, (req.body as { newPassword: string }).newPassword);
+  await svc.changePassword(req.user!.userId, (req.body as { currentPassword: string }).currentPassword, (req.body as { newPassword: string }).newPassword, req.user!.sessionId);
   success(res, null);
 }
 

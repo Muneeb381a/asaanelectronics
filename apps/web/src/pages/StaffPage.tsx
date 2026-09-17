@@ -289,7 +289,7 @@ function FreezeModal({ member, onClose }: { member: StaffMember; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-auto p-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-auto p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-2 mb-1">
           <Snowflake size={16} className="text-blue-500" />
           <h2 className="text-sm font-semibold text-gray-900">Freeze Account</h2>
@@ -358,7 +358,7 @@ function ProfileEditModal({ member, onClose }: { member: StaffMember; onClose: (
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-gray-900">{member.name}</h3>
@@ -631,7 +631,7 @@ function DirectReceiveModal({ target, onClose }: { target: StaffBalance; onClose
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Cash Li</h2>
@@ -915,7 +915,7 @@ function SubmitHandoverModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">Cash Handover Submit</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
@@ -1009,7 +1009,7 @@ function ConfirmHandoverModal({ handover, onClose }: { handover: Handover; onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Handover Review</h2>
@@ -1597,7 +1597,7 @@ function CommissionSection() {
       {/* Pay commission modal */}
       {payTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Commission De Dein</h3>
@@ -1735,7 +1735,7 @@ function SalarySection() {
       {/* Pay salary modal */}
       {payTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Salary De Dein</h3>
@@ -2075,7 +2075,7 @@ function AssignCustomerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-900">Customer Assign Karo</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon size={16} /></button>
@@ -2509,7 +2509,7 @@ function SetTargetModal({ staff, currentRow, onClose }: { staff: StaffMember; cu
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Target Set Karo</h2>

@@ -7,6 +7,7 @@ import {
   refreshTokens, adminBroadcasts,
 } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { invalidateSessionCache } from '../../middleware/auth.js';
 import { hashPassword } from '../../utils/hash.js';
 import { PLAN_LIMITS } from '../../config/plans.js';
 import { sendRenewalReminderEmail } from '../../utils/email.js';
@@ -464,6 +465,7 @@ export class OwnerService {
       : null;
 
     await db.delete(refreshTokens).where(eq(refreshTokens.id, sessionId));
+    invalidateSessionCache(sessionId);
 
     void this.logAdmin(
       actorId,
@@ -514,6 +516,7 @@ export class OwnerService {
       { userCount: userIds.length, sessionsKilled: killed },
     );
 
+    invalidateSessionCache();
     return { killed };
   }
 

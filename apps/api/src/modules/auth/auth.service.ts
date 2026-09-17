@@ -6,6 +6,7 @@ import { signAccess, signRefresh, verifyRefresh, signOtpToken, verifyOtpToken } 
 import { generateOtp, hashOtp, verifyOtp } from '../../utils/otp.js';
 import { sendOtpEmail } from '../../utils/email.js';
 import { AppError } from '../../middleware/error.js';
+import { invalidateSessionCache } from '../../middleware/auth.js';
 
 const REFRESH_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
 const OTP_TTL_MS      = 10 * 60 * 1000;
@@ -217,6 +218,9 @@ export class AuthService {
 
     await db.delete(otps).where(eq(otps.id, otp.id));
     await db.update(users).set({ password: await hashPassword(body.newPassword) }).where(eq(users.id, user.id));
+    // Evict every existing session so a stolen token dies with the old password.
+    await db.delete(refreshTokens).where(eq(refreshTokens.userId, user.id));
+    invalidateSessionCache();
   }
 
   async refresh(token: string, device?: DeviceInfo) {
@@ -249,13 +253,17 @@ export class AuthService {
     return issueTokens(user, carried);
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(userId: string, currentPassword: string, newPassword: string, keepSessionId?: string) {
     const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
     if (!user) throw new AppError('User not found', 404);
     if (!(await comparePassword(currentPassword, user.password))) {
       throw new AppError('Current password is incorrect', 400);
     }
     await db.update(users).set({ password: await hashPassword(newPassword) }).where(eq(users.id, userId));
+    await db.delete(refreshTokens).where(
+      keepSessionId ? and(eq(refreshTokens.userId, userId), ne(refreshTokens.id, keepSessionId)) : eq(refreshTokens.userId, userId),
+    );
+    invalidateSessionCache();
   }
 
   async logout(token: string) {

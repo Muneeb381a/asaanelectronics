@@ -175,7 +175,7 @@ function UpdateStatusModal({ item, onClose }: { item: Repossession; onClose: () 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900">Update Status</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
@@ -226,10 +226,11 @@ export default function RepossessionsPage() {
   const [showAdd,      setShowAdd]      = useState(false);
   const [editItem,     setEditItem]     = useState<Repossession | null>(null);
   const [statusItem,   setStatusItem]   = useState<Repossession | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['repossessions', statusFilter],
-    queryFn:  () => repossessionsApi.list({ status: statusFilter || undefined, limit: 100 }),
+    queryKey: ['repossessions', statusFilter, page],
+    queryFn:  () => repossessionsApi.list({ status: statusFilter || undefined, page, limit: 20 }),
     staleTime: 30_000,
   });
 
@@ -294,7 +295,7 @@ export default function RepossessionsPage() {
         {STATUS_FILTERS.map(({ label, value }) => (
           <button
             key={value}
-            onClick={() => setStatusFilter(value)}
+            onClick={() => { setStatusFilter(value); setPage(1); }}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
               statusFilter === value
                 ? 'bg-red-600 text-white border-red-600'
@@ -406,6 +407,16 @@ export default function RepossessionsPage() {
           </>
         )}
       </div>
+
+      {(data?.total ?? 0) > 20 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+            className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl disabled:opacity-40 hover:bg-gray-50 transition">Prev</button>
+          <span className="text-xs text-gray-500">{page} / {Math.ceil((data?.total ?? 0) / 20)}</span>
+          <button onClick={() => setPage((p) => p + 1)} disabled={page >= Math.ceil((data?.total ?? 0) / 20)}
+            className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl disabled:opacity-40 hover:bg-gray-50 transition">Next</button>
+        </div>
+      )}
 
       {showAdd    && <RepossessionModal onClose={() => setShowAdd(false)} />}
       {editItem   && <RepossessionModal item={editItem} onClose={() => setEditItem(null)} />}

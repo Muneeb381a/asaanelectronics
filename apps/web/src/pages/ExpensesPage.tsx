@@ -112,7 +112,7 @@ function AddModal({ onClose, expense, prefill }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Modal header */}
         <div className={`px-6 py-4 flex items-center justify-between ${m.bg} border-b border-black/5`}>
           <div className="flex items-center gap-3">

@@ -2,6 +2,7 @@ import { and, desc, eq, gt, ne } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { refreshTokens } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { invalidateSessionCache } from '../../middleware/auth.js';
 
 export class SessionsService {
   async list(userId: string) {
@@ -28,6 +29,7 @@ export class SessionsService {
     });
     if (!session) throw new AppError('Session not found', 404);
     await db.delete(refreshTokens).where(eq(refreshTokens.id, id));
+    invalidateSessionCache(id);
   }
 
   async revokeAll(userId: string, exceptId?: string) {
@@ -35,5 +37,6 @@ export class SessionsService {
       ? and(eq(refreshTokens.userId, userId), ne(refreshTokens.id, exceptId))
       : eq(refreshTokens.userId, userId);
     await db.delete(refreshTokens).where(cond);
+    invalidateSessionCache();
   }
 }

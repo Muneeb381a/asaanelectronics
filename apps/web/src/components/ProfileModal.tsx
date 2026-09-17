@@ -21,8 +21,9 @@ export default function ProfileModal({ onClose }: Props) {
   const updateMutation = useMutation({
     mutationFn: () => profileApi.update({ name, email }),
     onSuccess: (updated) => {
-      setAuth({ ...user!, name: updated.name, email: updated.email }, accessToken!, localStorage.getItem('refresh_token')!);
+      setAuth({ ...user!, name: updated.name, email: updated.email }, accessToken!, localStorage.getItem('refresh_token') ?? '');
       qc.invalidateQueries({ queryKey: ['profile'] });
+      qc.invalidateQueries({ queryKey: ['profile-perms'] });
       toast.success('Profile updated');
       onClose();
     },
@@ -40,7 +41,7 @@ export default function ProfileModal({ onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <div className="flex items-center gap-3">

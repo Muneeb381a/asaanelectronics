@@ -11,7 +11,7 @@ export async function getWalletBalance(req: AuthRequest, res: Response) {
 
 export async function getCashBook(req: AuthRequest, res: Response) {
   const { from, to, limit } = req.query as Record<string, string>;
-  success(res, await svc.cashBook(req.user!.sellerId!, from, to, limit ? Number(limit) : 100));
+  success(res, await svc.cashBook(req.user!.sellerId!, from, to, Math.min(Math.max(1, Number(limit) || 100), 500)));
 }
 
 export async function getDailySummary(req: AuthRequest, res: Response) {

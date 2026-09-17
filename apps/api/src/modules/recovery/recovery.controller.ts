@@ -55,7 +55,7 @@ export async function listAgentStats(req: AuthRequest, res: Response) {
 }
 
 export async function listAgentCollections(req: AuthRequest, res: Response) {
-  const page  = Number(req.query['page']  ?? 1);
-  const limit = Number(req.query['limit'] ?? 50);
+  const page  = Math.max(1, Number(req.query['page']) || 1);
+  const limit = Math.min(Math.max(1, Number(req.query['limit']) || 50), 100);
   success(res, await svc.agentCollections(req.params['userId']!, req.user!.sellerId!, page, limit));
 }

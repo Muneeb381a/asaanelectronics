@@ -307,29 +307,22 @@ export class ReportsService {
         SELECT
           i.id,
           i.remaining::numeric AS outstanding,
-          GREATEST(0,
-            CASE
-              WHEN i.payment_frequency = 'daily' THEN
-                GREATEST(0,
-                  EXTRACT(DAY FROM (NOW() - i.start_date))::int
-                  - FLOOR(COALESCE(paid.total, 0) / NULLIF(i.monthly::numeric, 0))::int
-                )
-              ELSE
-                GREATEST(0,
-                  (EXTRACT(YEAR FROM AGE(NOW(), i.start_date)) * 12
-                   + EXTRACT(MONTH FROM AGE(NOW(), i.start_date)))::int
-                  - FLOOR(COALESCE(paid.total, 0) / NULLIF(i.monthly::numeric, 0))::int
-                ) * 30
-            END
-          ) AS dpd
+          -- Days past the first unpaid period's due date (same next-due formula as dashboard stats).
+          GREATEST(0, (
+            (NOW() AT TIME ZONE 'Asia/Karachi')::date
+            - (
+              CASE WHEN i.payment_frequency = 'daily'
+                THEN i.start_date + ((GREATEST(0, FLOOR(
+                  (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                  / NULLIF(i.monthly::numeric, 0))) + 1) || ' days')::interval
+                ELSE i.start_date + ((GREATEST(0, FLOOR(
+                  (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
+                  / NULLIF(i.monthly::numeric, 0))) + 1) || ' months')::interval
+              END
+            )::date
+          ))::int AS dpd
         FROM installments i
         JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
-        LEFT JOIN (
-          SELECT installment_id, SUM(amount::numeric) AS total
-          FROM payments
-          WHERE deleted_at IS NULL
-          GROUP BY installment_id
-        ) paid ON paid.installment_id = i.id
         WHERE c.seller_id = ${sellerId}
           AND i.status = 'ACTIVE'
           AND i.deleted_at IS NULL
@@ -647,6 +640,7 @@ export class ReportsService {
           AND i.status IN ('ACTIVE', 'DEFAULTED')
           AND i.deleted_at IS NULL
           AND i.start_date::date <= d.day
+          AND d.day < i.start_date::date + i.months
           AND i.customer_id IN (
             SELECT id FROM customers WHERE seller_id = ${sellerId} AND deleted_at IS NULL
           )
@@ -732,7 +726,7 @@ export class ReportsService {
         AND (
           (i.payment_frequency = 'monthly'
             AND i.payment_due_day = EXTRACT(DAY FROM ${date}::date)::int)
-          OR i.payment_frequency = 'daily'
+          OR (i.payment_frequency = 'daily' AND ${date}::date < i.start_date::date + i.months)
         )
       ORDER BY
         CASE WHEN COALESCE(dp.total_paid, 0) = 0 THEN 0 ELSE 1 END,

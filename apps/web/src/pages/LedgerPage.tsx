@@ -395,6 +395,9 @@ function ExpensesTab() {
     void qc.invalidateQueries({ queryKey: ['ledger-cashbook'] });
     void qc.invalidateQueries({ queryKey: ['ledger-daily'] });
     void qc.invalidateQueries({ queryKey: ['ledger-pl'] });
+    void qc.invalidateQueries({ queryKey: ['accounting-balances'] });
+    void qc.invalidateQueries({ queryKey: ['accounting-journal'] });
+    void qc.invalidateQueries({ queryKey: ['dashboard'] });
   };
 
   const createMutation = useMutation({

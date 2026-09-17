@@ -4,6 +4,7 @@ import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
+import { accountingSvc } from '../accounting/accounting.service.js';
 
 type CreateBody = {
   installmentId: string;
@@ -156,8 +157,12 @@ export class PaymentsService {
         refType:     'PAYMENT',
       });
 
-      clearSellerStatsCache(sellerId);
+      await accountingSvc.postPaymentEntry(sellerId, { paymentId: payment.id, amount: body.amount, userId: body.collectedBy ?? undefined }, tx);
+
       return { payment, remaining: newRemaining, completed: isCleared };
+    }).then((r) => {
+      clearSellerStatsCache(sellerId);
+      return r;
     });
   }
 
@@ -272,6 +277,7 @@ export class PaymentsService {
         referenceId: id,
         refType:     'MANUAL',
       });
+      await accountingSvc.voidByRef(sellerId, 'PAYMENT', id, tx);
     });
 
     clearSellerStatsCache(sellerId);

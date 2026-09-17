@@ -2,6 +2,9 @@ import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { chartOfAccounts, journalEntries, ledgerLines } from '../../db/schema.js';
 
+// Accepts either the root db or a transaction so callers can post atomically.
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 const DEFAULT_ACCOUNTS = [
   { code: '1000', name: 'Cash',                type: 'ASSET'   as const },
   { code: '1100', name: 'Accounts Receivable', type: 'ASSET'   as const },
@@ -12,6 +15,7 @@ const DEFAULT_ACCOUNTS = [
   { code: '5300', name: 'Purchase Expense',    type: 'EXPENSE' as const },
   { code: '5400', name: 'Maintenance Expense', type: 'EXPENSE' as const },
   { code: '5500', name: 'Transport Expense',   type: 'EXPENSE' as const },
+  { code: '5800', name: 'Bad Debt / Waiver',   type: 'EXPENSE' as const },
   { code: '5900', name: 'Other Expense',       type: 'EXPENSE' as const },
 ];
 
@@ -21,31 +25,38 @@ const EXPENSE_ACCOUNT: Record<string, string> = {
 };
 
 export class AccountingService {
-  async initSellerAccounts(sellerId: string) {
-    await db
+  async initSellerAccounts(sellerId: string, ex: Executor = db) {
+    await ex
       .insert(chartOfAccounts)
       .values(DEFAULT_ACCOUNTS.map((a) => ({ sellerId, ...a, isSystem: true })))
       .onConflictDoNothing();
   }
 
-  private async getAcctId(sellerId: string, code: string): Promise<string> {
-    const [row] = await db
-      .select({ id: chartOfAccounts.id })
+  private async getAcctIds(sellerId: string, codes: string[], ex: Executor): Promise<Record<string, string>> {
+    const load = () => ex
+      .select({ id: chartOfAccounts.id, code: chartOfAccounts.code })
       .from(chartOfAccounts)
-      .where(and(eq(chartOfAccounts.sellerId, sellerId), eq(chartOfAccounts.code, code)));
-    if (!row) throw new Error(`Account ${code} not found — run initSellerAccounts first`);
-    return row.id;
+      .where(and(eq(chartOfAccounts.sellerId, sellerId), inArray(chartOfAccounts.code, codes)));
+
+    let rows = await load();
+    if (rows.length < codes.length) {
+      await this.initSellerAccounts(sellerId, ex);
+      rows = await load();
+    }
+    const map = Object.fromEntries(rows.map((r) => [r.code, r.id]));
+    for (const c of codes) if (!map[c]) throw new Error(`Account ${c} not found for seller ${sellerId}`);
+    return map;
   }
 
   private async postEntry(sellerId: string, data: {
     memo: string; refType: string; refId: string; createdBy?: string;
     lines: { accountId: string; debit: number; credit: number }[];
-  }) {
-    const [entry] = await db.insert(journalEntries).values({
+  }, ex: Executor) {
+    const [entry] = await ex.insert(journalEntries).values({
       sellerId, memo: data.memo, refType: data.refType, refId: data.refId, createdBy: data.createdBy,
     }).returning({ id: journalEntries.id });
 
-    await db.insert(ledgerLines).values(
+    await ex.insert(ledgerLines).values(
       data.lines.map((l) => ({
         journalId: entry!.id,
         accountId: l.accountId,
@@ -55,25 +66,34 @@ export class AccountingService {
     );
   }
 
+  /** Remove every journal entry (and its lines) posted for a source record. */
+  async voidByRef(sellerId: string, refType: string, refIds: string | string[], ex: Executor = db) {
+    const ids = Array.isArray(refIds) ? refIds : [refIds];
+    if (ids.length === 0) return;
+    const entries = await ex
+      .select({ id: journalEntries.id })
+      .from(journalEntries)
+      .where(and(eq(journalEntries.sellerId, sellerId), eq(journalEntries.refType, refType), inArray(journalEntries.refId, ids)));
+    if (entries.length === 0) return;
+    const jids = entries.map((e) => e.id);
+    await ex.delete(ledgerLines).where(inArray(ledgerLines.journalId, jids));
+    await ex.delete(journalEntries).where(inArray(journalEntries.id, jids));
+  }
+
   async postInstallmentEntry(sellerId: string, data: {
     installmentId: string; totalAmount: number; downPayment: number; userId?: string;
-  }) {
-    await this.initSellerAccounts(sellerId);
-    const [cashId, recvId, revId] = await Promise.all([
-      this.getAcctId(sellerId, '1000'),
-      this.getAcctId(sellerId, '1100'),
-      this.getAcctId(sellerId, '4000'),
-    ]);
+  }, ex: Executor = db) {
+    const acct = await this.getAcctIds(sellerId, ['1000', '1100', '4000'], ex);
 
     // Sale on credit: Dr Receivables / Cr Revenue
     await this.postEntry(sellerId, {
       memo: `Installment sale — PKR ${data.totalAmount.toLocaleString()}`,
       refType: 'INSTALLMENT', refId: data.installmentId, createdBy: data.userId,
       lines: [
-        { accountId: recvId, debit: data.totalAmount,  credit: 0 },
-        { accountId: revId,  debit: 0, credit: data.totalAmount },
+        { accountId: acct['1100']!, debit: data.totalAmount, credit: 0 },
+        { accountId: acct['4000']!, debit: 0, credit: data.totalAmount },
       ],
-    });
+    }, ex);
 
     // Down payment received: Dr Cash / Cr Receivables
     if (data.downPayment > 0) {
@@ -81,48 +101,55 @@ export class AccountingService {
         memo: `Down payment received — PKR ${data.downPayment.toLocaleString()}`,
         refType: 'INSTALLMENT', refId: data.installmentId, createdBy: data.userId,
         lines: [
-          { accountId: cashId, debit: data.downPayment,  credit: 0 },
-          { accountId: recvId, debit: 0, credit: data.downPayment },
+          { accountId: acct['1000']!, debit: data.downPayment, credit: 0 },
+          { accountId: acct['1100']!, debit: 0, credit: data.downPayment },
         ],
-      });
+      }, ex);
     }
   }
 
   async postPaymentEntry(sellerId: string, data: {
     paymentId: string; amount: number; userId?: string;
-  }) {
-    await this.initSellerAccounts(sellerId);
-    const [cashId, recvId] = await Promise.all([
-      this.getAcctId(sellerId, '1000'),
-      this.getAcctId(sellerId, '1100'),
-    ]);
+  }, ex: Executor = db) {
+    const acct = await this.getAcctIds(sellerId, ['1000', '1100'], ex);
     await this.postEntry(sellerId, {
       memo: `Payment received — PKR ${data.amount.toLocaleString()}`,
       refType: 'PAYMENT', refId: data.paymentId, createdBy: data.userId,
       lines: [
-        { accountId: cashId, debit: data.amount, credit: 0 },
-        { accountId: recvId, debit: 0,           credit: data.amount },
+        { accountId: acct['1000']!, debit: data.amount, credit: 0 },
+        { accountId: acct['1100']!, debit: 0,           credit: data.amount },
       ],
-    });
+    }, ex);
+  }
+
+  /** Waiver is a non-cash write-off: Dr Bad Debt / Cr Receivables. Never touches the cash book. */
+  async postWaiverEntry(sellerId: string, data: {
+    installmentId: string; amount: number; reason?: string; userId?: string;
+  }, ex: Executor = db) {
+    const acct = await this.getAcctIds(sellerId, ['1100', '5800'], ex);
+    await this.postEntry(sellerId, {
+      memo: `Balance waiver${data.reason ? ': ' + data.reason : ''} — PKR ${data.amount.toLocaleString()}`,
+      refType: 'WAIVER', refId: data.installmentId, createdBy: data.userId,
+      lines: [
+        { accountId: acct['5800']!, debit: data.amount, credit: 0 },
+        { accountId: acct['1100']!, debit: 0,           credit: data.amount },
+      ],
+    }, ex);
   }
 
   async postExpenseEntry(sellerId: string, data: {
     expenseId: string; amount: number; category: string; userId?: string;
-  }) {
-    await this.initSellerAccounts(sellerId);
+  }, ex: Executor = db) {
     const code = EXPENSE_ACCOUNT[data.category] ?? '5900';
-    const [cashId, expId] = await Promise.all([
-      this.getAcctId(sellerId, '1000'),
-      this.getAcctId(sellerId, code),
-    ]);
+    const acct = await this.getAcctIds(sellerId, ['1000', code], ex);
     await this.postEntry(sellerId, {
       memo: `${data.category} expense — PKR ${data.amount.toLocaleString()}`,
       refType: 'EXPENSE', refId: data.expenseId, createdBy: data.userId,
       lines: [
-        { accountId: expId,  debit: data.amount, credit: 0 },
-        { accountId: cashId, debit: 0,           credit: data.amount },
+        { accountId: acct[code]!,   debit: data.amount, credit: 0 },
+        { accountId: acct['1000']!, debit: 0,           credit: data.amount },
       ],
-    });
+    }, ex);
   }
 
   async getBalances(sellerId: string) {
@@ -166,7 +193,7 @@ export class AccountingService {
 
     const conds = [eq(journalEntries.sellerId, sellerId)];
     if (filters.from) conds.push(gte(journalEntries.postedAt, new Date(filters.from)));
-    if (filters.to)   conds.push(lte(journalEntries.postedAt, new Date(filters.to)));
+    if (filters.to) { const end = new Date(filters.to); end.setUTCHours(23, 59, 59, 999); conds.push(lte(journalEntries.postedAt, end)); }
     const where = and(...conds);
 
     const [entries, [{ count }]] = await Promise.all([
@@ -202,3 +229,5 @@ export class AccountingService {
     };
   }
 }
+
+export const accountingSvc = new AccountingService();

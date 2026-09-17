@@ -10,7 +10,7 @@ const audit = new AuditService();
 
 export async function listReturns(req: AuthRequest, res: Response) {
   const page       = Math.max(1, Number(req.query['page']) || 1);
-  const limit      = Math.min(Math.max(1, Number(req.query['limit']) || 20), 100);
+  const limit      = Math.min(Math.max(1, Number(req.query['limit']) || 20), 5000);
   const status     = req.query['status']     as string | undefined;
   const customerId = req.query['customerId'] as string | undefined;
   const search     = req.query['search']     as string | undefined;

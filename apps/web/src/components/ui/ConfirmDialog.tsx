@@ -36,7 +36,7 @@ export default function ConfirmDialog({
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget && !isPending) onCancel(); }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
         <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center mx-auto mb-4`}>
           <Icon size={22} className={iconCls} />
         </div>
