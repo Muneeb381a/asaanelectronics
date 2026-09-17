@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
-import { createCustomerSchema, updateCustomerSchema } from '@assaan/shared';
+import { createCustomerSchema, updateCustomerSchema, assignAvoSchema, blacklistCustomerSchema, customerNoteSchema, createCustomerDocumentSchema, updateCustomerDocumentSchema } from '@assaan/shared';
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer, assignAvo,
   getLifecycleCounts, getRiskBreakdown, lookupByCnic, getUpcomingBirthdays, getReferralLeaderboard,
@@ -34,18 +34,18 @@ router.get('/:id',              canAccessCustomers, getCustomer);
 router.get('/:id/risk-breakdown', requirePermission('canViewReports'), getRiskBreakdown);
 router.post('/',      requirePermission('canAddCustomer'),  validate(createCustomerSchema), createCustomer);
 router.patch('/:id',  requirePermission('canEditCustomer'), validate(updateCustomerSchema), updateCustomer);
-router.patch('/:id/assign-avo', requirePermission('canVerifyCustomers'), assignAvo);
+router.patch('/:id/assign-avo', requirePermission('canVerifyCustomers'), validate(assignAvoSchema), assignAvo);
 router.delete('/:id', requireOwner, deleteCustomer);
-router.patch('/:id/blacklist',   requireOwner, blacklistCustomer);
+router.patch('/:id/blacklist',   requireOwner, validate(blacklistCustomerSchema), blacklistCustomer);
 router.delete('/:id/blacklist',  requireOwner, unblacklistCustomer);
 
 router.get('/:customerId/notes',            canAccessCustomers, listNotes);
-router.post('/:customerId/notes',           requirePermission('canAddCustomer'), addNote);
+router.post('/:customerId/notes',           requirePermission('canAddCustomer'), validate(customerNoteSchema), addNote);
 router.delete('/:customerId/notes/:noteId', requireOwner, deleteNote);
 
 router.get('/:customerId/documents',              canAccessCustomers, listCustomerDocs);
-router.post('/:customerId/documents',             requirePermission('canEditCustomer'), addCustomerDoc);
-router.patch('/:customerId/documents/:docId',     requirePermission('canEditCustomer'), updateCustomerDoc);
+router.post('/:customerId/documents',             requirePermission('canEditCustomer'), validate(createCustomerDocumentSchema), addCustomerDoc);
+router.patch('/:customerId/documents/:docId',     requirePermission('canEditCustomer'), validate(updateCustomerDocumentSchema), updateCustomerDoc);
 router.delete('/:customerId/documents/:docId',    requireOwner, deleteCustomerDoc);
 
 export default router;

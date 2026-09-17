@@ -283,3 +283,53 @@ export declare const updateCustomerSchema: z.ZodObject<{
 }>;
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
+export declare const blacklistCustomerSchema: z.ZodObject<{
+    reason: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    reason?: string | undefined;
+}, {
+    reason?: string | undefined;
+}>;
+export declare const customerNoteSchema: z.ZodObject<{
+    note: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    note: string;
+}, {
+    note: string;
+}>;
+export declare const assignAvoSchema: z.ZodObject<{
+    avoId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    avoId: string;
+}, {
+    avoId: string;
+}>;
+export declare const createCustomerDocumentSchema: z.ZodObject<{
+    docType: z.ZodString;
+    label: z.ZodString;
+    status: z.ZodOptional<z.ZodEnum<["PENDING", "RECEIVED", "VERIFIED"]>>;
+    notes: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    docType: string;
+    label: string;
+    status?: "PENDING" | "RECEIVED" | "VERIFIED" | undefined;
+    notes?: string | undefined;
+}, {
+    docType: string;
+    label: string;
+    status?: "PENDING" | "RECEIVED" | "VERIFIED" | undefined;
+    notes?: string | undefined;
+}>;
+export declare const updateCustomerDocumentSchema: z.ZodObject<{
+    status: z.ZodOptional<z.ZodEnum<["PENDING", "RECEIVED", "VERIFIED"]>>;
+    notes: z.ZodOptional<z.ZodString>;
+    label: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    status?: "PENDING" | "RECEIVED" | "VERIFIED" | undefined;
+    label?: string | undefined;
+    notes?: string | undefined;
+}, {
+    status?: "PENDING" | "RECEIVED" | "VERIFIED" | undefined;
+    label?: string | undefined;
+    notes?: string | undefined;
+}>;

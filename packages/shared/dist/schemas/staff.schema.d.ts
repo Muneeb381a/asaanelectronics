@@ -114,3 +114,46 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
 }>;
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 export type UpdateStaffPermissionsInput = z.infer<typeof updateStaffPermissionsSchema>;
+export declare const updateStaffProfileSchema: z.ZodObject<{
+    commissionRate: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    monthlySalary: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+}, "strip", z.ZodTypeAny, {
+    commissionRate?: number | null | undefined;
+    monthlySalary?: number | null | undefined;
+}, {
+    commissionRate?: number | null | undefined;
+    monthlySalary?: number | null | undefined;
+}>;
+export declare const freezeStaffSchema: z.ZodObject<{
+    durationMonths: z.ZodUnion<[z.ZodNumber, z.ZodLiteral<"permanent">]>;
+}, "strip", z.ZodTypeAny, {
+    durationMonths: number | "permanent";
+}, {
+    durationMonths: number | "permanent";
+}>;
+export declare const staffPaySchema: z.ZodObject<{
+    staffId: z.ZodString;
+    month: z.ZodString;
+    amount: z.ZodNumber;
+    note: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    amount: number;
+    staffId: string;
+    month: string;
+    note?: string | undefined;
+}, {
+    amount: number;
+    staffId: string;
+    month: string;
+    note?: string | undefined;
+}>;
+export declare const staffTargetSchema: z.ZodObject<{
+    daily: z.ZodOptional<z.ZodNumber>;
+    monthly: z.ZodOptional<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    daily?: number | undefined;
+    monthly?: number | undefined;
+}, {
+    daily?: number | undefined;
+    monthly?: number | undefined;
+}>;

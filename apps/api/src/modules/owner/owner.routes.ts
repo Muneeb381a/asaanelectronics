@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { validate } from '../../middleware/validate.js';
+import { createShopSchema, createShopOwnerSchema, toggleShopStatusSchema, addPaymentLogSchema, shopNoteSchema, createBroadcastSchema, updateBroadcastSchema } from '@assaan/shared';
 import { authenticate, requireSuperAdmin } from '../../middleware/auth.js';
 import {
   listShops, createShop, createShopOwner, deleteShop, toggleShopStatus,
@@ -21,10 +23,10 @@ router.use(authenticate, requireSuperAdmin);
 // ── Core shop management ──────────────────────────────────────────────────────
 router.get('/shops',                  listShops);
 router.get('/shops/export',           exportShopsCSV);   // must be before /shops/:id
-router.post('/shops',                 createShop);
-router.post('/shops/:id/owner',       createShopOwner);
+router.post('/shops',                 validate(createShopSchema), createShop);
+router.post('/shops/:id/owner',       validate(createShopOwnerSchema), createShopOwner);
 router.delete('/shops/:id',           deleteShop);
-router.patch('/shops/:id/status',     toggleShopStatus);
+router.patch('/shops/:id/status',     validate(toggleShopStatusSchema), toggleShopStatus);
 
 // ── A1: Platform stats dashboard ──────────────────────────────────────────────
 router.get('/stats',                  getPlatformStats);
@@ -34,11 +36,11 @@ router.get('/shops/:id/usage',        getShopUsage);
 
 // ── A4: Manual payment logs ───────────────────────────────────────────────────
 router.get('/payment-logs',           listPaymentLogs);
-router.post('/shops/:id/payment-logs', addPaymentLog);
+router.post('/shops/:id/payment-logs', validate(addPaymentLogSchema), addPaymentLog);
 router.delete('/payment-logs/:logId', deletePaymentLog);
 
 // ── A7: Shop notes ────────────────────────────────────────────────────────────
-router.post('/shops/:id/notes',       addShopNote);
+router.post('/shops/:id/notes',       validate(shopNoteSchema), addShopNote);
 router.delete('/shops/:id/notes/:noteId', deleteShopNote);
 
 // ── A10: Super-admin audit log ────────────────────────────────────────────────
@@ -55,8 +57,8 @@ router.get('/onboarding',              getOnboardingStatus);
 
 // ── B3: Broadcast announcements (admin CRUD) ──────────────────────────────────
 router.get('/broadcasts',              listBroadcasts);
-router.post('/broadcasts',             createBroadcast);
-router.patch('/broadcasts/:id',        updateBroadcast);
+router.post('/broadcasts',             validate(createBroadcastSchema), createBroadcast);
+router.patch('/broadcasts/:id',        validate(updateBroadcastSchema), updateBroadcast);
 router.delete('/broadcasts/:id',       deleteBroadcast);
 
 // ── Session management ────────────────────────────────────────────────────────

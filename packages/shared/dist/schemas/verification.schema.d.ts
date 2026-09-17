@@ -19,8 +19,8 @@ export declare const submitVerificationSchema: z.ZodObject<{
     latitude: number;
     longitude: number;
     locationAccuracy: number;
-    photoEvidenceUrl?: string | undefined;
     notes?: string | undefined;
+    photoEvidenceUrl?: string | undefined;
 }, {
     status: "APPROVED" | "REJECTED";
     addressVerified: boolean;
@@ -30,8 +30,8 @@ export declare const submitVerificationSchema: z.ZodObject<{
     latitude: number;
     longitude: number;
     locationAccuracy: number;
-    photoEvidenceUrl?: string | undefined;
     notes?: string | undefined;
+    photoEvidenceUrl?: string | undefined;
 }>;
 export type SubmitVerificationInput = z.infer<typeof submitVerificationSchema>;
 export declare const ownerVerifySchema: z.ZodObject<{

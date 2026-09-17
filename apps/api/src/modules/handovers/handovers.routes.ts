@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { validate } from '../../middleware/validate.js';
+import { createHandoverSchema, directReceiveHandoverSchema, confirmHandoverSchema, disputeHandoverSchema } from '@assaan/shared';
 import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
 import {
   listHandovers, getCollectedToday, createHandover,
@@ -17,12 +19,12 @@ router.get('/pending-balances',    requireOwner, getPendingBalances);  // all st
 router.get('/my-balance',          getMyBalance);                       // own balance (staff or owner)
 
 // ── Staff actions ─────────────────────────────────────────────────────────────
-router.post('/',                   createHandover);                    // staff submits handover
+router.post('/',                   validate(createHandoverSchema), createHandover);                    // staff submits handover
 
 // ── Owner-only actions ────────────────────────────────────────────────────────
-router.post('/direct-receive',     requireOwner, directReceiveHandover); // owner-initiated, no staff submit needed
-router.patch('/:id/confirm',       requireOwner, confirmHandover);
-router.patch('/:id/dispute',       requireOwner, disputeHandover);
+router.post('/direct-receive',     requireOwner, validate(directReceiveHandoverSchema), directReceiveHandover); // owner-initiated, no staff submit needed
+router.patch('/:id/confirm',       requireOwner, validate(confirmHandoverSchema), confirmHandover);
+router.patch('/:id/dispute',       requireOwner, validate(disputeHandoverSchema), disputeHandover);
 router.patch('/:id/reopen',        requireOwner, reopenHandover);        // DISPUTED → PENDING
 
 export default router;

@@ -12,3 +12,12 @@ export const createCashSaleSchema = z.object({
 });
 
 export type CreateCashSaleInput = z.infer<typeof createCashSaleSchema>;
+
+export const updateCashSaleSchema = z.object({
+  amount:        z.number().positive().optional(),
+  method:        z.enum(['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER']).optional(),
+  customerName:  z.string().max(100).nullable().optional(),
+  customerPhone: z.string().max(20).nullable().optional(),
+  imeiNumber:    z.string().max(20).nullable().optional(),
+  note:          z.string().max(200).nullable().optional(),
+});

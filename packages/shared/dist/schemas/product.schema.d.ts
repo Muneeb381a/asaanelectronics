@@ -29,6 +29,7 @@ export declare const createProductSchema: z.ZodObject<{
     price: number;
     stock: number;
     photoUrl?: string | undefined;
+    description?: string | undefined;
     category?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
@@ -38,7 +39,6 @@ export declare const createProductSchema: z.ZodObject<{
     minStock?: number | undefined;
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
-    description?: string | undefined;
     supplierId?: string | undefined;
     engineNumber?: string | undefined;
     chassisNumber?: string | undefined;
@@ -53,6 +53,7 @@ export declare const createProductSchema: z.ZodObject<{
     name: string;
     price: number;
     photoUrl?: string | undefined;
+    description?: string | undefined;
     category?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
@@ -63,7 +64,6 @@ export declare const createProductSchema: z.ZodObject<{
     minStock?: number | undefined;
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
-    description?: string | undefined;
     supplierId?: string | undefined;
     engineNumber?: string | undefined;
     chassisNumber?: string | undefined;
@@ -103,6 +103,7 @@ export declare const updateProductSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
     photoUrl?: string | undefined;
+    description?: string | undefined;
     category?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
@@ -114,7 +115,6 @@ export declare const updateProductSchema: z.ZodObject<{
     minStock?: number | undefined;
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
-    description?: string | undefined;
     supplierId?: string | undefined;
     engineNumber?: string | undefined;
     chassisNumber?: string | undefined;
@@ -128,6 +128,7 @@ export declare const updateProductSchema: z.ZodObject<{
 }, {
     name?: string | undefined;
     photoUrl?: string | undefined;
+    description?: string | undefined;
     category?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
@@ -139,7 +140,6 @@ export declare const updateProductSchema: z.ZodObject<{
     minStock?: number | undefined;
     serial?: string | undefined;
     warrantyMonths?: number | undefined;
-    description?: string | undefined;
     supplierId?: string | undefined;
     engineNumber?: string | undefined;
     chassisNumber?: string | undefined;
@@ -153,3 +153,63 @@ export declare const updateProductSchema: z.ZodObject<{
 }>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
+export declare const bulkReceiveProductsSchema: z.ZodObject<{
+    supplierId: z.ZodOptional<z.ZodString>;
+    invoiceDate: z.ZodOptional<z.ZodString>;
+    paidAmount: z.ZodOptional<z.ZodNumber>;
+    invoiceNumber: z.ZodOptional<z.ZodString>;
+    paymentMethod: z.ZodOptional<z.ZodEnum<["CASH", "BANK", "CHEQUE", "CREDIT"]>>;
+    dueDate: z.ZodOptional<z.ZodString>;
+    units: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        price: z.ZodNumber;
+        purchasePrice: z.ZodOptional<z.ZodNumber>;
+        installmentPrice: z.ZodOptional<z.ZodNumber>;
+        stock: z.ZodOptional<z.ZodNumber>;
+        minStock: z.ZodOptional<z.ZodNumber>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        price: z.ZodNumber;
+        purchasePrice: z.ZodOptional<z.ZodNumber>;
+        installmentPrice: z.ZodOptional<z.ZodNumber>;
+        stock: z.ZodOptional<z.ZodNumber>;
+        minStock: z.ZodOptional<z.ZodNumber>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        price: z.ZodNumber;
+        purchasePrice: z.ZodOptional<z.ZodNumber>;
+        installmentPrice: z.ZodOptional<z.ZodNumber>;
+        stock: z.ZodOptional<z.ZodNumber>;
+        minStock: z.ZodOptional<z.ZodNumber>;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+}, "strip", z.ZodTypeAny, {
+    units: z.objectOutputType<{
+        name: z.ZodString;
+        price: z.ZodNumber;
+        purchasePrice: z.ZodOptional<z.ZodNumber>;
+        installmentPrice: z.ZodOptional<z.ZodNumber>;
+        stock: z.ZodOptional<z.ZodNumber>;
+        minStock: z.ZodOptional<z.ZodNumber>;
+    }, z.ZodTypeAny, "passthrough">[];
+    supplierId?: string | undefined;
+    invoiceDate?: string | undefined;
+    paidAmount?: number | undefined;
+    invoiceNumber?: string | undefined;
+    paymentMethod?: "CASH" | "BANK" | "CHEQUE" | "CREDIT" | undefined;
+    dueDate?: string | undefined;
+}, {
+    units: z.objectInputType<{
+        name: z.ZodString;
+        price: z.ZodNumber;
+        purchasePrice: z.ZodOptional<z.ZodNumber>;
+        installmentPrice: z.ZodOptional<z.ZodNumber>;
+        stock: z.ZodOptional<z.ZodNumber>;
+        minStock: z.ZodOptional<z.ZodNumber>;
+    }, z.ZodTypeAny, "passthrough">[];
+    supplierId?: string | undefined;
+    invoiceDate?: string | undefined;
+    paidAmount?: number | undefined;
+    invoiceNumber?: string | undefined;
+    paymentMethod?: "CASH" | "BANK" | "CHEQUE" | "CREDIT" | undefined;
+    dueDate?: string | undefined;
+}>;

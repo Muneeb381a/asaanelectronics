@@ -26,3 +26,21 @@ export const createProductSchema = z.object({
     attributes: z.record(z.string(), z.unknown()).optional(),
 });
 export const updateProductSchema = createProductSchema.partial();
+// Units carry category-specific fields (imei, chassis, ram, ...) so unknown keys pass through.
+const bulkReceiveUnitSchema = z.object({
+    name: z.string().min(1).max(200),
+    price: z.number().positive(),
+    purchasePrice: z.number().min(0).optional(),
+    installmentPrice: z.number().min(0).optional(),
+    stock: z.number().int().min(0).max(100000).optional(),
+    minStock: z.number().int().min(0).optional(),
+}).passthrough();
+export const bulkReceiveProductsSchema = z.object({
+    supplierId: z.string().optional(),
+    invoiceDate: z.string().max(30).optional(),
+    paidAmount: z.number().min(0).optional(),
+    invoiceNumber: z.string().max(50).optional(),
+    paymentMethod: z.enum(['CASH', 'BANK', 'CHEQUE', 'CREDIT']).optional(),
+    dueDate: z.string().max(30).optional(),
+    units: z.array(bulkReceiveUnitSchema).min(1).max(500),
+});

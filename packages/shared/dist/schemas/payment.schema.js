@@ -15,3 +15,13 @@ export const updatePaymentSchema = z.object({
 }).refine((b) => b.amount !== undefined || b.method !== undefined || b.note !== undefined, {
     message: 'No fields to update',
 });
+export const bulkPaymentsSchema = z.object({
+    entries: z.array(createPaymentSchema).min(1).max(100),
+});
+export const jazzCashLinkSchema = z.object({
+    installmentId: z.string().min(1),
+    amount: z.number().positive(),
+    customerName: z.string().min(1).max(100),
+    customerPhone: z.string().max(20).optional().default(''),
+    description: z.string().max(200).optional(),
+});

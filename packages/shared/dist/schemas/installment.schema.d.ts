@@ -126,7 +126,7 @@ export declare const importInstallmentRowSchema: z.ZodObject<{
     startDate: string;
     customerName: string;
     productName: string;
-    status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+    status?: "PENDING" | "ACTIVE" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
     cnic?: string | undefined;
     area?: string | undefined;
     imeiNumber?: string | undefined;
@@ -140,7 +140,7 @@ export declare const importInstallmentRowSchema: z.ZodObject<{
     startDate: string;
     customerName: string;
     productName: string;
-    status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+    status?: "PENDING" | "ACTIVE" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
     cnic?: string | undefined;
     area?: string | undefined;
     imeiNumber?: string | undefined;
@@ -170,7 +170,7 @@ export declare const importInstallmentsSchema: z.ZodObject<{
         startDate: string;
         customerName: string;
         productName: string;
-        status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+        status?: "PENDING" | "ACTIVE" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
         cnic?: string | undefined;
         area?: string | undefined;
         imeiNumber?: string | undefined;
@@ -184,7 +184,7 @@ export declare const importInstallmentsSchema: z.ZodObject<{
         startDate: string;
         customerName: string;
         productName: string;
-        status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+        status?: "PENDING" | "ACTIVE" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
         cnic?: string | undefined;
         area?: string | undefined;
         imeiNumber?: string | undefined;
@@ -200,7 +200,7 @@ export declare const importInstallmentsSchema: z.ZodObject<{
         startDate: string;
         customerName: string;
         productName: string;
-        status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+        status?: "PENDING" | "ACTIVE" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
         cnic?: string | undefined;
         area?: string | undefined;
         imeiNumber?: string | undefined;
@@ -216,7 +216,7 @@ export declare const importInstallmentsSchema: z.ZodObject<{
         startDate: string;
         customerName: string;
         productName: string;
-        status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
+        status?: "PENDING" | "ACTIVE" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
         cnic?: string | undefined;
         area?: string | undefined;
         imeiNumber?: string | undefined;

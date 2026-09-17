@@ -60,3 +60,20 @@ export const updateCustomerSchema = createCustomerSchema.partial().extend({
 
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
+
+export const blacklistCustomerSchema = z.object({ reason: z.string().max(500).optional() });
+export const customerNoteSchema      = z.object({ note: z.string().min(1).max(2000) });
+export const assignAvoSchema         = z.object({ avoId: z.string().min(1) });
+
+const docStatus = z.enum(['PENDING', 'RECEIVED', 'VERIFIED']);
+export const createCustomerDocumentSchema = z.object({
+  docType: z.string().min(1).max(50),
+  label:   z.string().min(1).max(100),
+  status:  docStatus.optional(),
+  notes:   z.string().max(500).optional(),
+});
+export const updateCustomerDocumentSchema = z.object({
+  status: docStatus.optional(),
+  notes:  z.string().max(500).optional(),
+  label:  z.string().min(1).max(100).optional(),
+});

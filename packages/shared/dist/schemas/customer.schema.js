@@ -51,3 +51,18 @@ export const updateCustomerSchema = createCustomerSchema.partial().extend({
     cnic: z.string().regex(cnicRegex, 'Format: XXXXX-XXXXXXX-X').optional().or(z.literal('')),
     tags: z.array(z.string().max(50)).max(20).optional(),
 });
+export const blacklistCustomerSchema = z.object({ reason: z.string().max(500).optional() });
+export const customerNoteSchema = z.object({ note: z.string().min(1).max(2000) });
+export const assignAvoSchema = z.object({ avoId: z.string().min(1) });
+const docStatus = z.enum(['PENDING', 'RECEIVED', 'VERIFIED']);
+export const createCustomerDocumentSchema = z.object({
+    docType: z.string().min(1).max(50),
+    label: z.string().min(1).max(100),
+    status: docStatus.optional(),
+    notes: z.string().max(500).optional(),
+});
+export const updateCustomerDocumentSchema = z.object({
+    status: docStatus.optional(),
+    notes: z.string().max(500).optional(),
+    label: z.string().min(1).max(100).optional(),
+});

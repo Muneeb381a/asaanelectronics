@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
-import { createPaymentSchema, updatePaymentSchema } from '@assaan/shared';
+import { createPaymentSchema, updatePaymentSchema, bulkPaymentsSchema, jazzCashLinkSchema } from '@assaan/shared';
 import {
   listPayments, recordPayment, deletePayment, patchPayment, recordBulkPayments,
   generateJazzCashLink, jazzCashPayPage, jazzCashCallback, jazzCashStatus,
@@ -18,9 +18,9 @@ router.use(authenticate, requireSeller);
 
 router.get('/',       requirePermission('canRecordPayment'), listPayments);
 router.get('/jazzcash-status',  jazzCashStatus);
-router.post('/jazzcash-link',   requireOwner, generateJazzCashLink);
+router.post('/jazzcash-link',   requireOwner, validate(jazzCashLinkSchema), generateJazzCashLink);
 router.post('/',      requirePermission('canRecordPayment'), validate(createPaymentSchema), recordPayment);
-router.post('/bulk',  requirePermission('canRecordPayment'), recordBulkPayments);
+router.post('/bulk',  requirePermission('canRecordPayment'), validate(bulkPaymentsSchema), recordBulkPayments);
 router.patch('/:id',  requireOwner, validate(updatePaymentSchema), patchPayment);
 router.delete('/:id', requireOwner, deletePayment);
 

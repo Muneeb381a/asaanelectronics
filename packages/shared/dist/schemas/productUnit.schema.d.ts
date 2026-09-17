@@ -14,19 +14,19 @@ export declare const createProductUnitSchema: z.ZodEffects<z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     serialType: "serial" | "imei" | "chassis_engine";
     condition: "new" | "refurbished";
+    notes?: string | undefined;
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
-    notes?: string | undefined;
     imei?: string | undefined;
     imei2?: string | undefined;
     serialNumber?: string | undefined;
     storageGb?: number | undefined;
 }, {
+    notes?: string | undefined;
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
-    notes?: string | undefined;
     imei?: string | undefined;
     serialType?: "serial" | "imei" | "chassis_engine" | undefined;
     imei2?: string | undefined;
@@ -36,19 +36,19 @@ export declare const createProductUnitSchema: z.ZodEffects<z.ZodObject<{
 }>, {
     serialType: "serial" | "imei" | "chassis_engine";
     condition: "new" | "refurbished";
+    notes?: string | undefined;
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
-    notes?: string | undefined;
     imei?: string | undefined;
     imei2?: string | undefined;
     serialNumber?: string | undefined;
     storageGb?: number | undefined;
 }, {
+    notes?: string | undefined;
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
-    notes?: string | undefined;
     imei?: string | undefined;
     serialType?: "serial" | "imei" | "chassis_engine" | undefined;
     imei2?: string | undefined;
@@ -87,17 +87,17 @@ export declare const updateProductUnitSchema: z.ZodObject<{
     ptaStatus: z.ZodOptional<z.ZodEnum<["approved", "non_pta", "unknown"]>>;
 }, "strip", z.ZodTypeAny, {
     status?: "available" | "sold" | "defective" | "returned" | undefined;
+    notes?: string | null | undefined;
     productId?: string | null | undefined;
     color?: string | null | undefined;
-    notes?: string | null | undefined;
     storageGb?: number | null | undefined;
     condition?: "new" | "refurbished" | undefined;
     ptaStatus?: "unknown" | "approved" | "non_pta" | undefined;
 }, {
     status?: "available" | "sold" | "defective" | "returned" | undefined;
+    notes?: string | null | undefined;
     productId?: string | null | undefined;
     color?: string | null | undefined;
-    notes?: string | null | undefined;
     storageGb?: number | null | undefined;
     condition?: "new" | "refurbished" | undefined;
     ptaStatus?: "unknown" | "approved" | "non_pta" | undefined;

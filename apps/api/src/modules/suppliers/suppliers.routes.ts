@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { validate } from '../../middleware/validate.js';
+import { createSupplierSchema, updateSupplierSchema, createSupplierInvoiceSchema, updateInvoicePaidSchema } from '@assaan/shared';
 import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
 import {
   listSuppliers, createSupplier, updateSupplier, deleteSupplier,
@@ -9,14 +11,14 @@ const router = Router();
 router.use(authenticate, requireSeller, requireOwner);
 
 router.get('/',    listSuppliers);
-router.post('/',   createSupplier);
-router.patch('/:id', updateSupplier);
+router.post('/',   validate(createSupplierSchema), createSupplier);
+router.patch('/:id', validate(updateSupplierSchema), updateSupplier);
 router.delete('/:id', deleteSupplier);
 
 // Invoice sub-resource
 router.get('/:supplierId/invoices',              listInvoices);
-router.post('/:supplierId/invoices',             createInvoice);
-router.patch('/:supplierId/invoices/:invoiceId', updateInvoicePaid);
+router.post('/:supplierId/invoices',             validate(createSupplierInvoiceSchema), createInvoice);
+router.patch('/:supplierId/invoices/:invoiceId', validate(updateInvoicePaidSchema), updateInvoicePaid);
 router.delete('/:supplierId/invoices/:invoiceId', deleteInvoice);
 
 export default router;

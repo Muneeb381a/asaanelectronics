@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
-import { createCashSaleSchema } from '@assaan/shared';
+import { createCashSaleSchema, updateCashSaleSchema } from '@assaan/shared';
 import { listCashSales, createCashSale, updateCashSale, deleteCashSale } from './cashSales.controller.js';
 
 const router = Router();
@@ -10,7 +10,7 @@ router.use(authenticate, requireSeller);
 
 router.get('/',       requirePermission('canMakeCashSales'), listCashSales);
 router.post('/',      requirePermission('canMakeCashSales'), validate(createCashSaleSchema), createCashSale);
-router.patch('/:id',  requireOwner, updateCashSale);
+router.patch('/:id',  requireOwner, validate(updateCashSaleSchema), updateCashSale);
 router.delete('/:id', requireOwner, deleteCashSale);
 
 export default router;
