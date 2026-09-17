@@ -132,6 +132,23 @@ export const users = pgTable('users', {
   index('idx_users_seller').on(t.sellerId),
 ]);
 
+// Pending JazzCash pay links must survive across serverless instances (callback
+// rarely lands on the lambda that minted the link).
+export const jazzcashLinks = pgTable('jazzcash_links', {
+  txnRefNo:      text('txn_ref_no').primaryKey(),
+  sellerId:      text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  installmentId: text('installment_id').notNull(),
+  amount:        decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  customerName:  text('customer_name').notNull(),
+  params:        json('params').$type<Record<string, string>>().notNull(),
+  formUrl:       text('form_url').notNull(),
+  recordedAt:    timestamp('recorded_at'),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
+  expiresAt:     timestamp('expires_at').notNull(),
+}, (t) => [
+  index('idx_jazzcash_links_expires').on(t.expiresAt),
+]);
+
 export const refreshTokens = pgTable('refresh_tokens', {
   id:           text('id').primaryKey().$defaultFn(() => randomUUID()),
   userId:       text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

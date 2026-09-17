@@ -5,7 +5,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
 import {
-  createJazzCashLink, buildPayPageHtml, getPendingLink,
+  createJazzCashLink, buildPayPageHtml, getPendingLink, markLinkRecorded,
   verifyCallbackHash, isJazzCashConfigured,
 } from './jazzcash.service.js';
 const svc   = new PaymentsService();
@@ -106,7 +106,7 @@ export async function generateJazzCashLink(req: AuthRequest, res: Response) {
     return;
   }
 
-  const link = createJazzCashLink({
+  const link = await createJazzCashLink({
     installmentId, amount, customerName,
     customerPhone: customerPhone ?? '',
     sellerId: req.user!.sellerId!,
@@ -133,7 +133,7 @@ export async function generateJazzCashLink(req: AuthRequest, res: Response) {
 
 export async function jazzCashPayPage(req: Request, res: Response) {
   const { txnRefNo } = req.params as { txnRefNo: string };
-  const html = buildPayPageHtml(txnRefNo);
+  const html = await buildPayPageHtml(txnRefNo);
   if (!html) {
     res.status(404).send('Payment link expired or not found');
     return;
@@ -158,9 +158,13 @@ export async function jazzCashCallback(req: Request, res: Response) {
     return;
   }
 
-  const link = getPendingLink(pp_TxnRefNo ?? '');
+  const link = await getPendingLink(pp_TxnRefNo ?? '');
   if (!link) {
     res.json({ received: true, recorded: false, reason: 'link not found (may have expired)' });
+    return;
+  }
+  if (!(await markLinkRecorded(link.txnRefNo))) {
+    res.json({ received: true, recorded: false, reason: 'already recorded' });
     return;
   }
 

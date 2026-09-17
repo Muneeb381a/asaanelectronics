@@ -1,5 +1,8 @@
 import crypto from 'crypto';
+import { and, eq, gt, isNull, lt } from 'drizzle-orm';
 import { env } from '../../config/env.js';
+import { db } from '../../db/index.js';
+import { jazzcashLinks } from '../../db/schema.js';
 
 export interface PendingJazzCashLink {
   installmentId: string;
@@ -12,16 +15,12 @@ export interface PendingJazzCashLink {
   createdAt:     number;
 }
 
-// In-memory store — links expire after 4h
-const pendingLinks = new Map<string, PendingJazzCashLink>();
+const LINK_TTL_MS = 4 * 60 * 60 * 1000;
 
-// Prune expired entries every 15 minutes
-setInterval(() => {
-  const cutoff = Date.now() - 4 * 60 * 60 * 1000;
-  for (const [k, v] of pendingLinks) {
-    if (v.createdAt < cutoff) pendingLinks.delete(k);
-  }
-}, 15 * 60 * 1000);
+// Opportunistic cleanup of expired rows (serverless: no long-lived timers).
+async function pruneExpired() {
+  await db.delete(jazzcashLinks).where(lt(jazzcashLinks.expiresAt, new Date(Date.now() - 24 * 60 * 60 * 1000))).catch(() => undefined);
+}
 
 export function isJazzCashConfigured(): boolean {
   return !!(env.JAZZCASH_MERCHANT_ID && env.JAZZCASH_PASSWORD && env.JAZZCASH_INTEGRITY_SALT);
@@ -39,14 +38,14 @@ function secureHash(salt: string, params: Record<string, string>): string {
   return crypto.createHmac('sha256', salt).update(data).digest('hex').toUpperCase();
 }
 
-export function createJazzCashLink(opts: {
+export async function createJazzCashLink(opts: {
   installmentId: string;
   amount:        number;
   customerName:  string;
   customerPhone: string;
   sellerId:      string;
   description?:  string;
-}): PendingJazzCashLink & { configured: boolean } {
+}): Promise<PendingJazzCashLink & { configured: boolean }> {
   if (!isJazzCashConfigured()) {
     return {
       configured:    false,
@@ -113,13 +112,43 @@ export function createJazzCashLink(opts: {
     createdAt:     Date.now(),
   };
 
-  pendingLinks.set(txnRefNo, link);
+  await db.insert(jazzcashLinks).values({
+    txnRefNo,
+    sellerId:      opts.sellerId,
+    installmentId: opts.installmentId,
+    amount:        String(opts.amount),
+    customerName:  opts.customerName,
+    params:        ppFiltered,
+    formUrl,
+    expiresAt:     new Date(Date.now() + LINK_TTL_MS),
+  });
+  void pruneExpired();
 
   return { ...link, configured: true };
 }
 
-export function getPendingLink(txnRefNo: string): PendingJazzCashLink | undefined {
-  return pendingLinks.get(txnRefNo);
+export async function getPendingLink(txnRefNo: string): Promise<PendingJazzCashLink | undefined> {
+  const [row] = await db.select().from(jazzcashLinks)
+    .where(and(eq(jazzcashLinks.txnRefNo, txnRefNo), gt(jazzcashLinks.expiresAt, new Date()), isNull(jazzcashLinks.recordedAt)));
+  if (!row) return undefined;
+  return {
+    installmentId: row.installmentId,
+    amount:        Number(row.amount),
+    customerName:  row.customerName,
+    sellerId:      row.sellerId,
+    txnRefNo:      row.txnRefNo,
+    params:        row.params,
+    formUrl:       row.formUrl,
+    createdAt:     row.createdAt.getTime(),
+  };
+}
+
+/** Marks a link consumed so a replayed callback cannot record the payment twice. */
+export async function markLinkRecorded(txnRefNo: string): Promise<boolean> {
+  const rows = await db.update(jazzcashLinks).set({ recordedAt: new Date() })
+    .where(and(eq(jazzcashLinks.txnRefNo, txnRefNo), isNull(jazzcashLinks.recordedAt)))
+    .returning({ txnRefNo: jazzcashLinks.txnRefNo });
+  return rows.length > 0;
 }
 
 export function verifyCallbackHash(params: Record<string, string>): boolean {
@@ -130,8 +159,8 @@ export function verifyCallbackHash(params: Record<string, string>): boolean {
   return computed === receivedHash?.toUpperCase();
 }
 
-export function buildPayPageHtml(txnRefNo: string): string | null {
-  const link = pendingLinks.get(txnRefNo);
+export async function buildPayPageHtml(txnRefNo: string): Promise<string | null> {
+  const link = await getPendingLink(txnRefNo);
   if (!link) return null;
 
   const fields = Object.entries(link.params)

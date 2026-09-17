@@ -47,7 +47,8 @@ export default function CashFlowPage() {
 
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [selected, setSelected] = useState<string | null>(todayStr);
+  // On phones the detail panel is a bottom sheet, so start with nothing selected.
+  const [selected, setSelected] = useState<string | null>(() => (typeof window !== 'undefined' && window.innerWidth >= 1024 ? todayStr : null));
 
   function prevMonth() {
     if (month === 1) { setYear((y) => y - 1); setMonth(12); }
@@ -99,7 +100,7 @@ export default function CashFlowPage() {
   const unpaid      = dayInstallments.filter((i) => i.paidToday < i.monthly * 0.9);
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="flex-1 flex overflow-hidden relative">
 
       {/* ── Left: calendar ───────────────────────────────────────── */}
       <div className="flex-1 p-6 overflow-y-auto min-w-0">
@@ -262,7 +263,7 @@ export default function CashFlowPage() {
 
       {/* ── Right: day detail panel ───────────────────────────────── */}
       {selected && (
-        <div className="w-72 shrink-0 border-l border-gray-100 bg-white flex flex-col overflow-hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 max-h-[75vh] rounded-t-2xl shadow-2xl border-t lg:static lg:inset-auto lg:z-auto lg:max-h-none lg:rounded-none lg:shadow-none lg:border-t-0 lg:w-72 lg:shrink-0 lg:border-l border-gray-100 bg-white flex flex-col overflow-hidden">
 
           {/* Panel header */}
           <div className="px-4 py-4 border-b border-gray-100 shrink-0">

@@ -579,6 +579,7 @@ export class InstallmentsService {
       patch.downPayment = String(newDown.toFixed(2));
       patch.remaining   = String(newRemaining.toFixed(2));
       if (newRemaining === 0 && row.status === 'ACTIVE') { patch.status = 'COMPLETED'; patch.completedAt = new Date(); }
+      else if (newRemaining > 0 && row.status === 'COMPLETED') { patch.status = 'ACTIVE'; patch.completedAt = null; }
     }
 
     if (body.monthly          !== undefined) patch.monthly          = String(body.monthly.toFixed(2));
