@@ -367,6 +367,7 @@ export class InstallmentsService {
           amount: String(body.downPayment),
           method: 'CASH',
           note: 'Down payment',
+          isDownPayment: true,
         }).returning();
 
         await tx.insert(ledgerEntries).values({

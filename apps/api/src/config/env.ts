@@ -22,6 +22,7 @@ const schema = z.object({
   NADRA_API_URL:          z.string().optional(),
   NADRA_API_KEY:          z.string().optional(),
   CRON_SECRET:            z.string().min(16).optional(),
+  VERCEL_PREVIEW_SCOPE:   z.string().max(100).optional(),
   REQUEST_SIGNING_SECRET: z.string().min(16).optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),

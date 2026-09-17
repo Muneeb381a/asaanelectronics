@@ -464,6 +464,8 @@ export const payments = pgTable('payments', {
   paidOn: timestamp('paid_on').defaultNow().notNull(),
   method: paymentMethodEnum('method').notNull(),
   note: text('note'),
+  // Down payment is cash received but not a scheduled period; period-paid checks skip it.
+  isDownPayment: boolean('is_down_payment').default(false).notNull(),
   collectedBy:   text('collected_by').references(() => users.id, { onDelete: 'set null' }),
   proofImageUrl: text('proof_image_url'),
   receiptNumber: text('receipt_number'),

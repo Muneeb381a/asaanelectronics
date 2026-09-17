@@ -218,6 +218,7 @@ export class ReportsService {
         isNull(payments.deletedAt),
         isNull(installments.deletedAt),
         isNull(customers.deletedAt),
+        eq(payments.isDownPayment, false),
         gte(payments.paidOn, monthStart),
         lte(payments.paidOn, monthEnd),
       ))
@@ -700,7 +701,7 @@ export class ReportsService {
           SUM(amount::float) AS total_paid,
           COUNT(*)           AS payment_count
         FROM payments
-        WHERE paid_on::date = ${date}::date AND deleted_at IS NULL
+        WHERE paid_on::date = ${date}::date AND deleted_at IS NULL AND is_down_payment = false
         GROUP BY installment_id
       ) dp ON dp.installment_id = i.id
       WHERE i.deleted_at IS NULL

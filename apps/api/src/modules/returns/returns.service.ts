@@ -3,6 +3,7 @@ import { db } from '../../db/index.js';
 import { customers, installments, products, returns, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
+import { fsm } from '../../utils/fsm.js';
 
 type CreateBody = {
   customerId: string;
@@ -154,6 +155,19 @@ export class ReturnsService {
           await tx.update(products)
             .set({ stock: sql`${products.stock} - 1` })
             .where(eq(products.id, body.replacementProductId));
+        }
+
+        // A plain RETURN ends the linked plan: device is back, nothing more is collected.
+        // Exchanges and warranty replacements keep the plan running.
+        if (ret.installmentId && ret.type === 'RETURN') {
+          const [inst] = await tx.select({ status: installments.status }).from(installments)
+            .where(and(eq(installments.id, ret.installmentId), isNull(installments.deletedAt)));
+          if (inst && inst.status !== 'CLOSED' && inst.status !== 'CANCELLED') {
+            fsm.installment.assert(inst.status, 'CLOSED');
+            await tx.update(installments)
+              .set({ status: 'CLOSED' })
+              .where(eq(installments.id, ret.installmentId));
+          }
         }
 
         const [updated] = await tx.update(returns).set({
