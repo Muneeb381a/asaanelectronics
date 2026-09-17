@@ -8,6 +8,22 @@ import { api } from '../../api/client.ts';
 import type { Customer } from '../../api/customers.api.ts';
 import LocationPicker from '../../components/LocationPicker.tsx';
 
+type OcrStatus = 'ok' | 'empty' | 'unavailable' | 'error';
+
+// CNIC prints dates as DD.MM.YYYY; the <input type="date"> needs YYYY-MM-DD.
+function toIsoDate(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const m = s.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/);
+  if (!m) return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  return `${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}`;
+}
+
+const OCR_FAIL_HINT: Record<Exclude<OcrStatus, 'ok'>, string> = {
+  empty:       'CNIC read nahi ho saka — seedhi, roshan aur poori card ki photo lein, ya details neeche khud likhein.',
+  error:       'Auto-read mein masla aaya — dobara try karein ya details neeche khud likhein.',
+  unavailable: 'Auto-read abhi band hai (server par OCR key set nahi). Details neeche khud likhein.',
+};
+
 interface DocumentExtracted {
   cnic: string | null; name: string | null; fatherName: string | null;
   dob: string | null; expiryDate: string | null;
@@ -172,7 +188,7 @@ const STAGE_LABEL: Record<Exclude<UploadStage, null>, string> = {
 
 function PhotoUpload({ label, folder, value, onChange, required, hasError, compact }: {
   label: string; folder: string; value: string | null;
-  onChange: (url: string | null, hash?: string, extracted?: DocumentExtracted) => void;
+  onChange: (url: string | null, hash?: string, extracted?: DocumentExtracted, ocrStatus?: OcrStatus) => void;
   required?: boolean; hasError?: boolean; compact?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -202,11 +218,11 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
       const fd = new FormData();
       fd.append('file', compressed, 'document.jpg');
       fd.append('folder', folder);
-      const res = await api.post<{ data: { url: string; hash: string; extracted: DocumentExtracted } }>(
+      const res = await api.post<{ data: { url: string; hash: string; extracted: DocumentExtracted; ocrStatus?: OcrStatus } }>(
         '/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } },
       );
-      const { url, hash, extracted } = res.data.data;
-      onChange(url, hash, extracted);
+      const { url, hash, extracted, ocrStatus } = res.data.data;
+      onChange(url, hash, extracted, ocrStatus);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setFileError(msg ?? 'Upload failed — please try again');
@@ -358,6 +374,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
   const [cnicBackHash,    setCnicBackHash]     = useState<string | null>(null);
   const [blankChequeHash, setBlankChequeHash]  = useState<string | null>(null);
   const [autoFillHint,    setAutoFillHint]     = useState<string | null>(null);
+  const [autoFillWarn,    setAutoFillWarn]     = useState<string | null>(null);
   const [referredById,    setReferredById]     = useState<string | null>(customer?.referredById ?? null);
 
   const schema = isEdit ? editSchema : createCustomerSchema;
@@ -509,17 +526,21 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
               <div className="grid grid-cols-2 gap-3">
                 <PhotoUpload label="CNIC Front" folder="assaan/cnic" value={cnicFrontUrl}
                   hasError={!!errors.cnicFrontUrl} compact
-                  onChange={(v, hash, extracted) => {
+                  onChange={(v, hash, extracted, ocrStatus) => {
                     setCnicFrontUrl(v);
                     if (hash) setCnicFrontHash(hash);
                     setValue('cnicFrontUrl', v ?? undefined, { shouldValidate: true });
+                    setAutoFillWarn(null);
                     if (v && extracted) {
                       const filled: string[] = [];
+                      const dob = toIsoDate(extracted.dob);
                       if (extracted.cnic)       { setValue('cnic',       formatCnic(extracted.cnic), { shouldValidate: true }); filled.push('CNIC'); }
                       if (extracted.name)       { setValue('name',       extracted.name,             { shouldValidate: true }); filled.push('Name'); }
                       if (extracted.fatherName) { setValue('fatherName', extracted.fatherName,       { shouldValidate: true }); filled.push('Father Name'); }
                       if (extracted.expiryDate) { setValue('cnicExpiry', extracted.expiryDate,       { shouldValidate: true }); filled.push('Expiry'); }
+                      if (dob)                  { setValue('dob',        dob,                        { shouldValidate: true }); filled.push('Date of Birth'); }
                       if (filled.length) setAutoFillHint(`Auto-filled: ${filled.join(', ')} — please verify`);
+                      else if (!isEdit) setAutoFillWarn(OCR_FAIL_HINT[ocrStatus && ocrStatus !== 'ok' ? ocrStatus : 'empty']);
                     } else if (!v) { setAutoFillHint(null); }
                   }} />
                 <PhotoUpload label="CNIC Back" folder="assaan/cnic" value={cnicBackUrl}
@@ -537,6 +558,11 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
               {autoFillHint && (
                 <p className="text-xs text-blue-600 flex items-center gap-1">
                   <Check size={11} className="shrink-0" /> {autoFillHint}
+                </p>
+              )}
+              {autoFillWarn && !autoFillHint && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 leading-relaxed">
+                  {autoFillWarn}
                 </p>
               )}
             </div>

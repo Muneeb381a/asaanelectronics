@@ -23,12 +23,24 @@ const EMPTY: DocumentExtracted = {
 // Llama 4 Scout on Groq: free tier, ~2 s response, handles dark/blurry/rotated
 // images natively, and returns structured JSON — no regex parsing needed.
 
-const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+// Primary + fallback: Groq retires model ids without notice, so a 4xx on the
+// first model retries once on the second before giving up.
+const GROQ_MODELS = [
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+];
 
-const CNIC_PROMPT = `You are an OCR specialist for Pakistani identity documents.
-Look at this CNIC (Computerised National Identity Card) and extract every visible field.
+const CNIC_PROMPT = `You are an OCR specialist for Pakistani NADRA CNIC cards (Computerised National Identity Card).
+The card has English labels: "Name", "Father Name" (or "Husband Name"), "Gender", "Country of Stay",
+"Identity Number", "Date of Birth", "Date of Issue", "Date of Expiry". Urdu text repeats the same fields — ignore Urdu.
+Rules:
+- "cnic" is the Identity Number: exactly 13 digits printed as 5-7-1 (e.g. 35202-1234567-1). Never confuse it with the Date of Issue.
+- "name" and "fatherName" are the English uppercase values printed under those labels; output them in Title Case.
+- Dates are printed DD.MM.YYYY. "dob" is Date of Birth, "expiryDate" is Date of Expiry (not Date of Issue).
+- "address" only exists on the BACK of the card; on the front set it to null.
+- If the image is the BACK of the card, extract "address" (Present Address) and set the other fields to null unless clearly visible.
 Reply with ONLY a valid JSON object — no markdown, no explanation, nothing else.
-Use this exact schema (set null for any field you cannot read clearly):
+Use this exact schema (null for any field you cannot read clearly):
 {
   "cnic": "XXXXX-XXXXXXX-X",
   "name": "Full Name",
@@ -50,7 +62,22 @@ Reply with ONLY a valid JSON object — no markdown, no explanation:
 interface GroqChoice { message: { content: string } }
 interface GroqResponse { choices: GroqChoice[] }
 
-async function groqVision(buffer: Buffer, prompt: string): Promise<string> {
+// Phone photos arrive as 3–8 MB with EXIF rotation. Groq rejects base64 images
+// over ~4 MB and does not honour EXIF, so normalise first (fallback: original bytes).
+async function prepareForVision(buffer: Buffer): Promise<Buffer> {
+  try {
+    return await sharp(buffer)
+      .rotate()
+      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85, mozjpeg: true })
+      .toBuffer();
+  } catch (err) {
+    console.warn('[OCR] image preprocess failed, sending original:', err instanceof Error ? err.message : err);
+    return buffer;
+  }
+}
+
+async function groqCall(model: string, imageB64: string, prompt: string): Promise<string> {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method:  'POST',
     headers: {
@@ -58,13 +85,13 @@ async function groqVision(buffer: Buffer, prompt: string): Promise<string> {
       'Content-Type':  'application/json',
     },
     body: JSON.stringify({
-      model:       GROQ_MODEL,
+      model,
       temperature: 0,
       max_tokens:  512,
       messages: [{
         role: 'user',
         content: [
-          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${buffer.toString('base64')}` } },
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageB64}` } },
           { type: 'text', text: prompt },
         ],
       }],
@@ -73,11 +100,28 @@ async function groqVision(buffer: Buffer, prompt: string): Promise<string> {
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Groq API ${res.status}: ${body}`);
+    throw new Error(`Groq API ${res.status} (${model}): ${body.slice(0, 300)}`);
   }
 
   const json = (await res.json()) as GroqResponse;
   return json.choices[0]?.message?.content?.trim() ?? '';
+}
+
+async function groqVision(buffer: Buffer, prompt: string): Promise<string> {
+  const imageB64 = (await prepareForVision(buffer)).toString('base64');
+  let lastErr: unknown;
+  for (const model of GROQ_MODELS) {
+    try {
+      return await groqCall(model, imageB64, prompt);
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      // Only model-level 4xx (decommissioned / not found) is worth retrying on the next model.
+      if (!/Groq API 4\d\d/.test(msg)) break;
+      console.warn('[OCR] model failed, trying next:', msg);
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 // Strip ```json ... ``` fences that models sometimes add despite the prompt
@@ -266,29 +310,41 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
+/** True when OCR produced nothing usable — callers must not cache such a result. */
+export function isEmptyExtraction(e: DocumentExtracted): boolean {
+  return Object.values(e).every((v) => v === null || v === '');
+}
+
+export type OcrStatus = 'ok' | 'empty' | 'unavailable' | 'error';
+
 export async function extractDocumentData(
   buffer: Buffer,
   docType: 'cnic' | 'cheque' | 'other',
-): Promise<{ extracted: DocumentExtracted; _ocrRaw: string }> {
-  if (docType === 'other') return { extracted: EMPTY, _ocrRaw: '' };
+): Promise<{ extracted: DocumentExtracted; _ocrRaw: string; status: OcrStatus }> {
+  if (docType === 'other') return { extracted: EMPTY, _ocrRaw: '', status: 'ok' };
 
   try {
     let extracted: DocumentExtracted;
 
     if (env.GROQ_API_KEY) {
-      console.log('[OCR] path: Groq vision');
       const fn = docType === 'cnic' ? extractCnicViaGroq : extractChequeViaGroq;
-      extracted = await withTimeout(fn(buffer), 15_000, EMPTY);
+      extracted = await withTimeout(fn(buffer), 25_000, EMPTY);
+    } else if (env.NODE_ENV === 'production' || process.env['VERCEL']) {
+      // Tesseract cannot run inside a serverless function; say so instead of silently returning nothing.
+      console.error('[OCR] GROQ_API_KEY is not set — document auto-read is disabled in production');
+      return { extracted: EMPTY, _ocrRaw: 'ocr-unavailable', status: 'unavailable' };
     } else {
       console.log('[OCR] path: Tesseract (set GROQ_API_KEY for production)');
       extracted = await withTimeout(extractViaTesseract(buffer, docType), 45_000, EMPTY);
     }
 
-    console.log('[OCR extracted]:', extracted);
-    return { extracted, _ocrRaw: JSON.stringify(extracted) };
+    const empty = isEmptyExtraction(extracted);
+    if (empty) console.warn('[OCR] nothing extracted for', docType);
+    else if (env.NODE_ENV !== 'production') console.log('[OCR extracted]:', extracted);
+    return { extracted, _ocrRaw: JSON.stringify(extracted), status: empty ? 'empty' : 'ok' };
 
   } catch (err) {
-    console.error('[OCR error]:', err);
-    return { extracted: EMPTY, _ocrRaw: String(err) };
+    console.error('[OCR error]:', err instanceof Error ? err.message : err);
+    return { extracted: EMPTY, _ocrRaw: 'ocr-error', status: 'error' };
   }
 }

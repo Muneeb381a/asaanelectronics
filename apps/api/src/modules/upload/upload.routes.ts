@@ -117,7 +117,7 @@ router.post('/', uploadLimiter, upload.single('file'), async (req: Request, res:
     if (memHit) {
       console.log('[OCR] L1 cache hit');
       const url = await cloudinaryPromise;
-      return res.json({ success: true, data: { url, hash, extracted: memHit, _ocrRaw: 'mem-cached' } });
+      return res.json({ success: true, data: { url, hash, extracted: memHit, _ocrRaw: 'mem-cached', ocrStatus: 'ok' } });
     }
 
     // ── L2 check + Cloudinary in parallel ──
@@ -129,18 +129,20 @@ router.post('/', uploadLimiter, upload.single('file'), async (req: Request, res:
     if (dbHit) {
       console.log('[OCR] L2 DB cache hit');
       memSet(cacheKey, dbHit); // promote to L1 for next call in this container
-      return res.json({ success: true, data: { url, hash, extracted: dbHit, _ocrRaw: 'db-cached' } });
+      return res.json({ success: true, data: { url, hash, extracted: dbHit, _ocrRaw: 'db-cached', ocrStatus: 'ok' } });
     }
 
     // ── Cache miss: call Groq ──
     console.log('[OCR] cache miss — calling Groq');
-    const { extracted, _ocrRaw } = await extractDocumentData(req.file.buffer, docType);
+    const { extracted, _ocrRaw, status } = await extractDocumentData(req.file.buffer, docType);
 
-    // Persist to both caches (L1 sync, L2 fire-and-forget)
-    memSet(cacheKey, extracted);
-    if (docType !== 'other') dbSet(hash, docType, extracted);
+    // Only cache real results; an empty/failed read must be retried on the next upload.
+    if (status === 'ok') {
+      memSet(cacheKey, extracted);
+      if (docType !== 'other') dbSet(hash, docType, extracted);
+    }
 
-    res.json({ success: true, data: { url, hash, extracted, _ocrRaw } });
+    res.json({ success: true, data: { url, hash, extracted, _ocrRaw, ocrStatus: status } });
   } catch (e) {
     next(e);
   }
