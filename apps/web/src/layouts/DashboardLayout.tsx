@@ -6,7 +6,7 @@ import {
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck,
   RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart,
   FileDown, Building2, ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays,
-  ClipboardList,
+  ClipboardList, ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -84,6 +84,9 @@ export default function DashboardLayout() {
   const [showBell,    setShowBell]    = useState(false);
   const [searchOpen,  setSearchOpen]  = useState(false);
   const [mobileOpen,  setMobileOpen]  = useState(false);
+  // Desktop-only icon rail; remembered per browser.
+  const [collapsed, setCollapsed] = useState<boolean>(() => { try { return localStorage.getItem('sidebar-collapsed') === '1'; } catch { return false; } });
+  const toggleCollapsed = useCallback(() => setCollapsed((c) => { try { localStorage.setItem('sidebar-collapsed', c ? '0' : '1'); } catch { /* private mode */ } return !c; }), []);
   const bellRef       = useRef<HTMLDivElement>(null);
   const mobileBellRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +126,7 @@ export default function DashboardLayout() {
     queryKey: ['shop-me'],
     queryFn: sellersApi.getMe,
     staleTime: 5 * 60_000,
-    enabled: isOwner,
+    enabled: !!user?.sellerId,
   });
   useEffect(() => {
     setTimezone(shopMe?.settings?.timezone ?? 'Asia/Karachi');
@@ -149,6 +152,16 @@ export default function DashboardLayout() {
   const pendingApprovalCount = isOwner ? (stats?.pendingApprovalCount ?? 0) : 0;
   const totalAlerts          = overdueCount + lowStockItems.length + promisesDue + guarantorRiskCount + budgetAlertsCount + pendingApprovalCount;
 
+  // Counts shown inline on nav items so problems are visible without opening the bell.
+  const navBadges: Record<string, { count: number; cls: string; dot: string }> = {};
+  if (pendingApprovalCount > 0)  navBadges['/installments'] = { count: pendingApprovalCount,  cls: 'bg-violet-500/20 text-violet-300', dot: 'bg-violet-400' };
+  else if (overdueCount > 0)     navBadges['/installments'] = { count: overdueCount,          cls: 'bg-red-500/20 text-red-300',       dot: 'bg-red-500'    };
+  if (overdueCount > 0)          navBadges['/recovery']     = { count: overdueCount,          cls: 'bg-red-500/20 text-red-300',       dot: 'bg-red-500'    };
+  if (promisesDue > 0)           navBadges['/collection-sheet'] = { count: promisesDue,       cls: 'bg-orange-500/20 text-orange-300', dot: 'bg-orange-400' };
+  if (lowStockItems.length > 0)  navBadges['/products']     = { count: lowStockItems.length,  cls: 'bg-amber-500/20 text-amber-300',   dot: 'bg-amber-400'  };
+  if (guarantorRiskCount > 0)    navBadges['/guarantors']   = { count: guarantorRiskCount,    cls: 'bg-rose-500/20 text-rose-300',     dot: 'bg-rose-400'   };
+  if (budgetAlertsCount > 0)     navBadges['/expenses']     = { count: budgetAlertsCount,     cls: 'bg-orange-500/20 text-orange-300', dot: 'bg-orange-400' };
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       const inDesktop = bellRef.current?.contains(e.target as Node);
@@ -167,11 +180,15 @@ export default function DashboardLayout() {
         e.preventDefault();
         if (canSearch) setSearchOpen((v) => !v);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        toggleCollapsed();
+      }
       if (e.key === 'Escape') { setMobileOpen(false); setShowBell(false); }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [canSearch]);
+  }, [canSearch, toggleCollapsed]);
 
   useEffect(() => {
     if (mobileOpen) document.body.classList.add('mobile-menu-open');
@@ -287,136 +304,145 @@ export default function DashboardLayout() {
       />
 
       {/* ── Sidebar ── */}
-      <aside className={`fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 w-64 lg:w-60 bg-slate-950 flex flex-col transition-transform duration-300 ease-in-out shrink-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-
-        {/* Brand */}
-        <div className="px-4 py-4 border-b border-white/5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/30">
-              <CreditCard size={16} className="text-white"/>
-            </div>
-            <div>
-              <p className="font-bold text-white text-[13px] leading-tight">Assaan Electronics</p>
-              <p className="text-[10px] text-slate-600 leading-tight mt-0.5">Installment Manager</p>
-            </div>
+      <aside
+        className={`fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 bg-slate-950 flex flex-col shrink-0 transition-[transform,width] duration-300 ease-in-out w-72 ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        aria-label="Main navigation"
+      >
+        {/* Brand + shop identity */}
+        <div className={`flex items-center gap-3 border-b border-white/5 shrink-0 h-16 px-4 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/30">
+            <CreditCard size={16} className="text-white"/>
           </div>
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg hover:bg-white/10 transition"
-            aria-label="Close menu"
-          >
+          <div className={`min-w-0 flex-1 ${collapsed ? 'lg:hidden' : ''}`}>
+            <p className="font-bold text-white text-[13px] leading-tight truncate">{shopMe?.shopName ?? 'Assaan Electronics'}</p>
+            <p className="text-[10px] text-slate-500 leading-tight mt-0.5 truncate">
+              {isOwner ? (billingUsage?.planLabel ? `${billingUsage.planLabel} plan` : 'Owner') : 'Staff account'}
+            </p>
+          </div>
+          <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1.5 rounded-lg hover:bg-white/10 transition" aria-label="Close menu">
             <X size={16} className="text-slate-400"/>
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 min-h-0 px-2 py-4 overflow-y-auto space-y-5 scrollbar-thin">
-          {groupedNav.map((group) => (
+        <nav className="flex-1 min-h-0 px-2 py-3 overflow-y-auto overflow-x-hidden space-y-4 scrollbar-thin">
+          {groupedNav.map((group, gi) => (
             <div key={group.key}>
               {group.label && (
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 px-3 mb-1.5 select-none">
-                  {group.label}
-                </p>
+                <>
+                  <p className={`text-[10px] font-bold uppercase tracking-widest text-slate-500 px-3 mb-1.5 select-none ${collapsed ? 'lg:hidden' : ''}`}>{group.label}</p>
+                  {gi > 0 && <div className={`hidden ${collapsed ? 'lg:block' : ''} mx-3 mb-2 border-t border-white/5`}/>}
+                </>
               )}
               <div className="space-y-0.5">
-                {group.items.map(({ to, label, icon: Icon, end }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) =>
-                      `relative flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-[13px] font-medium transition-all ${
-                        isActive
-                          ? 'bg-blue-500/15 text-white'
-                          : 'text-slate-500 hover:bg-white/6 hover:text-slate-300'
-                      }`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        {isActive && (
-                          <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-blue-500 rounded-r-full"/>
-                        )}
-                        <Icon
-                          size={15}
-                          className={isActive ? 'text-blue-400 shrink-0' : 'text-slate-600 shrink-0'}
-                        />
-                        {label}
-                      </>
-                    )}
-                  </NavLink>
-                ))}
+                {group.items.map(({ to, label, icon: Icon, end }) => {
+                  const badge = navBadges[to];
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={end}
+                      onClick={() => setMobileOpen(false)}
+                      title={collapsed ? (badge ? `${label} (${badge.count})` : label) : undefined}
+                      className={({ isActive }) =>
+                        `group relative flex items-center gap-2.5 rounded-xl text-[13px] font-medium transition-all px-3 py-2 ${collapsed ? 'lg:justify-center lg:px-0' : ''} ${
+                          isActive ? 'bg-blue-600/20 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+                        }`
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          {isActive && <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-blue-500 rounded-r-full"/>}
+                          <span className="relative shrink-0">
+                            <Icon size={16} className={isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300 transition'}/>
+                            {badge && (
+                              <span className={`hidden ${collapsed ? 'lg:block' : ''} absolute -top-1 -right-1 w-2 h-2 rounded-full ring-2 ring-slate-950 ${badge.dot}`}/>
+                            )}
+                          </span>
+                          <span className={`flex-1 truncate ${collapsed ? 'lg:hidden' : ''}`}>{label}</span>
+                          {badge && (
+                            <span className={`${collapsed ? 'lg:hidden' : ''} text-[10px] font-bold px-1.5 py-0.5 rounded-md tabular-nums ${badge.cls}`}>
+                              {badge.count > 99 ? '99+' : badge.count}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                  );
+                })}
               </div>
             </div>
           ))}
         </nav>
 
-        {/* ── Compact bottom bar ── */}
-        <div className="shrink-0 border-t border-white/5 px-2 pt-2 space-y-0.5"
-          style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
-
-          {/* Row 1: CNIC search + Bell */}
-          <div className="flex items-center gap-1">
+        {/* Bottom: actions + user */}
+        <div className="shrink-0 border-t border-white/5 p-2 space-y-1" style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
+          <div className={`flex items-center gap-1 ${collapsed ? 'lg:flex-col lg:items-stretch' : ''}`}>
             {canSearch && (
               <button
                 onClick={() => { setSearchOpen(true); setMobileOpen(false); }}
-                className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-white/6 transition group text-left min-w-0"
+                title="CNIC / customer search (Ctrl+K)"
+                className={`flex-1 flex items-center gap-2 px-2.5 py-2 rounded-xl hover:bg-white/5 transition group text-left min-w-0 ${collapsed ? 'lg:justify-center lg:px-0 lg:flex-none' : ''}`}
               >
-                <Search size={12} className="text-slate-600 shrink-0 group-hover:text-slate-400 transition"/>
-                <span className="text-[12px] text-slate-600 group-hover:text-slate-400 flex-1 truncate transition">CNIC khojo</span>
-                <kbd className="hidden sm:block text-[9px] text-slate-700 font-mono bg-white/5 px-1 py-0.5 rounded shrink-0">⌃K</kbd>
+                <Search size={14} className="text-slate-500 shrink-0 group-hover:text-slate-300 transition"/>
+                <span className={`text-[12px] text-slate-500 group-hover:text-slate-300 flex-1 truncate transition ${collapsed ? 'lg:hidden' : ''}`}>Search</span>
+                <kbd className={`hidden sm:block text-[9px] text-slate-600 font-mono bg-white/5 px-1 py-0.5 rounded shrink-0 ${collapsed ? 'lg:hidden' : ''}`}>⌃K</kbd>
               </button>
             )}
 
-            {/* Bell */}
-            <div className="relative" ref={bellRef}>
+            <div className={`relative ${collapsed ? 'lg:w-full' : ''}`} ref={bellRef}>
               <button
                 onClick={() => setShowBell(v => !v)}
-                className={`p-2 rounded-xl hover:bg-white/6 transition relative ${!canSearch ? 'flex-1 w-full' : ''}`}
+                className={`p-2 rounded-xl hover:bg-white/5 transition relative ${collapsed ? 'lg:w-full lg:flex lg:justify-center' : ''} ${!canSearch && !collapsed ? 'flex-1 w-full' : ''}`}
                 title="Notifications"
               >
-                <Bell size={14} className="text-slate-600"/>
+                <Bell size={15} className={totalAlerts > 0 ? 'text-slate-300' : 'text-slate-500'}/>
                 {totalAlerts > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-red-500 text-white text-[7px] font-black rounded-full flex items-center justify-center leading-none">
+                  <span className="absolute top-0.5 right-0.5 min-w-[14px] h-3.5 px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none ring-2 ring-slate-950">
                     {totalAlerts > 9 ? '9+' : totalAlerts}
                   </span>
                 )}
               </button>
               {showBell && (
-                <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-2xl shadow-black/25 overflow-hidden z-50">
+                <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-200 rounded-2xl shadow-2xl shadow-black/25 overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
                     <Bell size={13} className="text-gray-400"/>
-                    <p className="text-xs font-semibold text-gray-700">
-                      {totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}
-                    </p>
+                    <p className="text-xs font-semibold text-gray-700">{totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}</p>
                   </div>
                   {bellDropdownContent}
                 </div>
               )}
             </div>
+
+            <button
+              onClick={toggleCollapsed}
+              title={collapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+              className={`hidden lg:flex p-2 rounded-xl hover:bg-white/5 text-slate-500 hover:text-slate-300 transition ${collapsed ? 'lg:w-full lg:justify-center' : ''}`}
+            >
+              {collapsed ? <ChevronsRight size={15}/> : <ChevronsLeft size={15}/>}
+            </button>
           </div>
 
-          {/* Row 2: User + Logout */}
-          <div className="flex items-center gap-1">
+          <div className={`flex items-center gap-1 ${collapsed ? 'lg:flex-col lg:items-stretch' : ''}`}>
             <button
               onClick={() => { setShowProfile(true); setMobileOpen(false); }}
-              className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-white/6 transition group text-left min-w-0"
+              title={user?.name}
+              className={`flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-white/5 transition group text-left min-w-0 ${collapsed ? 'lg:justify-center lg:px-0 lg:flex-none' : ''}`}
             >
-              <div className="w-6 h-6 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+              <div className="w-7 h-7 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 ring-2 ring-white/10">
                 {initials}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-slate-300 truncate leading-tight">{user?.name}</p>
-                <p className="text-[10px] text-slate-600 truncate leading-tight">{isOwner ? 'Owner' : 'Staff'}</p>
+              <div className={`flex-1 min-w-0 ${collapsed ? 'lg:hidden' : ''}`}>
+                <p className="text-[12px] font-semibold text-slate-200 truncate leading-tight">{user?.name}</p>
+                <p className="text-[10px] text-slate-500 truncate leading-tight">{isOwner ? 'Owner · profile' : 'Staff · profile'}</p>
               </div>
             </button>
             <button
               onClick={() => logout()}
-              className="p-2 rounded-xl text-slate-600 hover:bg-white/6 hover:text-red-400 transition"
+              className={`p-2 rounded-xl text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition ${collapsed ? 'lg:w-full lg:flex lg:justify-center' : ''}`}
               title="Sign out"
             >
-              <LogOut size={13}/>
+              <LogOut size={14}/>
             </button>
           </div>
         </div>
@@ -437,7 +463,7 @@ export default function DashboardLayout() {
             <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
               <CreditCard size={11} className="text-white"/>
             </div>
-            <p className="font-bold text-gray-900 text-sm tracking-tight truncate">Assaan Electronics</p>
+            <p className="font-bold text-gray-900 text-sm tracking-tight truncate">{shopMe?.shopName ?? 'Assaan Electronics'}</p>
           </div>
           {/* Bell — mobile */}
           <div className="relative" ref={mobileBellRef}>
