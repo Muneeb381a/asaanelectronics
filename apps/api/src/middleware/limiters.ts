@@ -23,3 +23,11 @@ export const paymentLimiter = safeLimit(rateLimit({
   validate: { xForwardedForHeader: false },
   message: { success: false, data: null, error: 'Payment rate limit exceeded. Please slow down.' },
 }));
+
+// Uploads hit Cloudinary + Groq OCR: 20 files per minute per IP
+export const uploadLimiter = safeLimit(rateLimit({
+  windowMs: 60_000, max: 20,
+  standardHeaders: true, legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { success: false, data: null, error: 'Too many uploads. Please wait a minute.' },
+}));

@@ -218,14 +218,25 @@ export class PaymentsService {
         }).where(eq(installments.id, pmt.installmentId)),
       ]);
 
-      if (body.amount !== undefined && body.amount !== oldAmount) {
+      const amountChanged = body.amount !== undefined && body.amount !== oldAmount;
+      const methodChanged = body.method !== undefined && body.method !== pmt.method;
+      if (amountChanged || methodChanged) {
         await tx.update(ledgerEntries)
-          .set({ amount: String(newAmount) })
+          .set({
+            ...(amountChanged && { amount: String(newAmount) }),
+            ...(methodChanged && { category: body.method }),
+          })
           .where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'PAYMENT')));
       }
+      if (amountChanged) {
+        await accountingSvc.voidByRef(sellerId, 'PAYMENT', id, tx);
+        await accountingSvc.postPaymentEntry(sellerId, { paymentId: id, amount: newAmount }, tx);
+      }
 
-      clearSellerStatsCache(sellerId);
       return { id, remaining: safeRemaining, completed: isCleared };
+    }).then((r) => {
+      clearSellerStatsCache(sellerId);
+      return r;
     });
   }
 

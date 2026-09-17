@@ -924,10 +924,10 @@ export const customerAssignments = pgTable('customer_assignments', {
   notes:          text('notes'),
   createdAt:      timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
-  index('idx_assignments_seller').on(t.sellerId),
-  index('idx_assignments_agent').on(t.agentId),
-  index('idx_assignments_customer').on(t.customerId),
-  index('idx_assignments_active').on(t.agentId, t.unassignedAt),
+  index('ca_seller_idx').on(t.sellerId),
+  index('ca_agent_idx').on(t.agentId),
+  index('ca_customer_idx').on(t.customerId),
+  index('ca_active_idx').on(t.agentId, t.unassignedAt),
 ]);
 
 // ── Salary Deductions ─────────────────────────────────────────────────────────
@@ -952,8 +952,8 @@ export const salaryDeductions = pgTable('salary_deductions', {
   createdById:    text('created_by_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt:      timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
-  index('idx_sal_ded_seller_month').on(t.sellerId, t.month),
-  index('idx_sal_ded_staff_month').on(t.staffId, t.month),
+  index('sd_seller_month_idx').on(t.sellerId, t.month),
+  index('sd_staff_month_idx').on(t.staffId, t.month),
 ]);
 
 // ── SaaS Admin: broadcast announcements ───────────────────────────────────────

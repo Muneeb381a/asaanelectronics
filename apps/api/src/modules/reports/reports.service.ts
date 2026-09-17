@@ -10,6 +10,9 @@ function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise
   return fn().then((result) => { _cache.set(key, { at: Date.now(), data: result }); return result; });
 }
 
+// Local YYYY-MM-DD; toISOString() would shift a PKT local midnight to the previous UTC day.
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -428,8 +431,8 @@ export class ReportsService {
         .from(supplierInvoices)
         .where(and(
           eq(supplierInvoices.sellerId, sellerId),
-          gte(supplierInvoices.invoiceDate, from.toISOString().slice(0, 10)),
-          lt(supplierInvoices.invoiceDate,  to.toISOString().slice(0, 10)),
+          gte(supplierInvoices.invoiceDate, ymd(from)),
+          lt(supplierInvoices.invoiceDate,  ymd(to)),
         )),
     ]);
 

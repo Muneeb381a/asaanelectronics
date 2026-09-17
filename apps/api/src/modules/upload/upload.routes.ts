@@ -3,6 +3,7 @@ import multer from 'multer';
 import { createHash } from 'crypto';
 import { and, eq } from 'drizzle-orm';
 import { authenticate, requireSeller } from '../../middleware/auth.js';
+import { uploadLimiter } from '../../middleware/limiters.js';
 import { uploadToCloudinary } from '../../utils/cloudinary.js';
 import { extractDocumentData, type DocumentExtracted } from '../../utils/ocr.js';
 import { AppError } from '../../middleware/error.js';
@@ -94,7 +95,7 @@ function dbSet(hash: string, docType: string, result: DocumentExtracted) {
 
 // ── Route ────────────────────────────────────────────────────────────────────
 
-router.post('/', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', uploadLimiter, upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.file) throw new AppError('No file provided', 400);
     if (req.file.size < MIN_FILE_SIZE) throw new AppError('Image is too small or blank. Please upload a clear photo.', 400);
