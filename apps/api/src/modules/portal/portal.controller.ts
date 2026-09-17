@@ -3,6 +3,7 @@ import type { PortalRequest } from '../../middleware/portalAuth.js';
 import { PortalService } from './portal.service.js';
 import { success } from '../../utils/response.js';
 import { AppError } from '../../middleware/error.js';
+import { recordFailure, recordSuccess } from '../../middleware/ipBlock.js';
 
 const svc = new PortalService();
 
@@ -13,7 +14,15 @@ export async function portalLogin(req: Request, res: Response) {
   const clean = { cnic: cnic.replace(/[-\s]/g, ''), phone: phone.trim() };
   if (!/^\d{13}$/.test(clean.cnic)) throw new AppError('CNIC must be 13 digits', 400);
 
-  success(res, await svc.login(clean.cnic, clean.phone));
+  const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
+  try {
+    const result = await svc.login(clean.cnic, clean.phone);
+    recordSuccess(ip);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError && err.statusCode === 401) recordFailure(ip);
+    throw err;
+  }
 }
 
 export async function portalMe(req: PortalRequest, res: Response) {

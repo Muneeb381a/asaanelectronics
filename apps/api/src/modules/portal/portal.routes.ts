@@ -3,6 +3,7 @@ import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { authenticateCustomer } from '../../middleware/portalAuth.js';
 import { validate } from '../../middleware/validate.js';
+import { ipBlockMiddleware } from '../../middleware/ipBlock.js';
 import { portalLogin, portalMe, portalInstallments, portalPayments } from './portal.controller.js';
 
 const router = Router();
@@ -14,7 +15,7 @@ const portalLoginSchema = z.object({
   phone: z.string().min(1, 'Phone is required').max(20),
 });
 
-router.post('/login', loginLimiter, validate(portalLoginSchema), portalLogin);
+router.post('/login', ipBlockMiddleware, loginLimiter, validate(portalLoginSchema), portalLogin);
 
 router.use(authenticateCustomer);
 router.get('/me',                          portalMe);

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { signRequest } from './client.ts';
+import { signRequest, signableBody } from './client.ts';
 import { usePortalStore } from '../store/portal.store.ts';
 
 const portalClient = axios.create({
@@ -10,7 +10,7 @@ const portalClient = axios.create({
 portalClient.interceptors.request.use(async (config) => {
   const token = localStorage.getItem('portal_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
-  const sigHeaders = await signRequest(config.method ?? 'GET', (config.url ?? '/').split('?')[0]);
+  const sigHeaders = await signRequest(config.method ?? 'GET', (config.url ?? '/').split('?')[0], signableBody(config.data));
   Object.assign(config.headers, sigHeaders);
   return config;
 });

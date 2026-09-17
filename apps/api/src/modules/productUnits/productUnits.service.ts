@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { productUnits, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -213,28 +213,27 @@ export class ProductUnitsService {
     sellerId: string,
     body: BulkCreateProductUnitsInput,
   ): Promise<{ created: number; skipped: string[] }> {
-    const skipped: string[] = [];
-    let created = 0;
+    const unique = [...new Set(body.imeis)];
+    const existing = await db
+      .select({ imei: productUnits.imei })
+      .from(productUnits)
+      .where(and(eq(productUnits.sellerId, sellerId), inArray(productUnits.imei, unique), isNull(productUnits.deletedAt)));
+    const taken   = new Set(existing.map((r) => r.imei));
+    const skipped = unique.filter((i) => taken.has(i));
+    const fresh   = unique.filter((i) => !taken.has(i));
 
-    for (const imei of body.imeis) {
-      const existing = await db.query.productUnits.findFirst({
-        where: and(eq(productUnits.imei, imei), eq(productUnits.sellerId, sellerId), isNull(productUnits.deletedAt)),
-        columns: { id: true },
-      });
-      if (existing) { skipped.push(imei); continue; }
-
-      await db.insert(productUnits).values({
+    if (fresh.length > 0) {
+      await db.insert(productUnits).values(fresh.map((imei) => ({
         sellerId,
         productId:  body.productId ?? null,
         imei,
         color:      body.color ?? null,
         storageGb:  body.storageGb ?? null,
         condition:  body.condition,
-      });
-      created++;
+      })));
     }
 
-    return { created, skipped };
+    return { created: fresh.length, skipped };
   }
 
   async update(id: string, sellerId: string, body: UpdateProductUnitInput) {

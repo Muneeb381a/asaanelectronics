@@ -1,4 +1,5 @@
-import { and, eq, gt, ne, sql } from 'drizzle-orm';
+import { and, eq, gt, ne, or, sql } from 'drizzle-orm';
+import { createHash } from 'crypto';
 import { db } from '../../db/index.js';
 import { users, refreshTokens, otps, sellers } from '../../db/schema.js';
 import { hashPassword, comparePassword } from '../../utils/hash.js';
@@ -11,6 +12,11 @@ import { invalidateSessionCache } from '../../middleware/auth.js';
 const REFRESH_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
 const OTP_TTL_MS      = 10 * 60 * 1000;
 const MAX_OTP_ATTEMPTS = 3;
+
+// Refresh tokens are stored hashed so a DB read alone cannot hijack a session.
+// Lookups also accept the raw form so sessions issued before this change keep working.
+const hashToken = (t: string) => createHash('sha256').update(t).digest('hex');
+const tokenMatches = (t: string) => or(eq(refreshTokens.token, hashToken(t)), eq(refreshTokens.token, t))!;
 
 type DeviceInfo = { ip?: string; userAgent?: string };
 
@@ -59,7 +65,7 @@ async function issueTokens(user: typeof users.$inferSelect, device: DeviceInfo =
 
   const [session] = await db.insert(refreshTokens).values({
     userId:       user.id,
-    token:        refreshToken,
+    token:        hashToken(refreshToken),
     expiresAt:    new Date(Date.now() + REFRESH_TTL_MS),
     ip:           device.ip,
     userAgent:    device.userAgent,
@@ -187,7 +193,7 @@ export class AuthService {
 
   async forgotPassword(body: { email: string }) {
     const user = await db.query.users.findFirst({ where: eq(users.email, body.email) });
-    if (!user || user.role === 'SUPER_ADMIN') return;
+    if (!user) return;
     await createAndSendOtp(user, 'PASSWORD_RESET');
   }
 
@@ -233,7 +239,7 @@ export class AuthService {
     // pass a findFirst check before either deletes the token.
     const [deleted] = await db
       .delete(refreshTokens)
-      .where(and(eq(refreshTokens.token, token), gt(refreshTokens.expiresAt, new Date())))
+      .where(and(tokenMatches(token), gt(refreshTokens.expiresAt, new Date())))
       .returning({ ip: refreshTokens.ip, userAgent: refreshTokens.userAgent });
 
     if (!deleted) throw new AppError('Refresh token expired or already used', 401);
@@ -267,6 +273,6 @@ export class AuthService {
   }
 
   async logout(token: string) {
-    if (token) await db.delete(refreshTokens).where(eq(refreshTokens.token, token));
+    if (token) await db.delete(refreshTokens).where(tokenMatches(token));
   }
 }

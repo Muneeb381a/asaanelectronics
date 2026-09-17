@@ -160,6 +160,20 @@ export async function addDeduction(
   });
   if (!staff) throw new AppError('Staff not found', 404);
 
+  if (body.installmentId) {
+    const [inst] = await db.select({ id: installments.id }).from(installments)
+      .innerJoin(customers, eq(installments.customerId, customers.id))
+      .where(and(eq(installments.id, body.installmentId), eq(customers.sellerId, sellerId)));
+    if (!inst) throw new AppError('Installment not found', 404);
+  }
+  if (body.customerId) {
+    const cust = await db.query.customers.findFirst({
+      where: and(eq(customers.id, body.customerId), eq(customers.sellerId, sellerId)),
+      columns: { id: true },
+    });
+    if (!cust) throw new AppError('Customer not found', 404);
+  }
+
   const [row] = await db.insert(salaryDeductions).values({
     sellerId,
     staffId:       body.staffId,

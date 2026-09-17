@@ -61,10 +61,11 @@ const ENTITY_COLORS: Record<string, string> = {
 const ALL_ACTIONS = Object.keys(ACTION_MAP);
 const ALL_ENTITIES = ['CUSTOMER', 'INSTALLMENT', 'PAYMENT', 'PRODUCT', 'EXPENSE', 'RETURN', 'STAFF', 'RECOVERY'];
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function localYmd(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function today() { return localYmd(new Date()); }
 function sevenDaysAgo() {
   const d = new Date(); d.setDate(d.getDate() - 7);
-  return d.toISOString().slice(0, 10);
+  return localYmd(d);
 }
 
 function timeAgo(iso: string): string {

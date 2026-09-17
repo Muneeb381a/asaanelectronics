@@ -43,7 +43,7 @@ function dayBg(d: CashflowCalendarDay, todayStr: string, selected: boolean): str
 
 export default function CashFlowPage() {
   const now      = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);

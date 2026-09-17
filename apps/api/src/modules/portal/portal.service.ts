@@ -1,4 +1,5 @@
 import { and, desc, eq, isNull, or, sql, sum } from 'drizzle-orm';
+import { nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { customers, installments, payments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -21,7 +22,7 @@ export class PortalService {
         isNull(customers.deletedAt),
       ),
     });
-    if (!customer) throw new AppError('No account found with these details', 404);
+    if (!customer) throw new AppError('Invalid CNIC or phone number', 401);
 
     // Silently upgrade legacy SHA-256 hash to HMAC-SHA256
     if (customer.cnicHash !== hmacHash) {
@@ -81,20 +82,14 @@ export class PortalService {
             COUNT(*) FILTER (WHERE i.status IN ('ACTIVE','PENDING') AND i.deleted_at IS NULL)  AS active_or_pending,
             COUNT(*) FILTER (
               WHERE i.status = 'ACTIVE' AND i.deleted_at IS NULL
-                AND (CASE WHEN i.payment_frequency = 'daily'
-                      THEN i.start_date + (i.months || ' days')::interval
-                      ELSE i.start_date + (i.months || ' months')::interval
-                    END) < NOW()
+                AND ${nextDueDateSql('i')} < ${pktTodaySql}
             )                                                                                   AS overdue_active_count,
             COALESCE(SUM(i.total_amount - i.down_payment - i.remaining)
               FILTER (WHERE i.deleted_at IS NULL AND i.status NOT IN ('CANCELLED','CLOSED')), 0)::numeric AS total_paid,
             COALESCE(SUM(i.remaining)
               FILTER (WHERE i.deleted_at IS NULL AND i.status IN ('ACTIVE','PENDING')), 0)::numeric       AS total_remaining,
             MIN(CASE WHEN i.status = 'ACTIVE' AND i.deleted_at IS NULL
-              THEN (CASE WHEN i.payment_frequency = 'daily'
-                THEN i.start_date + (i.months || ' days')::interval
-                ELSE i.start_date + (i.months || ' months')::interval
-              END)::date END)::text                                                             AS next_due
+              THEN ${nextDueDateSql('i')}::date END)::text                                                             AS next_due
           FROM installments i
           WHERE i.customer_id = ${customerId}
         )

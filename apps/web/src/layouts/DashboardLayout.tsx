@@ -39,6 +39,7 @@ const ALL_NAV: NavItemDef[] = [
   { to: '/expenses',         label: 'Expenses',         icon: Receipt,                    perm: 'canRecordExpense',                                       group: 'finance'    },
   { to: '/cashflow',         label: 'Cash Flow',        icon: CalendarDays,               perm: '__owner__',                                              group: 'finance'    },
   { to: '/products',         label: 'Products',         icon: Package,                    perm: 'canManageProducts',                                      group: 'catalog'    },
+  { to: '/stock-receive',    label: 'Stock Receive',    icon: Package,                    perm: 'canManageProducts',                                      group: 'catalog'    },
   { to: '/suppliers',        label: 'Suppliers',        icon: Building2,                  perm: '__owner__',                                              group: 'catalog'    },
   { to: '/imei',             label: 'Serials / IMEI',   icon: Package,                    perm: '__owner__',                                              group: 'catalog'    },
   { to: '/customers',        label: 'Customers',        icon: Users,                      perm: ['canAddCustomer','canAddInstallment','canRecordPayment'], group: 'customers'  },
@@ -501,9 +502,9 @@ export default function DashboardLayout() {
                   grace period mein. Is ke baad access band ho jaega.
                 </span>
               </div>
-              <a href="/billing" className="shrink-0 bg-white text-amber-600 font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-amber-50 transition">
+              <NavLink to="/billing" className="shrink-0 bg-white text-amber-600 font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-amber-50 transition">
                 Renew Karo
-              </a>
+              </NavLink>
             </div>
           )}
 
@@ -519,9 +520,9 @@ export default function DashboardLayout() {
                   Aapka plan aur grace period dono expire ho chuke hain. Access dubara hasil karne ke liye
                   admin se contact karein ya plan renew karein.
                 </p>
-                <a href="/billing" className="inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition">
+                <NavLink to="/billing" className="inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition">
                   Billing Page
-                </a>
+                </NavLink>
               </div>
             </div>
           ) : (

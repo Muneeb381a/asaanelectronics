@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, gte, inArray, isNull, lt, sql, sum } from 'drizzle-orm';
+import { isOverdueSql, nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments, products, recoveryActions, sellers, users } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
@@ -40,20 +41,7 @@ export class StatsService {
 
     // Next individual payment due date (not plan maturity). Mirrors the formula used in
     // overdueCount and getDailyBriefing so aging buckets are consistent with overdue counts.
-    const dueExpr: SQL = sql`(CASE WHEN ${installments.paymentFrequency} = 'daily'
-      THEN ${installments.startDate} + (
-        (GREATEST(0, FLOOR(
-          (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
-          / NULLIF(${installments.monthly}::numeric, 0)
-        )) + 1) || ' days'
-      )::interval
-      ELSE DATE_TRUNC('month', ${installments.startDate} + (
-        (GREATEST(0, FLOOR(
-          (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
-          / NULLIF(${installments.monthly}::numeric, 0)
-        )) + 1) || ' months'
-      )::interval)::date + (${installments.paymentDueDay} - 1)
-    END)`;
+    const dueExpr: SQL = nextDueDateSql('installments');
 
     const [monthlyRaw, monthlyCashRaw, collectionData, agingData, topDebtors, topProducts] = await Promise.all([
       db
@@ -297,22 +285,7 @@ export class StatsService {
           eq(installments.status, 'ACTIVE'),
           isNull(installments.deletedAt),
           isNull(customers.deletedAt),
-          sql`(
-            CASE WHEN ${installments.paymentFrequency} = 'daily'
-              THEN ${installments.startDate} + (
-                (GREATEST(0, FLOOR(
-                  (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
-                  / NULLIF(${installments.monthly}::numeric, 0)
-                )) + 1) || ' days'
-              )::interval
-              ELSE ${installments.startDate} + (
-                (GREATEST(0, FLOOR(
-                  (${installments.totalAmount}::numeric - ${installments.downPayment}::numeric - ${installments.remaining}::numeric)
-                  / NULLIF(${installments.monthly}::numeric, 0)
-                )) + 1) || ' months'
-              )::interval
-            END
-          ) < now()`,
+          isOverdueSql('installments'),
         )),
 
       db
@@ -611,10 +584,7 @@ export class StatsService {
           AND i.deleted_at IS NULL
           AND (
             i.status = 'DEFAULTED'
-            OR (i.status = 'ACTIVE' AND (CASE WHEN i.payment_frequency = 'daily'
-              THEN i.start_date + (i.months || ' days')::interval
-              ELSE i.start_date + (i.months || ' months')::interval
-            END) < NOW())
+            OR (i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql})
           )
       `),
 
@@ -641,20 +611,14 @@ export class StatsService {
         SELECT
           COALESCE(NULLIF(TRIM(SPLIT_PART(c.address, ',', -1)), ''), 'Unknown') AS city,
           COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE'
-            AND (CASE WHEN i.payment_frequency = 'daily'
-              THEN i.start_date + (i.months || ' days')::interval
-              ELSE i.start_date + (i.months || ' months')::interval
-            END) < NOW() THEN c.id END)::int   AS overdue_count,
+            AND ${nextDueDateSql('i')} < ${pktTodaySql} THEN c.id END)::int   AS overdue_count,
           COUNT(DISTINCT CASE WHEN i.status = 'DEFAULTED' THEN c.id END)::int               AS defaulted_count
         FROM customers c
         LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
         WHERE c.seller_id = ${sellerId}
           AND c.deleted_at IS NULL
           AND (
-            (i.status = 'ACTIVE' AND (CASE WHEN i.payment_frequency = 'daily'
-              THEN i.start_date + (i.months || ' days')::interval
-              ELSE i.start_date + (i.months || ' months')::interval
-            END) < NOW())
+            (i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql})
             OR i.status = 'DEFAULTED'
           )
         GROUP BY city

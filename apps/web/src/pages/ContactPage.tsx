@@ -219,8 +219,8 @@ export default function ContactPage() {
             <span className="font-bold text-white text-sm">Assaan Electronics</span>
           </Link>
           <nav className="hidden md:flex items-center gap-7">
-            <Link to="/#features" className="text-sm text-gray-400 hover:text-white transition">Features</Link>
-            <Link to="/#pricing"  className="text-sm text-gray-400 hover:text-white transition">Pricing</Link>
+            <a href="/#features" className="text-sm text-gray-400 hover:text-white transition">Features</a>
+            <a href="/#pricing"  className="text-sm text-gray-400 hover:text-white transition">Pricing</a>
             <Link to="/contact"   className="text-sm text-white font-semibold">Contact</Link>
           </nav>
           <div className="flex items-center gap-2">

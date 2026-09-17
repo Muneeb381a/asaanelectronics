@@ -8,6 +8,7 @@ import { markUnitSoldInTx, markUnitAvailableInTx } from '../productUnits/product
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { accountingSvc } from '../accounting/accounting.service.js';
 import { fsm } from '../../utils/fsm.js';
+import { isOverdueSql, nextDueDateSql } from '../../utils/dueDate.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
 
@@ -216,12 +217,7 @@ export class InstallmentsService {
         biometricStatus:     installments.biometricStatus,
         biometricDoneAt:     installments.biometricDoneAt,
         vehicleFileLocation: products.vehicleFileLocation,
-        isOverdue: sql<boolean>`(${installments.status} = 'ACTIVE' AND (
-          CASE WHEN ${installments.paymentFrequency} = 'daily'
-            THEN (${installments.startDate} + (${installments.months} || ' days')::interval) < now()
-            ELSE (${installments.startDate} + (${installments.months} || ' months')::interval) < now()
-          END
-        ))`,
+        isOverdue: sql<boolean>`${isOverdueSql('installments')}`,
         daysOverdue: sql<number>`
           CASE WHEN ${installments.status} != 'ACTIVE' THEN 0
           ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - (
@@ -1074,19 +1070,7 @@ export class InstallmentsService {
       ? sql`AND (c.name ILIKE ${`%${search}%`} OR c.phone ILIKE ${`%${search}%`})`
       : sql``;
 
-    const DUE_DATE_EXPR = sql`
-      CASE WHEN i.payment_frequency = 'daily' THEN
-        i.start_date + ((GREATEST(0, FLOOR(
-          (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
-          / NULLIF(i.monthly::numeric, 0)
-        )) + 1) || ' days')::interval
-      ELSE
-        DATE_TRUNC('month', i.start_date + ((GREATEST(0, FLOOR(
-          (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
-          / NULLIF(i.monthly::numeric, 0)
-        )) + 1) || ' months')::interval)::date + (i.payment_due_day - 1)
-      END
-    `;
+    const DUE_DATE_EXPR = nextDueDateSql('i');
 
     return db.execute<{
       id: string; customer_id: string; product_id: string;

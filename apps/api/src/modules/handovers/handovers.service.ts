@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { staffHandovers } from '../../db/schema.js';
+import { staffHandovers, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 
 export interface StaffBalanceRow {
@@ -254,6 +254,12 @@ export class HandoversService {
   ) {
     if (!body.amount || body.amount <= 0)
       throw new AppError('Amount must be greater than 0', 400);
+
+    const staff = await db.query.users.findFirst({
+      where: and(eq(users.id, body.staffId), eq(users.sellerId, sellerId)),
+      columns: { id: true },
+    });
+    if (!staff) throw new AppError('Staff member not found', 404);
 
     // Consume any existing PENDING handover rather than creating a duplicate
     const pending = await db.query.staffHandovers.findFirst({

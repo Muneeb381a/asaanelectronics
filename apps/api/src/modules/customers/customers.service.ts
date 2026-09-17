@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
@@ -34,11 +35,7 @@ const lifecycleSQL = sql<string>`COALESCE(
     SELECT CASE
       WHEN MAX(CASE WHEN i.status = 'DEFAULTED' THEN 1 ELSE 0 END) = 1
         THEN 'DEFAULT'
-      WHEN MAX(CASE WHEN i.status = 'ACTIVE' AND (
-          CASE WHEN i.payment_frequency = 'daily'
-            THEN i.start_date + (i.months || ' days')::interval
-            ELSE i.start_date + (i.months || ' months')::interval
-          END) < NOW() THEN 1 ELSE 0 END) = 1
+      WHEN MAX(CASE WHEN i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql} THEN 1 ELSE 0 END) = 1
         THEN 'AT_RISK'
       WHEN COUNT(*) FILTER (WHERE i.status = 'ACTIVE')    > 0
        AND COUNT(*) FILTER (WHERE i.status = 'COMPLETED') > 0
@@ -140,7 +137,7 @@ export class CustomersService {
     const riskScore = sql<number>`LEAST(100, (
       CASE
         WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL) THEN 40
-        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (CASE WHEN i.payment_frequency = 'daily' THEN i.start_date + (i.months || ' days')::interval ELSE i.start_date + (i.months || ' months')::interval END) < NOW()) THEN 22
+        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND ${nextDueDateSql('i')} < ${pktTodaySql}) THEN 22
         ELSE 0
       END
       + CASE WHEN ${customers.guarantorName} IS NULL THEN 20 WHEN ${customers.guarantor2Cnic} IS NOT NULL THEN 0 WHEN ${customers.guarantorCnic} IS NOT NULL THEN 8 ELSE 14 END
@@ -244,10 +241,7 @@ export class CustomersService {
           customer_id,
           COUNT(*) FILTER (WHERE status = 'DEFAULTED' AND deleted_at IS NULL)  AS defaulted,
           COUNT(*) FILTER (WHERE status = 'ACTIVE'    AND deleted_at IS NULL
-            AND (CASE WHEN payment_frequency = 'daily'
-              THEN start_date + (months || ' days')::interval
-              ELSE start_date + (months || ' months')::interval
-            END) < NOW())                                                        AS at_risk,
+            AND ${nextDueDateSql('')} < ${pktTodaySql})                                                        AS at_risk,
           COUNT(*) FILTER (WHERE status = 'ACTIVE'    AND deleted_at IS NULL)  AS active,
           COUNT(*) FILTER (WHERE status = 'COMPLETED' AND deleted_at IS NULL)  AS completed,
           COUNT(*) FILTER (WHERE status IN ('ACTIVE','PENDING') AND deleted_at IS NULL) AS active_or_pending
@@ -313,11 +307,7 @@ export class CustomersService {
         SELECT
           customer_id,
           MAX(CASE WHEN status = 'DEFAULTED' THEN 1 ELSE 0 END)              AS is_defaulted,
-          MAX(CASE WHEN status = 'ACTIVE' AND (
-            CASE WHEN payment_frequency = 'daily'
-              THEN start_date + (months || ' days')::interval
-              ELSE start_date + (months || ' months')::interval
-            END) < NOW() THEN 1 ELSE 0 END)                                  AS is_at_risk,
+          MAX(CASE WHEN status = 'ACTIVE' AND ${nextDueDateSql('')} < ${pktTodaySql} THEN 1 ELSE 0 END)                                  AS is_at_risk,
           COUNT(*) FILTER (WHERE status = 'ACTIVE')                           AS active,
           COUNT(*) FILTER (WHERE status = 'COMPLETED')                        AS completed,
           COUNT(*) FILTER (WHERE status IN ('ACTIVE','PENDING'))              AS active_or_pending
@@ -349,7 +339,7 @@ export class CustomersService {
     const riskScore = sql<number>`LEAST(100, (
       CASE
         WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'DEFAULTED' AND i.deleted_at IS NULL) THEN 40
-        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND (CASE WHEN i.payment_frequency = 'daily' THEN i.start_date + (i.months || ' days')::interval ELSE i.start_date + (i.months || ' months')::interval END) < NOW()) THEN 22
+        WHEN EXISTS (SELECT 1 FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL AND ${nextDueDateSql('i')} < ${pktTodaySql}) THEN 22
         ELSE 0
       END
       + CASE WHEN ${customers.guarantorName} IS NULL THEN 20 WHEN ${customers.guarantor2Cnic} IS NOT NULL THEN 0 WHEN ${customers.guarantorCnic} IS NOT NULL THEN 8 ELSE 14 END
@@ -476,11 +466,7 @@ export class CustomersService {
       SELECT
         COUNT(*)::int                                                       AS total_inst,
         COUNT(*) FILTER (WHERE status = 'DEFAULTED')::int                  AS defaulted,
-        COUNT(*) FILTER (WHERE status = 'ACTIVE' AND deleted_at IS NULL AND (
-          CASE WHEN payment_frequency = 'daily'
-            THEN start_date + (months || ' days')::interval
-            ELSE start_date + (months || ' months')::interval
-          END) < NOW())::int                                               AS overdue_count,
+        COUNT(*) FILTER (WHERE status = 'ACTIVE' AND deleted_at IS NULL AND ${nextDueDateSql('')} < ${pktTodaySql})::int                                               AS overdue_count,
         COUNT(*) FILTER (WHERE status = 'COMPLETED')::int                  AS completed
       FROM installments
       WHERE customer_id = ${id} AND deleted_at IS NULL
@@ -727,10 +713,7 @@ export class CustomersService {
           WHERE customer_id = ${id}
             AND status = 'ACTIVE'
             AND deleted_at IS NULL
-            AND (CASE WHEN payment_frequency = 'daily'
-              THEN start_date + (months || ' days')::interval
-              ELSE start_date + (months || ' months')::interval
-            END) < NOW()
+            AND ${nextDueDateSql('')} < ${pktTodaySql}
         ) AS overdue
       `),
     ]);

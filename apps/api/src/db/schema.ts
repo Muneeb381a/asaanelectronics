@@ -536,7 +536,7 @@ export const resolutionTypeEnum = pgEnum('resolution_type',  ['RESALE', 'DAMAGED
 export const customerNotes = pgTable('customer_notes', {
   id:          text('id').primaryKey().$defaultFn(() => randomUUID()),
   customerId:  text('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
-  sellerId:    text('seller_id').notNull().references(() => sellers.id),
+  sellerId:    text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
   userId:      text('user_id').references(() => users.id, { onDelete: 'set null' }),
   note:        text('note').notNull(),
   createdAt:   timestamp('created_at').defaultNow().notNull(),

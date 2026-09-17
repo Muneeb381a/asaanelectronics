@@ -1,4 +1,5 @@
 import { and, asc, count, eq, gte, inArray, isNull, lt, lte, sql, sum } from 'drizzle-orm';
+import { nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments, products, supplierInvoices } from '../../db/schema.js';
 
@@ -307,20 +308,7 @@ export class ReportsService {
         SELECT
           i.id,
           i.remaining::numeric AS outstanding,
-          -- Days past the first unpaid period's due date (same next-due formula as dashboard stats).
-          GREATEST(0, (
-            (NOW() AT TIME ZONE 'Asia/Karachi')::date
-            - (
-              CASE WHEN i.payment_frequency = 'daily'
-                THEN i.start_date + ((GREATEST(0, FLOOR(
-                  (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
-                  / NULLIF(i.monthly::numeric, 0))) + 1) || ' days')::interval
-                ELSE i.start_date + ((GREATEST(0, FLOOR(
-                  (i.total_amount::numeric - i.down_payment::numeric - i.remaining::numeric)
-                  / NULLIF(i.monthly::numeric, 0))) + 1) || ' months')::interval
-              END
-            )::date
-          ))::int AS dpd
+          GREATEST(0, (${pktTodaySql} - ${nextDueDateSql('i')}))::int AS dpd
         FROM installments i
         JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
         WHERE c.seller_id = ${sellerId}
@@ -488,16 +476,8 @@ export class ReportsService {
         COALESCE(NULLIF(c.area, ''), 'No Area') AS area,
         COUNT(DISTINCT c.id)::int                AS customers,
         COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE'    THEN i.id END)::int AS active,
-        COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE' AND (
-          CASE WHEN i.payment_frequency = 'daily'
-            THEN i.start_date + (i.months || ' days')::interval
-            ELSE i.start_date + (i.months || ' months')::interval
-          END) < NOW() THEN i.id END)::int       AS overdue,
-        COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' AND (
-          CASE WHEN i.payment_frequency = 'daily'
-            THEN i.start_date + (i.months || ' days')::interval
-            ELSE i.start_date + (i.months || ' months')::interval
-          END) < NOW() THEN i.remaining::numeric ELSE 0 END), 0)::text AS "overdueAmount",
+        COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql} THEN i.id END)::int       AS overdue,
+        COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql} THEN i.remaining::numeric ELSE 0 END), 0)::text AS "overdueAmount",
         COALESCE(SUM(p.amount::numeric), 0)::text AS "totalCollected",
         COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' THEN i.remaining::numeric ELSE 0 END), 0)::text AS remaining
       FROM customers c

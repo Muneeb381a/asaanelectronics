@@ -4,7 +4,7 @@ import {
   sellers, users, customers, products, installments, payments,
   verifications, recoveryActions, expenses, ledgerEntries, cashSales,
   auditLogs, returns, adminPaymentLogs, adminShopNotes, superAdminAuditLogs,
-  refreshTokens, adminBroadcasts,
+  refreshTokens, adminBroadcasts, customerNotes,
 } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { invalidateSessionCache } from '../../middleware/auth.js';
@@ -134,6 +134,7 @@ export class OwnerService {
       }
 
       if (customerIds.length > 0) await tx.delete(verifications).where(inArray(verifications.customerId, customerIds));
+      await tx.delete(customerNotes).where(eq(customerNotes.sellerId, id));
       await tx.delete(returns).where(eq(returns.sellerId, id));
       await tx.delete(recoveryActions).where(eq(recoveryActions.sellerId, id));
       if (installmentIds.length > 0) await tx.delete(payments).where(inArray(payments.installmentId, installmentIds));
