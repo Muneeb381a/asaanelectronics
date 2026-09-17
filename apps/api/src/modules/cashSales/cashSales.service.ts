@@ -26,8 +26,10 @@ type UpdateBody = {
 };
 
 export class CashSalesService {
-  async list(sellerId: string, page: number, limit: number, from?: string, to?: string, search?: string) {
+  async list(sellerId: string, page: number, limit: number, from?: string, to?: string, search?: string, staffUserId?: string) {
     const conds = [eq(cashSales.sellerId, sellerId)];
+    // Restricted staff only see the sales they made themselves.
+    if (staffUserId) conds.push(eq(cashSales.soldByUserId, staffUserId));
     if (from) conds.push(gte(cashSales.createdAt, new Date(from)));
     if (to) {
       const toDate = new Date(to);

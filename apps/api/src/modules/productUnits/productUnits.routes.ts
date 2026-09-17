@@ -15,10 +15,10 @@ import {
 const router = Router();
 router.use(authenticate, requireSeller);
 
-router.get('/stats',           getUnitStats);
-router.get('/lookup/:imei',    lookupImei);
-router.get('/pta-check/:imei', ptaCheck);
-router.get('/',               listUnits);
+router.get('/stats',           requirePermission(['canManageProducts', 'canAddInstallment', 'canMakeCashSales']), getUnitStats);
+router.get('/lookup/:imei',    requirePermission(['canManageProducts', 'canAddInstallment', 'canMakeCashSales']), lookupImei);
+router.get('/pta-check/:imei', requirePermission(['canManageProducts', 'canAddInstallment', 'canMakeCashSales']), ptaCheck);
+router.get('/',               requirePermission(['canManageProducts', 'canAddInstallment', 'canMakeCashSales']), listUnits);
 router.post('/',              requirePermission('canManageProducts'), validate(createProductUnitSchema),      createUnit);
 router.post('/bulk',          requirePermission('canManageProducts'), validate(bulkCreateProductUnitsSchema), bulkCreateUnits);
 router.patch('/:id',          requirePermission('canManageProducts'), validate(updateProductUnitSchema),      updateUnit);

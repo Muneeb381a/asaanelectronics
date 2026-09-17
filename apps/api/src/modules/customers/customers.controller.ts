@@ -4,6 +4,7 @@ import { CustomersService } from './customers.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
+import { resolveStaffScope } from '../../utils/staffScope.js';
 import { verifyCnic, isNadraConfigured } from './nadra.service.js';
 
 const svc   = new CustomersService();
@@ -33,11 +34,9 @@ export async function listCustomers(req: AuthRequest, res: Response) {
   const search             = req.query['search']             as string | undefined;
   const lifecycle          = req.query['lifecycle']          as string | undefined;
   const verificationStatus = req.query['verificationStatus'] as string | undefined;
-  // Staff see only their own customers on the Customers page.
-  // Pass ?scope=shop to bypass (used by installment form pickers for payment recording).
-  const staffUserId = req.user!.role === 'SELLER_OWNER' || req.query['scope'] === 'shop'
-    ? undefined
-    : req.user!.userId;
+  // Owner and staff with canViewAllInstallments see the whole shop; other staff see
+  // only customers they created or were assigned. (?scope=shop no longer bypasses this.)
+  const staffUserId = await resolveStaffScope(req);
   const sortBy  = req.query['sortBy']  as string | undefined;
   const sortDir = req.query['sortDir'] as string | undefined;
   const tag     = req.query['tag']     as string | undefined;
@@ -50,7 +49,7 @@ export async function getLifecycleCounts(req: AuthRequest, res: Response) {
 }
 
 export async function getCustomer(req: AuthRequest, res: Response) {
-  success(res, await svc.getOne(req.params['id']!, req.user!.sellerId!));
+  success(res, await svc.getOne(req.params['id']!, req.user!.sellerId!, await resolveStaffScope(req)));
 }
 
 export async function createCustomer(req: AuthRequest, res: Response) {
@@ -98,7 +97,7 @@ export async function assignAvo(req: AuthRequest, res: Response) {
 
 
 export async function getUpcomingBirthdays(req: AuthRequest, res: Response) {
-  success(res, await svc.getUpcomingBirthdays(req.user!.sellerId!));
+  success(res, await svc.getUpcomingBirthdays(req.user!.sellerId!, await resolveStaffScope(req)));
 }
 
 export async function getReferralLeaderboard(req: AuthRequest, res: Response) {

@@ -3,7 +3,7 @@ import { nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
-import { staffScopeSql } from '../../utils/staffScope.js';
+import { staffScopeSql, staffScopeOrTrue } from '../../utils/staffScope.js';
 import { hashCnic, hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
@@ -454,9 +454,9 @@ export class CustomersService {
     };
   }
 
-  async getOne(id: string, sellerId: string) {
+  async getOne(id: string, sellerId: string, staffUserId?: string) {
     const customer = await db.query.customers.findFirst({
-      where: and(eq(customers.id, id), eq(customers.sellerId, sellerId), isNull(customers.deletedAt)),
+      where: and(eq(customers.id, id), eq(customers.sellerId, sellerId), isNull(customers.deletedAt), staffScopeOrTrue(staffUserId, 'customers')),
     });
     if (!customer) throw new AppError('Customer not found', 404);
 
@@ -815,7 +815,7 @@ export class CustomersService {
     }));
   }
 
-  async getUpcomingBirthdays(sellerId: string) {
+  async getUpcomingBirthdays(sellerId: string, staffUserId?: string) {
     const rows = await db.execute<{
       id: string; name: string; phone: string; dob: string; area: string | null; photo_url: string | null;
     }>(sql`
@@ -823,6 +823,7 @@ export class CustomersService {
       FROM customers
       WHERE seller_id = ${sellerId}
         AND deleted_at IS NULL
+        AND ${staffScopeOrTrue(staffUserId, 'customers')}
         AND dob IS NOT NULL
         AND (
           MAKE_DATE(

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, requireSeller } from '../../middleware/auth.js';
+import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { getStats, getReports, getAdvanced, getDashboard, getDailyBriefing, getStaffTodayCollections } from './stats.controller.js';
 
@@ -8,7 +8,7 @@ const router = Router();
 router.use(authenticate, requireSeller);
 router.get('/dashboard',             getDashboard);
 router.get('/daily-briefing',        getDailyBriefing);
-router.get('/staff-today',           getStaffTodayCollections);
+router.get('/staff-today',           requireOwner, getStaffTodayCollections);
 router.get('/',          getStats);
 router.get('/reports',   requirePermission('canViewReports'), getReports);
 router.get('/advanced',  requirePermission('canViewReports'), getAdvanced);

@@ -1,12 +1,14 @@
 import type { Response } from 'express';
 import type { AuthRequest } from '../../middleware/auth.js';
 import { CustomerDocumentsService } from './customer-documents.service.js';
+import { resolveStaffScope, assertCustomerInScope } from '../../utils/staffScope.js';
 import { success } from '../../utils/response.js';
 
 const svc = new CustomerDocumentsService();
 
 export async function listCustomerDocs(req: AuthRequest, res: Response) {
   const customerId = req.params['customerId']!;
+  await assertCustomerInScope(customerId, req.user!.sellerId!, await resolveStaffScope(req));
   success(res, await svc.list(customerId, req.user!.sellerId!));
 }
 

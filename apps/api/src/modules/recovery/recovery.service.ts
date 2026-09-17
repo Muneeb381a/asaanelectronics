@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, payments, products, recoveryActions, users } from '../../db/schema.js';
+import { staffScopeOrTrue } from '../../utils/staffScope.js';
 import { AppError } from '../../middleware/error.js';
 
 export type ActionType = 'CALLED' | 'VISITED' | 'PROMISE_TO_PAY' | 'REFUSED' | 'LEGAL_WARNING';
@@ -176,7 +177,7 @@ export class RecoveryService {
     return { agent, data: rows, total: count, page, limit: safeLimit };
   }
 
-  async promisesDue(sellerId: string) {
+  async promisesDue(sellerId: string, staffUserId?: string) {
     return db
       .select({
         id:            recoveryActions.id,
@@ -197,6 +198,7 @@ export class RecoveryService {
       .where(and(
         eq(recoveryActions.sellerId, sellerId),
         eq(recoveryActions.type, 'PROMISE_TO_PAY'),
+        staffScopeOrTrue(staffUserId, 'customers'),
         sql`${recoveryActions.promiseDate} IS NOT NULL`,
         sql`${recoveryActions.promiseDate}::date <= NOW()::date`,
         eq(installments.status, 'ACTIVE'),
@@ -207,7 +209,7 @@ export class RecoveryService {
       .limit(20);
   }
 
-  async allPromises(sellerId: string) {
+  async allPromises(sellerId: string, staffUserId?: string) {
     const sevenDaysAhead = new Date();
     sevenDaysAhead.setDate(sevenDaysAhead.getDate() + 7);
 
@@ -232,6 +234,7 @@ export class RecoveryService {
       .where(and(
         eq(recoveryActions.sellerId, sellerId),
         eq(recoveryActions.type, 'PROMISE_TO_PAY'),
+        staffScopeOrTrue(staffUserId, 'customers'),
         sql`${recoveryActions.promiseDate} IS NOT NULL`,
         sql`${recoveryActions.promiseDate}::date <= ${sevenDaysAhead}`,
         eq(installments.status, 'ACTIVE'),

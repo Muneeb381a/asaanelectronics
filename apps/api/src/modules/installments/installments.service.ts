@@ -8,7 +8,7 @@ import { markUnitSoldInTx, markUnitAvailableInTx, productHasUnits } from '../pro
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { accountingSvc } from '../accounting/accounting.service.js';
 import { fsm } from '../../utils/fsm.js';
-import { staffScopeSql } from '../../utils/staffScope.js';
+import { staffScopeSql, staffScopeOrTrue } from '../../utils/staffScope.js';
 import { isOverdueSql, nextDueDateSql } from '../../utils/dueDate.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
@@ -181,7 +181,7 @@ export class InstallmentsService {
     return { data: rows, total: count, page, limit };
   }
 
-  async getOne(id: string, sellerId: string) {
+  async getOne(id: string, sellerId: string, staffUserId?: string) {
     const [row] = await db
       .select({
         id: installments.id,
@@ -239,7 +239,7 @@ export class InstallmentsService {
       .from(installments)
       .innerJoin(customers, eq(installments.customerId, customers.id))
       .innerJoin(products, eq(installments.productId, products.id))
-      .where(and(eq(installments.id, id), eq(customers.sellerId, sellerId), isNull(installments.deletedAt)));
+      .where(and(eq(installments.id, id), eq(customers.sellerId, sellerId), isNull(installments.deletedAt), staffScopeOrTrue(staffUserId, 'customers')));
 
     if (!row) throw new AppError('Installment not found', 404);
     return row;
@@ -860,7 +860,7 @@ export class InstallmentsService {
     return dueItems;
   }
 
-  async collectionSchedule(sellerId: string, days: number = 7) {
+  async collectionSchedule(sellerId: string, days: number = 7, staffUserId?: string) {
     const rows = await db.execute<{
       id: string; monthly: string; remaining: string; months: number;
       payment_frequency: string; start_date: string; payment_due_day: number;
@@ -886,7 +886,7 @@ export class InstallmentsService {
         ORDER BY paid_on DESC, created_at DESC
         LIMIT 1
       ) lp ON true
-      WHERE c.seller_id = ${sellerId}
+      WHERE c.seller_id = ${sellerId} AND ${staffScopeOrTrue(staffUserId, 'c')}
         AND i.status = 'ACTIVE'
         AND i.deleted_at IS NULL
         AND c.deleted_at IS NULL
@@ -1081,7 +1081,7 @@ export class InstallmentsService {
     }).then((r) => { clearSellerStatsCache(sellerId); return r; });
   }
 
-  async overdueWithStage(sellerId: string, search?: string) {
+  async overdueWithStage(sellerId: string, search?: string, staffUserId?: string) {
     const searchFilter = search
       ? sql`AND (c.name ILIKE ${`%${search}%`} OR c.phone ILIKE ${`%${search}%`})`
       : sql``;
@@ -1118,7 +1118,7 @@ export class InstallmentsService {
         ORDER BY created_at DESC
         LIMIT 1
       ) la ON TRUE
-      WHERE c.seller_id = ${sellerId}
+      WHERE c.seller_id = ${sellerId} AND ${staffScopeOrTrue(staffUserId, 'c')}
         AND i.status = 'ACTIVE'
         AND i.deleted_at IS NULL
         AND c.deleted_at IS NULL

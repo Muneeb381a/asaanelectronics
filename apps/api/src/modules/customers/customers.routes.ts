@@ -27,7 +27,7 @@ router.get('/guarantors',           requireOwner, listGuarantors);
 router.get('/nadra-status',         nadraStatus);
 router.post('/nadra-verify',        requireOwner, nadraVerifyCnic);
 router.get('/upcoming-birthdays',   getUpcomingBirthdays);
-router.get('/referral-leaderboard', getReferralLeaderboard);
+router.get('/referral-leaderboard', requirePermission('canViewReports'), getReferralLeaderboard);
 router.get('/lookup',           requirePermission(['canSearchCnic', 'canAddInstallment', 'canAddCustomer', 'canRecordPayment']), lookupByCnic);
 router.get('/',                 canAccessCustomers, listCustomers);
 router.get('/:id',              canAccessCustomers, getCustomer);

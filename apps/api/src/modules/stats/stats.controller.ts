@@ -6,6 +6,7 @@ import { db } from '../../db/index.js';
 import { users } from '../../db/schema.js';
 import type { StaffPermissions } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { resolveStaffScope } from '../../utils/staffScope.js';
 
 const svc = new StatsService();
 
@@ -24,7 +25,7 @@ export async function getAdvanced(req: AuthRequest, res: Response) {
 }
 
 export async function getDailyBriefing(req: AuthRequest, res: Response) {
-  success(res, await svc.getDailyBriefing(req.user!.sellerId!));
+  success(res, await svc.getDailyBriefing(req.user!.sellerId!, await resolveStaffScope(req)));
 }
 
 export async function getStaffTodayCollections(req: AuthRequest, res: Response) {

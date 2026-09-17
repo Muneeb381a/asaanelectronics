@@ -71,7 +71,7 @@ export class AttendanceService {
     };
   }
 
-  async getByMonth(sellerId: string, year: number, month: number) {
+  async getByMonth(sellerId: string, year: number, month: number, onlyUserId?: string) {
     const from = new Date(year, month - 1, 1);
     const to   = new Date(year, month, 1);
 
@@ -87,6 +87,7 @@ export class AttendanceService {
       WHERE a.seller_id = ${sellerId}
         AND a.date >= ${from.toISOString().slice(0, 10)}
         AND a.date <  ${to.toISOString().slice(0, 10)}
+        AND ${onlyUserId ? sql`a.user_id = ${onlyUserId}` : sql`TRUE`}
       ORDER BY a.date DESC, u.name ASC
     `);
 
@@ -104,7 +105,7 @@ export class AttendanceService {
     }));
   }
 
-  async getStaffSummary(sellerId: string, year: number, month: number) {
+  async getStaffSummary(sellerId: string, year: number, month: number, onlyUserId?: string) {
     const from = new Date(year, month - 1, 1);
     const to   = new Date(year, month, 1);
 
@@ -125,6 +126,7 @@ export class AttendanceService {
       WHERE a.seller_id = ${sellerId}
         AND a.date >= ${from.toISOString().slice(0, 10)}
         AND a.date <  ${to.toISOString().slice(0, 10)}
+        AND ${onlyUserId ? sql`a.user_id = ${onlyUserId}` : sql`TRUE`}
       GROUP BY a.user_id, u.name
       ORDER BY days DESC
     `);

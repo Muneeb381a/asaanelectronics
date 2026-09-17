@@ -5,6 +5,7 @@ import { SearchService } from './search.service.js';
 import { success } from '../../utils/response.js';
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema.js';
+import { resolveStaffScope } from '../../utils/staffScope.js';
 
 const svc = new SearchService();
 
@@ -25,5 +26,5 @@ export async function globalSearch(req: AuthRequest, res: Response) {
     canSearchCnic = !!dbUser?.permissions?.canSearchCnic;
   }
 
-  success(res, await svc.globalSearch(user.sellerId!, q, canSearchCnic));
+  success(res, await svc.globalSearch(user.sellerId!, q, canSearchCnic, await resolveStaffScope(req)));
 }

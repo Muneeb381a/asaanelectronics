@@ -4,6 +4,7 @@ import { CashSalesService } from './cashSales.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
+import { resolveStaffScope } from '../../utils/staffScope.js';
 
 const svc   = new CashSalesService();
 const audit = new AuditService();
@@ -14,7 +15,7 @@ export async function listCashSales(req: AuthRequest, res: Response) {
   const from   = req.query['from']   as string | undefined;
   const to     = req.query['to']     as string | undefined;
   const search = req.query['search'] as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, from, to, search));
+  success(res, await svc.list(req.user!.sellerId!, page, limit, from, to, search, await resolveStaffScope(req)));
 }
 
 export async function createCashSale(req: AuthRequest, res: Response) {

@@ -4,6 +4,7 @@ import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
+import { staffScopeOrTrue } from '../../utils/staffScope.js';
 import { accountingSvc } from '../accounting/accounting.service.js';
 
 type CreateBody = {
@@ -16,7 +17,7 @@ type CreateBody = {
 };
 
 export class PaymentsService {
-  async listByInstallment(installmentId: string, sellerId: string, page = 1, limit = 50) {
+  async listByInstallment(installmentId: string, sellerId: string, page = 1, limit = 50, staffUserId?: string) {
     const safeLimit = Math.min(limit, 100);
     const offset = (page - 1) * safeLimit;
 
@@ -24,7 +25,7 @@ export class PaymentsService {
       .select({ id: installments.id })
       .from(installments)
       .innerJoin(customers, eq(installments.customerId, customers.id))
-      .where(and(eq(installments.id, installmentId), eq(customers.sellerId, sellerId)));
+      .where(and(eq(installments.id, installmentId), eq(customers.sellerId, sellerId), staffScopeOrTrue(staffUserId, 'customers')));
 
     if (!inst) throw new AppError('Installment not found', 404);
 
@@ -58,8 +59,10 @@ export class PaymentsService {
     return { data: rows, total: count, page, limit: safeLimit };
   }
 
-  async listBySeller(sellerId: string, from?: string, to?: string) {
+  async listBySeller(sellerId: string, from?: string, to?: string, staffUserId?: string) {
     const conds: SQL[] = [eq(customers.sellerId, sellerId), isNull(payments.deletedAt)];
+    // Restricted staff only see payments they collected themselves.
+    if (staffUserId) conds.push(eq(payments.collectedBy, staffUserId));
     if (from) conds.push(gte(payments.paidOn, new Date(from)));
     if (to) {
       const toDate = new Date(to);

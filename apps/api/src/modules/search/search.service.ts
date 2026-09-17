@@ -1,10 +1,11 @@
 import { and, eq, ilike, isNull, ne, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, products, sellers } from '../../db/schema.js';
+import { staffScopeOrTrue } from '../../utils/staffScope.js';
 import { hashCnicBoth } from '../../utils/hash.js';
 
 export class SearchService {
-  async globalSearch(sellerId: string, q: string, canSearchCnic = false) {
+  async globalSearch(sellerId: string, q: string, canSearchCnic = false, staffUserId?: string) {
     const clean = q.trim().replace(/-/g, '');
     if (clean.length < 2) return { customers: [], installments: [], products: [], bureau: [] };
 
@@ -62,6 +63,7 @@ export class SearchService {
       }).from(customers).where(and(
         eq(customers.sellerId, sellerId),
         isNull(customers.deletedAt),
+        staffScopeOrTrue(staffUserId, 'customers'),
         or(...custConds),
       )).limit(8),
 
@@ -84,6 +86,7 @@ export class SearchService {
         .where(and(
           eq(customers.sellerId, sellerId),
           isNull(installments.deletedAt),
+          staffScopeOrTrue(staffUserId, 'customers'),
           or(...instConds),
         ))
         .orderBy(sql`${installments.createdAt} DESC`)

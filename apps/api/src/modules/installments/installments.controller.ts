@@ -1,13 +1,11 @@
 import type { Response } from 'express';
 import type { AuthRequest } from '../../middleware/auth.js';
-import { eq } from 'drizzle-orm';
 import { InstallmentsService } from './installments.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
+import { resolveStaffScope } from '../../utils/staffScope.js';
 import { importInstallmentsSchema, updateInstallmentSchema } from '@assaan/shared';
-import { db } from '../../db/index.js';
-import { users } from '../../db/schema.js';
 const svc   = new InstallmentsService();
 const audit = new AuditService();
 
@@ -26,39 +24,23 @@ export async function listInstallments(req: AuthRequest, res: Response) {
 
   // Staff without canViewAllInstallments see only their own customers' installments.
   // Owners and staff with the permission see all shop installments.
-  let staffUserId: string | undefined;
-  if (req.user!.role !== 'SELLER_OWNER') {
-    const member = await db.query.users.findFirst({
-      where: eq(users.id, req.user!.userId),
-      columns: { permissions: true },
-    });
-    const canViewAll = member?.permissions?.canViewAllInstallments ?? true;
-    if (!canViewAll) staffUserId = req.user!.userId;
-  }
+  const staffUserId = await resolveStaffScope(req);
 
   success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId, frequency, sortBy, sortDir, staffUserId));
 }
 
 export async function getInstallment(req: AuthRequest, res: Response) {
-  success(res, await svc.getOne(req.params['id']!, req.user!.sellerId!));
+  success(res, await svc.getOne(req.params['id']!, req.user!.sellerId!, await resolveStaffScope(req)));
 }
 
 export async function getDueSheet(req: AuthRequest, res: Response) {
-  let staffUserId: string | undefined;
-  if (req.user!.role !== 'SELLER_OWNER') {
-    const member = await db.query.users.findFirst({
-      where: eq(users.id, req.user!.userId),
-      columns: { permissions: true },
-    });
-    const canViewAll = member?.permissions?.canViewAllInstallments ?? true;
-    if (!canViewAll) staffUserId = req.user!.userId;
-  }
+  const staffUserId = await resolveStaffScope(req);
   success(res, await svc.dueSheet(req.user!.sellerId!, staffUserId));
 }
 
 export async function getCollectionSchedule(req: AuthRequest, res: Response) {
   const days = Math.min(30, Math.max(0, Number(req.query['days'] ?? 7)));
-  success(res, await svc.collectionSchedule(req.user!.sellerId!, days));
+  success(res, await svc.collectionSchedule(req.user!.sellerId!, days, await resolveStaffScope(req)));
 }
 
 export async function createInstallment(req: AuthRequest, res: Response) {
@@ -193,7 +175,7 @@ export async function waiverInstallment(req: AuthRequest, res: Response) {
 }
 
 export async function getSettlement(req: AuthRequest, res: Response) {
-  const inst = await svc.getOne(req.params['id']!, req.user!.sellerId!);
+  const inst = await svc.getOne(req.params['id']!, req.user!.sellerId!, await resolveStaffScope(req));
   const remaining = Number(inst.remaining);
 
   // Owner can configure early-settlement discount % via seller settings (future)
@@ -257,7 +239,7 @@ export async function importInstallments(req: AuthRequest, res: Response) {
 
 export async function listOverdueWithStage(req: AuthRequest, res: Response) {
   const search = req.query['search'] as string | undefined;
-  const rows = await svc.overdueWithStage(req.user!.sellerId!, search?.trim() || undefined);
+  const rows = await svc.overdueWithStage(req.user!.sellerId!, search?.trim() || undefined, await resolveStaffScope(req));
   success(res, rows);
 }
 

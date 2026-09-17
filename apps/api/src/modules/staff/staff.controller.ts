@@ -10,7 +10,9 @@ const audit = new AuditService();
 
 export async function listStaff(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    success(res, await svc.list(req.user!.sellerId!));
+    const rows = await svc.list(req.user!.sellerId!);
+    // Staff only need names (for pickers); permissions, salary, email etc. are owner-only.
+    success(res, req.user!.role === 'SELLER_OWNER' ? rows : rows.map((r) => ({ id: r.id, name: r.name, role: r.role })));
   } catch (e) { next(e); }
 }
 

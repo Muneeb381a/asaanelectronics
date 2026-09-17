@@ -3,6 +3,7 @@ import { isOverdueSql, nextDueDateSql, pktTodaySql } from '../../utils/dueDate.j
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments, products, recoveryActions, sellers, users } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
+import { staffScopeOrTrue } from '../../utils/staffScope.js';
 import { pktDayStart, pktMonthStart } from '../../utils/pkt.js';
 
 // ── In-memory TTL cache (per-process, survives request boundaries) ─────────────
@@ -691,7 +692,9 @@ export class StatsService {
     };
   }
 
-  async getDailyBriefing(sellerId: string) {
+  async getDailyBriefing(sellerId: string, staffUserId?: string) {
+    // Restricted staff see only their own customers' accounts in the briefing.
+    const scope = (alias: string) => staffScopeOrTrue(staffUserId, alias);
     const [rows, urgentRows, dueTodayRows, pendingRows] = await Promise.all([
       db.execute<{
         due_today:       number;
@@ -721,6 +724,7 @@ export class StatsService {
           FROM installments i
           INNER JOIN customers c ON c.id = i.customer_id
           WHERE c.seller_id = ${sellerId}
+            AND ${scope('c')}
             AND i.status = 'ACTIVE'
             AND i.deleted_at IS NULL
             AND c.deleted_at IS NULL
@@ -733,6 +737,7 @@ export class StatsService {
             SELECT COUNT(*)::int FROM recovery_actions ra
             WHERE ra.seller_id = ${sellerId}
               AND ra.type = 'PROMISE_TO_PAY'
+              AND EXISTS (SELECT 1 FROM installments ix INNER JOIN customers cx ON cx.id = ix.customer_id WHERE ix.id = ra.installment_id AND ${scope('cx')})
               AND DATE(ra.promise_date) = (SELECT d FROM today)
           )                                                                                          AS promises_today,
           (
@@ -741,6 +746,7 @@ export class StatsService {
             INNER JOIN installments i2 ON p.installment_id = i2.id
             INNER JOIN customers c2    ON c2.id = i2.customer_id
             WHERE c2.seller_id = ${sellerId}
+              AND ${scope('c2')}
               AND DATE(p.paid_on) = (SELECT d FROM today)
               AND p.deleted_at IS NULL
           )                                                                                          AS collected_today,
@@ -748,6 +754,7 @@ export class StatsService {
             SELECT COUNT(*)::int FROM installments i3
             INNER JOIN customers c3 ON c3.id = i3.customer_id
             WHERE c3.seller_id = ${sellerId}
+              AND ${scope('c3')}
               AND i3.status = 'DEFAULTED'
               AND i3.deleted_at IS NULL
           )                                                                                          AS defaulted_count
@@ -783,6 +790,7 @@ export class StatsService {
           FROM installments i
           INNER JOIN customers c ON c.id = i.customer_id
           WHERE c.seller_id = ${sellerId}
+            AND ${scope('c')}
             AND i.status = 'ACTIVE'
             AND i.deleted_at IS NULL
             AND c.deleted_at IS NULL
@@ -822,6 +830,7 @@ export class StatsService {
           FROM installments i
           INNER JOIN customers c ON c.id = i.customer_id
           WHERE c.seller_id = ${sellerId}
+            AND ${scope('c')}
             AND i.status = 'ACTIVE'
             AND i.deleted_at IS NULL
             AND c.deleted_at IS NULL
@@ -842,6 +851,7 @@ export class StatsService {
         INNER JOIN customers c ON c.id = i.customer_id
         INNER JOIN products  p ON p.id = i.product_id
         WHERE c.seller_id = ${sellerId}
+          AND ${scope('c')}
           AND i.status = 'PENDING'
           AND i.deleted_at IS NULL
           AND c.deleted_at IS NULL

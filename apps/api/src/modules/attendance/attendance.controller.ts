@@ -29,7 +29,7 @@ export async function getByMonth(req: AuthRequest, res: Response) {
   const now   = new Date();
   const year  = parseInt(req.query['year']  as string) || now.getFullYear();
   const month = parseInt(req.query['month'] as string) || now.getMonth() + 1;
-  success(res, await svc.getByMonth(sellerId, year, month));
+  success(res, await svc.getByMonth(sellerId, year, month, req.user!.role === 'SELLER_STAFF' ? req.user!.userId : undefined));
 }
 
 export async function getStaffSummary(req: AuthRequest, res: Response) {
@@ -37,5 +37,5 @@ export async function getStaffSummary(req: AuthRequest, res: Response) {
   const now   = new Date();
   const year  = parseInt(req.query['year']  as string) || now.getFullYear();
   const month = parseInt(req.query['month'] as string) || now.getMonth() + 1;
-  success(res, await svc.getStaffSummary(sellerId, year, month));
+  success(res, await svc.getStaffSummary(sellerId, year, month, req.user!.role === 'SELLER_STAFF' ? req.user!.userId : undefined));
 }

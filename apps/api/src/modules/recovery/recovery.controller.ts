@@ -4,6 +4,7 @@ import { RecoveryService } from './recovery.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { auditCtx } from '../../utils/auditCtx.js';
 import { success } from '../../utils/response.js';
+import { resolveStaffScope } from '../../utils/staffScope.js';
 
 const svc   = new RecoveryService();
 const audit = new AuditService();
@@ -43,11 +44,11 @@ export async function deleteRecoveryAction(req: AuthRequest, res: Response) {
 }
 
 export async function listPromisesDue(req: AuthRequest, res: Response) {
-  success(res, await svc.promisesDue(req.user!.sellerId!));
+  success(res, await svc.promisesDue(req.user!.sellerId!, await resolveStaffScope(req)));
 }
 
 export async function listAllPromises(req: AuthRequest, res: Response) {
-  success(res, await svc.allPromises(req.user!.sellerId!));
+  success(res, await svc.allPromises(req.user!.sellerId!, await resolveStaffScope(req)));
 }
 
 export async function listAgentStats(req: AuthRequest, res: Response) {
