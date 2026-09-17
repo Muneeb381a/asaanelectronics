@@ -11,6 +11,7 @@ import { fmtDate } from '../utils/dateFormat.ts';
 import { cashSalesApi, type CashSale, type PaymentMethod } from '../api/cashSales.api.ts';
 import { productsApi, type Product } from '../api/products.api.ts';
 import { productUnitsApi } from '../api/productUnits.api.ts';
+import UnitPicker from '../features/products/UnitPicker.tsx';
 import { statsApi } from '../api/stats.api.ts';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
@@ -110,6 +111,16 @@ export default function CashSalesPage() {
     staleTime: 30_000,
     enabled: showModal,
   });
+
+  // Serialized products (phones, vehicles) must name the exact unit leaving stock.
+  const { data: availUnits } = useQuery({
+    queryKey: ['product-units-available', selectedProd?.id],
+    queryFn:  () => productUnitsApi.list({ productId: selectedProd!.id, status: 'available', limit: 100 }),
+    enabled:  !!selectedProd?.id && showModal,
+    staleTime: 15_000,
+  });
+  const unitList = availUnits?.data ?? [];
+  const hasUnits = unitList.length > 0;
 
   const debouncedImei = useDebounce(form.imeiNumber.replace(/\D/g, ''), 500);
   const { data: imeiLookup, isFetching: imeiChecking } = useQuery({
@@ -228,7 +239,7 @@ export default function CashSalesPage() {
     e.preventDefault();
     if (!selectedProd || !form.amount) return;
     createMutation.mutate({
-      productId: selectedProd.id, quantity: form.quantity, amount: Number(form.amount),
+      productId: selectedProd.id, quantity: hasUnits ? 1 : form.quantity, amount: Number(form.amount),
       method: form.method,
       customerName:  form.customerName  || undefined,
       customerPhone: form.customerPhone || undefined,
@@ -650,7 +661,12 @@ export default function CashSalesPage() {
 
                     {/* IMEI / Vehicle + Note */}
                     <div className="grid grid-cols-2 gap-3">
-                      {isVehicle ? (
+                      {hasUnits ? (
+                        <div>
+                          <UnitPicker units={unitList} value={form.imeiNumber} onChange={(s) => setForm((f) => ({ ...f, imeiNumber: s, quantity: 1 }))} compact />
+                          {!form.imeiNumber && <p className="text-[11px] text-amber-700 mt-1.5">Is product ki units register hain — bechne ke liye unit chunna zaroori hai.</p>}
+                        </div>
+                      ) : isVehicle ? (
                         <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
                           <p className="text-[10px] font-black text-indigo-700 uppercase tracking-wide mb-2">Vehicle IDs</p>
                           <div className="space-y-1.5">

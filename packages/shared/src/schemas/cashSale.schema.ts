@@ -7,7 +7,7 @@ export const createCashSaleSchema = z.object({
   method:        z.enum(['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER']),
   customerName:  z.string().max(100).optional(),
   customerPhone: z.string().max(20).optional(),
-  imeiNumber:    z.string().max(20).optional(),
+  imeiNumber:    z.string().max(40).optional(),
   note:          z.string().max(200).optional(),
 });
 
@@ -18,6 +18,6 @@ export const updateCashSaleSchema = z.object({
   method:        z.enum(['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER']).optional(),
   customerName:  z.string().max(100).nullable().optional(),
   customerPhone: z.string().max(20).nullable().optional(),
-  imeiNumber:    z.string().max(20).nullable().optional(),
+  imeiNumber:    z.string().max(40).nullable().optional(),
   note:          z.string().max(200).nullable().optional(),
 });

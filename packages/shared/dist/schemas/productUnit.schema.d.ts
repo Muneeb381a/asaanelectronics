@@ -5,6 +5,7 @@ export declare const createProductUnitSchema: z.ZodEffects<z.ZodObject<{
     imei: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
     imei2: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
     serialNumber: z.ZodOptional<z.ZodString>;
+    engineNumber: z.ZodOptional<z.ZodString>;
     productId: z.ZodOptional<z.ZodString>;
     color: z.ZodOptional<z.ZodString>;
     storageGb: z.ZodOptional<z.ZodNumber>;
@@ -18,6 +19,7 @@ export declare const createProductUnitSchema: z.ZodEffects<z.ZodObject<{
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
+    engineNumber?: string | undefined;
     imei?: string | undefined;
     imei2?: string | undefined;
     serialNumber?: string | undefined;
@@ -27,6 +29,7 @@ export declare const createProductUnitSchema: z.ZodEffects<z.ZodObject<{
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
+    engineNumber?: string | undefined;
     imei?: string | undefined;
     serialType?: "serial" | "imei" | "chassis_engine" | undefined;
     imei2?: string | undefined;
@@ -40,6 +43,7 @@ export declare const createProductUnitSchema: z.ZodEffects<z.ZodObject<{
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
+    engineNumber?: string | undefined;
     imei?: string | undefined;
     imei2?: string | undefined;
     serialNumber?: string | undefined;
@@ -49,6 +53,7 @@ export declare const createProductUnitSchema: z.ZodEffects<z.ZodObject<{
     productId?: string | undefined;
     color?: string | undefined;
     purchasePrice?: number | undefined;
+    engineNumber?: string | undefined;
     imei?: string | undefined;
     serialType?: "serial" | "imei" | "chassis_engine" | undefined;
     imei2?: string | undefined;

@@ -2,7 +2,7 @@ import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { cashSales, ledgerEntries, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
-import { markUnitSoldInTx, markUnitAvailableInTx } from '../productUnits/productUnits.service.js';
+import { markUnitSoldInTx, markUnitAvailableInTx, productHasUnits } from '../productUnits/productUnits.service.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 type CreateBody = {
@@ -81,13 +81,24 @@ export class CashSalesService {
       where: and(eq(products.id, body.productId), eq(products.sellerId, sellerId), isNull(products.deletedAt)),
     });
     if (!product) throw new AppError('Product not found', 404);
-    if (product.stock < body.quantity) throw new AppError(`Insufficient stock — only ${product.stock} available`, 400);
+
+    // Phones / vehicles sell one physical unit at a time, identified by IMEI or chassis/engine.
+    const serialized = await productHasUnits(db, body.productId, sellerId);
+    const serial = body.imeiNumber?.trim() || null;
+    if (serialized && !serial) {
+      throw new AppError('Is product ki units IMEI / chassis number se register hain — bechne ke liye unit ka number chunein', 400);
+    }
+    if ((serialized || serial) && body.quantity !== 1) {
+      throw new AppError('Unit (IMEI / chassis) ke saath quantity 1 hi ho sakti hai — har unit alag sale hai', 400);
+    }
+    if (!serialized && product.stock < body.quantity) throw new AppError(`Insufficient stock — only ${product.stock} available`, 400);
 
     return db.transaction(async (tx) => {
-      // Validate + claim IMEI unit before inserting (throws 409 if already sold)
-      if (body.imeiNumber) {
-        const soldToName = body.customerName ?? 'Cash Customer';
-        await markUnitSoldInTx(tx, body.imeiNumber, sellerId, 'cash', soldToName);
+      if (serial) {
+        const claim = await markUnitSoldInTx(tx, serial, sellerId, 'cash', body.customerName ?? 'Cash Customer', body.productId);
+        if (serialized && !claim.claimed) {
+          throw new AppError(`"${serial}" is product ki inventory mein nahi mila — Products › Serials mein check karein`, 400);
+        }
       }
 
       const [sale] = await tx
@@ -108,7 +119,7 @@ export class CashSalesService {
 
       await tx
         .update(products)
-        .set({ stock: sql`${products.stock} - ${body.quantity}` })
+        .set({ stock: sql`GREATEST(${products.stock} - ${body.quantity}, 0)` })
         .where(eq(products.id, body.productId));
 
       await tx.insert(ledgerEntries).values({

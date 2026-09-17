@@ -4,7 +4,7 @@ import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
-import { markUnitSoldInTx, markUnitAvailableInTx } from '../productUnits/productUnits.service.js';
+import { markUnitSoldInTx, markUnitAvailableInTx, productHasUnits } from '../productUnits/productUnits.service.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { accountingSvc } from '../accounting/accounting.service.js';
 import { fsm } from '../../utils/fsm.js';
@@ -255,8 +255,14 @@ export class InstallmentsService {
     ]);
     if (!customer) throw new AppError('Customer not found', 404);
     if (!product) throw new AppError('Product not found', 404);
-    // Quick pre-check (not race-safe, but gives fast error for obvious OOS)
-    if (product.stock < 1) throw new AppError('Product is out of stock', 400);
+    // Phones / vehicles are tracked per unit: the sale must name the exact IMEI or chassis/engine.
+    const serialized = await productHasUnits(db, body.productId, sellerId);
+    const serial = body.imeiNumber?.trim() || null;
+    if (serialized && !serial) {
+      throw new AppError('Is product ki units IMEI / chassis number se register hain — bechne ke liye unit ka number chunein', 400);
+    }
+    // Quick pre-check for loose (count-based) stock; serialized stock is checked against the unit itself
+    if (!serialized && product.stock < 1) throw new AppError('Product is out of stock', 400);
 
     // Manual "Do Not Sell" blacklist check
     if (customer.isBlacklisted) {
@@ -302,14 +308,26 @@ export class InstallmentsService {
       // Advisory lock prevents concurrent invoice number generation for same seller
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sellerId}))`);
 
-      // Atomically decrement stock only if still > 0 — prevents race condition where
-      // two concurrent requests both passed the pre-check but only one should succeed
-      const decremented = await tx
-        .update(products)
-        .set({ stock: sql`${products.stock} - 1` })
-        .where(and(eq(products.id, body.productId), sql`${products.stock} > 0`))
-        .returning({ stock: products.stock });
-      if (!decremented.length) throw new AppError('Product is out of stock', 400);
+      // Claim the physical unit first (409 if already sold, 400 if it belongs to another product).
+      if (serial) {
+        const claim = await markUnitSoldInTx(tx, serial, sellerId, 'installment', customer.name, body.productId);
+        if (serialized && !claim.claimed) {
+          throw new AppError(`"${serial}" is product ki inventory mein nahi mila — Products › Serials mein check karein`, 400);
+        }
+      }
+
+      // Stock: serialized products follow the unit (never blocked by a stale count);
+      // loose stock decrements atomically only while > 0 to survive concurrent sales.
+      if (serialized) {
+        await tx.update(products).set({ stock: sql`GREATEST(${products.stock} - 1, 0)` }).where(eq(products.id, body.productId));
+      } else {
+        const decremented = await tx
+          .update(products)
+          .set({ stock: sql`${products.stock} - 1` })
+          .where(and(eq(products.id, body.productId), sql`${products.stock} > 0`))
+          .returning({ stock: products.stock });
+        if (!decremented.length) throw new AppError('Product is out of stock', 400);
+      }
 
       // 1. Generate sequential invoice number per seller per year
       const year = new Date().getFullYear();
@@ -324,12 +342,7 @@ export class InstallmentsService {
       `);
       const invoiceNumber = `INV-${year}-${String(nextSeq).padStart(4, '0')}`;
 
-      // 2a. Validate + claim IMEI unit (throws 409 if already sold)
-      if (body.imeiNumber) {
-        await markUnitSoldInTx(tx, body.imeiNumber, sellerId, 'installment', customer.name);
-      }
-
-      // 2b. Insert installment
+      // 2. Insert installment
       const [installment] = await tx
         .insert(installments)
         .values({

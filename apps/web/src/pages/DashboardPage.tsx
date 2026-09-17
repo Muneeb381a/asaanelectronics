@@ -549,6 +549,80 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {/* Insights (owner) — collection health, cash expected, debtors, areas */}
+            {isOwner && !isLoading && (reports || dash?.advanced) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {reports && (
+                  <Card>
+                    <CardHead icon={Target} tone="emerald" title="Collection health" subtitle="Tamam plans par ab tak" action={<LinkBtn onClick={() => navigate('/reports')}>Reports</LinkBtn>} />
+                    <div className="p-5 space-y-4">
+                      <div>
+                        <div className="flex items-end justify-between mb-1.5">
+                          <p className="text-xs text-gray-500">Collection rate</p>
+                          <p className={`text-2xl font-bold tabular-nums ${reports.collectionRate.rate >= 80 ? 'text-emerald-700' : reports.collectionRate.rate >= 60 ? 'text-amber-700' : 'text-red-700'}`}>{reports.collectionRate.rate}%</p>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${reports.collectionRate.rate >= 80 ? 'bg-emerald-500' : reports.collectionRate.rate >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${Math.min(100, reports.collectionRate.rate)}%` }} />
+                        </div>
+                        <div className="flex justify-between text-[11px] text-gray-500 mt-1.5 tabular-nums">
+                          <span>Wasool <b className="text-gray-800">{pkrSh(reports.collectionRate.totalCollected)}</b></span>
+                          <span>Baaki <b className="text-gray-800">{pkrSh(reports.collectionRate.totalOutstanding)}</b></span>
+                        </div>
+                      </div>
+                      {dash?.advanced && (
+                        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                          <div>
+                            <p className="text-[11px] text-gray-500">Recovery efficiency</p>
+                            <p className="text-lg font-bold text-gray-900 tabular-nums">{Math.round(dash.advanced.recovery.efficiency)}%</p>
+                            <p className="text-[10px] text-gray-400">{dash.advanced.recovery.overdueCount} overdue / defaulted</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-gray-500">Agle 7 din expected</p>
+                            <p className="text-lg font-bold text-blue-700 tabular-nums">{pkrSh(dash.advanced.cashflowForecast.slice(0, 7).reduce((a, f) => a + f.expected, 0))}</p>
+                            <p className="text-[10px] text-gray-400">30 din: {pkrSh(dash.advanced.cashflowForecast.reduce((a, f) => a + f.expected, 0))}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                )}
+
+                {reports && reports.topDebtors.length > 0 && (
+                  <Card>
+                    <CardHead icon={AlertTriangle} tone="amber" title="Sab se zyada baaki" subtitle="Top customers by outstanding" action={<LinkBtn onClick={() => navigate('/customers')}>Customers</LinkBtn>} />
+                    <div className="divide-y divide-gray-50">
+                      {reports.topDebtors.slice(0, 5).map((t, i) => (
+                        <div key={t.phone + i} className="flex items-center gap-3 px-5 py-2.5">
+                          <span className="text-xs font-semibold text-gray-300 w-4 tabular-nums">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{t.name}</p>
+                            <p className="text-[11px] text-gray-500">{t.count} plan{t.count !== 1 ? 's' : ''} · {t.phone}</p>
+                          </div>
+                          <p className="text-sm font-bold text-gray-900 tabular-nums">{pkrSh(t.remaining)}</p>
+                          <WaButton phone={t.phone} msg={`Assalam-o-Alaikum ${t.name}! Aap ka ${pkr(t.remaining)} baaki hai. Meharbani kar ke jald jama karwa dein.`} />
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {dash?.advanced && dash.advanced.areaHeatmap.length > 0 && (
+                  <Card className="md:col-span-2">
+                    <CardHead icon={Activity} tone="red" title="Ilaqe ke hisaab se overdue" subtitle="Kis area mein recovery ki zaroorat zyada hai" action={<LinkBtn onClick={() => navigate('/collection-sheet')}>Field Sheet</LinkBtn>} />
+                    <div className="p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      {dash.advanced.areaHeatmap.slice(0, 5).map((a) => (
+                        <div key={a.city} className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                          <p className="text-xs font-semibold text-gray-700 truncate" title={a.city}>{a.city}</p>
+                          <p className="text-xl font-bold text-red-700 tabular-nums mt-1">{a.overdueCount}</p>
+                          <p className="text-[10px] text-gray-500">overdue{a.defaultedCount > 0 && <> · <span className="text-red-600">{a.defaultedCount} defaulted</span></>}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
             {/* Recent installments */}
             <Card className="overflow-hidden">
               <CardHead icon={Clock} title="Recent installments" subtitle="Aakhri banaye gaye plans" action={<LinkBtn onClick={() => navigate('/installments')}>Sab</LinkBtn>} />

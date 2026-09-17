@@ -11,6 +11,7 @@ export interface ProductUnit {
   imei:          string | null;
   imei2:         string | null;
   serialNumber:  string | null;
+  engineNumber:  string | null;
   color:         string | null;
   storageGb:     number | null;
   condition:     UnitCondition;
@@ -46,6 +47,7 @@ export interface CreateUnitBody {
   imei?:         string;
   imei2?:        string;
   serialNumber?: string;
+  engineNumber?: string;
   productId?:    string;
   color?:        string;
   storageGb?:    number;

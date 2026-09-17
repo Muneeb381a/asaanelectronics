@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { db } from '../../db/index.js';
 import { products, installments, supplierInvoices, supplierInvoiceLines } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { registerUnitsInTx } from '../productUnits/productUnits.service.js';
 import type { CreateProductInput, UpdateProductInput } from '@assaan/shared';
 
 export interface BulkReceiveUnit {
@@ -230,7 +231,7 @@ export class ProductsService {
               warrantyMonths:     u.warrantyMonths ?? null,
               attributes:         Object.keys(attrs).length ? attrs : null,
               supplierId:         input.supplierId ?? null,
-              imeiNumber:         u.imeiNumber       ?? null,
+              serial:             u.imeiNumber?.trim() || u.chassisNumber?.trim() || null,
               chassisNumber:      u.chassisNumber    ?? null,
               engineNumber:       u.engineNumber     ?? null,
               registrationNumber: u.registrationNumber ?? null,
@@ -243,6 +244,15 @@ export class ProductsService {
           }),
         )
         .returning();
+
+      // Every phone / vehicle received becomes a tracked unit so sales must name it.
+      await registerUnitsInTx(tx, sellerId, created.map((p, i) => {
+        const u = input.units[i]!;
+        return {
+          productId: p.id, imei: u.imeiNumber, imei2: u.imei2, chassisNumber: u.chassisNumber,
+          engineNumber: u.engineNumber, serial: null, color: u.color, purchasePrice: u.purchasePrice ?? null,
+        };
+      }));
 
       // Create supplier invoice if supplierId given
       if (input.supplierId && input.invoiceDate) {

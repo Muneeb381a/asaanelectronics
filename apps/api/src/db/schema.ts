@@ -651,7 +651,8 @@ export const productUnits = pgTable('product_units', {
   serialType:    text('serial_type').default('imei').notNull(),
   imei:          text('imei'),
   imei2:         text('imei2'),
-  serialNumber:  text('serial_number'),
+  serialNumber:  text('serial_number'),   // chassis number for vehicles, plain serial otherwise
+  engineNumber:  text('engine_number'),   // vehicles only; sales may quote either chassis or engine
   color:         text('color'),
   storageGb:     integer('storage_gb'),
   condition:     text('condition').default('new').notNull(),
@@ -667,6 +668,7 @@ export const productUnits = pgTable('product_units', {
 }, (t) => [
   uniqueIndex('idx_product_units_seller_imei').on(t.sellerId, t.imei),
   index('idx_product_units_seller_serial').on(t.sellerId, t.serialNumber),
+  index('idx_product_units_seller_engine').on(t.sellerId, t.engineNumber),
   index('idx_product_units_seller').on(t.sellerId),
   index('idx_product_units_status').on(t.status),
   index('idx_product_units_product').on(t.productId),

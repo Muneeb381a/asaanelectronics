@@ -65,6 +65,7 @@ function AddUnitModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
   const [imei,         setImei]         = useState('');
   const [imei2,        setImei2]        = useState('');
   const [serialNumber, setSerialNumber] = useState('');
+  const [engineNumber, setEngineNumber] = useState('');
   const [color,        setColor]        = useState('');
   const [storage,      setStorage]      = useState('');
   const [condition,    setCondition]    = useState<'new' | 'refurbished'>('new');
@@ -88,6 +89,7 @@ function AddUnitModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
       imei:         serialType === 'imei' ? imei : undefined,
       imei2:        serialType === 'imei' && imei2 ? imei2 : undefined,
       serialNumber: serialType !== 'imei' ? serialNumber : undefined,
+      engineNumber: serialType === 'chassis_engine' && engineNumber.trim() ? engineNumber.trim() : undefined,
       productId:    productId || undefined,
       color:        color || undefined,
       storageGb:    serialType === 'imei' && storage ? Number(storage) : undefined,
@@ -171,14 +173,20 @@ function AddUnitModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
           {serialType !== 'imei' && (
             <div>
               <label className="text-xs font-medium text-gray-600 block mb-1">
-                {serialType === 'chassis_engine' ? 'Chassis / Engine Number' : 'Serial Number'} <span className="text-red-500">*</span>
+                {serialType === 'chassis_engine' ? 'Chassis Number' : 'Serial Number'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)}
-                placeholder={serialType === 'chassis_engine' ? 'e.g. JS1GX71A1Y2100001 / JC85E-1234567' : 'e.g. SN-ABC-12345'}
-                className={inp}
+                value={serialNumber} onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
+                placeholder={serialType === 'chassis_engine' ? 'e.g. JS1GX71A1Y2100001' : 'e.g. SN-ABC-12345'}
+                className={`${inp} font-mono`}
               />
+            </div>
+          )}
+          {serialType === 'chassis_engine' && (
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Engine Number <span className="text-gray-400">(optional — sale mein ye bhi chal jata hai)</span></label>
+              <input type="text" value={engineNumber} onChange={(e) => setEngineNumber(e.target.value.toUpperCase())} placeholder="e.g. JC85E-1234567" className={`${inp} font-mono`} />
             </div>
           )}
 

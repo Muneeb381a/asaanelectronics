@@ -20,6 +20,7 @@ export const createProductUnitSchema = z.object({
   imei:          imeiField.optional(),
   imei2:         imeiField.optional(),
   serialNumber:  z.string().max(100).optional(),
+  engineNumber:  z.string().max(60).optional(),
   productId:     z.string().optional(),
   color:         z.string().max(50).optional(),
   storageGb:     z.number().int().positive().optional(),

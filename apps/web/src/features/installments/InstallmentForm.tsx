@@ -8,6 +8,7 @@ import { customersApi } from '../../api/customers.api.ts';
 import { guarantorsApi } from '../../api/guarantors.api.ts';
 import { productsApi } from '../../api/products.api.ts';
 import { productUnitsApi } from '../../api/productUnits.api.ts';
+import UnitPicker from '../products/UnitPicker.tsx';
 import { fmtDate } from '../../utils/dateFormat.ts';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 
@@ -37,7 +38,7 @@ const formSchema = z.object({
   downPayment:       z.number({ invalid_type_error: 'Required' }).min(0),
   months:            z.number().int().min(1).max(1095),
   startDate:         z.string().min(1, 'Required'),
-  imeiNumber:        z.string().max(20, 'Max 20 characters').optional(),
+  imeiNumber:        z.string().max(40, 'Max 40 characters').optional(),
   cashPrice:         z.number({ invalid_type_error: 'Required' }).positive().optional(),
   profitMarkup:      z.number({ invalid_type_error: 'Required' }).min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
@@ -443,6 +444,15 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
     defaultedCount: g?.defaultedCount ?? 0,
   })).filter((w) => w.activeCount >= 2 || w.defaultedCount > 0);
   const selectedProduct  = products?.data.find((p) => p.id === productId);
+  // Serialized products (phones, vehicles) must name the exact unit leaving stock.
+  const { data: availUnits } = useQuery({
+    queryKey: ['product-units-available', productId],
+    queryFn:  () => productUnitsApi.list({ productId, status: 'available', limit: 100 }),
+    enabled:  !!productId,
+    staleTime: 15_000,
+  });
+  const unitList = availUnits?.data ?? [];
+  const hasUnits = unitList.length > 0;
 
   const cashPriceDisplay = selectedProduct ? Number(selectedProduct.price) : null;
   const instPrice = selectedProduct?.installmentPrice ? Number(selectedProduct.installmentPrice) : null;
@@ -1117,8 +1127,13 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
         </div>
       )}
 
-      {/* IMEI / Vehicle Identifiers */}
-      {isVehicleProduct ? (
+      {/* Unit / IMEI / Vehicle identifiers */}
+      {hasUnits ? (
+        <div>
+          <UnitPicker units={unitList} value={imeiValue ?? ''} onChange={(s) => setValue('imeiNumber', s, { shouldValidate: true })} />
+          {!imeiValue && <p className="text-[11px] text-amber-700 mt-1.5">Is product ki units register hain — bechne ke liye unit chunna zaroori hai.</p>}
+        </div>
+      ) : isVehicleProduct ? (
         <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
           <p className="text-[10px] font-semibold text-indigo-700 uppercase tracking-wide mb-2">Vehicle Identifiers · گاڑی کے نمبر</p>
           <div className="grid grid-cols-2 gap-2">
