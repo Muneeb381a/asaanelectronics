@@ -578,7 +578,7 @@ export default function ExpensesPage() {
       )}
 
       {/* Page body */}
-      <div className="flex-1 bg-[#F0F2F8]">
+      <div className="flex-1 bg-canvas">
 
         {/* Lock banner */}
         {isViewedMonthLocked && (

@@ -43,8 +43,8 @@ createRoot(document.getElementById('root')!).render(
         toastOptions={{
           duration: 3000,
           style: { fontSize: '13px', borderRadius: '12px', padding: '10px 14px', maxWidth: '420px' },
-          success: { duration: 2500, iconTheme: { primary: '#059669', secondary: '#fff' } },
-          error:   { duration: 5500, iconTheme: { primary: '#dc2626', secondary: '#fff' } },
+          success: { duration: 2500, iconTheme: { primary: '#0E8A4C', secondary: '#fff' } },
+          error:   { duration: 5500, iconTheme: { primary: '#D42828', secondary: '#fff' } },
         }}
       />
     </QueryClientProvider>

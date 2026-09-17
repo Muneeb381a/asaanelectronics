@@ -855,7 +855,7 @@ export default function LedgerPage() {
   const balance = balanceData?.balance ?? 0;
 
   return (
-    <div className="bg-[#F0F2F8]">
+    <div className="bg-canvas">
 
       {/* Dark header */}
       <div className="bg-slate-950 shadow-lg shadow-slate-950/20">

@@ -590,7 +590,7 @@ function ScheduleModal({ inst, shopName, onClose }: { inst: Installment; shopNam
     const fmt = (d: Date) => d.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
     const rowsHtml = rows.map(r => {
       const status = r.isPaid ? '✓ Paid' : r.isOverdue ? '⚠ Overdue' : r.isCurrent ? '→ Due Now' : 'Pending';
-      const color  = r.isPaid ? '#15803d' : r.isOverdue ? '#dc2626' : r.isCurrent ? '#1d4ed8' : '#374151';
+      const color  = r.isPaid ? '#15803d' : r.isOverdue ? '#D42828' : r.isCurrent ? '#1d4ed8' : '#374151';
       const bg     = r.isPaid ? '#f0fdf4' : r.isOverdue ? '#fef2f2' : r.isCurrent ? '#eff6ff' : '#fff';
       return `<tr style="background:${bg}">
         <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0;color:${color};font-weight:600">${r.period}</td>

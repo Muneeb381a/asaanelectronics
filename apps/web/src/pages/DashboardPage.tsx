@@ -53,7 +53,7 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-        <div className="bg-[#0F1629] px-5 py-4 flex items-center justify-between">
+        <div className="bg-gray-950 px-5 py-4 flex items-center justify-between">
           <div>
             <p className="text-white font-black text-sm">Cash Receive</p>
             <p className="text-slate-400 text-xs mt-0.5">{target.staffName}</p>
@@ -210,10 +210,10 @@ export default function DashboardPage() {
       {/* ══ PAGE HEADER ═════════════════════════════════════════════════════ */}
       <div className="px-5 sm:px-8 pt-6 pb-4 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-[1.75rem] font-black leading-tight" style={{ color: '#1A1A2E', fontFamily: "'Syne', sans-serif" }}>
+          <h1 className="text-[1.75rem] font-black leading-tight" style={{ color: '#171C28', fontFamily: "'Syne', sans-serif" }}>
             Dashboard
           </h1>
-          <p className="text-[13px] font-medium mt-0.5" style={{ color: '#94A3B8' }}>
+          <p className="text-[13px] font-medium mt-0.5" style={{ color: '#98A2B6' }}>
             {greet()}, {firstName} · {today}
           </p>
         </div>
@@ -221,8 +221,8 @@ export default function DashboardPage() {
           {!isOwner && myBal && Number(myBal.pendingBalance) > 0 && (
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
               style={{ background: myBal.pendingHandover ? '#FFFBEB' : '#ECFDF5', border: `1px solid ${myBal.pendingHandover ? '#FDE68A' : '#A7F3D0'}` }}>
-              <Wallet size={12} style={{ color: myBal.pendingHandover ? '#D97706' : '#059669' }}/>
-              <span className="text-xs font-black" style={{ color: myBal.pendingHandover ? '#D97706' : '#059669' }}>
+              <Wallet size={12} style={{ color: myBal.pendingHandover ? '#C47008' : '#0E8A4C' }}/>
+              <span className="text-xs font-black" style={{ color: myBal.pendingHandover ? '#C47008' : '#0E8A4C' }}>
                 {pkrSh(Number(myBal.pendingBalance))} haath mein
               </span>
             </div>
@@ -230,20 +230,20 @@ export default function DashboardPage() {
           {!isOwner && myBal && Number(myBal.pendingBalance) > 0 && !myBal.pendingHandover && (
             <button onClick={() => { setHandoverAmt(String(Number(myBal.pendingBalance))); setShowHandover(true); }}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-white"
-              style={{ background: '#10B981' }}>
+              style={{ background: '#16A85F' }}>
               <Send size={11}/> Jama Karo
             </button>
           )}
           {!isOwner && myBal?.pendingHandover && (
             <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black"
-              style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#D97706' }}>
+              style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#C47008' }}>
               <Clock size={10}/> Pending
             </span>
           )}
           {(isOwner || perms?.canAddInstallment) && (
             <button onClick={() => navigate('/installments')}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
-              style={{ background: '#6366F1', boxShadow: '0 4px 14px rgba(99,102,241,0.35)' }}>
+              style={{ background: '#5D63EA', boxShadow: '0 4px 14px rgba(99,102,241,0.35)' }}>
               <Plus size={14}/> Naya Plan
             </button>
           )}
@@ -263,12 +263,12 @@ export default function DashboardPage() {
                 {/* Card header */}
                 <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F5F5FA' }}>
                   <div>
-                    <h2 className="text-[17px] font-black" style={{ color: '#1A1A2E' }}>Aaj Ki Sales</h2>
-                    <p className="text-[12px] font-medium mt-0.5" style={{ color: '#94A3B8' }}>Sales Summary</p>
+                    <h2 className="text-[17px] font-black" style={{ color: '#171C28' }}>Aaj Ki Sales</h2>
+                    <p className="text-[12px] font-medium mt-0.5" style={{ color: '#98A2B6' }}>Sales Summary</p>
                   </div>
                   <button onClick={() => navigate('/installments')}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition hover:bg-slate-50"
-                    style={{ color: '#64748B', borderColor: '#E2E8F0' }}>
+                    style={{ color: '#6B7689', borderColor: '#E2E8F0' }}>
                     <ArrowUpRight size={14}/> Detail
                   </button>
                 </div>
@@ -286,15 +286,15 @@ export default function DashboardPage() {
                       className="relative rounded-2xl p-4 text-left overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-lg"
                       style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)', border: '1px solid #C7D2FE' }}>
                       <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full opacity-20"
-                        style={{ background: '#6366F1' }}/>
+                        style={{ background: '#5D63EA' }}/>
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-                        style={{ background: '#6366F1', boxShadow: '0 4px 12px rgba(99,102,241,0.35)' }}>
+                        style={{ background: '#5D63EA', boxShadow: '0 4px 12px rgba(99,102,241,0.35)' }}>
                         <Users size={16} color="#fff"/>
                       </div>
                       <p className="text-[1.6rem] font-black tabular-nums leading-none" style={{ color: '#3730A3' }}>
                         {(d?.totalCustomers ?? 0).toLocaleString()}
                       </p>
-                      <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide" style={{ color: '#6366F1' }}>Total Customers</p>
+                      <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide" style={{ color: '#5D63EA' }}>Total Customers</p>
                       <p className="text-[10px] mt-0.5" style={{ color: '#818CF8' }}>
                         {d?.newThisMonthCount ?? 0} naye is mahine
                       </p>
@@ -305,15 +305,15 @@ export default function DashboardPage() {
                       className="relative rounded-2xl p-4 text-left overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-lg"
                       style={{ background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)', border: '1px solid #A7F3D0' }}>
                       <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full opacity-20"
-                        style={{ background: '#10B981' }}/>
+                        style={{ background: '#16A85F' }}/>
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-                        style={{ background: '#10B981', boxShadow: '0 4px 12px rgba(16,185,129,0.35)' }}>
+                        style={{ background: '#16A85F', boxShadow: '0 4px 12px rgba(16,185,129,0.35)' }}>
                         <BadgeCheck size={16} color="#fff"/>
                       </div>
                       <p className="text-[1.6rem] font-black tabular-nums leading-none" style={{ color: '#065F46' }}>
                         {(d?.activeCount ?? 0).toLocaleString()}
                       </p>
-                      <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide" style={{ color: '#10B981' }}>Active Plans</p>
+                      <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide" style={{ color: '#16A85F' }}>Active Plans</p>
                       <p className="text-[10px] mt-0.5" style={{ color: '#34D399' }}>
                         {d?.monthlyActiveCount ?? 0} mahana · {d?.dailyActiveCount ?? 0} roz
                       </p>
@@ -335,7 +335,7 @@ export default function DashboardPage() {
                       <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide" style={{ color: '#0D9488' }}>Is Mahine Aya</p>
                       <p className="text-[10px] mt-0.5" style={{ color: '#2DD4BF' }}>
                         Aaj: {pkrSh(todayTotal)}
-                        {netFaida >= 0 && <span style={{ color: '#10B981' }}> · +{pkrSh(netFaida)} net</span>}
+                        {netFaida >= 0 && <span style={{ color: '#16A85F' }}> · +{pkrSh(netFaida)} net</span>}
                       </p>
                     </button>
 
@@ -349,10 +349,10 @@ export default function DashboardPage() {
                         border: `1px solid ${kpiOverdue > 0 ? '#FECACA' : '#FDE68A'}`,
                       }}>
                       <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full opacity-20"
-                        style={{ background: kpiOverdue > 0 ? '#EF4444' : '#F59E0B' }}/>
+                        style={{ background: kpiOverdue > 0 ? '#EF4444' : '#E4920C' }}/>
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
                         style={{
-                          background: kpiOverdue > 0 ? '#EF4444' : '#F59E0B',
+                          background: kpiOverdue > 0 ? '#EF4444' : '#E4920C',
                           boxShadow: `0 4px 12px ${kpiOverdue > 0 ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}`,
                         }}>
                         {kpiOverdue > 0 ? <AlertTriangle size={16} color="#fff"/> : <Clock size={16} color="#fff"/>}
@@ -362,7 +362,7 @@ export default function DashboardPage() {
                         {pkrSh((d?.monthlyActiveRemaining ?? 0) + (d?.dailyActiveRemaining ?? 0))}
                       </p>
                       <p className="text-[11px] font-bold mt-1.5 uppercase tracking-wide"
-                        style={{ color: kpiOverdue > 0 ? '#EF4444' : '#F59E0B' }}>Total Pending</p>
+                        style={{ color: kpiOverdue > 0 ? '#EF4444' : '#E4920C' }}>Total Pending</p>
                       <p className="text-[10px] mt-0.5"
                         style={{ color: kpiOverdue > 0 ? '#F87171' : '#FCD34D' }}>
                         {kpiOverdue > 0
@@ -378,8 +378,8 @@ export default function DashboardPage() {
                 {isOwner && dailyTarget && !isLoading && (
                   <div className="px-6 pb-5">
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-[11px] font-semibold" style={{ color: '#94A3B8' }}>Daily Target Progress</p>
-                      <p className="text-[11px] font-black" style={{ color: '#6366F1' }}>{dailyPct}%</p>
+                      <p className="text-[11px] font-semibold" style={{ color: '#98A2B6' }}>Daily Target Progress</p>
+                      <p className="text-[11px] font-black" style={{ color: '#5D63EA' }}>{dailyPct}%</p>
                     </div>
                     <div className="h-2 rounded-full overflow-hidden" style={{ background: '#E0E7FF' }}>
                       <div className="h-full rounded-full" style={{ width: `${Math.min(100, dailyPct)}%`, background: 'linear-gradient(90deg, #6366F1, #818CF8)', transition: 'width 0.8s ease' }}/>
@@ -395,16 +395,16 @@ export default function DashboardPage() {
                 style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: `1px solid ${myBal.pendingHandover ? '#FDE68A' : '#A7F3D0'}` }}>
                 <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
                   style={{ background: myBal.pendingHandover ? '#FEF3C7' : '#D1FAE5' }}>
-                  <Wallet size={22} style={{ color: myBal.pendingHandover ? '#D97706' : '#059669' }}/>
+                  <Wallet size={22} style={{ color: myBal.pendingHandover ? '#C47008' : '#0E8A4C' }}/>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>{myBal.pendingHandover ? 'Handover Pending' : 'Cash Haath Mein'}</p>
-                  <p className="text-2xl font-black tabular-nums" style={{ color: '#1A1A2E' }}>{pkr(Number(myBal.pendingBalance))}</p>
+                  <p className="text-xs font-semibold" style={{ color: '#98A2B6' }}>{myBal.pendingHandover ? 'Handover Pending' : 'Cash Haath Mein'}</p>
+                  <p className="text-2xl font-black tabular-nums" style={{ color: '#171C28' }}>{pkr(Number(myBal.pendingBalance))}</p>
                 </div>
                 {!myBal.pendingHandover && (
                   <button onClick={() => { setHandoverAmt(String(Number(myBal.pendingBalance))); setShowHandover(true); }}
                     className="px-4 py-2.5 rounded-xl text-sm font-black text-white shrink-0"
-                    style={{ background: '#10B981' }}>
+                    style={{ background: '#16A85F' }}>
                     <Send size={13} className="inline mr-1.5"/> Jama
                   </button>
                 )}
@@ -415,17 +415,17 @@ export default function DashboardPage() {
             <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #F0F0F5' }}>
               <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid #F5F5FA' }}>
                 <div>
-                  <h2 className="text-[17px] font-black" style={{ color: '#1A1A2E' }}>Aaj Ka Kaam</h2>
-                  <p className="text-[12px] font-medium mt-0.5" style={{ color: '#94A3B8' }}>
+                  <h2 className="text-[17px] font-black" style={{ color: '#171C28' }}>Aaj Ka Kaam</h2>
+                  <p className="text-[12px] font-medium mt-0.5" style={{ color: '#98A2B6' }}>
                     {!briefing ? 'Load ho raha…' : allClear ? 'Sab clear — Mashaallah!' : `${totalWork} cheez pending`}
                   </p>
                 </div>
                 {briefing && totalWork > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {bPending  > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE' }}>{bPending} approve</span>}
-                    {bOverdue  > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{bOverdue} late</span>}
-                    {bDueToday > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>{bDueToday} aaj</span>}
-                    {pDueCount > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>{pDueCount} wada</span>}
+                    {bOverdue  > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#FEF2F2', color: '#D42828', border: '1px solid #FECACA' }}>{bOverdue} late</span>}
+                    {bDueToday > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#EFF6FF', color: '#2B4ED1', border: '1px solid #BFDBFE' }}>{bDueToday} aaj</span>}
+                    {pDueCount > 0 && <span className="text-[10px] font-black px-2 py-1 rounded-lg" style={{ background: '#FFFBEB', color: '#C47008', border: '1px solid #FDE68A' }}>{pDueCount} wada</span>}
                   </div>
                 )}
               </div>
@@ -449,8 +449,8 @@ export default function DashboardPage() {
                             {p.customerName[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate" style={{ color: '#0F172A' }}>{p.customerName}</p>
-                            <p className="text-[11px] truncate" style={{ color: '#64748B' }}>{p.productName} · {pkr(p.totalAmount)}</p>
+                            <p className="text-sm font-bold truncate" style={{ color: '#171C28' }}>{p.customerName}</p>
+                            <p className="text-[11px] truncate" style={{ color: '#6B7689' }}>{p.productName} · {pkr(p.totalAmount)}</p>
                           </div>
                           <button
                             disabled={approveMut.isPending && approveMut.variables === p.id}
@@ -476,15 +476,15 @@ export default function DashboardPage() {
                           className={`flex items-center gap-3 pl-5 pr-4 py-3.5 hover:bg-red-50/40 transition ${i > 0 ? 'border-t' : ''}`}
                           style={{ borderColor: '#FEF2F2', borderLeft: '3px solid #FCA5A5' }}>
                           <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0"
-                            style={{ background: '#FEE2E2', color: '#DC2626' }}>
+                            style={{ background: '#FEE2E2', color: '#D42828' }}>
                             {acct.customerName[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate" style={{ color: '#0F172A' }}>{acct.customerName}</p>
-                            <p className="text-[11px]" style={{ color: '#64748B' }}>{acct.customerPhone}</p>
+                            <p className="text-sm font-bold truncate" style={{ color: '#171C28' }}>{acct.customerName}</p>
+                            <p className="text-[11px]" style={{ color: '#6B7689' }}>{acct.customerPhone}</p>
                           </div>
                           <div className="text-right shrink-0 mr-2">
-                            <p className="text-sm font-black tabular-nums" style={{ color: '#0F172A' }}>{pkr(acct.monthly)}</p>
+                            <p className="text-sm font-black tabular-nums" style={{ color: '#171C28' }}>{pkr(acct.monthly)}</p>
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
                               style={{ background: '#FEE2E2', color: acct.daysOverdue >= 30 ? '#991B1B' : '#B45309' }}>
                               {acct.daysOverdue}d late
@@ -510,7 +510,7 @@ export default function DashboardPage() {
                           <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider">Aaj Ka Qist ({briefing.dueToday})</span>
                         </div>
                         {(briefing.dueTomorrow ?? 0) > 0 && (
-                          <span className="text-[10px] font-medium" style={{ color: '#64748B' }}>+{briefing.dueTomorrow} kal</span>
+                          <span className="text-[10px] font-medium" style={{ color: '#6B7689' }}>+{briefing.dueTomorrow} kal</span>
                         )}
                       </div>
                       {briefing.dueTodayAccounts.slice(0, 20).map((acct, i) => (
@@ -518,14 +518,14 @@ export default function DashboardPage() {
                           className={`flex items-center gap-3 pl-5 pr-4 py-3.5 hover:bg-blue-50/40 transition ${i > 0 ? 'border-t' : ''}`}
                           style={{ borderColor: '#EFF6FF', borderLeft: '3px solid #93C5FD' }}>
                           <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0"
-                            style={{ background: '#DBEAFE', color: '#2563EB' }}>
+                            style={{ background: '#DBEAFE', color: '#2B4ED1' }}>
                             {acct.customerName[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate" style={{ color: '#0F172A' }}>{acct.customerName}</p>
-                            <p className="text-[11px]" style={{ color: '#64748B' }}>{acct.customerPhone}</p>
+                            <p className="text-sm font-bold truncate" style={{ color: '#171C28' }}>{acct.customerName}</p>
+                            <p className="text-[11px]" style={{ color: '#6B7689' }}>{acct.customerPhone}</p>
                           </div>
-                          <p className="text-sm font-black tabular-nums shrink-0 mr-2" style={{ color: '#2563EB' }}>{pkr(acct.monthly)}</p>
+                          <p className="text-sm font-black tabular-nums shrink-0 mr-2" style={{ color: '#2B4ED1' }}>{pkr(acct.monthly)}</p>
                           <a href={waLink(acct.customerPhone, `Assalam-o-Alaikum ${acct.customerName}! Aaj ka installment ${pkr(acct.monthly)} due hai. Jazak'Allah!`)}
                             target="_blank" rel="noopener noreferrer"
                             className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-white"
@@ -537,7 +537,7 @@ export default function DashboardPage() {
                       {briefing.dueTodayAccounts.length > 20 && (
                         <button onClick={() => navigate('/installments')}
                           className="w-full py-2.5 text-xs font-black flex items-center justify-center gap-1 hover:bg-blue-50 transition"
-                          style={{ borderTop: '1px solid #EFF6FF', color: '#2563EB' }}>
+                          style={{ borderTop: '1px solid #EFF6FF', color: '#2B4ED1' }}>
                           +{briefing.dueTodayAccounts.length - 20} aur <ChevronRight size={11}/>
                         </button>
                       )}
@@ -556,15 +556,15 @@ export default function DashboardPage() {
                           className={`flex items-center gap-3 pl-5 pr-4 py-3.5 ${i > 0 ? 'border-t' : ''}`}
                           style={{ borderColor: '#FFFBEB', borderLeft: '3px solid #FCD34D' }}>
                           <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0"
-                            style={{ background: '#FEF3C7', color: '#D97706' }}>
+                            style={{ background: '#FEF3C7', color: '#C47008' }}>
                             {p.customerName[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate" style={{ color: '#0F172A' }}>{p.customerName}</p>
-                            <p className="text-[11px] truncate" style={{ color: '#64748B' }}>{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
+                            <p className="text-sm font-bold truncate" style={{ color: '#171C28' }}>{p.customerName}</p>
+                            <p className="text-[11px] truncate" style={{ color: '#6B7689' }}>{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
                           </div>
                           <span className="shrink-0 flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg"
-                            style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A' }}>
+                            style={{ background: '#FEF3C7', color: '#C47008', border: '1px solid #FDE68A' }}>
                             <Bell size={9}/> Wada
                           </span>
                         </div>
@@ -576,10 +576,10 @@ export default function DashboardPage() {
                     <div className="py-14 flex flex-col items-center text-center">
                       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
                         style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
-                        <CheckCircle size={30} style={{ color: '#10B981' }}/>
+                        <CheckCircle size={30} style={{ color: '#16A85F' }}/>
                       </div>
-                      <p className="text-base font-black" style={{ color: '#0F172A' }}>Sab Clear Hai!</p>
-                      <p className="text-xs mt-1.5 leading-relaxed" style={{ color: '#64748B', maxWidth: '200px' }}>
+                      <p className="text-base font-black" style={{ color: '#171C28' }}>Sab Clear Hai!</p>
+                      <p className="text-xs mt-1.5 leading-relaxed" style={{ color: '#6B7689', maxWidth: '200px' }}>
                         Koi due, overdue ya wada nahi. Mashaallah!
                       </p>
                     </div>
@@ -592,34 +592,34 @@ export default function DashboardPage() {
             {isOwner && agingBuckets && (agingBuckets.days0_7 > 0 || agingBuckets.days8_30 > 0 || agingBuckets.days31_90 > 0 || agingBuckets.days90plus > 0) && (
               <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #F0F0F5' }}>
                 <div className="px-6 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid #F5F5FA' }}>
-                  <Clock size={14} style={{ color: '#DC2626' }} />
-                  <h2 className="text-[15px] font-black" style={{ color: '#1A1A2E' }}>Overdue Breakdown</h2>
+                  <Clock size={14} style={{ color: '#D42828' }} />
+                  <h2 className="text-[15px] font-black" style={{ color: '#171C28' }}>Overdue Breakdown</h2>
                   <span className="ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                    style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                    style={{ background: '#FEF2F2', color: '#D42828', border: '1px solid #FECACA' }}>
                     {(agingBuckets.days0_7 + agingBuckets.days8_30 + agingBuckets.days31_90 + agingBuckets.days90plus)} total
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-gray-50">
                   {[
-                    { label: '1–7 din', value: agingBuckets.days0_7,   bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' },
+                    { label: '1–7 din', value: agingBuckets.days0_7,   bg: '#FFFBEB', color: '#C47008', border: '#FDE68A' },
                     { label: '8–30 din', value: agingBuckets.days8_30,  bg: '#FFF7ED', color: '#C2410C', border: '#FDBA74' },
-                    { label: '31–90 din', value: agingBuckets.days31_90, bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' },
+                    { label: '31–90 din', value: agingBuckets.days31_90, bg: '#FEF2F2', color: '#D42828', border: '#FECACA' },
                     { label: '90+ din', value: agingBuckets.days90plus, bg: '#FFF1F2', color: '#9F1239', border: '#FDA4AF' },
                   ].map((b) => (
                     <div key={b.label} className="flex flex-col items-center py-5 px-3"
                       style={{ background: b.value > 0 ? b.bg : '#FAFAFA' }}>
                       <p className="text-[1.5rem] font-black tabular-nums leading-none"
-                        style={{ color: b.value > 0 ? b.color : '#CBD5E1' }}>
+                        style={{ color: b.value > 0 ? b.color : '#CBD2DF' }}>
                         {b.value}
                       </p>
-                      <p className="text-[11px] font-semibold mt-1.5" style={{ color: b.value > 0 ? b.color : '#94A3B8' }}>{b.label}</p>
+                      <p className="text-[11px] font-semibold mt-1.5" style={{ color: b.value > 0 ? b.color : '#98A2B6' }}>{b.label}</p>
                     </div>
                   ))}
                 </div>
                 {agingBuckets.days31_90 + agingBuckets.days90plus > 0 && (
                   <div className="px-5 py-3 flex items-center gap-2 border-t border-red-50">
                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 animate-pulse"/>
-                    <p className="text-[11px] font-semibold" style={{ color: '#DC2626' }}>
+                    <p className="text-[11px] font-semibold" style={{ color: '#D42828' }}>
                       {agingBuckets.days31_90 + agingBuckets.days90plus} accounts 30+ din se overdue — fori action zaruri hai
                     </p>
                   </div>
@@ -632,15 +632,15 @@ export default function DashboardPage() {
               <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #F0F0F5' }}>
                 <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F5F5FA' }}>
                   <div>
-                    <h2 className="text-[17px] font-black" style={{ color: '#1A1A2E' }}>Staff Collections</h2>
-                    <p className="text-[12px] font-medium mt-0.5" style={{ color: '#94A3B8' }}>
+                    <h2 className="text-[17px] font-black" style={{ color: '#171C28' }}>Staff Collections</h2>
+                    <p className="text-[12px] font-medium mt-0.5" style={{ color: '#98A2B6' }}>
                       {staffToday.some(s => s.total > 0)
                         ? `${staffToday.reduce((a, s) => a + s.count, 0)} payments aaj`
                         : 'Employee-wise aaj ki breakdown'}
                     </p>
                   </div>
                   <button onClick={() => navigate('/installments')}
-                    className="text-[12px] font-black flex items-center gap-0.5 hover:underline" style={{ color: '#6366F1' }}>
+                    className="text-[12px] font-black flex items-center gap-0.5 hover:underline" style={{ color: '#5D63EA' }}>
                     Sab <ChevronRight size={12}/>
                   </button>
                 </div>
@@ -648,37 +648,37 @@ export default function DashboardPage() {
 
                 {isLoading ? <RowSkeleton rows={3}/> : staffToday.length === 0 ? (
                   <div className="py-10 text-center">
-                    <p className="text-sm" style={{ color: '#94A3B8' }}>Aaj abhi koi collection nahi hui</p>
+                    <p className="text-sm" style={{ color: '#98A2B6' }}>Aaj abhi koi collection nahi hui</p>
                   </div>
                 ) : (
                   <>
                     {staffToday.map((staff, i) => {
                       const pct = staffTodayMax > 0 ? Math.round((staff.total / staffTodayMax) * 100) : 0;
-                      const pal = ['#6366F1', '#10B981', '#F59E0B', '#3B82F6', '#EC4899', '#0891B2'];
+                      const pal = ['#5D63EA', '#16A85F', '#E4920C', '#3B82F6', '#EC4899', '#0891B2'];
                       const col = pal[i % pal.length];
                       const has = staff.total > 0;
                       return (
                         <div key={staff.staffId}
                           className={`flex items-center gap-3 px-6 py-3.5 ${i > 0 ? 'border-t' : ''}`}
                           style={{ borderColor: '#F5F5FA' }}>
-                          <span className="text-sm font-black w-7 shrink-0" style={{ color: '#CBD5E1' }}>
+                          <span className="text-sm font-black w-7 shrink-0" style={{ color: '#CBD2DF' }}>
                             {String(i + 1).padStart(2, '0')}
                           </span>
                           <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
-                            style={{ background: has ? col : '#F1F5F9', color: has ? '#fff' : '#94A3B8' }}>
+                            style={{ background: has ? col : '#F1F5F9', color: has ? '#fff' : '#98A2B6' }}>
                             {staff.staffName[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate" style={{ color: '#1A1A2E' }}>{staff.staffName}</p>
+                            <p className="text-sm font-bold truncate" style={{ color: '#171C28' }}>{staff.staffName}</p>
                             <div className="h-1.5 rounded-full overflow-hidden mt-1.5" style={{ background: '#F1F5F9' }}>
                               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: col, transition: 'width 0.7s' }}/>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-black tabular-nums" style={{ color: has ? '#1A1A2E' : '#CBD5E1' }}>
+                            <p className="text-sm font-black tabular-nums" style={{ color: has ? '#171C28' : '#CBD2DF' }}>
                               {has ? pkrSh(staff.total) : '—'}
                             </p>
-                            <p className="text-[10px] font-bold mt-0.5" style={{ color: has ? col : '#CBD5E1' }}>
+                            <p className="text-[10px] font-bold mt-0.5" style={{ color: has ? col : '#CBD2DF' }}>
                               {has ? `${staff.count} collection${staff.count !== 1 ? 's' : ''}` : 'koi nahi'}
                             </p>
                           </div>
@@ -687,8 +687,8 @@ export default function DashboardPage() {
                     })}
                     {staffToday.some(s => s.total > 0) && (
                       <div className="flex items-center justify-between px-6 py-3.5" style={{ background: '#FAFBFF', borderTop: '1px solid #F5F5FA' }}>
-                        <p className="text-xs font-bold" style={{ color: '#64748B' }}>Kul Aaj Ki Collection</p>
-                        <p className="font-black tabular-nums" style={{ color: '#1A1A2E', fontSize: '1rem' }}>
+                        <p className="text-xs font-bold" style={{ color: '#6B7689' }}>Kul Aaj Ki Collection</p>
+                        <p className="font-black tabular-nums" style={{ color: '#171C28', fontSize: '1rem' }}>
                           {pkr(staffToday.reduce((a, s) => a + s.total, 0))}
                         </p>
                       </div>
@@ -702,45 +702,45 @@ export default function DashboardPage() {
             <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #F0F0F5' }}>
               <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F5F5FA' }}>
                 <div>
-                  <h2 className="text-[17px] font-black" style={{ color: '#1A1A2E' }}>Recent Installments</h2>
-                  <p className="text-[12px] font-medium mt-0.5" style={{ color: '#94A3B8' }}>Latest added accounts</p>
+                  <h2 className="text-[17px] font-black" style={{ color: '#171C28' }}>Recent Installments</h2>
+                  <p className="text-[12px] font-medium mt-0.5" style={{ color: '#98A2B6' }}>Latest added accounts</p>
                 </div>
                 <button onClick={() => navigate('/installments')}
-                  className="text-[12px] font-black flex items-center gap-0.5 hover:underline" style={{ color: '#6366F1' }}>
+                  className="text-[12px] font-black flex items-center gap-0.5 hover:underline" style={{ color: '#5D63EA' }}>
                   Sab <ChevronRight size={12}/>
                 </button>
               </div>
               {isLoading ? <RowSkeleton rows={5}/> : !d?.recentInstallments.length ? (
                 <div className="py-10 text-center">
-                  <p className="text-xs" style={{ color: '#64748B' }}>
+                  <p className="text-xs" style={{ color: '#6B7689' }}>
                     Koi installment nahi.{' '}
-                    <button onClick={() => navigate('/installments')} className="font-black" style={{ color: '#6366F1' }}>Banao</button>
+                    <button onClick={() => navigate('/installments')} className="font-black" style={{ color: '#5D63EA' }}>Banao</button>
                   </p>
                 </div>
               ) : (
                 d.recentInstallments.map((inst, i) => {
                   const sc: Record<string, { bg: string; color: string; label: string }> = {
-                    ACTIVE:    { bg: '#EFF6FF', color: '#2563EB', label: 'Active' },
-                    COMPLETED: { bg: '#ECFDF5', color: '#059669', label: 'Khatam' },
-                    DEFAULTED: { bg: '#FEF2F2', color: '#DC2626', label: 'Overdue' },
-                    CANCELLED: { bg: '#F8FAFC', color: '#94A3B8', label: 'Cancel' },
+                    ACTIVE:    { bg: '#EFF6FF', color: '#2B4ED1', label: 'Active' },
+                    COMPLETED: { bg: '#ECFDF5', color: '#0E8A4C', label: 'Khatam' },
+                    DEFAULTED: { bg: '#FEF2F2', color: '#D42828', label: 'Overdue' },
+                    CANCELLED: { bg: '#F8FAFC', color: '#98A2B6', label: 'Cancel' },
                   };
-                  const s = sc[inst.status] ?? { bg: '#F8FAFC', color: '#94A3B8', label: inst.status };
+                  const s = sc[inst.status] ?? { bg: '#F8FAFC', color: '#98A2B6', label: inst.status };
                   return (
                     <div key={inst.id} onClick={() => navigate('/installments')}
                       className={`flex items-center gap-3 px-5 py-3.5 cursor-pointer hover:bg-slate-50/70 transition ${i > 0 ? 'border-t' : ''}`}
                       style={{ borderColor: '#F8FAFC' }}>
                       <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0"
-                        style={{ background: '#EEF2FF', color: '#6366F1' }}>
+                        style={{ background: '#EEF2FF', color: '#5D63EA' }}>
                         {inst.customerName[0]?.toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate" style={{ color: '#0F172A' }}>{inst.customerName}</p>
-                        <p className="text-[11px] truncate" style={{ color: '#64748B' }}>{inst.productName}</p>
+                        <p className="text-sm font-bold truncate" style={{ color: '#171C28' }}>{inst.customerName}</p>
+                        <p className="text-[11px] truncate" style={{ color: '#6B7689' }}>{inst.productName}</p>
                       </div>
                       <div className="text-right shrink-0 mr-3">
-                        <p className="text-sm font-black tabular-nums" style={{ color: '#0F172A' }}>{pkr(Number(inst.remaining))}</p>
-                        <p className="text-[10px]" style={{ color: '#64748B' }}>baaki</p>
+                        <p className="text-sm font-black tabular-nums" style={{ color: '#171C28' }}>{pkr(Number(inst.remaining))}</p>
+                        <p className="text-[10px]" style={{ color: '#6B7689' }}>baaki</p>
                       </div>
                       <span className="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0"
                         style={{ background: s.bg, color: s.color }}>{s.label}</span>
@@ -761,29 +761,29 @@ export default function DashboardPage() {
                 <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #F0F0F5' }}>
                   <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #F5F5FA' }}>
                     <div>
-                      <h3 className="text-[15px] font-black" style={{ color: '#1A1A2E' }}>Portfolio</h3>
-                      <p className="text-[11px] font-medium mt-0.5" style={{ color: '#94A3B8' }}>Overall summary</p>
+                      <h3 className="text-[15px] font-black" style={{ color: '#171C28' }}>Portfolio</h3>
+                      <p className="text-[11px] font-medium mt-0.5" style={{ color: '#98A2B6' }}>Overall summary</p>
                     </div>
                     <button onClick={() => navigate('/installments')}
-                      className="text-[11px] font-black flex items-center gap-0.5 hover:underline" style={{ color: '#6366F1' }}>
+                      className="text-[11px] font-black flex items-center gap-0.5 hover:underline" style={{ color: '#5D63EA' }}>
                       Sab <ArrowUpRight size={10}/>
                     </button>
                   </div>
                   {isLoading ? <RowSkeleton rows={5}/> : (
                     ([
-                      { label: 'Active Plans',      value: d?.activeCount ?? 0,            sub: `${d?.monthlyActiveCount ?? 0} mahana · ${d?.dailyActiveCount ?? 0} roz`, color: '#2563EB' },
-                      { label: 'Overdue',           value: d?.overdueCount ?? 0,            sub: (d?.overdueAmount ?? 0) > 0 ? pkrSh(d!.overdueAmount) + ' baaki' : 'sab clear', color: (d?.overdueCount ?? 0) > 0 ? '#DC2626' : '#10B981', click: () => navigate('/installments') },
-                      { label: 'Khatam Hone Wale', value: completingSoon.length,           sub: '1–3 qist baaki', color: completingSoon.length > 0 ? '#D97706' : '#CBD5E1' },
-                      { label: 'Naye Is Mahine',   value: d?.newThisMonthCount ?? 0,       sub: pkrSh(d?.newThisMonthValue ?? 0), color: '#6366F1' },
-                      { label: 'Khatam Is Mahine', value: d?.completedThisMonthCount ?? 0, sub: pkrSh(d?.completedThisMonthValue ?? 0), color: (d?.completedThisMonthCount ?? 0) > 0 ? '#059669' : '#CBD5E1' },
+                      { label: 'Active Plans',      value: d?.activeCount ?? 0,            sub: `${d?.monthlyActiveCount ?? 0} mahana · ${d?.dailyActiveCount ?? 0} roz`, color: '#2B4ED1' },
+                      { label: 'Overdue',           value: d?.overdueCount ?? 0,            sub: (d?.overdueAmount ?? 0) > 0 ? pkrSh(d!.overdueAmount) + ' baaki' : 'sab clear', color: (d?.overdueCount ?? 0) > 0 ? '#D42828' : '#16A85F', click: () => navigate('/installments') },
+                      { label: 'Khatam Hone Wale', value: completingSoon.length,           sub: '1–3 qist baaki', color: completingSoon.length > 0 ? '#C47008' : '#CBD2DF' },
+                      { label: 'Naye Is Mahine',   value: d?.newThisMonthCount ?? 0,       sub: pkrSh(d?.newThisMonthValue ?? 0), color: '#5D63EA' },
+                      { label: 'Khatam Is Mahine', value: d?.completedThisMonthCount ?? 0, sub: pkrSh(d?.completedThisMonthValue ?? 0), color: (d?.completedThisMonthCount ?? 0) > 0 ? '#0E8A4C' : '#CBD2DF' },
                     ] as Array<{ label: string; value: number; sub: string; color: string; click?: () => void }>).map((row, i) => (
                       <div key={row.label} onClick={row.click}
-                        className={`flex items-center justify-between px-5 py-3.5 ${row.click ? 'cursor-pointer hover:bg-[#FAFBFF] transition' : ''} ${i > 0 ? 'border-t' : ''}`}
+                        className={`flex items-center justify-between px-5 py-3.5 ${row.click ? 'cursor-pointer hover:bg-gray-50 transition' : ''} ${i > 0 ? 'border-t' : ''}`}
                         style={{ borderColor: '#F5F5FA' }}>
-                        <p className="text-xs font-semibold" style={{ color: '#64748B' }}>{row.label}</p>
+                        <p className="text-xs font-semibold" style={{ color: '#6B7689' }}>{row.label}</p>
                         <div className="text-right">
                           <p className="text-base font-black tabular-nums" style={{ color: row.color }}>{row.value}</p>
-                          <p className="text-[10px]" style={{ color: '#94A3B8' }}>{row.sub}</p>
+                          <p className="text-[10px]" style={{ color: '#98A2B6' }}>{row.sub}</p>
                         </div>
                       </div>
                     ))
@@ -797,26 +797,26 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #F5F5FA' }}>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#FEF3C7' }}>
-                        <Wallet size={14} style={{ color: '#D97706' }}/>
+                        <Wallet size={14} style={{ color: '#C47008' }}/>
                       </div>
                       <div>
-                        <h3 className="text-[15px] font-black" style={{ color: '#1A1A2E' }}>Cash in Field</h3>
-                        <p className="text-[11px] font-medium" style={{ color: '#94A3B8' }}>Staff ke paas</p>
+                        <h3 className="text-[15px] font-black" style={{ color: '#171C28' }}>Cash in Field</h3>
+                        <p className="text-[11px] font-medium" style={{ color: '#98A2B6' }}>Staff ke paas</p>
                       </div>
                     </div>
-                    <span className="font-black tabular-nums text-sm" style={{ color: '#D97706' }}>{pkrSh(fieldTotal)}</span>
+                    <span className="font-black tabular-nums text-sm" style={{ color: '#C47008' }}>{pkrSh(fieldTotal)}</span>
                   </div>
                   {staffCash.map((s, i) => (
                     <div key={s.staffId} className={`flex items-center gap-2.5 px-5 py-3 ${i > 0 ? 'border-t' : ''}`} style={{ borderColor: '#F5F5FA' }}>
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0"
-                        style={{ background: '#FEF3C7', color: '#D97706' }}>
+                        style={{ background: '#FEF3C7', color: '#C47008' }}>
                         {s.staffName[0]?.toUpperCase()}
                       </div>
-                      <p className="text-xs font-bold flex-1 truncate" style={{ color: '#1A1A2E' }}>{s.staffName}</p>
-                      <p className="text-xs font-black tabular-nums mr-1.5" style={{ color: '#1A1A2E' }}>{pkrSh(Number(s.pendingBalance))}</p>
+                      <p className="text-xs font-bold flex-1 truncate" style={{ color: '#171C28' }}>{s.staffName}</p>
+                      <p className="text-xs font-black tabular-nums mr-1.5" style={{ color: '#171C28' }}>{pkrSh(Number(s.pendingBalance))}</p>
                       <button onClick={() => setReceiveTarget(s)}
                         className="text-[11px] font-black px-2.5 py-1.5 rounded-xl"
-                        style={{ background: s.pendingHandover ? '#FEF3C7' : '#D1FAE5', color: s.pendingHandover ? '#D97706' : '#059669', border: `1px solid ${s.pendingHandover ? '#FDE68A' : '#A7F3D0'}` }}>
+                        style={{ background: s.pendingHandover ? '#FEF3C7' : '#D1FAE5', color: s.pendingHandover ? '#C47008' : '#0E8A4C', border: `1px solid ${s.pendingHandover ? '#FDE68A' : '#A7F3D0'}` }}>
                         {s.pendingHandover ? 'Confirm' : 'Li'}
                       </button>
                     </div>
@@ -829,10 +829,10 @@ export default function DashboardPage() {
                 <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #F0F0F5' }}>
                   <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #F5F5FA' }}>
                     <div>
-                      <h3 className="text-[15px] font-black" style={{ color: '#1A1A2E' }}>Khatam Hone Wale</h3>
-                      <p className="text-[11px] font-medium mt-0.5" style={{ color: '#94A3B8' }}>1–3 qist baaki</p>
+                      <h3 className="text-[15px] font-black" style={{ color: '#171C28' }}>Khatam Hone Wale</h3>
+                      <p className="text-[11px] font-medium mt-0.5" style={{ color: '#98A2B6' }}>1–3 qist baaki</p>
                     </div>
-                    <span className="text-[10px] font-black px-2.5 py-1 rounded-xl" style={{ background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded-xl" style={{ background: '#ECFDF5', color: '#0E8A4C', border: '1px solid #A7F3D0' }}>
                       {completingSoon.length}
                     </span>
                   </div>
@@ -840,13 +840,13 @@ export default function DashboardPage() {
                     <div key={c.id} className={`flex items-center gap-2.5 px-5 py-3 ${i > 0 ? 'border-t' : ''}`} style={{ borderColor: '#F5F5FA' }}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold truncate" style={{ color: '#1A1A2E' }}>{c.customerName}</p>
+                          <p className="text-xs font-bold truncate" style={{ color: '#171C28' }}>{c.customerName}</p>
                           <span className="text-[9px] font-black px-1.5 py-0.5 rounded-lg shrink-0"
-                            style={{ background: c.paymentsLeft === 1 ? '#FEE2E2' : '#FEF3C7', color: c.paymentsLeft === 1 ? '#DC2626' : '#D97706', border: `1px solid ${c.paymentsLeft === 1 ? '#FECACA' : '#FDE68A'}` }}>
+                            style={{ background: c.paymentsLeft === 1 ? '#FEE2E2' : '#FEF3C7', color: c.paymentsLeft === 1 ? '#D42828' : '#C47008', border: `1px solid ${c.paymentsLeft === 1 ? '#FECACA' : '#FDE68A'}` }}>
                             {c.paymentsLeft}x
                           </span>
                         </div>
-                        <p className="text-[10px] truncate mt-0.5" style={{ color: '#94A3B8' }}>{c.productName}</p>
+                        <p className="text-[10px] truncate mt-0.5" style={{ color: '#98A2B6' }}>{c.productName}</p>
                       </div>
                       <a href={waLink(c.customerPhone, `Assalam-o-Alaikum ${c.customerName}! Sirf ${c.paymentsLeft} installment baaki hai. Shukriya!`)}
                         target="_blank" rel="noopener noreferrer"
@@ -865,19 +865,19 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #F5F5FA' }}>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#FEF3C7' }}>
-                        <Package size={14} style={{ color: '#D97706' }}/>
+                        <Package size={14} style={{ color: '#C47008' }}/>
                       </div>
                       <div>
-                        <h3 className="text-[15px] font-black" style={{ color: '#1A1A2E' }}>Kam Stock</h3>
-                        <p className="text-[11px] font-medium" style={{ color: '#94A3B8' }}>{lowStock.length} items</p>
+                        <h3 className="text-[15px] font-black" style={{ color: '#171C28' }}>Kam Stock</h3>
+                        <p className="text-[11px] font-medium" style={{ color: '#98A2B6' }}>{lowStock.length} items</p>
                       </div>
                     </div>
-                    <button onClick={() => navigate('/products')} className="text-[11px] font-black hover:underline" style={{ color: '#6366F1' }}>Manage →</button>
+                    <button onClick={() => navigate('/products')} className="text-[11px] font-black hover:underline" style={{ color: '#5D63EA' }}>Manage →</button>
                   </div>
                   <div className="px-5 py-3 flex flex-wrap gap-1.5">
                     {lowStock.map(p => (
                       <span key={p.id} className="text-[11px] font-black px-2.5 py-1 rounded-xl"
-                        style={{ background: p.stock === 0 ? '#FEE2E2' : '#FEF3C7', color: p.stock === 0 ? '#DC2626' : '#D97706', border: `1px solid ${p.stock === 0 ? '#FECACA' : '#FDE68A'}` }}>
+                        style={{ background: p.stock === 0 ? '#FEE2E2' : '#FEF3C7', color: p.stock === 0 ? '#D42828' : '#C47008', border: `1px solid ${p.stock === 0 ? '#FECACA' : '#FDE68A'}` }}>
                         {p.name} ({p.stock})
                       </span>
                     ))}
@@ -894,8 +894,8 @@ export default function DashboardPage() {
                         <Gift size={14} style={{ color: '#DB2777' }}/>
                       </div>
                       <div>
-                        <h3 className="text-[15px] font-black" style={{ color: '#1A1A2E' }}>Birthdays</h3>
-                        <p className="text-[11px] font-medium" style={{ color: '#94A3B8' }}>{birthdays.length} is hafte</p>
+                        <h3 className="text-[15px] font-black" style={{ color: '#171C28' }}>Birthdays</h3>
+                        <p className="text-[11px] font-medium" style={{ color: '#98A2B6' }}>{birthdays.length} is hafte</p>
                       </div>
                     </div>
                   </div>
@@ -912,10 +912,10 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-bold truncate" style={{ color: '#1A1A2E' }}>{c.name}</p>
+                            <p className="text-xs font-bold truncate" style={{ color: '#171C28' }}>{c.name}</p>
                             {isToday && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-lg" style={{ background: '#FCE7F3', color: '#DB2777', border: '1px solid #FBCFE8' }}>Aaj!</span>}
                           </div>
-                          {c.area && <p className="text-[10px] mt-0.5" style={{ color: '#94A3B8' }}>{c.area}</p>}
+                          {c.area && <p className="text-[10px] mt-0.5" style={{ color: '#98A2B6' }}>{c.area}</p>}
                         </div>
                         <a href={waLink(c.phone, `Assalamu Alaikum ${c.name}! Aaj aap ka birthday hai — bohat mubarak ho!`)}
                           target="_blank" rel="noopener noreferrer"
@@ -943,7 +943,7 @@ export default function DashboardPage() {
         return (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-              <div className="px-5 py-4 flex items-center justify-between" style={{ background: '#0F172A' }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: '#171C28' }}>
                 <div>
                   <p className="text-white font-black text-sm">Cash Jama Karein</p>
                   <p className="text-slate-400 text-xs mt-0.5">Owner ko hand over karo</p>
@@ -952,11 +952,11 @@ export default function DashboardPage() {
               </div>
               <div className="p-5 space-y-3">
                 <div className="rounded-xl px-4 py-3" style={{ background: '#EEF2FF', border: '1px solid #E0E7FF' }}>
-                  <p className="text-[10px] font-medium" style={{ color: '#64748B' }}>System ka hisaab</p>
-                  <p className="text-2xl font-black tabular-nums" style={{ color: '#0F172A' }}>{pkr(bal)}</p>
+                  <p className="text-[10px] font-medium" style={{ color: '#6B7689' }}>System ka hisaab</p>
+                  <p className="text-2xl font-black tabular-nums" style={{ color: '#171C28' }}>{pkr(bal)}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#64748B' }}>Actual Amount *</label>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#6B7689' }}>Actual Amount *</label>
                   <input type="number" value={handoverAmt} onChange={e => setHandoverAmt(e.target.value)} autoFocus
                     className="w-full border rounded-xl px-4 py-3 text-xl font-black tabular-nums focus:outline-none focus:border-indigo-400 transition"
                     style={{ borderColor: '#E2E8F0' }}/>
@@ -975,7 +975,7 @@ export default function DashboardPage() {
                   style={{ borderColor: '#E2E8F0' }}>Wapas</button>
                 <button disabled={!handoverAmt || amt <= 0 || submitHandover.isPending} onClick={() => submitHandover.mutate()}
                   className="flex-1 py-2.5 text-sm font-black text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-1.5"
-                  style={{ background: '#10B981' }}>
+                  style={{ background: '#16A85F' }}>
                   {submitHandover.isPending ? <span className="animate-pulse">Jama ho raha…</span> : <><Send size={13}/> Jama Karein</>}
                 </button>
               </div>

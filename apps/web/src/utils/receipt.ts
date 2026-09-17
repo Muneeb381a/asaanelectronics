@@ -442,7 +442,7 @@ export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
       <div style="width:${pct}%;height:100%;background:#0F1F3D;border-radius:4px"></div>
     </div>
     <div style="display:flex;justify-content:space-between">
-      <span style="font-size:8.5px;color:#6B7280">Balance: <strong style="color:${isFullyPaid ? '#16A34A' : '#D97706'}">PKR ${numFmt(d.remaining ?? 0)}</strong></span>
+      <span style="font-size:8.5px;color:#6B7280">Balance: <strong style="color:${isFullyPaid ? '#16A34A' : '#C47008'}">PKR ${numFmt(d.remaining ?? 0)}</strong></span>
       ${d.periodDueDate ? `<span style="font-size:8.5px;color:#6B7280">Due: <strong style="color:#111827">${fmtDate(d.periodDueDate)}</strong></span>` : ''}
     </div>
   </div>` : '';
@@ -656,7 +656,7 @@ export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
           <td style="color:#64748b">${fmtDate(i.startDate)}<br><span style="font-size:8px">${freq} · ${i.months} mo</span></td>
           <td class="r">${pkr(Number(i.totalAmount))}</td>
           <td class="r" style="color:#059669">${pkr(paid)}</td>
-          <td class="r" style="color:${Number(i.remaining) > 0 ? '#b45309' : '#059669'}">${pkr(Number(i.remaining))}</td>
+          <td class="r" style="color:${Number(i.remaining) > 0 ? '#b45309' : '#0E8A4C'}">${pkr(Number(i.remaining))}</td>
           <td><span class="badge st-${i.status}">${i.status}</span></td>
         </tr>`;
       }).join('');

@@ -880,7 +880,7 @@ export default function SettingsPage() {
   }, [anyDirty]);
 
   return (
-    <div className="flex flex-col min-h-full bg-[#F4F6FA]">
+    <div className="flex flex-col min-h-full bg-canvas">
       {/* Header */}
       <div className="bg-slate-950 border-b border-white/5">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">

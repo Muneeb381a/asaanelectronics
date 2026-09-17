@@ -125,7 +125,7 @@ export async function openBill(data: BillData) {
 
   const qrDataUrl = await QRCode.toDataURL(qrPayload, {
     errorCorrectionLevel: 'M', margin: 1, width: 100,
-    color: { dark: '#0f172a', light: '#ffffff' },
+    color: { dark: '#171C28', light: '#ffffff' },
   });
 
   // Schedule layout:
@@ -200,7 +200,7 @@ export async function openBill(data: BillData) {
 
   // Customer avatar: photo or initials fallback
   const initials = data.customer.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-  const avatarColors = ['#4f46e5','#0891b2','#059669','#d97706','#dc2626','#7c3aed'];
+  const avatarColors = ['#4f46e5','#0891b2','#0E8A4C','#d97706','#D42828','#7c3aed'];
   const avatarBg = avatarColors[data.customer.name.charCodeAt(0) % avatarColors.length];
   const customerAvatar = data.customer.photoUrl
     ? `<img src="${data.customer.photoUrl}" alt="${data.customer.name}"
@@ -603,7 +603,7 @@ export async function openCashSaleBill(data: CashSaleBillData) {
 
   const qrDataUrl = await QRCode.toDataURL(qrPayload, {
     errorCorrectionLevel: 'M', margin: 1, width: 100,
-    color: { dark: '#0f172a', light: '#ffffff' },
+    color: { dark: '#171C28', light: '#ffffff' },
   });
 
   const css = `

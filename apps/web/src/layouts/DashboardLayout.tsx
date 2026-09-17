@@ -301,7 +301,7 @@ export default function DashboardLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0F2F8] flex">
+    <div className="min-h-screen bg-canvas flex">
 
       {/* Mobile backdrop */}
       <div

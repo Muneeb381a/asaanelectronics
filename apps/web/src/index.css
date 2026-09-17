@@ -1,11 +1,75 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Assaan palette. Every Tailwind colour utility in the app resolves to these
+   tokens, so the whole product shares one scheme:
+   - blue    → primary cobalt (buttons, links, active nav)
+   - indigo  → violet-leaning companion for gradients / secondary emphasis
+   - gray = slate → one cool neutral with a hint of blue; slate-950 is the navy sidebar
+   - emerald = green → success; amber = yellow → warning; orange → attention
+   - red = rose → danger; violet = purple → accent
+──────────────────────────────────────────────────────────────────────── */
 @theme {
   --font-sans: 'Poppins', system-ui, sans-serif;
+
+  --color-canvas: #F3F5F9;
+
+  --color-blue-50:  #EEF3FF; --color-blue-100: #DCE6FF; --color-blue-200: #BBCDFF; --color-blue-300: #8FADFF;
+  --color-blue-400: #5F86F5; --color-blue-500: #3D64E6; --color-blue-600: #2B4ED1; --color-blue-700: #223EAD;
+  --color-blue-800: #1D338A; --color-blue-900: #1B2D6F; --color-blue-950: #111C47;
+
+  --color-indigo-50:  #F0F1FF; --color-indigo-100: #E1E4FF; --color-indigo-200: #C7CCFF; --color-indigo-300: #A3ABFF;
+  --color-indigo-400: #7E86F7; --color-indigo-500: #5D63EA; --color-indigo-600: #4A4ED4; --color-indigo-700: #3D3FB1;
+  --color-indigo-800: #33368D; --color-indigo-900: #2D3070; --color-indigo-950: #1A1B45;
+
+  --color-gray-50:  #F7F8FB; --color-gray-100: #EFF1F6; --color-gray-200: #E1E5EE; --color-gray-300: #CBD2DF;
+  --color-gray-400: #98A2B6; --color-gray-500: #6B7689; --color-gray-600: #4E5768; --color-gray-700: #3A4252;
+  --color-gray-800: #262D3B; --color-gray-900: #171C28; --color-gray-950: #0B0F1A;
+
+  --color-slate-50:  #F7F8FB; --color-slate-100: #EFF1F6; --color-slate-200: #E1E5EE; --color-slate-300: #CBD2DF;
+  --color-slate-400: #98A2B6; --color-slate-500: #6B7689; --color-slate-600: #4E5768; --color-slate-700: #3A4252;
+  --color-slate-800: #262D3B; --color-slate-900: #171C28; --color-slate-950: #0B0F1A;
+
+  --color-emerald-50:  #ECFDF3; --color-emerald-100: #D3F8E1; --color-emerald-200: #A9F0C6; --color-emerald-300: #6EE0A2;
+  --color-emerald-400: #34C97B; --color-emerald-500: #16A85F; --color-emerald-600: #0E8A4C; --color-emerald-700: #0F6E3F;
+  --color-emerald-800: #105735; --color-emerald-900: #0E482D; --color-emerald-950: #05281A;
+
+  --color-green-50:  #ECFDF3; --color-green-100: #D3F8E1; --color-green-200: #A9F0C6; --color-green-300: #6EE0A2;
+  --color-green-400: #34C97B; --color-green-500: #16A85F; --color-green-600: #0E8A4C; --color-green-700: #0F6E3F;
+  --color-green-800: #105735; --color-green-900: #0E482D; --color-green-950: #05281A;
+
+  --color-amber-50:  #FFF8EB; --color-amber-100: #FEEFC7; --color-amber-200: #FDDF8B; --color-amber-300: #FBC94F;
+  --color-amber-400: #F5AE1F; --color-amber-500: #E4920C; --color-amber-600: #C47008; --color-amber-700: #9E520C;
+  --color-amber-800: #7F4111; --color-amber-900: #693612; --color-amber-950: #3D1B06;
+
+  --color-yellow-50:  #FFF8EB; --color-yellow-100: #FEEFC7; --color-yellow-200: #FDDF8B; --color-yellow-300: #FBC94F;
+  --color-yellow-400: #F5AE1F; --color-yellow-500: #E4920C; --color-yellow-600: #C47008; --color-yellow-700: #9E520C;
+  --color-yellow-800: #7F4111; --color-yellow-900: #693612; --color-yellow-950: #3D1B06;
+
+  --color-orange-50:  #FFF4ED; --color-orange-100: #FFE6D5; --color-orange-200: #FFC9AA; --color-orange-300: #FFA274;
+  --color-orange-400: #FF6F3C; --color-orange-500: #F94F16; --color-orange-600: #E0380C; --color-orange-700: #B9290D;
+  --color-orange-800: #932312; --color-orange-900: #772012; --color-orange-950: #400D06;
+
+  --color-red-50:  #FEF2F2; --color-red-100: #FEE2E2; --color-red-200: #FEC9C9; --color-red-300: #FCA3A3;
+  --color-red-400: #F76F6F; --color-red-500: #EA4343; --color-red-600: #D42828; --color-red-700: #B11E1E;
+  --color-red-800: #931D1D; --color-red-900: #7A1F1F; --color-red-950: #420B0B;
+
+  --color-rose-50:  #FEF2F2; --color-rose-100: #FEE2E2; --color-rose-200: #FEC9C9; --color-rose-300: #FCA3A3;
+  --color-rose-400: #F76F6F; --color-rose-500: #EA4343; --color-rose-600: #D42828; --color-rose-700: #B11E1E;
+  --color-rose-800: #931D1D; --color-rose-900: #7A1F1F; --color-rose-950: #420B0B;
+
+  --color-violet-50:  #F5F3FF; --color-violet-100: #EBE7FE; --color-violet-200: #D9D2FD; --color-violet-300: #BEB0FB;
+  --color-violet-400: #9E85F6; --color-violet-500: #825EEF; --color-violet-600: #7040E1; --color-violet-700: #5F31C6;
+  --color-violet-800: #4F2AA2; --color-violet-900: #422684; --color-violet-950: #281559;
+
+  --color-purple-50:  #F5F3FF; --color-purple-100: #EBE7FE; --color-purple-200: #D9D2FD; --color-purple-300: #BEB0FB;
+  --color-purple-400: #9E85F6; --color-purple-500: #825EEF; --color-purple-600: #7040E1; --color-purple-700: #5F31C6;
+  --color-purple-800: #4F2AA2; --color-purple-900: #422684; --color-purple-950: #281559;
 }
 
 :root {
   color-scheme: light;
+  background: var(--color-canvas);
 }
 
 /* iOS safe area — bottom padding for home indicator */
@@ -23,7 +87,7 @@ body.mobile-menu-open {
 
 /* Keyboard focus is visible on every control; mouse clicks stay clean. */
 :where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--color-blue-600);
   outline-offset: 2px;
   border-radius: 6px;
 }

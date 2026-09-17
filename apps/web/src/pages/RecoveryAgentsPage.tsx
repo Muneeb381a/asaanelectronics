@@ -88,7 +88,7 @@ function AgentDrillDown({ stat, onBack }: { stat: AgentStat; onBack: () => void 
   const initials = stat.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   return (
-    <div className="bg-[#F0F2F8]">
+    <div className="bg-canvas">
       {/* Dark header */}
       <div className="bg-slate-950 shadow-lg shadow-slate-950/20">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3.5">
@@ -202,7 +202,7 @@ export default function RecoveryAgentsPage() {
   const totalCount     = stats.reduce((s, a) => s + a.collectionCount, 0);
 
   return (
-    <div className="bg-[#F0F2F8]">
+    <div className="bg-canvas">
 
       {/* Dark header */}
       <div className="bg-slate-950 shadow-lg shadow-slate-950/20">

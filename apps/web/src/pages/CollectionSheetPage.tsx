@@ -349,7 +349,7 @@ export default function CollectionSheetPage() {
                           </td>
                           <td style={{
                             fontWeight: 700,
-                            color: item.urgency === 'overdue' ? '#dc2626' : item.urgency === 'today' ? '#2563eb' : '#6b7280',
+                            color: item.urgency === 'overdue' ? '#D42828' : item.urgency === 'today' ? '#2B4ED1' : '#6b7280',
                           }}>
                             {item.urgency === 'overdue'
                               ? `OVR ${Math.abs(item.daysUntilDue)}d`
@@ -375,7 +375,7 @@ export default function CollectionSheetPage() {
                 <div style={{ fontSize: '10px' }}>
                   <p><strong>Total Customers:</strong> {totalCustomers}</p>
                   <p><strong>Total Collection:</strong> {pkr(totalAmount)}</p>
-                  {overdueCount > 0 && <p style={{ color: '#dc2626' }}><strong>Overdue:</strong> {overdueCount} accounts</p>}
+                  {overdueCount > 0 && <p style={{ color: '#D42828' }}><strong>Overdue:</strong> {overdueCount} accounts</p>}
                 </div>
                 <div className="sign-box" style={{ fontSize: '10px', minWidth: '220px' }}>
                   <p>Agent Name: ___________________________</p>

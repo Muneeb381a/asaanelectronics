@@ -547,7 +547,7 @@ function StaffCard({ member, balance }: { member: StaffMember; balance?: import(
 
       {/* Cash in Hand — owner only, shown when employee has unclaimed cash */}
       {isOwner && balance && pendingCash >= 1 && (
-        <div className="mt-3" style={{ borderLeft: `3px solid ${balance.pendingHandover ? '#F59E0B' : '#10B981'}` }}>
+        <div className="mt-3" style={{ borderLeft: `3px solid ${balance.pendingHandover ? '#E4920C' : '#16A85F'}` }}>
           <div className={`rounded-r-xl px-3 py-3 ${balance.pendingHandover ? 'bg-amber-50' : 'bg-emerald-50'}`}>
             <div className="flex items-center justify-between gap-2">
               <div>
@@ -828,7 +828,7 @@ function StaffBalanceGrid({
             <div
               key={b.staffId}
               className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow transition px-3 py-3"
-              style={{ borderLeft: `4px solid ${hasHandover ? '#F59E0B' : allClear ? '#34D399' : '#60A5FA'}` }}
+              style={{ borderLeft: `4px solid ${hasHandover ? '#E4920C' : allClear ? '#34D399' : '#60A5FA'}` }}
             >
               <button
                 onClick={() => onSelectStaff(b.staffId)}
@@ -1207,7 +1207,7 @@ function HandoversSection() {
               return (
                 <div key={h.id}
                   className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"
-                  style={{ borderLeft: `4px solid ${h.status === 'DISPUTED' ? '#EF4444' : h.status === 'PENDING' ? '#F59E0B' : '#10B981'}` }}>
+                  style={{ borderLeft: `4px solid ${h.status === 'DISPUTED' ? '#EF4444' : h.status === 'PENDING' ? '#E4920C' : '#16A85F'}` }}>
                   <div className="flex items-start gap-3 p-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
