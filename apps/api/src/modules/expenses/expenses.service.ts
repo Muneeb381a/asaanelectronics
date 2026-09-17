@@ -3,6 +3,7 @@ import { db } from '../../db/index.js';
 import { expenses, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { FinancialPeriodsService } from './financial-periods.service.js';
+import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 const periodsSvc = new FinancialPeriodsService();
 
@@ -15,7 +16,7 @@ export class ExpensesService {
   async list(sellerId: string, from?: string, to?: string) {
     const conds = [eq(expenses.sellerId, sellerId)];
     if (from) conds.push(gte(expenses.date, new Date(from)));
-    if (to)   conds.push(lte(expenses.date, new Date(to)));
+    if (to) { const end = new Date(to); end.setUTCHours(23, 59, 59, 999); conds.push(lte(expenses.date, end)); }
     return db.select().from(expenses).where(and(...conds)).orderBy(desc(expenses.date));
   }
 
@@ -81,7 +82,7 @@ export class ExpensesService {
       });
 
       return expense;
-    });
+    }).then((row) => { clearSellerStatsCache(sellerId); return row; });
   }
 
   async update(id: string, sellerId: string, body: UpdateBody) {
@@ -124,7 +125,7 @@ export class ExpensesService {
       }).where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'EXPENSE')));
 
       return updated;
-    });
+    }).then((row) => { clearSellerStatsCache(sellerId); return row; });
   }
 
   async remove(id: string, sellerId: string) {
@@ -143,6 +144,7 @@ export class ExpensesService {
         and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'EXPENSE')),
       );
     });
+    clearSellerStatsCache(sellerId);
     return existing;
   }
 }

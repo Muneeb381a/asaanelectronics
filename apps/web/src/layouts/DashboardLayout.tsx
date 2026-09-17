@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, BarChart3,
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck,
@@ -178,9 +178,11 @@ export default function DashboardLayout() {
     return () => document.body.classList.remove('mobile-menu-open');
   }, [mobileOpen]);
 
+  const qc = useQueryClient();
   const { mutate: logout } = useMutation({
     mutationFn: () => authApi.logout(localStorage.getItem('refresh_token') ?? ''),
-    onSettled:  () => { clearAuth(); void navigate('/login'); },
+    // Clear cache so the next login (possibly another shop) never sees stale tenant data.
+    onSettled:  () => { clearAuth(); qc.clear(); void navigate('/login'); },
   });
 
   const initials = user?.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() ?? '?';

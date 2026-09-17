@@ -2,7 +2,7 @@ import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { cashSales, ledgerEntries, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
-import { markUnitSoldInTx } from '../productUnits/productUnits.service.js';
+import { markUnitSoldInTx, markUnitAvailableInTx } from '../productUnits/productUnits.service.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 type CreateBody = {
@@ -155,12 +155,12 @@ export class CashSalesService {
       }
 
       return updated;
-    });
+    }).then((row) => { clearSellerStatsCache(sellerId); return row; });
   }
 
   async remove(id: string, sellerId: string) {
     const [existing] = await db
-      .select({ id: cashSales.id, productId: cashSales.productId, quantity: cashSales.quantity, amount: cashSales.amount })
+      .select({ id: cashSales.id, productId: cashSales.productId, quantity: cashSales.quantity, amount: cashSales.amount, imeiNumber: cashSales.imeiNumber })
       .from(cashSales)
       .where(and(eq(cashSales.id, id), eq(cashSales.sellerId, sellerId)));
 
@@ -168,6 +168,10 @@ export class CashSalesService {
 
     await db.transaction(async (tx) => {
       await tx.delete(cashSales).where(eq(cashSales.id, id));
+
+      if (existing.imeiNumber) {
+        await markUnitAvailableInTx(tx, existing.imeiNumber, sellerId);
+      }
 
       await tx
         .update(products)

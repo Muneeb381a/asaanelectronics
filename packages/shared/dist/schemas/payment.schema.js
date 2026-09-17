@@ -8,3 +8,10 @@ export const createPaymentSchema = z.object({
     collectedBy: z.string().optional(),
     proofImageUrl: z.string().url().optional(),
 });
+export const updatePaymentSchema = z.object({
+    amount: z.number().positive().optional(),
+    method: z.enum(paymentMethodEnum).optional(),
+    note: z.string().max(500).optional(),
+}).refine((b) => b.amount !== undefined || b.method !== undefined || b.note !== undefined, {
+    message: 'No fields to update',
+});

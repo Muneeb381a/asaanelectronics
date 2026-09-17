@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, gte, inArray, isNull, lt, sql, sum } from 'd
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments, products, recoveryActions, sellers, users } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
+import { pktDayStart, pktMonthStart } from '../../utils/pkt.js';
 
 // ── In-memory TTL cache (per-process, survives request boundaries) ─────────────
 const _statsCache = new Map<string, { at: number; data: unknown }>();
@@ -182,10 +183,9 @@ export class StatsService {
   }
 
   private async _getStats(sellerId: string, userId?: string) {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = pktDayStart();
     const todayEnd = new Date(todayStart.getTime() + 86_400_000);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthStart = pktMonthStart();
 
     // Staff: only run their own collections/sales — shop-wide metrics (active count,
     // overdue, low stock, promises) are not meaningful per-employee and are hidden.
@@ -937,8 +937,8 @@ export class StatsService {
       FROM users u
       LEFT JOIN payments p
              ON p.collected_by = u.id
-            AND DATE(p.paid_on AT TIME ZONE 'Asia/Karachi')
-                  = CURRENT_DATE AT TIME ZONE 'Asia/Karachi'
+            AND (p.paid_on AT TIME ZONE 'Asia/Karachi')::date
+                  = (NOW() AT TIME ZONE 'Asia/Karachi')::date
             AND p.deleted_at IS NULL
             AND EXISTS (
               SELECT 1 FROM installments i

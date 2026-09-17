@@ -26,7 +26,8 @@ export class ExportsService {
         startDate: installments.startDate, paymentFrequency: installments.paymentFrequency,
         createdAt: installments.createdAt,
       }).from(installments)
-        .where(isNull(installments.deletedAt)),
+        .innerJoin(customers, eq(installments.customerId, customers.id))
+        .where(and(eq(customers.sellerId, sellerId), isNull(installments.deletedAt))),
 
       db.select({
         id: products.id, name: products.name, category: products.category,

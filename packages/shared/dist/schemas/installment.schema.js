@@ -1,7 +1,16 @@
 import { z } from 'zod';
 // 1095 = 3 years in days (daily plans can run longer than 365 days)
 const MONTHS_MAX = 1095;
+const installmentGuarantorSchema = z.object({
+    name: z.string().max(100).optional(),
+    phone: z.string().max(15).optional(),
+    cnic: z.string().max(15).optional(),
+    relation: z.string().max(50).optional(),
+    address: z.string().max(500).optional(),
+}).optional();
 export const createInstallmentSchema = z.object({
+    guarantor1: installmentGuarantorSchema,
+    guarantor2: installmentGuarantorSchema,
     customerId: z.string(),
     productId: z.string(),
     totalAmount: z.number().positive(),

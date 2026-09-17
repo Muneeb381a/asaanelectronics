@@ -9,6 +9,7 @@ import {
 import type { CreateProductInput } from '@assaan/shared';
 import ProductForm from '../features/products/ProductForm.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
+import { useAuthStore } from '../store/auth.store.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import {
   Package, Pencil, Trash2, TrendingUp, TrendingDown, Minus,
@@ -234,6 +235,7 @@ function IntelligenceView({ data, isLoading }: { data: InventoryIntelligence | u
 export default function ProductsPage() {
   const qc       = useQueryClient();
   const navigate = useNavigate();
+  const isOwner  = useAuthStore((s) => s.user?.role === 'SELLER_OWNER');
   const [modal, setModal]   = useState<Modal>(null);
   const [tab, setTab]       = useState<Tab>('inventory');
   const [search, setSearch] = useState('');
@@ -259,7 +261,11 @@ export default function ProductsPage() {
     staleTime: 5 * 60_000,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['products'] });
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ['products'] });
+    void qc.invalidateQueries({ queryKey: ['products-intelligence'] });
+    void qc.invalidateQueries({ queryKey: ['products-valuation'] });
+  };
 
   const createMutation = useMutation({
     mutationFn: productsApi.create,
@@ -403,10 +409,12 @@ export default function ProductsPage() {
                               className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                               <Pencil size={14} />
                             </button>
-                            <button onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending}
-                              className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
-                              <Trash2 size={14} />
-                            </button>
+                            {isOwner && (
+                              <button onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending && deleteMutation.variables === p.id}
+                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5 mt-2">
@@ -503,10 +511,12 @@ export default function ProductsPage() {
                                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                                   <Pencil size={14} />
                                 </button>
-                                <button onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending} title="Delete"
-                                  className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
-                                  <Trash2 size={14} />
-                                </button>
+                                {isOwner && (
+                                  <button onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending && deleteMutation.variables === p.id} title="Delete"
+                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-40">
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>

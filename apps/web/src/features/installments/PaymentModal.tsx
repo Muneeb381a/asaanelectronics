@@ -220,6 +220,10 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       void qc.invalidateQueries({ queryKey: ['payments', inst.id] });
       void qc.invalidateQueries({ queryKey: ['recovery-agents-stats'] });
       void qc.invalidateQueries({ queryKey: ['dashboard'] });
+      void qc.invalidateQueries({ queryKey: ['due-sheet'] });
+      void qc.invalidateQueries({ queryKey: ['collection-schedule'] });
+      void qc.invalidateQueries({ queryKey: ['handover-my-balance'] });
+      void qc.invalidateQueries({ queryKey: ['handover-pending-balances'] });
       for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
 

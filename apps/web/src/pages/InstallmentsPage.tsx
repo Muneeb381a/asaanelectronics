@@ -1568,7 +1568,13 @@ export default function InstallmentsPage() {
   const createMutation = useMutation({
     mutationFn: installmentsApi.create,
     // Full invalidation — new item needs correct sort position + total count update
-    onSuccess: () => { void invalidate(); setShowForm(false); toast.success('Installment created'); },
+    onSuccess: () => {
+      void invalidate();
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
+      void qc.invalidateQueries({ queryKey: ['daily-briefing'] });
+      setShowForm(false);
+      toast.success('Installment created');
+    },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to create installment')),
   });
 

@@ -24,9 +24,9 @@ export declare const fieldDefinitionSchema: z.ZodObject<{
         value: string;
         label: string;
     }[] | undefined;
+    required?: boolean | undefined;
     column?: string | undefined;
     placeholder?: string | undefined;
-    required?: boolean | undefined;
 }, {
     type: "number" | "boolean" | "text" | "select";
     label: string;
@@ -35,9 +35,9 @@ export declare const fieldDefinitionSchema: z.ZodObject<{
         value: string;
         label: string;
     }[] | undefined;
+    required?: boolean | undefined;
     column?: string | undefined;
     placeholder?: string | undefined;
-    required?: boolean | undefined;
 }>;
 export declare const createCategoryTemplateSchema: z.ZodObject<{
     categoryName: z.ZodString;
@@ -66,9 +66,9 @@ export declare const createCategoryTemplateSchema: z.ZodObject<{
             value: string;
             label: string;
         }[] | undefined;
+        required?: boolean | undefined;
         column?: string | undefined;
         placeholder?: string | undefined;
-        required?: boolean | undefined;
     }, {
         type: "number" | "boolean" | "text" | "select";
         label: string;
@@ -77,9 +77,9 @@ export declare const createCategoryTemplateSchema: z.ZodObject<{
             value: string;
             label: string;
         }[] | undefined;
+        required?: boolean | undefined;
         column?: string | undefined;
         placeholder?: string | undefined;
-        required?: boolean | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     categoryName: string;
@@ -91,9 +91,9 @@ export declare const createCategoryTemplateSchema: z.ZodObject<{
             value: string;
             label: string;
         }[] | undefined;
+        required?: boolean | undefined;
         column?: string | undefined;
         placeholder?: string | undefined;
-        required?: boolean | undefined;
     }[];
 }, {
     categoryName: string;
@@ -105,9 +105,9 @@ export declare const createCategoryTemplateSchema: z.ZodObject<{
             value: string;
             label: string;
         }[] | undefined;
+        required?: boolean | undefined;
         column?: string | undefined;
         placeholder?: string | undefined;
-        required?: boolean | undefined;
     }[];
 }>;
 export type FieldDefinitionInput = z.infer<typeof fieldDefinitionSchema>;

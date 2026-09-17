@@ -525,13 +525,15 @@ export class ReportsService {
       remaining:         string;
       payment_frequency: string | null;
     }>(sql`
-      SELECT monthly, remaining, payment_frequency
-      FROM installments
-      WHERE seller_id = ${sellerId}
-        AND status    = 'ACTIVE'
-        AND deleted_at IS NULL
-        AND remaining::numeric > 0
-        AND monthly::numeric   > 0
+      SELECT i.monthly, i.remaining, i.payment_frequency
+      FROM installments i
+      JOIN customers c ON c.id = i.customer_id
+      WHERE c.seller_id   = ${sellerId}
+        AND c.deleted_at  IS NULL
+        AND i.status      = 'ACTIVE'
+        AND i.deleted_at  IS NULL
+        AND i.remaining::numeric > 0
+        AND i.monthly::numeric   > 0
     `);
 
     type Bucket = {

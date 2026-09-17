@@ -10,6 +10,7 @@ import {
 import { loginSchema, type LoginInput } from '@assaan/shared';
 import { authApi } from '../api/auth.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
+import { getErrorMessage } from '../utils/error.ts';
 
 type Step = 'credentials' | 'otp';
 type Mode = 'owner' | 'shop';
@@ -241,7 +242,7 @@ function OtpStep({ email, otpToken, onBack, onSuccess }: OtpStepProps) {
     if (digits.length === 6) setTimeout(() => submit(digits), 200);
   };
 
-  const verifyError = verifyMutation.error instanceof Error ? verifyMutation.error.message : null;
+  const verifyError = verifyMutation.error ? getErrorMessage(verifyMutation.error) : null;
   const isPending   = verifyMutation.isPending;
   const filled      = code.length;
   const circ        = 2 * Math.PI * 14;   // SVG ring circumference
@@ -455,7 +456,7 @@ export default function LoginPage() {
     },
   });
 
-  const loginError = loginMutation.error instanceof Error ? loginMutation.error.message : null;
+  const loginError = loginMutation.error ? getErrorMessage(loginMutation.error) : null;
   const isOwner    = mode === 'owner';
 
   return (

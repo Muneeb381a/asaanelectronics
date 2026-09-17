@@ -2,6 +2,9 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { ledgerEntries } from '../../db/schema.js';
 
+// `to` arrives as YYYY-MM-DD; without this the whole last day is excluded
+const endOfDay = (d: string) => { const x = new Date(d); x.setUTCHours(23, 59, 59, 999); return x; };
+
 export class LedgerService {
   async walletBalance(sellerId: string) {
     const [row] = await db
@@ -20,7 +23,7 @@ export class LedgerService {
   async cashBook(sellerId: string, from?: string, to?: string, limit = 100) {
     const conds = [eq(ledgerEntries.sellerId, sellerId)];
     if (from) conds.push(gte(ledgerEntries.date, new Date(from)));
-    if (to)   conds.push(lte(ledgerEntries.date, new Date(to)));
+    if (to)   conds.push(lte(ledgerEntries.date, endOfDay(to)));
 
     return db
       .select()
@@ -58,7 +61,7 @@ export class LedgerService {
   async profitLoss(sellerId: string, from?: string, to?: string) {
     const conds = [eq(ledgerEntries.sellerId, sellerId)];
     if (from) conds.push(gte(ledgerEntries.date, new Date(from)));
-    if (to)   conds.push(lte(ledgerEntries.date, new Date(to)));
+    if (to)   conds.push(lte(ledgerEntries.date, endOfDay(to)));
 
     const [totals] = await db
       .select({

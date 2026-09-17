@@ -5,7 +5,7 @@ type VerificationStatus  = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 
 const INSTALLMENT: Record<InstallmentStatus, InstallmentStatus[]> = {
   PENDING:   ['ACTIVE', 'CANCELLED'],
-  ACTIVE:    ['COMPLETED', 'DEFAULTED', 'CANCELLED'],
+  ACTIVE:    ['COMPLETED', 'DEFAULTED', 'CANCELLED', 'CLOSED'],
   COMPLETED: ['CLOSED'],
   DEFAULTED: ['ACTIVE', 'CLOSED'],
   CANCELLED: [],

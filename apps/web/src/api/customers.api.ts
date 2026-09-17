@@ -179,10 +179,10 @@ export const customersApi = {
     } }>(`/customers/${id}/risk-breakdown`).then((r) => r.data.data),
 
   getUpcomingBirthdays: () =>
-    api.get<{ data: { data: Array<{ id: string; name: string; phone: string; dob: string; area: string | null; photoUrl: string | null }> } }>('/customers/upcoming-birthdays').then((r) => r.data.data.data),
+    api.get<{ data: Array<{ id: string; name: string; phone: string; dob: string; area: string | null; photoUrl: string | null }> }>('/customers/upcoming-birthdays').then((r) => r.data.data),
 
   getReferralLeaderboard: () =>
-    api.get<{ data: { data: Array<{ id: string; name: string; phone: string; area: string | null; photoUrl: string | null; referralCount: number; activeCount: number }> } }>('/customers/referral-leaderboard').then((r) => r.data.data.data),
+    api.get<{ data: Array<{ id: string; name: string; phone: string; area: string | null; photoUrl: string | null; referralCount: number; activeCount: number }> }>('/customers/referral-leaderboard').then((r) => r.data.data),
 
   nadraStatus: () =>
     api.get<{ data: { configured: boolean } }>('/customers/nadra-status').then((r) => r.data.data),

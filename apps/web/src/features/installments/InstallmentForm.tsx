@@ -37,7 +37,7 @@ const formSchema = z.object({
   downPayment:       z.number({ invalid_type_error: 'Required' }).min(0),
   months:            z.number().int().min(1).max(1095),
   startDate:         z.string().min(1, 'Required'),
-  imeiNumber:        z.string().max(100).optional(),
+  imeiNumber:        z.string().max(20, 'Max 20 characters').optional(),
   cashPrice:         z.number({ invalid_type_error: 'Required' }).positive().optional(),
   profitMarkup:      z.number({ invalid_type_error: 'Required' }).min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
@@ -584,7 +584,7 @@ export default function InstallmentForm({ onSubmit, isPending, onCancel, murabah
       onSubmit={handleSubmit((d) => onSubmit({
         ...d,
         startDate: new Date(d.startDate).toISOString(),
-        months: dpIsFirst ? d.months - 1 : d.months,
+        months: dpIsFirst ? Math.max(1, d.months - 1) : d.months,
       }))}
       className="space-y-5"
     >

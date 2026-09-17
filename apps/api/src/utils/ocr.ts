@@ -87,7 +87,7 @@ function stripFences(s: string): string {
 
 async function extractCnicViaGroq(buffer: Buffer): Promise<DocumentExtracted> {
   const raw = await groqVision(buffer, CNIC_PROMPT);
-  console.log('[Groq CNIC raw]:', raw);
+  if (env.NODE_ENV !== 'production') console.log('[Groq CNIC raw]:', raw);
 
   try {
     const parsed = JSON.parse(stripFences(raw)) as Partial<DocumentExtracted>;

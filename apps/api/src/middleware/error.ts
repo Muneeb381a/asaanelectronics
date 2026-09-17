@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { isAllowedOrigin } from '../config/cors.js';
 
 export class AppError extends Error {
   constructor(
@@ -34,7 +35,7 @@ export function errorMiddleware(
 ) {
   // Guarantee CORS headers on every error response so the browser can read the status code
   const origin = req.headers.origin;
-  if (origin && !res.getHeader('Access-Control-Allow-Origin')) {
+  if (origin && isAllowedOrigin(origin) && !res.getHeader('Access-Control-Allow-Origin')) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }

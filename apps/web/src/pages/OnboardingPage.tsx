@@ -6,6 +6,7 @@ import { Store, Phone, MapPin, AlertCircle, Sparkles } from 'lucide-react';
 import { createSellerSchema, type CreateSellerInput } from '@assaan/shared';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
+import { getErrorMessage } from '../utils/error.ts';
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function OnboardingPage() {
     },
   });
 
-  const apiError = error instanceof Error ? error.message : null;
+  const apiError = error ? getErrorMessage(error) : null;
   const firstName = user?.name.split(' ')[0] ?? 'there';
 
   return (

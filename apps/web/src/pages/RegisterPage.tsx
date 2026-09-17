@@ -7,6 +7,7 @@ import { Eye, EyeOff, CreditCard, Shield, BarChart3, Zap, AlertCircle, Check } f
 import { registerSchema, type RegisterInput } from '@assaan/shared';
 import { authApi } from '../api/auth.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
+import { getErrorMessage } from '../utils/error.ts';
 
 const bullets = [
   { icon: Shield,    text: '14-day free trial — no credit card needed' },
@@ -81,7 +82,7 @@ export default function RegisterPage() {
     },
   });
 
-  const apiError = error instanceof Error ? error.message : null;
+  const apiError = error ? getErrorMessage(error) : null;
 
   return (
     <div className="min-h-screen flex">

@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react';
 import { authApi } from '../api/auth.api.ts';
+import { getErrorMessage } from '../utils/error.ts';
 
 type Step = 'email' | 'otp' | 'done';
 
@@ -41,8 +42,8 @@ export default function ForgotPasswordPage() {
 
   const pwMismatch = confirmPw.length > 0 && newPw !== confirmPw;
   const pwInvalid  = newPw.length < 8 || newPw !== confirmPw;
-  const sendError  = sendMutation.error  instanceof Error ? sendMutation.error.message  : null;
-  const resetError = resetMutation.error instanceof Error ? resetMutation.error.message : null;
+  const sendError  = sendMutation.error  ? getErrorMessage(sendMutation.error)  : null;
+  const resetError = resetMutation.error ? getErrorMessage(resetMutation.error) : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6 py-12">

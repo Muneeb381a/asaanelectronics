@@ -3,15 +3,17 @@ import { z } from 'zod';
 // 1095 = 3 years in days (daily plans can run longer than 365 days)
 const MONTHS_MAX = 1095;
 
-const guarantorSchema = z.object({
-  name:     z.string().min(1, 'Guarantor name required'),
-  phone:    z.string().min(10, 'Valid phone required'),
-  cnic:     z.string().optional(),
-  relation: z.string().optional(),
-  address:  z.string().optional(),
-});
+const installmentGuarantorSchema = z.object({
+  name:     z.string().max(100).optional(),
+  phone:    z.string().max(15).optional(),
+  cnic:     z.string().max(15).optional(),
+  relation: z.string().max(50).optional(),
+  address:  z.string().max(500).optional(),
+}).optional();
 
 export const createInstallmentSchema = z.object({
+  guarantor1:        installmentGuarantorSchema,
+  guarantor2:        installmentGuarantorSchema,
   customerId:        z.string(),
   productId:         z.string(),
   totalAmount:       z.number().positive(),
@@ -22,8 +24,7 @@ export const createInstallmentSchema = z.object({
   cashPrice:         z.number().positive().optional(),
   profitMarkup:      z.number().min(0).optional(),
   paymentFrequency:  z.enum(['monthly', 'daily']).default('monthly'),
-  guarantor1:        guarantorSchema,
-  guarantor2:        guarantorSchema.partial().optional(),
+  paymentDueDay:     z.number().int().min(1).max(31).default(10).optional(),
 });
 
 export type CreateInstallmentInput = z.infer<typeof createInstallmentSchema>;
@@ -61,6 +62,7 @@ export const updateInstallmentSchema = z.object({
   cashPrice:        z.number().positive().nullable().optional(),
   profitMarkup:     z.number().min(0).nullable().optional(),
   paymentFrequency: z.enum(['monthly', 'daily']).optional(),
+  paymentDueDay:    z.number().int().min(1).max(31).optional(),
 });
 
 export type UpdateInstallmentInput = z.infer<typeof updateInstallmentSchema>;

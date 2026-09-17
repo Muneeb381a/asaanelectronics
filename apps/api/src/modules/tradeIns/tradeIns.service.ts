@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { tradeIns, customers, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 type TradeInStatus = 'in_stock' | 'sold' | 'disposed';
 type Condition     = 'good' | 'fair' | 'poor';
@@ -124,7 +125,7 @@ export class TradeInsService {
       }
 
       return row!;
-    });
+    }).then((row) => { clearSellerStatsCache(sellerId); return row; });
   }
 
   async update(id: string, sellerId: string, body: UpdateTradeInBody) {
@@ -162,7 +163,7 @@ export class TradeInsService {
       }
 
       return updated!;
-    });
+    }).then((row) => { clearSellerStatsCache(sellerId); return row; });
   }
 
   async remove(id: string, sellerId: string) {
@@ -171,6 +172,10 @@ export class TradeInsService {
       columns: { id: true },
     });
     if (!existing) throw new AppError('Trade-in not found', 404);
-    await db.delete(tradeIns).where(eq(tradeIns.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(ledgerEntries).where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'MANUAL')));
+      await tx.delete(tradeIns).where(eq(tradeIns.id, id));
+    });
+    clearSellerStatsCache(sellerId);
   }
 }

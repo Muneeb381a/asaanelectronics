@@ -101,6 +101,10 @@ function LogModal({ installmentId, onClose }: { installmentId: string; onClose: 
     onSuccess: () => {
       toast.success('Action logged');
       qc.invalidateQueries({ queryKey: ['recovery', installmentId] });
+      qc.invalidateQueries({ queryKey: ['promises-all'] });
+      qc.invalidateQueries({ queryKey: ['promises-due'] });
+      qc.invalidateQueries({ queryKey: ['overdue-stage'] });
+      qc.invalidateQueries({ queryKey: ['installments-recovery'] });
       onClose();
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Failed to log action')),

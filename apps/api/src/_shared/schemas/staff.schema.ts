@@ -8,13 +8,16 @@ const permissionsSchema = z.object({
   canViewReports:    z.boolean(),
   canManageProducts: z.boolean(),
   canVerifyCustomers:z.boolean(),
+  canRecordExpense:  z.boolean(),
+  canManageReturns:  z.boolean(),
+  canSearchCnic:     z.boolean().optional().default(false),
   canMakeCashSales:  z.boolean().optional().default(false),
 });
 
 export const createStaffSchema = z.object({
   name:        z.string().min(1).max(100),
-  email:       z.string().email(),
-  password:    z.string().min(6),
+  email:       z.string().email().max(255),
+  password:    z.string().min(6).max(128),
   permissions: permissionsSchema.optional(),
 });
 

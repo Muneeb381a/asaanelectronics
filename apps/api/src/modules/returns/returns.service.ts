@@ -2,6 +2,7 @@ import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, products, returns, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 type CreateBody = {
   customerId: string;
@@ -179,7 +180,7 @@ export class ReturnsService {
         }
 
         return updated;
-      });
+      }).then((row) => { clearSellerStatsCache(sellerId); return row; });
     }
 
     const [updated] = await db.update(returns).set({

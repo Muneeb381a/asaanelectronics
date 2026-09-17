@@ -7,7 +7,7 @@ export const api = axios.create({ baseURL: BASE });
 
 const SIGNING_SECRET = import.meta.env.VITE_REQUEST_SIGNING_SECRET as string | undefined;
 
-async function signRequest(method: string, path: string): Promise<Record<string, string>> {
+export async function signRequest(method: string, path: string): Promise<Record<string, string>> {
   if (!SIGNING_SECRET) return {};
   const timestamp = Date.now().toString();
   const payload   = `${method.toUpperCase()}:${path}:${timestamp}`;
@@ -24,7 +24,8 @@ api.interceptors.request.use(async (config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
-  const sigHeaders = await signRequest(config.method ?? 'GET', config.url ?? '/');
+  // Server signs req.path (no query string), so strip it here too.
+  const sigHeaders = await signRequest(config.method ?? 'GET', (config.url ?? '/').split('?')[0]);
   Object.assign(config.headers, sigHeaders);
 
   return config;

@@ -1,15 +1,32 @@
 import axios from 'axios';
+import { signRequest } from './client.ts';
+import { usePortalStore } from '../store/portal.store.ts';
 
 const portalClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api',
   withCredentials: true,
 });
 
-portalClient.interceptors.request.use((config) => {
+portalClient.interceptors.request.use(async (config) => {
   const token = localStorage.getItem('portal_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const sigHeaders = await signRequest(config.method ?? 'GET', (config.url ?? '/').split('?')[0]);
+  Object.assign(config.headers, sigHeaders);
   return config;
 });
+
+portalClient.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (axios.isAxiosError(err) && err.response?.status === 401 && !err.config?.url?.includes('/portal/login')) {
+      usePortalStore.getState().logout();
+      if (window.location.pathname.startsWith('/portal') && window.location.pathname !== '/portal') {
+        window.location.assign('/portal');
+      }
+    }
+    return Promise.reject(err);
+  },
+);
 
 export type VerificationStatus = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 export type LifecycleStage     = 'LEAD' | 'VERIFIED' | 'ACTIVE' | 'AT_RISK' | 'DEFAULT' | 'CLOSED' | 'REPEAT';

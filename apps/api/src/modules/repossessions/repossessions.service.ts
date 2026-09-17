@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { repossessions, customers, installments, products, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { clearSellerStatsCache } from '../stats/stats.service.js';
 
 type RepoStatus = 'in_stock' | 'sold' | 'disposed' | 'returned';
 
@@ -154,6 +155,7 @@ export class RepossessionsService {
       return [row!];
     });
 
+    clearSellerStatsCache(sellerId);
     return repo;
   }
 
@@ -197,15 +199,29 @@ export class RepossessionsService {
       }
 
       return updated!;
-    });
+    }).then((row) => { clearSellerStatsCache(sellerId); return row; });
   }
 
   async remove(id: string, sellerId: string) {
     const existing = await db.query.repossessions.findFirst({
       where: and(eq(repossessions.id, id), eq(repossessions.sellerId, sellerId)),
-      columns: { id: true },
+      columns: { id: true, status: true, installmentId: true },
     });
     if (!existing) throw new AppError('Repossession not found', 404);
-    await db.delete(repossessions).where(eq(repossessions.id, id));
+
+    // Undo everything create() did: stock +1, installment CLOSED, ledger entries.
+    await db.transaction(async (tx) => {
+      if (existing.status !== 'sold') {
+        await tx.update(products)
+          .set({ stock: sql`GREATEST(${products.stock} - 1, 0)` })
+          .where(eq(products.id, sql`(SELECT product_id FROM installments WHERE id = ${existing.installmentId})`));
+      }
+      await tx.update(installments)
+        .set({ status: 'ACTIVE' })
+        .where(and(eq(installments.id, existing.installmentId), eq(installments.status, 'CLOSED')));
+      await tx.delete(ledgerEntries).where(and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'MANUAL')));
+      await tx.delete(repossessions).where(eq(repossessions.id, id));
+    });
+    clearSellerStatsCache(sellerId);
   }
 }

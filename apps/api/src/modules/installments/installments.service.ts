@@ -278,14 +278,17 @@ export class InstallmentsService {
 
     // IMEI duplicate hard block — prevent same IMEI on two active installments
     if (body.imeiNumber) {
-      const dupeImei = await db.query.installments.findFirst({
-        where: and(
+      const [dupeImei] = await db
+        .select({ id: installments.id })
+        .from(installments)
+        .innerJoin(customers, eq(installments.customerId, customers.id))
+        .where(and(
+          eq(customers.sellerId, sellerId),
           eq(installments.imeiNumber, body.imeiNumber),
           inArray(installments.status, ['ACTIVE', 'PENDING']),
           isNull(installments.deletedAt),
-        ),
-        columns: { id: true, imeiNumber: true },
-      });
+        ))
+        .limit(1);
       if (dupeImei) {
         throw new AppError(`IMEI ${body.imeiNumber} is already linked to an active installment`, 409);
       }
@@ -448,6 +451,13 @@ export class InstallmentsService {
         await markUnitAvailableInTx(tx, row.imeiNumber, sellerId);
       }
 
+      // Return the unit to stock (create decremented it by 1)
+      if (row.status !== 'CANCELLED') {
+        await tx.update(products)
+          .set({ stock: sql`${products.stock} + 1` })
+          .where(eq(products.id, row.productId));
+      }
+
       // Soft-delete all payments for this installment
       const affectedPayments = await tx
         .update(payments).set({ deletedAt: now })
@@ -463,6 +473,10 @@ export class InstallmentsService {
           ),
         );
       }
+      // Waiver / reversal rows are keyed on the installment id itself
+      await tx.delete(ledgerEntries).where(
+        and(eq(ledgerEntries.referenceId, id), eq(ledgerEntries.refType, 'MANUAL')),
+      );
     });
     clearSellerStatsCache(sellerId);
     return row;
@@ -990,6 +1004,7 @@ export class InstallmentsService {
   async transfer(id: string, sellerId: string, ownerId: string, body: { newCustomerId: string; reason?: string }) {
     const old = await this.getOne(id, sellerId);
     if (old.status !== 'ACTIVE') throw new AppError('Only active installments can be transferred', 400);
+    fsm.installment.assert(old.status, 'CANCELLED');
     if (old.customerId === body.newCustomerId) throw new AppError('Cannot transfer to the same customer', 400);
 
     const [newCust] = await db
@@ -1051,7 +1066,7 @@ export class InstallmentsService {
         newCustomerName: newCust.name,
         reason:          body.reason ?? null,
       };
-    });
+    }).then((r) => { clearSellerStatsCache(sellerId); return r; });
   }
 
   async overdueWithStage(sellerId: string, search?: string) {

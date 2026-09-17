@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { registerSchema, type RegisterInput } from '@assaan/shared';
 import { authApi } from '../api/auth.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
+import { getErrorMessage } from '../utils/error.ts';
 
 export default function SetupPage() {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function SetupPage() {
     },
   });
 
-  const apiError = error instanceof Error ? error.message : null;
+  const apiError = error ? getErrorMessage(error) : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">

@@ -1,5 +1,43 @@
 import { z } from 'zod';
 export declare const createInstallmentSchema: z.ZodObject<{
+    guarantor1: z.ZodOptional<z.ZodObject<{
+        name: z.ZodOptional<z.ZodString>;
+        phone: z.ZodOptional<z.ZodString>;
+        cnic: z.ZodOptional<z.ZodString>;
+        relation: z.ZodOptional<z.ZodString>;
+        address: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        name?: string | undefined;
+        phone?: string | undefined;
+        address?: string | undefined;
+        cnic?: string | undefined;
+        relation?: string | undefined;
+    }, {
+        name?: string | undefined;
+        phone?: string | undefined;
+        address?: string | undefined;
+        cnic?: string | undefined;
+        relation?: string | undefined;
+    }>>;
+    guarantor2: z.ZodOptional<z.ZodObject<{
+        name: z.ZodOptional<z.ZodString>;
+        phone: z.ZodOptional<z.ZodString>;
+        cnic: z.ZodOptional<z.ZodString>;
+        relation: z.ZodOptional<z.ZodString>;
+        address: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        name?: string | undefined;
+        phone?: string | undefined;
+        address?: string | undefined;
+        cnic?: string | undefined;
+        relation?: string | undefined;
+    }, {
+        name?: string | undefined;
+        phone?: string | undefined;
+        address?: string | undefined;
+        cnic?: string | undefined;
+        relation?: string | undefined;
+    }>>;
     customerId: z.ZodString;
     productId: z.ZodString;
     totalAmount: z.ZodNumber;
@@ -18,7 +56,21 @@ export declare const createInstallmentSchema: z.ZodObject<{
     downPayment: number;
     months: number;
     startDate: string;
-    paymentFrequency: "monthly" | "daily";
+    paymentFrequency: "daily" | "monthly";
+    guarantor1?: {
+        name?: string | undefined;
+        phone?: string | undefined;
+        address?: string | undefined;
+        cnic?: string | undefined;
+        relation?: string | undefined;
+    } | undefined;
+    guarantor2?: {
+        name?: string | undefined;
+        phone?: string | undefined;
+        address?: string | undefined;
+        cnic?: string | undefined;
+        relation?: string | undefined;
+    } | undefined;
     imeiNumber?: string | undefined;
     cashPrice?: number | undefined;
     profitMarkup?: number | undefined;
@@ -30,10 +82,24 @@ export declare const createInstallmentSchema: z.ZodObject<{
     downPayment: number;
     months: number;
     startDate: string;
+    guarantor1?: {
+        name?: string | undefined;
+        phone?: string | undefined;
+        address?: string | undefined;
+        cnic?: string | undefined;
+        relation?: string | undefined;
+    } | undefined;
+    guarantor2?: {
+        name?: string | undefined;
+        phone?: string | undefined;
+        address?: string | undefined;
+        cnic?: string | undefined;
+        relation?: string | undefined;
+    } | undefined;
     imeiNumber?: string | undefined;
     cashPrice?: number | undefined;
     profitMarkup?: number | undefined;
-    paymentFrequency?: "monthly" | "daily" | undefined;
+    paymentFrequency?: "daily" | "monthly" | undefined;
     paymentDueDay?: number | undefined;
 }>;
 export type CreateInstallmentInput = z.infer<typeof createInstallmentSchema>;
@@ -53,11 +119,11 @@ export declare const importInstallmentRowSchema: z.ZodObject<{
     imeiNumber: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     phone: string;
+    monthly: number;
     totalAmount: number;
     downPayment: number;
     months: number;
     startDate: string;
-    monthly: number;
     customerName: string;
     productName: string;
     status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
@@ -67,11 +133,11 @@ export declare const importInstallmentRowSchema: z.ZodObject<{
     remaining?: number | undefined;
 }, {
     phone: string;
+    monthly: number;
     totalAmount: number;
     downPayment: number;
     months: number;
     startDate: string;
-    monthly: number;
     customerName: string;
     productName: string;
     status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
@@ -97,11 +163,11 @@ export declare const importInstallmentsSchema: z.ZodObject<{
         imeiNumber: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         phone: string;
+        monthly: number;
         totalAmount: number;
         downPayment: number;
         months: number;
         startDate: string;
-        monthly: number;
         customerName: string;
         productName: string;
         status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
@@ -111,11 +177,11 @@ export declare const importInstallmentsSchema: z.ZodObject<{
         remaining?: number | undefined;
     }, {
         phone: string;
+        monthly: number;
         totalAmount: number;
         downPayment: number;
         months: number;
         startDate: string;
-        monthly: number;
         customerName: string;
         productName: string;
         status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
@@ -127,11 +193,11 @@ export declare const importInstallmentsSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     rows: {
         phone: string;
+        monthly: number;
         totalAmount: number;
         downPayment: number;
         months: number;
         startDate: string;
-        monthly: number;
         customerName: string;
         productName: string;
         status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
@@ -143,11 +209,11 @@ export declare const importInstallmentsSchema: z.ZodObject<{
 }, {
     rows: {
         phone: string;
+        monthly: number;
         totalAmount: number;
         downPayment: number;
         months: number;
         startDate: string;
-        monthly: number;
         customerName: string;
         productName: string;
         status?: "ACTIVE" | "PENDING" | "COMPLETED" | "DEFAULTED" | "CANCELLED" | undefined;
@@ -171,6 +237,7 @@ export declare const updateInstallmentSchema: z.ZodObject<{
     paymentFrequency: z.ZodOptional<z.ZodEnum<["monthly", "daily"]>>;
     paymentDueDay: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
+    monthly?: number | undefined;
     totalAmount?: number | undefined;
     downPayment?: number | undefined;
     months?: number | undefined;
@@ -178,10 +245,10 @@ export declare const updateInstallmentSchema: z.ZodObject<{
     imeiNumber?: string | null | undefined;
     cashPrice?: number | null | undefined;
     profitMarkup?: number | null | undefined;
-    monthly?: number | undefined;
-    paymentFrequency?: "monthly" | "daily" | undefined;
+    paymentFrequency?: "daily" | "monthly" | undefined;
     paymentDueDay?: number | undefined;
 }, {
+    monthly?: number | undefined;
     totalAmount?: number | undefined;
     downPayment?: number | undefined;
     months?: number | undefined;
@@ -189,8 +256,7 @@ export declare const updateInstallmentSchema: z.ZodObject<{
     imeiNumber?: string | null | undefined;
     cashPrice?: number | null | undefined;
     profitMarkup?: number | null | undefined;
-    monthly?: number | undefined;
-    paymentFrequency?: "monthly" | "daily" | undefined;
+    paymentFrequency?: "daily" | "monthly" | undefined;
     paymentDueDay?: number | undefined;
 }>;
 export type UpdateInstallmentInput = z.infer<typeof updateInstallmentSchema>;

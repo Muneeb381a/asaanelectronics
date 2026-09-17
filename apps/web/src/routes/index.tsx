@@ -72,7 +72,7 @@ function PermGuard({ perm, children }: { perm: string | string[]; children: Reac
   const user = useAuthStore((s) => s.user);
   if (user?.role === 'SELLER_OWNER') return <>{children}</>;
   const perms = user?.permissions as Record<string, boolean> | null | undefined;
-  if (perms === undefined) return null;
+  if (perms === undefined) return <PageLoader />;
   const allowed = Array.isArray(perm)
     ? perm.some((p) => !!perms?.[p])
     : !!perms?.[perm];

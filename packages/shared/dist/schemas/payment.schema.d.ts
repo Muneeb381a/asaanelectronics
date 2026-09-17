@@ -23,3 +23,25 @@ export declare const createPaymentSchema: z.ZodObject<{
     proofImageUrl?: string | undefined;
 }>;
 export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
+export declare const updatePaymentSchema: z.ZodEffects<z.ZodObject<{
+    amount: z.ZodOptional<z.ZodNumber>;
+    method: z.ZodOptional<z.ZodEnum<["CASH", "BANK", "JAZZCASH", "EASYPAISA", "OTHER"]>>;
+    note: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    amount?: number | undefined;
+    method?: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER" | undefined;
+    note?: string | undefined;
+}, {
+    amount?: number | undefined;
+    method?: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER" | undefined;
+    note?: string | undefined;
+}>, {
+    amount?: number | undefined;
+    method?: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER" | undefined;
+    note?: string | undefined;
+}, {
+    amount?: number | undefined;
+    method?: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER" | undefined;
+    note?: string | undefined;
+}>;
+export type UpdatePaymentInput = z.infer<typeof updatePaymentSchema>;

@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { rateLimit } from 'express-rate-limit';
 import { env } from './config/env.js';
+import { isAllowedOrigin } from './config/cors.js';
 import { errorMiddleware } from './middleware/error.js';
 import { ipBlockMiddleware } from './middleware/ipBlock.js';
 import { requestSigningMiddleware } from './middleware/requestSigning.js';
@@ -48,13 +49,9 @@ const app = express();
 
 app.set('trust proxy', 1); // Vercel / any reverse proxy sets X-Forwarded-For
 app.use(helmet());
-const allowedOrigins = env.CORS_ORIGIN.split(',').map(o => o.trim());
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    // allow production frontend + any Vercel preview deployments for this project
-    if (origin.match(/^https:\/\/(web-red-six-12|assaan[a-z0-9-]*)\.vercel\.app$/)) return cb(null, true);
+    if (isAllowedOrigin(origin)) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
