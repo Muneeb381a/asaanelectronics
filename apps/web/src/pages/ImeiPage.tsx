@@ -10,6 +10,7 @@ import { productsApi } from '../api/products.api.ts';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 // ── Luhn validator (client-side) ─────────────────────────────────────────────
 function isValidImei(v: string): boolean {
@@ -414,6 +415,7 @@ function UnitActions({ unit, onDone, onPtaCheck }: { unit: ProductUnit; onDone: 
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const mutation = useMutation({
     mutationFn: (body: Parameters<typeof productUnitsApi.update>[1]) => productUnitsApi.update(unit.id, body),
@@ -436,11 +438,21 @@ function UnitActions({ unit, onDone, onPtaCheck }: { unit: ProductUnit; onDone: 
     isPhone && { label: 'Check PTA DIRBS', icon: ShieldCheck, cls: 'text-blue-600', fn: () => { setOpen(false); onPtaCheck(); } },
     isPhone && unit.ptaStatus !== 'approved' && { label: 'Mark PTA Approved', icon: CheckCircle2,  cls: 'text-emerald-600', fn: () => mutation.mutate({ ptaStatus: 'approved' }) },
     isPhone && unit.ptaStatus !== 'non_pta'  && { label: 'Mark Non-PTA',      icon: AlertTriangle, cls: 'text-red-600',    fn: () => mutation.mutate({ ptaStatus: 'non_pta' }) },
-    unit.status !== 'sold' && { label: 'Delete', icon: X, cls: 'text-red-600', fn: () => { if (confirm('Delete this unit?')) deleteMutation.mutate(); } },
+    unit.status !== 'sold' && { label: 'Delete', icon: X, cls: 'text-red-600', fn: () => { setOpen(false); setConfirmDelete(true); } },
   ].filter(Boolean) as { label: string; icon: React.ElementType; cls: string; fn: () => void }[];
 
   return (
     <div className="relative" ref={ref}>
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Unit delete karein?"
+        description={`${serialLabel(unit)} inventory se hat jayega. Ye undo nahi ho sakta.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        isPending={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(undefined, { onSettled: () => setConfirmDelete(false) })}
+        onCancel={() => setConfirmDelete(false)}
+      />
       <button onClick={() => setOpen((o) => !o)} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition">
         <ChevronDown size={13} />
       </button>

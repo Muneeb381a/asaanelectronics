@@ -479,13 +479,13 @@ export default function ExpensesPage() {
   const lockMutation = useMutation({
     mutationFn: () => expensesApi.lockPeriod(viewedYear, viewedMonth),
     onSuccess:  () => { qc.invalidateQueries({ queryKey: ['financial-periods'] }); toast.success(`${MONTH_NAMES[viewedMonth - 1]} ${viewedYear} lock ho gaya`); },
-    onError:    () => toast.error('Lock nahi ho saka'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Lock nahi ho saka')),
   });
 
   const unlockMutation = useMutation({
     mutationFn: ({ year, month }: { year: number; month: number }) => expensesApi.unlockPeriod(year, month),
     onSuccess:  () => { qc.invalidateQueries({ queryKey: ['financial-periods'] }); toast.success('Period unlock ho gaya'); },
-    onError:    () => toast.error('Unlock nahi ho saka'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Unlock nahi ho saka')),
   });
 
   const { data: shop } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe, staleTime: 5 * 60_000 });

@@ -99,6 +99,10 @@ export type StaffPermissions = {
   canSearchCnic: boolean;
   canMakeCashSales?: boolean;
   canViewAllInstallments?: boolean;
+  canManageRecovery?: boolean;
+  canManageSuppliers?: boolean;
+  canManageTradeIns?: boolean;
+  canExportData?: boolean;
 };
 
 export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
@@ -114,6 +118,10 @@ export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
   canSearchCnic: false,
   canMakeCashSales: false,
   canViewAllInstallments: false, // staff see only their own customers by default
+  canManageRecovery: false,
+  canManageSuppliers: false,
+  canManageTradeIns: false,
+  canExportData: false,
 };
 
 export const users = pgTable('users', {

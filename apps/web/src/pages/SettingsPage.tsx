@@ -114,7 +114,7 @@ function ShopSection({ shop, isLoading, usage }: {
   const toggleMurabaha = useMutation({
     mutationFn: (val: boolean) => sellersApi.update({ murabahaMode: val }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['shop-me'] }); toast.success('Murabaha mode update hua'); },
-    onError: () => toast.error('Update nahi hua'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Update nahi hua')),
   });
 
   return (
@@ -519,7 +519,7 @@ function PaymentsSection({ isOwner }: { isOwner:boolean }) {
   const removeMutation = useMutation({
     mutationFn: (id:string)=>sellersApi.removePaymentAccount(id),
     onSuccess: ()=>{ qc.invalidateQueries({queryKey:['payment-accounts']}); toast.success('Account remove hua'); },
-    onError: ()=>toast.error('Remove nahi hua'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Remove nahi hua')),
   });
 
   const canSubmit = accountTitle.trim() && accountNumber.trim();
@@ -653,7 +653,7 @@ function TemplatesSection() {
   const deleteMutation = useMutation({
     mutationFn: (id:string)=>whatsappTemplatesApi.remove(id),
     onSuccess: ()=>{ qc.invalidateQueries({queryKey:['whatsapp-templates']}); toast.success('Template delete hua'); },
-    onError: ()=>toast.error('Delete nahi hua'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Delete nahi hua')),
   });
 
   const canSubmit = name.trim().length>0 && body.trim().length>0;
@@ -790,12 +790,12 @@ function SecuritySection() {
   const revokeMutation = useMutation({
     mutationFn: (id:string)=>sessionsApi.revoke(id),
     onSuccess: ()=>{ qc.invalidateQueries({queryKey:['sessions']}); toast.success('Session revoke hua'); },
-    onError: ()=>toast.error('Revoke nahi hua'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Revoke nahi hua')),
   });
   const revokeAllMutation = useMutation({
     mutationFn: ()=>sessionsApi.revokeAll(),
     onSuccess: ()=>{ toast.success('Tamam sessions revoke — dobara login karo'); clearAuth(); localStorage.removeItem('refresh_token'); void navigate('/login'); },
-    onError: ()=>toast.error('Failed'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   const suspiciousCount = sessions.filter((s:Session)=>s.isSuspicious).length;

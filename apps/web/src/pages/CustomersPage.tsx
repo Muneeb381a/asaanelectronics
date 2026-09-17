@@ -798,7 +798,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   const tagMutation = useMutation({
     mutationFn: (tags: string[]) => customersApi.update(customer.id, { tags }),
     onSuccess: () => qcDrawer.invalidateQueries({ queryKey: ['customers'] }),
-    onError: () => toast.error('Failed to update tags'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to update tags')),
   });
 
   function addTag(raw: string) {

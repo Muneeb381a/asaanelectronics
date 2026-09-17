@@ -203,7 +203,7 @@ function RecoveryPanel({ inst, stageData, lateFeeConfig }: { inst: Installment; 
       toast.success('Action removed');
       qc.invalidateQueries({ queryKey: ['recovery', inst.id] });
     },
-    onError: () => toast.error('Failed to remove action'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to remove action')),
   });
 
   const overdue = inst.isOverdue;

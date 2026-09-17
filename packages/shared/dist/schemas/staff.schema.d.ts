@@ -15,6 +15,11 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageReturns: z.ZodBoolean;
         canSearchCnic: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         canMakeCashSales: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        canViewAllInstallments: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        canManageRecovery: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        canManageSuppliers: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        canManageTradeIns: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        canExportData: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     }, "strip", z.ZodTypeAny, {
         canAddCustomer: boolean;
         canEditCustomer: boolean;
@@ -27,6 +32,11 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageReturns: boolean;
         canSearchCnic: boolean;
         canMakeCashSales: boolean;
+        canViewAllInstallments: boolean;
+        canManageRecovery: boolean;
+        canManageSuppliers: boolean;
+        canManageTradeIns: boolean;
+        canExportData: boolean;
     }, {
         canAddCustomer: boolean;
         canEditCustomer: boolean;
@@ -39,6 +49,11 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageReturns: boolean;
         canSearchCnic?: boolean | undefined;
         canMakeCashSales?: boolean | undefined;
+        canViewAllInstallments?: boolean | undefined;
+        canManageRecovery?: boolean | undefined;
+        canManageSuppliers?: boolean | undefined;
+        canManageTradeIns?: boolean | undefined;
+        canExportData?: boolean | undefined;
     }>>;
 }, "strip", z.ZodTypeAny, {
     name: string;
@@ -56,6 +71,11 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageReturns: boolean;
         canSearchCnic: boolean;
         canMakeCashSales: boolean;
+        canViewAllInstallments: boolean;
+        canManageRecovery: boolean;
+        canManageSuppliers: boolean;
+        canManageTradeIns: boolean;
+        canExportData: boolean;
     } | undefined;
 }, {
     name: string;
@@ -73,6 +93,11 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageReturns: boolean;
         canSearchCnic?: boolean | undefined;
         canMakeCashSales?: boolean | undefined;
+        canViewAllInstallments?: boolean | undefined;
+        canManageRecovery?: boolean | undefined;
+        canManageSuppliers?: boolean | undefined;
+        canManageTradeIns?: boolean | undefined;
+        canExportData?: boolean | undefined;
     } | undefined;
 }>;
 export declare const updateStaffPermissionsSchema: z.ZodObject<{
@@ -87,6 +112,11 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canManageReturns: z.ZodOptional<z.ZodBoolean>;
     canSearchCnic: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
     canMakeCashSales: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
+    canViewAllInstallments: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
+    canManageRecovery: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
+    canManageSuppliers: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
+    canManageTradeIns: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
+    canExportData: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
 }, "strip", z.ZodTypeAny, {
     canAddCustomer?: boolean | undefined;
     canEditCustomer?: boolean | undefined;
@@ -99,6 +129,11 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canManageReturns?: boolean | undefined;
     canSearchCnic?: boolean | undefined;
     canMakeCashSales?: boolean | undefined;
+    canViewAllInstallments?: boolean | undefined;
+    canManageRecovery?: boolean | undefined;
+    canManageSuppliers?: boolean | undefined;
+    canManageTradeIns?: boolean | undefined;
+    canExportData?: boolean | undefined;
 }, {
     canAddCustomer?: boolean | undefined;
     canEditCustomer?: boolean | undefined;
@@ -111,6 +146,11 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canManageReturns?: boolean | undefined;
     canSearchCnic?: boolean | undefined;
     canMakeCashSales?: boolean | undefined;
+    canViewAllInstallments?: boolean | undefined;
+    canManageRecovery?: boolean | undefined;
+    canManageSuppliers?: boolean | undefined;
+    canManageTradeIns?: boolean | undefined;
+    canExportData?: boolean | undefined;
 }>;
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 export type UpdateStaffPermissionsInput = z.infer<typeof updateStaffPermissionsSchema>;

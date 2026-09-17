@@ -352,7 +352,7 @@ function JazzCashLinkModal({ inst, onClose }: { inst: Installment; onClose: () =
       customerPhone: inst.customerPhone,
     }),
     onSuccess: (data) => setResult(data),
-    onError:   () => toast.error('Failed to generate payment link'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to generate payment link')),
   });
 
   function copyLink() {
@@ -752,7 +752,7 @@ function EarlySettlementModal({ inst, onClose }: { inst: Installment; onClose: (
       toast.success('Settlement record ho gayi! Installment complete.');
       onClose();
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   return (

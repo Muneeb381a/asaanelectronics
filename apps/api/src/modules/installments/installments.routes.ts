@@ -16,9 +16,10 @@ const router = Router();
 
 router.use(authenticate, requireSeller);
 
-router.get('/due-sheet',            getDueSheet);
-router.get('/collection-schedule', getCollectionSchedule);
-router.get('/overdue-stage',        listOverdueWithStage);
+const canCollect = requirePermission(['canRecordPayment', 'canManageRecovery']);
+router.get('/due-sheet',            canCollect, getDueSheet);
+router.get('/collection-schedule', canCollect, getCollectionSchedule);
+router.get('/overdue-stage',        canCollect, listOverdueWithStage);
 router.get('/',                listInstallments);
 router.get('/:id',            getInstallment);
 router.get('/:id/settlement', getSettlement);

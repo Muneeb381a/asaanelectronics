@@ -68,6 +68,24 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// Shown instead of a silent redirect so staff understand why a page is not opening.
+function AccessDenied() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh] px-4">
+      <div className="max-w-sm w-full text-center bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-4 text-2xl">🔒</div>
+        <h2 className="text-base font-semibold text-gray-900 mb-1">Is page ki permission nahi hai</h2>
+        <p className="text-sm text-gray-500 leading-relaxed mb-5">
+          Aap ke account ko yeh section allow nahi kiya gaya. Shop owner se keh kar Staff settings mein permission on karwayein.
+        </p>
+        <a href="/dashboard" className="inline-block px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition">
+          Dashboard par wapas jayein
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function PermGuard({ perm, children }: { perm: string | string[]; children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (user?.role === 'SELLER_OWNER') return <>{children}</>;
@@ -76,7 +94,7 @@ function PermGuard({ perm, children }: { perm: string | string[]; children: Reac
   const allowed = Array.isArray(perm)
     ? perm.some((p) => !!perms?.[p])
     : !!perms?.[perm];
-  if (!perms || !allowed) return <Navigate to="/verifications" replace />;
+  if (!perms || !allowed) return <AccessDenied />;
   return <>{children}</>;
 }
 
@@ -150,17 +168,17 @@ export const router = createBrowserRouter([
       { path: '/audit',            element: <SellerOwnerGuard><S><AuditLogPage /></S></SellerOwnerGuard> },
       { path: '/staff',            element: <SellerOwnerGuard><S><StaffPage /></S></SellerOwnerGuard> },
       { path: '/billing',          element: <SellerOwnerGuard><S><BillingPage /></S></SellerOwnerGuard> },
-      { path: '/recovery',         element: <SellerOwnerGuard><S><RecoveryPage /></S></SellerOwnerGuard> },
+      { path: '/recovery',         element: <PermGuard perm="canManageRecovery"><S><RecoveryPage /></S></PermGuard> },
       { path: '/recovery-agents',  element: <SellerOwnerGuard><S><RecoveryAgentsPage /></S></SellerOwnerGuard> },
-      { path: '/exports',          element: <SellerOwnerGuard><S><ExportsPage /></S></SellerOwnerGuard> },
+      { path: '/exports',          element: <PermGuard perm="canExportData"><S><ExportsPage /></S></PermGuard> },
       { path: '/settings',         element: <SellerOwnerGuard><S><SettingsPage /></S></SellerOwnerGuard> },
-      { path: '/imei',             element: <SellerOwnerGuard><S><ImeiPage /></S></SellerOwnerGuard> },
-      { path: '/suppliers',         element: <SellerOwnerGuard><S><SuppliersPage /></S></SellerOwnerGuard> },
-      { path: '/trade-ins',         element: <SellerOwnerGuard><S><TradeInsPage /></S></SellerOwnerGuard> },
-      { path: '/repossessions',     element: <SellerOwnerGuard><S><RepossessionsPage /></S></SellerOwnerGuard> },
+      { path: '/imei',             element: <PermGuard perm="canManageProducts"><S><ImeiPage /></S></PermGuard> },
+      { path: '/suppliers',         element: <PermGuard perm="canManageSuppliers"><S><SuppliersPage /></S></PermGuard> },
+      { path: '/trade-ins',         element: <PermGuard perm="canManageTradeIns"><S><TradeInsPage /></S></PermGuard> },
+      { path: '/repossessions',     element: <PermGuard perm="canManageTradeIns"><S><RepossessionsPage /></S></PermGuard> },
       { path: '/guarantors',        element: <SellerOwnerGuard><S><GuarantorsPage /></S></SellerOwnerGuard> },
-      { path: '/cashflow',          element: <SellerOwnerGuard><S><CashFlowPage /></S></SellerOwnerGuard> },
-      { path: '/collection-sheet',  element: <SellerOwnerGuard><S><CollectionSheetPage /></S></SellerOwnerGuard> },
+      { path: '/cashflow',          element: <PermGuard perm="canViewReports"><S><CashFlowPage /></S></PermGuard> },
+      { path: '/collection-sheet',  element: <PermGuard perm={['canRecordPayment', 'canManageRecovery']}><S><CollectionSheetPage /></S></PermGuard> },
 { path: '/verifications',    element: <S><VerificationQueuePage /></S> },
     ],
   },

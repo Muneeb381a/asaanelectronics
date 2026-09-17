@@ -419,7 +419,7 @@ function ExpensesTab() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => expensesApi.remove(id),
     onSuccess: () => { invalidate(); toast.success('Expense delete ho gaya'); },
-    onError:   () => toast.error('Delete nahi hua'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Delete nahi hua')),
   });
 
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);

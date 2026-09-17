@@ -4,6 +4,7 @@ import { AlertOctagon, Plus, X, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { repossessionsApi, type Repossession } from '../api/repossessions.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
 function pkr(v: string | number) {
@@ -227,6 +228,7 @@ export default function RepossessionsPage() {
   const [editItem,     setEditItem]     = useState<Repossession | null>(null);
   const [statusItem,   setStatusItem]   = useState<Repossession | null>(null);
   const [page, setPage] = useState(1);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['repossessions', statusFilter, page],
@@ -367,7 +369,7 @@ export default function RepossessionsPage() {
                           <button onClick={() => setEditItem(r)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                             <Pencil size={14} />
                           </button>
-                          <button onClick={() => { if (confirm('Remove this repossession record?')) deleteMut.mutate(r.id); }}
+                          <button onClick={() => setDeleteId(r.id)}
                             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
                             <Trash2 size={14} />
                           </button>
@@ -398,7 +400,7 @@ export default function RepossessionsPage() {
                     <div className="flex items-center gap-1">
                       <button onClick={() => setStatusItem(r)} className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg">Update</button>
                       <button onClick={() => setEditItem(r)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg transition"><Pencil size={14} /></button>
-                      <button onClick={() => { if (confirm('Remove?')) deleteMut.mutate(r.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg transition"><Trash2 size={14} /></button>
+                      <button onClick={() => setDeleteId(r.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg transition"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 </div>
@@ -417,6 +419,17 @@ export default function RepossessionsPage() {
             className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl disabled:opacity-40 hover:bg-gray-50 transition">Next</button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Repossession record hata dein?"
+        description="Record delete hoga, stock wapas adjust hoga aur installment dobara ACTIVE ho jayegi. Ye undo nahi ho sakta."
+        confirmLabel="Haan, hata do"
+        cancelLabel="Nahi"
+        isPending={deleteMut.isPending}
+        onConfirm={() => { if (deleteId) deleteMut.mutate(deleteId, { onSettled: () => setDeleteId(null) }); }}
+        onCancel={() => setDeleteId(null)}
+      />
 
       {showAdd    && <RepossessionModal onClose={() => setShowAdd(false)} />}
       {editItem   && <RepossessionModal item={editItem} onClose={() => setEditItem(null)} />}

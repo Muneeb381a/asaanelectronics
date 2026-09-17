@@ -119,7 +119,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       void qc.invalidateQueries({ queryKey: ['installments'] });
       toast.success('Updated');
     },
-    onError: () => toast.error('Failed to update'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to update')),
   });
 
   const { data: seller } = useQuery({

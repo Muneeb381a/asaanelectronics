@@ -5,6 +5,9 @@ import morgan from 'morgan';
 import { rateLimit } from 'express-rate-limit';
 import { env } from './config/env.js';
 import { isAllowedOrigin } from './config/cors.js';
+import { applyFriendlyZodMessages } from '@assaan/shared';
+
+applyFriendlyZodMessages();
 import { errorMiddleware } from './middleware/error.js';
 import { ipBlockMiddleware } from './middleware/ipBlock.js';
 import { requestSigningMiddleware } from './middleware/requestSigning.js';

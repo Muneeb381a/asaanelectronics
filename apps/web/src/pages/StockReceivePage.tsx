@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../utils/error.ts';
 import {
   ArrowLeft, Plus, Trash2, Copy, ChevronDown,
   Package, Smartphone, Bike, AlertCircle, CheckCircle2,
@@ -176,7 +177,7 @@ export default function StockReceivePage() {
       navigate('/products');
     },
     onError: (e: unknown) => {
-      toast.error(e instanceof Error ? e.message : 'Save nahi hua, dobara try karein');
+      toast.error(getErrorMessage(e, 'Save nahi hua, dobara try karein'));
     },
   });
 

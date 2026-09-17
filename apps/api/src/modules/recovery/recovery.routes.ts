@@ -1,16 +1,18 @@
 import { Router } from 'express';
 import { authenticate, requireOwner, requireSeller } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
+import { requirePermission } from '../../middleware/checkPermission.js';
 import { createRecoverySchema } from '@assaan/shared';
 import { listRecoveryActions, createRecoveryAction, deleteRecoveryAction, listPromisesDue, listAllPromises, listAgentStats, listAgentCollections } from './recovery.controller.js';
 
 const router = Router();
 router.use(authenticate, requireSeller);
 
-router.get('/promises-due', listPromisesDue);
-router.get('/promises-all', listAllPromises);
-router.get('/',       listRecoveryActions);
-router.post('/',      validate(createRecoverySchema), createRecoveryAction);
+const canRecover = requirePermission(['canManageRecovery', 'canRecordPayment']);
+router.get('/promises-due', canRecover, listPromisesDue);
+router.get('/promises-all', canRecover, listAllPromises);
+router.get('/',       canRecover, listRecoveryActions);
+router.post('/',      canRecover, validate(createRecoverySchema), createRecoveryAction);
 router.delete('/:id', requireOwner, deleteRecoveryAction);
 
 // Agent performance — owner only

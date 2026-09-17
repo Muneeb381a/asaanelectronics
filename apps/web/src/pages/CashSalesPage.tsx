@@ -184,7 +184,7 @@ export default function CashSalesPage() {
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev !== undefined) qc.setQueryData(['cash-sales', listSearch, listPage], ctx.prev);
-      toast.error('Sale record nahi ho saki');
+      toast.error(getErrorMessage(_e, 'Sale record nahi ho saki'));
     },
   });
 

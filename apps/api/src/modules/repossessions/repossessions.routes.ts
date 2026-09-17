@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import { validate } from '../../middleware/validate.js';
 import { createRepossessionSchema, updateRepossessionSchema } from '@assaan/shared';
-import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
+import { authenticate, requireSeller } from '../../middleware/auth.js';
+import { requirePermission } from '../../middleware/checkPermission.js';
 import {
   listRepossessions, getRepossessionStats, createRepossession,
   updateRepossession, removeRepossession,
 } from './repossessions.controller.js';
 
 const router = Router();
-router.use(authenticate, requireSeller, requireOwner);
+router.use(authenticate, requireSeller, requirePermission('canManageTradeIns'));
 
 router.get('/stats', getRepossessionStats);
 router.get('/',      listRepossessions);

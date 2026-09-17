@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { suppliersApi, type Supplier, type SupplierInvoice, type CreateInvoiceLine, type PnLData } from '../api/suppliers.api.ts';
 import { productsApi } from '../api/products.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 const pkr  = (n: number) => 'PKR ' + n.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 const pkrSh = (v: number) => {
@@ -338,6 +339,7 @@ function SupplierRow({ supplier, index }: { supplier: Supplier; index: number })
   const [editing,       setEditing]       = useState(false);
   const [addingInvoice, setAddingInvoice] = useState(false);
   const [expandedInv,   setExpandedInv]   = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const { data: invoices = [] } = useQuery<SupplierInvoice[]>({
     queryKey: ['supplier-invoices', supplier.id],
@@ -425,10 +427,20 @@ function SupplierRow({ supplier, index }: { supplier: Supplier; index: number })
             <button onClick={() => setEditing(true)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition">
               <Pencil size={13} />
             </button>
-            <button onClick={() => { if (confirm(`${supplier.name} ko hata dein?`)) deleteMut.mutate(); }}
+            <button onClick={() => setConfirmDelete(true)}
               className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition">
               <Trash2 size={13} />
             </button>
+            <ConfirmDialog
+              open={confirmDelete}
+              title={` ko hata dein?`}
+              description="Supplier aur is ke invoices ka record hat jayega. Ye undo nahi ho sakta."
+              confirmLabel="Haan, hata do"
+              cancelLabel="Nahi"
+              isPending={deleteMut.isPending}
+              onConfirm={() => deleteMut.mutate(undefined, { onSettled: () => setConfirmDelete(false) })}
+              onCancel={() => setConfirmDelete(false)}
+            />
             <button onClick={() => setExpanded(v => !v)}
               className={`p-1.5 rounded-lg transition ${expanded ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:bg-slate-100'}`}>
               <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />

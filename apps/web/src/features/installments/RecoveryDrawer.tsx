@@ -6,6 +6,7 @@ import {
 import { recoveryApi, type RecoveryAction, type RecoveryActionType } from '../../api/recovery.api.ts';
 import type { Installment } from '../../api/installments.api.ts';
 import { fmtDate, fmtDateTime } from '../../utils/dateFormat.ts';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 type ActionConfig = {
@@ -259,6 +260,7 @@ export default function RecoveryDrawer({ inst, onClose }: { inst: Installment; o
     mutationFn: (id: string) => recoveryApi.remove(id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['recovery', inst.id] }),
   });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const remaining = Number(inst.remaining);
   const totalAmount = Number(inst.totalAmount);
@@ -334,14 +336,22 @@ export default function RecoveryDrawer({ inst, onClose }: { inst: Installment; o
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
                 Recovery Timeline · {actions.length} action{actions.length !== 1 ? 's' : ''}
               </p>
+              <ConfirmDialog
+                open={!!deleteId}
+                title="Recovery action delete karein?"
+                description="Ye entry timeline se hat jayegi. Ye undo nahi ho sakta."
+                confirmLabel="Delete"
+                cancelLabel="Cancel"
+                isPending={deleteMutation.isPending}
+                onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId, { onSettled: () => setDeleteId(null) }); }}
+                onCancel={() => setDeleteId(null)}
+              />
               <div>
                 {actions.map((action) => (
                   <TimelineItem
                     key={action.id}
                     action={action}
-                    onDelete={(id) => {
-                      if (confirm('Delete this recovery action?')) deleteMutation.mutate(id);
-                    }}
+                    onDelete={(id) => setDeleteId(id)}
                   />
                 ))}
               </div>

@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import { validate } from '../../middleware/validate.js';
 import { createSupplierSchema, updateSupplierSchema, createSupplierInvoiceSchema, updateInvoicePaidSchema } from '@assaan/shared';
-import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
+import { authenticate, requireSeller } from '../../middleware/auth.js';
+import { requirePermission } from '../../middleware/checkPermission.js';
 import {
   listSuppliers, createSupplier, updateSupplier, deleteSupplier,
   listInvoices, createInvoice, updateInvoicePaid, deleteInvoice,
 } from './suppliers.controller.js';
 
 const router = Router();
-router.use(authenticate, requireSeller, requireOwner);
+router.use(authenticate, requireSeller, requirePermission('canManageSuppliers'));
 
 router.get('/',    listSuppliers);
 router.post('/',   validate(createSupplierSchema), createSupplier);

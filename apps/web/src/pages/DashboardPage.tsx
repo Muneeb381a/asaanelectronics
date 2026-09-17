@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../utils/error.ts';
 import {
   X, Send, CheckCircle, PhoneCall, Wallet,
   Clock, ChevronRight, Plus,
@@ -46,7 +47,7 @@ function CashReceiveModal({ target, onClose }: { target: StaffBalance; onClose: 
       toast.success(`${target.staffName} se ${pkr(Number(amt))} li`);
       onClose();
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Masla ho gaya'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Masla ho gaya')),
   });
   const diff = Number(amt) - sys;
   return (
@@ -157,7 +158,7 @@ export default function DashboardPage() {
       void qc.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Installment approve ho gaya');
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Masla ho gaya'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Masla ho gaya')),
   });
   const { data: shop } = useQuery({
     queryKey: ['shop-me'], queryFn: sellersApi.getMe,

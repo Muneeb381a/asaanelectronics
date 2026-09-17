@@ -16,13 +16,13 @@ type StaffType = 'ACCOUNT' | 'AVO' | 'MANAGER' | 'CASHIER' | 'CUSTOM';
 
 const PRESET_PERMS: Record<Exclude<StaffType, 'CUSTOM'>, StaffPermissions> = {
   // Account staff: day-to-day customer & installment operations — no financial reports
-  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: true  },
+  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: true  , canManageRecovery: true,  canManageSuppliers: false, canManageTradeIns: false, canExportData: false },
   // AVO: verification-only — cannot add/edit customers or see financials
-  AVO:     { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: false, canViewReports: false, canManageProducts: false, canVerifyCustomers: true,  canRecordExpense: false, canManageReturns: false, canSearchCnic: true,  canMakeCashSales: false, canViewAllInstallments: false },
+  AVO:     { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: false, canViewReports: false, canManageProducts: false, canVerifyCustomers: true,  canRecordExpense: false, canManageReturns: false, canSearchCnic: true,  canMakeCashSales: false, canViewAllInstallments: false , canManageRecovery: false, canManageSuppliers: false, canManageTradeIns: false, canExportData: false },
   // Manager: full access including reports and expenses
-  MANAGER: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: true,  canRecordExpense: true,  canManageReturns: true,  canSearchCnic: true,  canMakeCashSales: true,  canViewAllInstallments: true  },
+  MANAGER: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: true,  canRecordExpense: true,  canManageReturns: true,  canSearchCnic: true,  canMakeCashSales: true,  canViewAllInstallments: true  , canManageRecovery: true,  canManageSuppliers: true,  canManageTradeIns: true,  canExportData: true  },
   // Cashier: records payments and cash sales only — no customer/installment mgmt, no reports
-  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: true,  canViewAllInstallments: false },
+  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: true,  canViewAllInstallments: false , canManageRecovery: false, canManageSuppliers: false, canManageTradeIns: false, canExportData: false },
 };
 
 const DEFAULT_CUSTOM_PERMS: StaffPermissions = {
@@ -30,6 +30,7 @@ const DEFAULT_CUSTOM_PERMS: StaffPermissions = {
   canRecordPayment: true, canViewReports: false, canManageProducts: false,
   canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false,
   canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: false,
+  canManageRecovery: false, canManageSuppliers: false, canManageTradeIns: false, canExportData: false,
 };
 
 const STAFF_TYPES: { value: StaffType; label: string; desc: string }[] = [
@@ -353,7 +354,7 @@ function ProfileEditModal({ member, onClose }: { member: StaffMember; onClose: (
       toast.success('Profile updated');
       onClose();
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   return (
@@ -1524,7 +1525,7 @@ function CommissionSection() {
       toast.success('Commission de di!');
       setPayTarget(null); setPayNote(''); setPayAmount('');
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   const undoMutation = useMutation({
@@ -1533,7 +1534,7 @@ function CommissionSection() {
       void qc.invalidateQueries({ queryKey: ['staff-commissions', month] });
       toast.success('Commission payment wapas liya');
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   return (
@@ -1657,7 +1658,7 @@ function SalarySection() {
       toast.success('Salary de di!');
       setPayTarget(null); setPayNote(''); setPayAmount('');
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   const undoMutation = useMutation({
@@ -1666,7 +1667,7 @@ function SalarySection() {
       void qc.invalidateQueries({ queryKey: ['staff-salaries', month] });
       toast.success('Salary payment wapas liya');
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   const totalDue  = data?.staff.reduce((s, r) => s + (r.monthlySalary ?? 0), 0) ?? 0;
@@ -2070,7 +2071,7 @@ function AssignCustomerModal({
       toast.success('Customer assign ho gaya!');
       onClose();
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   return (
@@ -2165,7 +2166,7 @@ function AgentDeductionsModal({
       toast.success('Deduction add ho gayi');
       setAmount(''); setDesc('');
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   const delMut = useMutation({
@@ -2174,7 +2175,7 @@ function AgentDeductionsModal({
       void qc.invalidateQueries({ queryKey: ['agent-deductions', staffId, month] });
       void qc.invalidateQueries({ queryKey: ['agent-salary-summary'] });
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   const total = deductions.reduce((s, d) => s + Number(d.amount), 0);
@@ -2287,7 +2288,7 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
       void qc.invalidateQueries({ queryKey: ['agent-portfolio'] });
       toast.success('Unassign ho gaya');
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   const calcMut = useMutation({
@@ -2296,7 +2297,7 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
       void qc.invalidateQueries({ queryKey: ['agent-salary-summary', month] });
       toast.success(`${d.created} naye deductions calculate hue`);
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
 
   // Group portfolio by agent

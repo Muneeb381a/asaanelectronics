@@ -4,6 +4,7 @@ import { ArrowLeftRight, Plus, X, Trash2, Pencil, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { tradeInsApi, type TradeIn } from '../api/tradeIns.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
@@ -213,6 +214,7 @@ export default function TradeInsPage() {
   const [editItem, setEditItem] = useState<TradeIn | null>(null);
   const [sellItem, setSellItem] = useState<TradeIn | null>(null);
   const [page, setPage] = useState(1);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['trade-ins', statusFilter, page],
@@ -377,7 +379,7 @@ export default function TradeInsPage() {
                           <button onClick={() => setEditItem(r)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                             <Pencil size={14} />
                           </button>
-                          <button onClick={() => { if (confirm('Remove this trade-in?')) deleteMut.mutate(r.id); }}
+                          <button onClick={() => setDeleteId(r.id)}
                             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
                             <Trash2 size={14} />
                           </button>
@@ -419,7 +421,7 @@ export default function TradeInsPage() {
                       <button onClick={() => setEditItem(r)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg transition">
                         <Pencil size={14} />
                       </button>
-                      <button onClick={() => { if (confirm('Remove?')) deleteMut.mutate(r.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg transition">
+                      <button onClick={() => setDeleteId(r.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg transition">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -440,6 +442,17 @@ export default function TradeInsPage() {
             className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl disabled:opacity-40 hover:bg-gray-50 transition">Next</button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Trade-in record hata dein?"
+        description="Is trade-in ka record aur is ki ledger entry dono delete ho jayengi. Ye undo nahi ho sakta."
+        confirmLabel="Haan, hata do"
+        cancelLabel="Nahi"
+        isPending={deleteMut.isPending}
+        onConfirm={() => { if (deleteId) deleteMut.mutate(deleteId, { onSettled: () => setDeleteId(null) }); }}
+        onCancel={() => setDeleteId(null)}
+      />
 
       {showAdd   && <TradeInModal onClose={() => setShowAdd(false)} />}
       {editItem  && <TradeInModal item={editItem} onClose={() => setEditItem(null)} />}
