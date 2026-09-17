@@ -35,3 +35,12 @@ body.mobile-menu-open {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Thin, unobtrusive scrollbar for the sidebar nav and other dense lists. */
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.25) transparent; }
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }

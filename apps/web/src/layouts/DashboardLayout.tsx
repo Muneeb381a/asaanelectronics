@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Users, CreditCard, LogOut, BarChart3,
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck,
   RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart,
   FileDown, Building2, ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays,
-  ClipboardList, ChevronsLeft, ChevronsRight,
+  ClipboardList, ChevronDown, UserCircle, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -26,7 +26,7 @@ type NavGroup = 'core' | 'finance' | 'catalog' | 'customers' | 'operations' | 'r
 interface NavItemDef {
   to:     string;
   label:  string;
-  icon:   React.ComponentType<{ size?: number; className?: string }>;
+  icon:   React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
   end?:   boolean;
   perm:   string | string[];
   group:  NavGroup;
@@ -87,8 +87,10 @@ export default function DashboardLayout() {
   // Desktop-only icon rail; remembered per browser.
   const [collapsed, setCollapsed] = useState<boolean>(() => { try { return localStorage.getItem('sidebar-collapsed') === '1'; } catch { return false; } });
   const toggleCollapsed = useCallback(() => setCollapsed((c) => { try { localStorage.setItem('sidebar-collapsed', c ? '0' : '1'); } catch { /* private mode */ } return !c; }), []);
-  const bellRef       = useRef<HTMLDivElement>(null);
-  const mobileBellRef = useRef<HTMLDivElement>(null);
+  const bellRef     = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const location = useLocation();
 
   useQuery({
     queryKey: ['profile-perms'],
@@ -164,9 +166,8 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      const inDesktop = bellRef.current?.contains(e.target as Node);
-      const inMobile  = mobileBellRef.current?.contains(e.target as Node);
-      if (!inDesktop && !inMobile) setShowBell(false);
+      if (!bellRef.current?.contains(e.target as Node)) setShowBell(false);
+      if (!userMenuRef.current?.contains(e.target as Node)) setShowUserMenu(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -184,7 +185,7 @@ export default function DashboardLayout() {
         e.preventDefault();
         toggleCollapsed();
       }
-      if (e.key === 'Escape') { setMobileOpen(false); setShowBell(false); }
+      if (e.key === 'Escape') { setMobileOpen(false); setShowBell(false); setShowUserMenu(false); }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -223,6 +224,12 @@ export default function DashboardLayout() {
       items: navItems.filter((item) => item.group === key),
     }))
     .filter((g) => g.items.length > 0);
+
+  const EXTRA_TITLES: Record<string, string> = { '/due-sheet': 'Due Sheet', '/agreement': 'Agreement', '/stock-receive': 'Stock Receive' };
+  const pageTitle =
+    ALL_NAV.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))?.label
+    ?? Object.entries(EXTRA_TITLES).find(([p]) => location.pathname.startsWith(p))?.[1]
+    ?? 'Assaan Electronics';
 
   // Bell dropdown content (shared between desktop + mobile)
   const bellDropdownContent = (
@@ -308,13 +315,13 @@ export default function DashboardLayout() {
         className={`fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 bg-slate-950 flex flex-col shrink-0 transition-[transform,width] duration-300 ease-in-out w-72 ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         aria-label="Main navigation"
       >
-        {/* Brand + shop identity */}
-        <div className={`flex items-center gap-3 border-b border-white/5 shrink-0 h-16 px-4 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/30">
-            <CreditCard size={16} className="text-white"/>
+        {/* Brand */}
+        <div className={`h-14 flex items-center gap-3 px-4 border-b border-white/[0.06] shrink-0 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+            <CreditCard size={15} className="text-white"/>
           </div>
           <div className={`min-w-0 flex-1 ${collapsed ? 'lg:hidden' : ''}`}>
-            <p className="font-bold text-white text-[13px] leading-tight truncate">{shopMe?.shopName ?? 'Assaan Electronics'}</p>
+            <p className="font-semibold text-white text-[13px] leading-tight truncate">{shopMe?.shopName ?? 'Assaan Electronics'}</p>
             <p className="text-[10px] text-slate-500 leading-tight mt-0.5 truncate">
               {isOwner ? (billingUsage?.planLabel ? `${billingUsage.planLabel} plan` : 'Owner') : 'Staff account'}
             </p>
@@ -324,17 +331,17 @@ export default function DashboardLayout() {
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 min-h-0 px-2 py-3 overflow-y-auto overflow-x-hidden space-y-4 scrollbar-thin">
+        {/* Navigation */}
+        <nav className="flex-1 min-h-0 px-3 py-4 overflow-y-auto overflow-x-hidden scrollbar-thin">
           {groupedNav.map((group, gi) => (
-            <div key={group.key}>
+            <div key={group.key} className={gi > 0 ? 'mt-5' : ''}>
               {group.label && (
                 <>
-                  <p className={`text-[10px] font-bold uppercase tracking-widest text-slate-500 px-3 mb-1.5 select-none ${collapsed ? 'lg:hidden' : ''}`}>{group.label}</p>
-                  {gi > 0 && <div className={`hidden ${collapsed ? 'lg:block' : ''} mx-3 mb-2 border-t border-white/5`}/>}
+                  <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 px-3 mb-2 select-none ${collapsed ? 'lg:hidden' : ''}`}>{group.label}</p>
+                  <div className={`hidden ${collapsed ? 'lg:block' : ''} mx-2 mb-2 border-t border-white/[0.06]`}/>
                 </>
               )}
-              <div className="space-y-0.5">
+              <div className="space-y-px">
                 {group.items.map(({ to, label, icon: Icon, end }) => {
                   const badge = navBadges[to];
                   return (
@@ -345,23 +352,20 @@ export default function DashboardLayout() {
                       onClick={() => setMobileOpen(false)}
                       title={collapsed ? (badge ? `${label} (${badge.count})` : label) : undefined}
                       className={({ isActive }) =>
-                        `group relative flex items-center gap-2.5 rounded-xl text-[13px] font-medium transition-all px-3 py-2 ${collapsed ? 'lg:justify-center lg:px-0' : ''} ${
-                          isActive ? 'bg-blue-600/20 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+                        `group relative flex items-center gap-3 rounded-lg text-[13px] px-3 py-[7px] transition-colors ${collapsed ? 'lg:justify-center lg:px-0 lg:py-2.5' : ''} ${
+                          isActive ? 'bg-white/10 text-white font-semibold' : 'text-slate-400 font-medium hover:bg-white/5 hover:text-slate-100'
                         }`
                       }
                     >
                       {({ isActive }) => (
                         <>
-                          {isActive && <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-blue-500 rounded-r-full"/>}
                           <span className="relative shrink-0">
-                            <Icon size={16} className={isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300 transition'}/>
-                            {badge && (
-                              <span className={`hidden ${collapsed ? 'lg:block' : ''} absolute -top-1 -right-1 w-2 h-2 rounded-full ring-2 ring-slate-950 ${badge.dot}`}/>
-                            )}
+                            <Icon size={16} strokeWidth={isActive ? 2.25 : 1.75} className={isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300 transition-colors'}/>
+                            {badge && <span className={`hidden ${collapsed ? 'lg:block' : ''} absolute -top-1 -right-1 w-2 h-2 rounded-full ring-2 ring-slate-950 ${badge.dot}`}/>}
                           </span>
                           <span className={`flex-1 truncate ${collapsed ? 'lg:hidden' : ''}`}>{label}</span>
                           {badge && (
-                            <span className={`${collapsed ? 'lg:hidden' : ''} text-[10px] font-bold px-1.5 py-0.5 rounded-md tabular-nums ${badge.cls}`}>
+                            <span className={`${collapsed ? 'lg:hidden' : ''} min-w-[20px] text-center text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums ${badge.cls}`}>
                               {badge.count > 99 ? '99+' : badge.count}
                             </span>
                           )}
@@ -374,115 +378,119 @@ export default function DashboardLayout() {
             </div>
           ))}
         </nav>
-
-        {/* Bottom: actions + user */}
-        <div className="shrink-0 border-t border-white/5 p-2 space-y-1" style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
-          <div className={`flex items-center gap-1 ${collapsed ? 'lg:flex-col lg:items-stretch' : ''}`}>
-            {canSearch && (
-              <button
-                onClick={() => { setSearchOpen(true); setMobileOpen(false); }}
-                title="CNIC / customer search (Ctrl+K)"
-                className={`flex-1 flex items-center gap-2 px-2.5 py-2 rounded-xl hover:bg-white/5 transition group text-left min-w-0 ${collapsed ? 'lg:justify-center lg:px-0 lg:flex-none' : ''}`}
-              >
-                <Search size={14} className="text-slate-500 shrink-0 group-hover:text-slate-300 transition"/>
-                <span className={`text-[12px] text-slate-500 group-hover:text-slate-300 flex-1 truncate transition ${collapsed ? 'lg:hidden' : ''}`}>Search</span>
-                <kbd className={`hidden sm:block text-[9px] text-slate-600 font-mono bg-white/5 px-1 py-0.5 rounded shrink-0 ${collapsed ? 'lg:hidden' : ''}`}>⌃K</kbd>
-              </button>
-            )}
-
-            <div className={`relative ${collapsed ? 'lg:w-full' : ''}`} ref={bellRef}>
-              <button
-                onClick={() => setShowBell(v => !v)}
-                className={`p-2 rounded-xl hover:bg-white/5 transition relative ${collapsed ? 'lg:w-full lg:flex lg:justify-center' : ''} ${!canSearch && !collapsed ? 'flex-1 w-full' : ''}`}
-                title="Notifications"
-              >
-                <Bell size={15} className={totalAlerts > 0 ? 'text-slate-300' : 'text-slate-500'}/>
-                {totalAlerts > 0 && (
-                  <span className="absolute top-0.5 right-0.5 min-w-[14px] h-3.5 px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none ring-2 ring-slate-950">
-                    {totalAlerts > 9 ? '9+' : totalAlerts}
-                  </span>
-                )}
-              </button>
-              {showBell && (
-                <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-200 rounded-2xl shadow-2xl shadow-black/25 overflow-hidden z-50">
-                  <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                    <Bell size={13} className="text-gray-400"/>
-                    <p className="text-xs font-semibold text-gray-700">{totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}</p>
-                  </div>
-                  {bellDropdownContent}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={toggleCollapsed}
-              title={collapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-              className={`hidden lg:flex p-2 rounded-xl hover:bg-white/5 text-slate-500 hover:text-slate-300 transition ${collapsed ? 'lg:w-full lg:justify-center' : ''}`}
-            >
-              {collapsed ? <ChevronsRight size={15}/> : <ChevronsLeft size={15}/>}
-            </button>
-          </div>
-
-          <div className={`flex items-center gap-1 ${collapsed ? 'lg:flex-col lg:items-stretch' : ''}`}>
-            <button
-              onClick={() => { setShowProfile(true); setMobileOpen(false); }}
-              title={user?.name}
-              className={`flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-white/5 transition group text-left min-w-0 ${collapsed ? 'lg:justify-center lg:px-0 lg:flex-none' : ''}`}
-            >
-              <div className="w-7 h-7 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 ring-2 ring-white/10">
-                {initials}
-              </div>
-              <div className={`flex-1 min-w-0 ${collapsed ? 'lg:hidden' : ''}`}>
-                <p className="text-[12px] font-semibold text-slate-200 truncate leading-tight">{user?.name}</p>
-                <p className="text-[10px] text-slate-500 truncate leading-tight">{isOwner ? 'Owner · profile' : 'Staff · profile'}</p>
-              </div>
-            </button>
-            <button
-              onClick={() => logout()}
-              className={`p-2 rounded-xl text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition ${collapsed ? 'lg:w-full lg:flex lg:justify-center' : ''}`}
-              title="Sign out"
-            >
-              <LogOut size={14}/>
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* ── Content wrapper ── */}
       <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Mobile top bar */}
+        {/* ── Top bar ── */}
         <header
-          className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm flex items-center gap-3 px-4 shrink-0"
+          className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 flex items-center gap-2 px-3 sm:px-5 shrink-0"
           style={{ minHeight: '3.5rem', paddingTop: 'env(safe-area-inset-top)' }}
         >
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 transition" aria-label="Open menu">
-            <Menu size={20} className="text-gray-600"/>
+          <button onClick={() => setMobileOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition" aria-label="Open menu">
+            <Menu size={20} className="text-gray-700"/>
           </button>
-          <div className="flex-1 flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
-              <CreditCard size={11} className="text-white"/>
-            </div>
-            <p className="font-bold text-gray-900 text-sm tracking-tight truncate">{shopMe?.shopName ?? 'Assaan Electronics'}</p>
+          <button
+            onClick={toggleCollapsed}
+            title={collapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+            className="hidden lg:inline-flex p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition"
+          >
+            {collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-semibold text-gray-900 truncate leading-tight">{pageTitle}</p>
+            <p className="lg:hidden text-[11px] text-gray-400 truncate leading-tight">{shopMe?.shopName ?? 'Assaan Electronics'}</p>
           </div>
-          {/* Bell — mobile */}
-          <div className="relative" ref={mobileBellRef}>
-            <button onClick={() => setShowBell((v) => !v)} className="p-2 rounded-xl hover:bg-gray-100 transition relative" aria-label="Notifications">
-              <Bell size={18} className="text-gray-600"/>
+
+          {canSearch && (
+            <>
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="hidden md:flex items-center gap-2 w-60 xl:w-72 px-3 py-2 bg-gray-100 hover:bg-gray-200/70 rounded-xl text-left text-sm text-gray-500 transition"
+              >
+                <Search size={15} className="text-gray-400 shrink-0"/>
+                <span className="flex-1 truncate">Customer, CNIC ya phone…</span>
+                <kbd className="text-[10px] text-gray-400 font-mono bg-white border border-gray-200 px-1.5 py-0.5 rounded">Ctrl K</kbd>
+              </button>
+              <button onClick={() => setSearchOpen(true)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition" aria-label="Search">
+                <Search size={19} className="text-gray-700"/>
+              </button>
+            </>
+          )}
+
+          {/* Notifications */}
+          <div className="relative" ref={bellRef}>
+            <button onClick={() => { setShowBell((v) => !v); setShowUserMenu(false); }} className="p-2 rounded-lg hover:bg-gray-100 transition relative" aria-label="Notifications" title="Notifications">
+              <Bell size={19} className="text-gray-700"/>
               {totalAlerts > 0 && (
-                <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 rounded-full text-white text-[8px] font-bold flex items-center justify-center">
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
                   {totalAlerts > 9 ? '9+' : totalAlerts}
                 </span>
               )}
             </button>
             {showBell && (
-              <div className="absolute right-0 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-xs font-semibold text-gray-700">
-                    {totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}
-                  </p>
+              <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] bg-white border border-gray-200 rounded-2xl shadow-xl shadow-black/10 overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-700">{totalAlerts === 0 ? 'All clear' : `${totalAlerts} alert${totalAlerts !== 1 ? 's' : ''}`}</p>
+                  {totalAlerts > 0 && <span className="text-[10px] text-gray-400">Click to open</span>}
                 </div>
                 {bellDropdownContent}
+              </div>
+            )}
+          </div>
+
+          {/* User menu */}
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => { setShowUserMenu((v) => !v); setShowBell(false); }}
+              className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-gray-100 transition"
+              aria-haspopup="menu" aria-expanded={showUserMenu}
+            >
+              <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                {initials}
+              </div>
+              <div className="hidden sm:block text-left min-w-0 max-w-[140px]">
+                <p className="text-[13px] font-semibold text-gray-900 truncate leading-tight">{user?.name}</p>
+                <p className="text-[10px] text-gray-400 leading-tight">{isOwner ? 'Owner' : 'Staff'}</p>
+              </div>
+              <ChevronDown size={14} className={`hidden sm:block text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`}/>
+            </button>
+            {showUserMenu && (
+              <div role="menu" className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl shadow-black/10 overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{initials}</div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
+                    <p className="text-[11px] text-gray-400 truncate">{user?.email ?? (isOwner ? 'Shop owner' : 'Staff member')}</p>
+                  </div>
+                </div>
+                <div className="py-1.5">
+                  <button role="menuitem" onClick={() => { setShowUserMenu(false); setShowProfile(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition text-left">
+                    <UserCircle size={16} className="text-gray-400"/> My profile
+                  </button>
+                  {isOwner && (
+                    <>
+                      <button role="menuitem" onClick={() => { setShowUserMenu(false); navigate('/settings'); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition text-left">
+                        <Settings size={16} className="text-gray-400"/> Settings
+                      </button>
+                      <button role="menuitem" onClick={() => { setShowUserMenu(false); navigate('/billing'); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition text-left">
+                        <Wallet size={16} className="text-gray-400"/> Billing & plan
+                        {billingUsage?.planLabel && <span className="ml-auto text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{billingUsage.planLabel}</span>}
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div className="border-t border-gray-100 py-1.5">
+                  <button role="menuitem" onClick={() => { setShowUserMenu(false); logout(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition text-left">
+                    <LogOut size={16}/> Sign out
+                  </button>
+                </div>
               </div>
             )}
           </div>
