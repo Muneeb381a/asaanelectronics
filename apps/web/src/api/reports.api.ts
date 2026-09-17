@@ -91,6 +91,22 @@ export type CustomerBalancesReport = {
   grandTotal: number;
 };
 
+export type PnL = {
+  period: string;
+  installmentRevenue: number;
+  cashRevenue: number;
+  totalRevenue: number;
+  cogsSales: number;
+  grossProfit: number;
+  grossMarginPct: number;
+  totalExpenses: number;
+  netProfit: number;
+  netMarginPct: number;
+  supplierPurchases: number;
+  supplierPaid: number;
+  supplierOutstanding: number;
+};
+
 export type CashflowCalendarDay = {
   date:            string;
   expectedAmount:  number;
@@ -158,4 +174,7 @@ export const reportsApi = {
 
   getCohortAnalysis: (): Promise<CohortRow[]> =>
     api.get('/reports/cohort').then((res) => res.data.data),
+
+  getPnL: (year: number, month?: number): Promise<PnL> =>
+    api.get(`/reports/pnl?year=${year}${month ? `&month=${month}` : ''}`).then((res) => res.data.data),
 };

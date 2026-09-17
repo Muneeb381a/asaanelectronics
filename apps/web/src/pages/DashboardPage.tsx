@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
+import { reportsApi } from '../api/reports.api.ts';
+import { productsApi } from '../api/products.api.ts';
+import { attendanceApi } from '../api/attendance.api.ts';
 import { installmentsApi } from '../api/installments.api.ts';
 import { recoveryApi } from '../api/recovery.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
@@ -296,6 +299,23 @@ export default function DashboardPage() {
   const { data: shop } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe, staleTime: 5 * 60_000 });
   const { data: birthdays = [] } = useQuery({ queryKey: ['upcoming-birthdays'], queryFn: customersApi.getUpcomingBirthdays, staleTime: 60 * 60_000 });
 
+  /* ── business health (owner) ── */
+  const now   = new Date();
+  const yr    = now.getFullYear();
+  const mo    = now.getMonth() + 1;
+  const todayYmd = `${yr}-${String(mo).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const { data: pnl } = useQuery({ queryKey: ['pnl-month', yr, mo], queryFn: () => reportsApi.getPnL(yr, mo), enabled: isOwner, staleTime: 5 * 60_000 });
+  const { data: calendar = [] } = useQuery({ queryKey: ['cashflow-calendar', yr, mo], queryFn: () => reportsApi.getCashflowCalendar(yr, mo), enabled: isOwner, staleTime: 2 * 60_000 });
+  const { data: valuation } = useQuery({ queryKey: ['products-valuation'], queryFn: productsApi.getValuation, enabled: isOwner, staleTime: 10 * 60_000 });
+  const { data: intel } = useQuery({ queryKey: ['products-intelligence'], queryFn: productsApi.getIntelligence, enabled: isOwner, staleTime: 10 * 60_000 });
+  const { data: attendance = [] } = useQuery({ queryKey: ['attendance-month', yr, mo], queryFn: () => attendanceApi.getByMonth(yr, mo), enabled: isOwner, staleTime: 2 * 60_000 });
+
+  const todayCal   = calendar.find((c) => c.date.slice(0, 10) === todayYmd);
+  const todayAtt   = attendance.filter((a) => a.date.slice(0, 10) === todayYmd);
+  const deadStock  = intel?.slowMoving.filter((s) => s.severity === 'CRITICAL') ?? [];
+  const reorderNow = intel?.reorderSuggestions.filter((r) => r.priority === 'URGENT') ?? [];
+  const fmtTime    = (iso: string) => new Date(iso).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
+
   /* ── derived ── */
   const d              = dash?.stats;
   const reports        = dash?.reports;
@@ -541,6 +561,125 @@ export default function DashboardPage() {
                               <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* Business health (owner) — today's gap, month profit, stock, attendance */}
+            {isOwner && !isLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Aaj ka hisaab */}
+                <Card>
+                  <CardHead icon={Wallet} tone="blue" title="Aaj ka hisaab" subtitle="Expected qistein vs wasool" action={<LinkBtn onClick={() => navigate('/cashflow')}>Cash Flow</LinkBtn>} />
+                  <div className="p-5">
+                    {(() => {
+                      const exp = todayCal?.expectedAmount ?? 0;
+                      const got = todayTotal;
+                      const pct = exp > 0 ? Math.min(100, Math.round((got / exp) * 100)) : (got > 0 ? 100 : 0);
+                      const gap = Math.max(0, exp - got);
+                      return (
+                        <>
+                          <div className="flex items-end justify-between mb-2">
+                            <div>
+                              <p className="text-xs text-gray-500">Wasool</p>
+                              <p className="text-2xl font-bold text-gray-900 tabular-nums">{pkrSh(got)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500">Expected ({todayCal?.expectedCount ?? 0} qist)</p>
+                              <p className="text-lg font-semibold text-gray-700 tabular-nums">{pkrSh(exp)}</p>
+                            </div>
+                          </div>
+                          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-600' : 'bg-amber-500'}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex justify-between text-[11px] mt-1.5">
+                            <span className="text-gray-500">{pct}% aa gaya</span>
+                            {gap > 0
+                              ? <span className="font-semibold text-amber-700">{pkrSh(gap)} abhi aana baaki</span>
+                              : exp > 0 ? <span className="font-semibold text-emerald-700">Aaj ka target poora</span> : <span className="text-gray-400">Aaj koi qist due nahi</span>}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </Card>
+
+                {/* Is mahine ka munafa */}
+                <Card>
+                  <CardHead icon={TrendingUp} tone={(pnl?.netProfit ?? 0) >= 0 ? 'emerald' : 'red'} title="Is mahine ka munafa" subtitle="Sales − maal ki cost − kharche" action={<LinkBtn onClick={() => navigate('/ledger')}>P&amp;L</LinkBtn>} />
+                  {!pnl ? <div className="p-5"><RowSkeleton rows={3} /></div> : (
+                    <div className="px-5 py-4 space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-gray-500">Sales (qist + cash)</span><span className="font-semibold text-gray-900 tabular-nums">{pkrSh(pnl.totalRevenue)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">− Maal ki cost</span><span className="text-gray-700 tabular-nums">{pkrSh(pnl.cogsSales)}</span></div>
+                      <div className="flex justify-between border-t border-gray-100 pt-2"><span className="text-gray-600 font-medium">Gross profit</span><span className="font-semibold text-gray-900 tabular-nums">{pkrSh(pnl.grossProfit)} <span className="text-[11px] text-gray-400">({pnl.grossMarginPct}%)</span></span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">− Kharche</span><span className="text-gray-700 tabular-nums">{pkrSh(pnl.totalExpenses)}</span></div>
+                      <div className={`flex justify-between rounded-lg px-3 py-2 -mx-1 ${pnl.netProfit >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                        <span className={`font-semibold ${pnl.netProfit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>Net munafa</span>
+                        <span className={`font-bold tabular-nums ${pnl.netProfit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{pnl.netProfit < 0 ? '-' : ''}{pkrSh(Math.abs(pnl.netProfit))} <span className="text-[11px] font-medium opacity-70">({pnl.netMarginPct}%)</span></span>
+                      </div>
+                      {pnl.supplierOutstanding > 0 && <p className="text-[11px] text-amber-700">Suppliers ko {pkrSh(pnl.supplierOutstanding)} dena baaki hai</p>}
+                      {pnl.cogsSales === 0 && pnl.totalRevenue > 0 && <p className="text-[11px] text-gray-400">Products par purchase price likhein to asal munafa dikhega</p>}
+                    </div>
+                  )}
+                </Card>
+
+                {/* Stock */}
+                <Card>
+                  <CardHead icon={Package} tone="violet" title="Stock ki value" subtitle={valuation ? `${valuation.totalUnits} units · ${valuation.productsWithCost}/${valuation.totalProducts} par cost likhi hai` : 'Inventory'} action={<LinkBtn onClick={() => navigate('/products')}>Products</LinkBtn>} />
+                  {!valuation ? <div className="p-5"><RowSkeleton rows={2} /></div> : (
+                    <div className="p-5">
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                          <p className="text-[11px] text-gray-500">Kharid value</p>
+                          <p className="text-lg font-bold text-gray-900 tabular-nums">{pkrSh(valuation.totalStockValue)}</p>
+                        </div>
+                        <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
+                          <p className="text-[11px] text-emerald-700">Mumkin munafa</p>
+                          <p className="text-lg font-bold text-emerald-800 tabular-nums">{pkrSh(valuation.potentialProfit)}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Dead stock (30+ din nahi bika)</span>
+                          <span className={`font-semibold px-2 py-0.5 rounded-full ${deadStock.length ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-500'}`}>{deadStock.length}</span>
+                        </div>
+                        {deadStock.slice(0, 3).map((s) => (
+                          <p key={s.id} className="text-[11px] text-gray-500 truncate pl-2">• {s.name} — {s.stock} pcs{s.daysSinceLastSale ? `, ${s.daysSinceLastSale} din se` : ''}</p>
+                        ))}
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-gray-600">Fori order chahiye</span>
+                          <span className={`font-semibold px-2 py-0.5 rounded-full ${reorderNow.length ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>{reorderNow.length}</span>
+                        </div>
+                        {reorderNow.slice(0, 3).map((r) => (
+                          <p key={r.id} className="text-[11px] text-gray-500 truncate pl-2">• {r.name} — {r.stock} baaki, {r.suggestedQty} mangwayein</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Staff attendance today */}
+                <Card>
+                  <CardHead icon={Users} tone="gray" title="Staff aaj hazir" subtitle={`${todayAtt.length} / ${staffToday.length} clock-in`} action={<LinkBtn onClick={() => navigate('/staff')}>Attendance</LinkBtn>} />
+                  <div className="divide-y divide-gray-50">
+                    {staffToday.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Koi staff nahi</p>}
+                    {staffToday.map((s) => {
+                      const rec = todayAtt.find((a) => a.userId === s.staffId);
+                      const state = !rec ? 'absent' : rec.clockOut ? 'done' : 'in';
+                      return (
+                        <div key={s.staffId} className="flex items-center gap-3 px-5 py-2.5">
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${state === 'in' ? 'bg-emerald-500' : state === 'done' ? 'bg-gray-400' : 'bg-red-400'}`} />
+                          <p className="text-sm font-medium text-gray-900 flex-1 truncate">{s.staffName}</p>
+                          <p className="text-[11px] text-gray-500 tabular-nums">
+                            {state === 'in' && `Field mein · ${fmtTime(rec!.clockIn)} se`}
+                            {state === 'done' && `${fmtTime(rec!.clockIn)} – ${fmtTime(rec!.clockOut!)}${rec!.durationMin ? ` · ${Math.round(rec!.durationMin / 60)}h` : ''}`}
+                            {state === 'absent' && 'Clock-in nahi kiya'}
+                          </p>
+                          {s.total > 0 && <span className="text-[11px] font-semibold text-emerald-700 tabular-nums">{pkrSh(s.total)}</span>}
                         </div>
                       );
                     })}
