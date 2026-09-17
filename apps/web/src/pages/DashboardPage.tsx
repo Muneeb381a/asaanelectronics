@@ -18,6 +18,7 @@ import { recoveryApi } from '../api/recovery.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { handoversApi, type StaffBalance } from '../api/handovers.api.ts';
+import { agentPortfolioApi } from '../api/agentPortfolio.api.ts';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 
@@ -299,6 +300,8 @@ export default function DashboardPage() {
   const { data: shop } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe, staleTime: 5 * 60_000 });
   const { data: birthdays = [] } = useQuery({ queryKey: ['upcoming-birthdays'], queryFn: customersApi.getUpcomingBirthdays, staleTime: 60 * 60_000 });
 
+  const { data: myAssignments = [] } = useQuery({ queryKey: ['my-assignments'], queryFn: () => agentPortfolioApi.list(), enabled: !isOwner, staleTime: 2 * 60_000 });
+
   /* ── business health (owner) ── */
   const now   = new Date();
   const yr    = now.getFullYear();
@@ -402,6 +405,32 @@ export default function DashboardPage() {
                 sub={`+${d?.newThisMonthCount ?? 0} naye is mahine`} />
             </div>
           )
+        )}
+
+        {/* ── Staff: customers assigned to me ───────────────────────────── */}
+        {!isOwner && myAssignments.length > 0 && (
+          <Card className="overflow-hidden">
+            <CardHead icon={Users} tone="violet" title="Mere assigned customers" subtitle={`Owner ne ${myAssignments.length} customer aap ko diye hain`} action={<LinkBtn onClick={() => navigate('/customers')}>Customers</LinkBtn>} />
+            <div className="divide-y divide-gray-50">
+              {myAssignments.map((a) => (
+                <div key={a.id} className="flex items-center gap-3 px-5 py-3">
+                  <Avatar name={a.customer_name} tone="violet" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{a.customer_name}</p>
+                    <p className="text-[11px] text-gray-500 truncate">
+                      {a.customer_phone ?? 'phone nahi'}
+                      {a.installment_amount && ` · ${pkrSh(Number(a.installment_amount))}/qist`}
+                      {a.notes && ` · ${a.notes}`}
+                    </p>
+                  </div>
+                  {a.installment_status && (
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${a.installment_status === 'ACTIVE' ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'}`}>{a.installment_status}</span>
+                  )}
+                  {a.customer_phone && <WaButton phone={a.customer_phone} msg={`Assalam-o-Alaikum ${a.customer_name}! Main ${shop?.shopName ?? 'Assaan Electronics'} se baat kar raha hoon.`} />}
+                </div>
+              ))}
+            </div>
+          </Card>
         )}
 
         {/* ── Staff cash card ────────────────────────────────────────────── */}

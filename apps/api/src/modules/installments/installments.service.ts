@@ -8,6 +8,7 @@ import { markUnitSoldInTx, markUnitAvailableInTx, productHasUnits } from '../pro
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { accountingSvc } from '../accounting/accounting.service.js';
 import { fsm } from '../../utils/fsm.js';
+import { staffScopeSql } from '../../utils/staffScope.js';
 import { isOverdueSql, nextDueDateSql } from '../../utils/dueDate.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
@@ -53,7 +54,7 @@ export class InstallmentsService {
   ) {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
     // Restrict to staff's own customers when they lack canViewAllInstallments
-    if (staffUserId) conditions.push(eq(customers.createdByUserId, staffUserId));
+    if (staffUserId) conditions.push(staffScopeSql(staffUserId, 'customers'));
     if (status) {
       conditions.push(eq(installments.status, status as 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED' | 'PENDING'));
     } else {
@@ -793,7 +794,7 @@ export class InstallmentsService {
         AND i.status = 'ACTIVE'
         AND i.deleted_at IS NULL
         AND c.deleted_at IS NULL
-        ${staffUserId ? sql`AND c.created_by_user_id = ${staffUserId}` : sql``}
+        ${staffUserId ? sql`AND ${staffScopeSql(staffUserId)}` : sql``}
       LIMIT 2000
     `);
 

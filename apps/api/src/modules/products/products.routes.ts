@@ -11,8 +11,8 @@ router.use(authenticate, requireSeller);
 
 router.get('/intelligence', requirePermission(['canManageProducts', 'canViewReports']), getInventoryIntelligence);
 router.get('/valuation',   requirePermission(['canManageProducts', 'canViewReports']), getValuation);
-router.get('/categories',  requirePermission('canManageProducts'), getCategories);
-router.get('/',            requirePermission('canManageProducts'), listProducts);
+router.get('/categories',  requirePermission(['canManageProducts', 'canAddInstallment', 'canMakeCashSales']), getCategories);
+router.get('/',            requirePermission(['canManageProducts', 'canAddInstallment', 'canMakeCashSales']), listProducts);
 router.post('/bulk',  requirePermission('canManageProducts'), validate(bulkReceiveProductsSchema), bulkReceiveProducts);
 router.post('/',      requirePermission('canManageProducts'), validate(createProductSchema), createProduct);
 router.patch('/:id',  requirePermission('canManageProducts'), validate(updateProductSchema), updateProduct);

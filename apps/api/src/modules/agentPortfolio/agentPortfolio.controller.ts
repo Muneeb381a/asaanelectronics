@@ -6,7 +6,9 @@ import * as svc from './agentPortfolio.service.js';
 export async function getPortfolio(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const { agentId } = req.query as { agentId?: string };
-    success(res, await svc.listAgentPortfolio(req.user!.sellerId!, agentId));
+    // Staff only ever see their own assignments; owners may filter by any agent.
+    const scopedAgent = req.user!.role === 'SELLER_OWNER' ? agentId : req.user!.userId;
+    success(res, await svc.listAgentPortfolio(req.user!.sellerId!, scopedAgent));
   } catch (e) { next(e); }
 }
 

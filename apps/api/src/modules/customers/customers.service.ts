@@ -3,6 +3,7 @@ import { nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { staffScopeSql } from '../../utils/staffScope.js';
 import { hashCnic, hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
@@ -106,7 +107,7 @@ type UpdateBody = Partial<CreateBody> & { tags?: string[] };
 export class CustomersService {
   async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string, verificationStatus?: string, staffUserId?: string, sortBy?: string, sortDir?: string, tag?: string) {
     const base = staffUserId
-      ? and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), eq(customers.createdByUserId, staffUserId))
+      ? and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), staffScopeSql(staffUserId, 'customers'))
       : and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt));
     const cleanSearch = search?.trim().replace(/-/g, '') ?? '';
     let searchCond: SQL | undefined = base;
@@ -264,7 +265,7 @@ export class CustomersService {
       FROM customers c
       LEFT JOIN inst_agg ia ON ia.customer_id = c.id
       WHERE c.seller_id = ${sellerId} AND c.deleted_at IS NULL
-        ${staffUserId ? sql`AND c.created_by_user_id = ${staffUserId}` : sql``}
+        ${staffUserId ? sql`AND ${staffScopeSql(staffUserId)}` : sql``}
       GROUP BY 1
     `);
     const counts: Record<string, number> = {
@@ -282,7 +283,7 @@ export class CustomersService {
   ): Promise<number> {
     // Build base WHERE conditions without lifecycle
     let whereSQL: SQL = sql`c.seller_id = ${sellerId} AND c.deleted_at IS NULL`;
-    if (staffUserId)         whereSQL = sql`${whereSQL} AND c.created_by_user_id = ${staffUserId}`;
+    if (staffUserId)         whereSQL = sql`${whereSQL} AND ${staffScopeSql(staffUserId)}`;
     if (verificationStatus)  whereSQL = sql`${whereSQL} AND c.verification_status = ${verificationStatus}`;
     if (search) {
       const parts: SQL[] = [
