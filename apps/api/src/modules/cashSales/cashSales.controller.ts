@@ -4,7 +4,6 @@ import { CashSalesService } from './cashSales.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
-import { resolveStaffScope } from '../../utils/staffScope.js';
 
 const svc   = new CashSalesService();
 const audit = new AuditService();
@@ -15,7 +14,11 @@ export async function listCashSales(req: AuthRequest, res: Response) {
   const from   = req.query['from']   as string | undefined;
   const to     = req.query['to']     as string | undefined;
   const search = req.query['search'] as string | undefined;
-  success(res, await svc.list(req.user!.sellerId!, page, limit, from, to, search, await resolveStaffScope(req)));
+  // Cash sale revenue is always private to the staff member who made the sale — unlike
+  // installments, no permission (not even canViewAllInstallments) grants a staff member
+  // shop-wide visibility here. Only the owner sees every employee's cash sales.
+  const staffUserId = req.user!.role === 'SELLER_STAFF' ? req.user!.userId : undefined;
+  success(res, await svc.list(req.user!.sellerId!, page, limit, from, to, search, staffUserId));
 }
 
 export async function createCashSale(req: AuthRequest, res: Response) {

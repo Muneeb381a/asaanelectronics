@@ -1,4 +1,4 @@
-import { PageHeader, btn, shell } from '../components/ui/Page';
+import { PageHeader, Card, CardHead, StatCard, btn, shell, inputCls } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -251,235 +251,201 @@ export default function CashSalesPage() {
 
   const isVehicle = !!selectedProd?.chassisNumber;
 
+  const methodBreakdown = METHODS.map(m => ({ m, cnt: allSales.filter(s => s.method === m).length })).filter(x => x.cnt > 0);
+
   /* ══ PAGE ══ */
   return (
-    <div className="bg-canvas">
+    <div className={shell.wide}>
 
-      <div className={`${shell.wide} !pb-0`}>
-        <PageHeader title="Cash Sales" subtitle={`Bina installment direct sale${salesTotal > 0 ? ` · ${salesTotal} records` : ''}`} icon={ShoppingCart}
-          actions={<button onClick={() => setShowModal(true)} className={btn.success}><Plus size={14}/> Naya cash sale</button>} />
+      <PageHeader
+        title="Cash Sales"
+        subtitle={isOwner ? `Bina installment direct sale — poori shop${salesTotal > 0 ? ` · ${salesTotal} records` : ''}` : `Bina installment direct sale — sirf aapki sales${salesTotal > 0 ? ` · ${salesTotal} records` : ''}`}
+        icon={ShoppingCart}
+        actions={<button onClick={() => setShowModal(true)} className={btn.success}><Plus size={14}/> Naya cash sale</button>}
+      />
+
+      {/* ══ KPI ROW ══ */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
+        <StatCard label="Aaj ki revenue" icon={Wallet} tone="emerald"
+          value={pkrSh(stats?.todayCashSales ?? todayRevenue)}
+          sub={todayCount > 0 ? `${todayCount} sale${todayCount !== 1 ? 's' : ''} aaj` : 'Abhi koi sale nahi'} />
+        <StatCard label="Is mahine" icon={TrendingUp} tone="blue"
+          value={pkrSh(stats?.monthCashSales ?? 0)}
+          sub={pkr(stats?.monthCashSales ?? 0)} />
+        <StatCard label="Kul records" icon={Package} tone="violet"
+          value={salesTotal}
+          sub={isOwner ? 'Poori shop mein' : 'Aapki sales'} />
       </div>
 
-      {/* ══ KPI STRIP ══ */}
-      <div className="bg-white border-y border-gray-200 mt-5">
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100">
-          <div className="px-5 py-3.5 border-l-[3px] border-emerald-500">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.18em]">Aaj Ki Revenue</p>
-            <p className="text-2xl xl:text-3xl font-bold text-slate-900 tabular-nums leading-none mt-1.5">
-              {pkrSh(stats?.todayCashSales ?? todayRevenue)}
-            </p>
-            <p className="text-[10px] text-slate-400 mt-1">
-              {todayCount > 0 ? `${todayCount} sale${todayCount !== 1 ? 's' : ''} aaj` : 'abhi koi nahi'}
-            </p>
-          </div>
-          <div className="px-5 py-3.5 border-l-[3px] border-blue-500">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.18em]">Is Mahine</p>
-            <p className="text-2xl xl:text-3xl font-bold text-slate-900 tabular-nums leading-none mt-1.5">
-              {pkrSh(stats?.monthCashSales ?? 0)}
-            </p>
-            <p className="text-[10px] text-slate-400 mt-1">{pkr(stats?.monthCashSales ?? 0)}</p>
-          </div>
-          <div className="px-5 py-3.5 border-l-[3px] border-violet-400">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.18em]">Kul Records</p>
-            <p className="text-2xl xl:text-3xl font-bold text-slate-900 tabular-nums leading-none mt-1.5">{salesTotal}</p>
-            <p className="text-[10px] text-slate-400 mt-1">sab mila kar</p>
-          </div>
-          <div className="px-5 py-3.5 border-l-[3px] border-slate-200">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.18em]">Payment Methods</p>
-            <div className="flex gap-1.5 mt-1.5 flex-wrap">
-              {METHODS.map(m => {
-                const cnt = allSales.filter(s => s.method === m).length;
-                if (!cnt) return null;
-                return (
-                  <span key={m} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${METHOD_COLORS[m].pill}`}>
-                    {METHOD_LABELS[m]} {cnt}
-                  </span>
-                );
-              })}
-              {allSales.length === 0 && <span className="text-[10px] text-slate-300">—</span>}
-            </div>
-          </div>
+      {/* ══ SEARCH + METHOD FILTER ══ */}
+      <Card padded className="mt-5">
+        <div className="relative">
+          <input
+            type="text" value={listSearch}
+            onChange={e => { setListSearch(e.target.value); setListPage(1); }}
+            placeholder="Product ya customer dhundo…"
+            className={`${inputCls} pl-9`}/>
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
         </div>
-      </div>
-
-      {/* ══ BODY ══ */}
-      <div className="px-3 sm:px-5 lg:px-6 py-4 space-y-3">
-
-        {/* Search + Method Filter */}
-        <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-4 py-3">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="relative flex-1">
-              <input
-                type="text" value={listSearch}
-                onChange={e => { setListSearch(e.target.value); setListPage(1); }}
-                placeholder="Product ya customer dhundo…"
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"/>
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
-            </div>
-          </div>
-          {/* Method filter pills */}
-          <div className="flex gap-1.5 flex-wrap">
-            <button onClick={() => setMethodFilter('ALL')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${methodFilter === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-              Sab
-            </button>
-            {METHODS.map(m => (
-              <button key={m} onClick={() => setMethodFilter(m)}
-                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition ${methodFilter === m ? `${METHOD_COLORS[m].pill} ring-2 ring-offset-1 ring-current` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                {METHOD_ICONS[m]} {METHOD_LABELS[m]}
+        <div className="flex items-center gap-1.5 flex-wrap mt-3">
+          <button onClick={() => setMethodFilter('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${methodFilter === 'ALL' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            Sab{allSales.length > 0 && <span className="tabular-nums"> ({allSales.length})</span>}
+          </button>
+          {METHODS.map(m => {
+            const cnt = allSales.filter(s => s.method === m).length;
+            return (
+              <button key={m} onClick={() => setMethodFilter(m)} disabled={cnt === 0 && methodFilter !== m}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-30 disabled:cursor-default ${
+                  methodFilter === m ? `${METHOD_COLORS[m].pill} ring-1 ring-current` : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}>
+                {METHOD_ICONS[m]} {METHOD_LABELS[m]}{cnt > 0 && <span className="tabular-nums"> ({cnt})</span>}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
+        {methodBreakdown.length > 1 && (
+          <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100">
+            Is page par: {methodBreakdown.map(({ m, cnt }) => `${METHOD_LABELS[m]} ${cnt}`).join(' · ')}
+          </p>
+        )}
+      </Card>
 
-        {/* Sales List */}
-        <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={14} className="text-slate-500"/>
-              <h2 className="text-sm font-bold text-slate-900">
-                {methodFilter !== 'ALL' ? `${METHOD_LABELS[methodFilter]} Sales` : 'Tamam Sales'}
-              </h2>
-              {methodFilter !== 'ALL' && (
-                <span className="text-[10px] text-slate-400">({visible.length} is page par)</span>
-              )}
-            </div>
-            {salesTotal > 0 && (
-              <span className="text-xs text-slate-400 tabular-nums">
-                {(listPage - 1) * 25 + 1}–{Math.min(listPage * 25, salesTotal)} / {salesTotal}
-              </span>
-            )}
-          </div>
+      {/* ══ SALES LIST ══ */}
+      <Card className="mt-5 overflow-hidden">
+        <CardHead
+          icon={TrendingUp} tone="blue"
+          title={methodFilter !== 'ALL' ? `${METHOD_LABELS[methodFilter]} sales` : 'Tamam sales'}
+          subtitle={salesTotal > 0 ? `${(listPage - 1) * 25 + 1}–${Math.min(listPage * 25, salesTotal)} / ${salesTotal}` : undefined}
+        />
 
-          {isLoading ? (
-            <RowSkeleton rows={6}/>
-          ) : visible.length === 0 ? (
-            <div className="py-14 flex flex-col items-center gap-3 text-center">
-              <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
-                <ShoppingCart size={20} className="text-slate-300"/>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-600">{listSearch ? 'Kuch nahi mila' : 'Koi sale nahi'}</p>
-                <p className="text-xs text-slate-400 mt-1">{listSearch ? 'Alag search try karo' : '"Naya Cash Sale" par click karo'}</p>
-              </div>
+        {isLoading ? (
+          <RowSkeleton rows={6}/>
+        ) : visible.length === 0 ? (
+          <div className="py-14 flex flex-col items-center gap-3 text-center">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center">
+              <ShoppingCart size={20} className="text-gray-300"/>
             </div>
-          ) : (
             <div>
-              {groups.map((group, gi) => (
-                <div key={group.key}>
-                  {/* Date group header */}
-                  <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 border-y border-slate-100 sticky top-0 z-10">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{group.label}</p>
-                    <div className="flex-1 border-t border-slate-200"/>
-                    <p className="text-[10px] text-slate-400 tabular-nums">
-                      {pkrSh(group.items.reduce((a, s) => a + Number(s.amount), 0))} total
-                    </p>
-                  </div>
+              <p className="text-sm font-semibold text-gray-600">{listSearch ? 'Kuch nahi mila' : 'Koi sale nahi'}</p>
+              <p className="text-xs text-gray-400 mt-1">{listSearch ? 'Alag search try karo' : '"Naya Cash Sale" par click karo'}</p>
+            </div>
+          </div>
+        ) : (
+          <div>
+            {groups.map((group, gi) => (
+              <div key={group.key}>
+                {/* Date group header */}
+                <div className="flex items-center gap-3 px-5 py-2 bg-gray-50 border-y border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{group.label}</p>
+                  <div className="flex-1 border-t border-gray-200"/>
+                  <p className="text-[10px] text-gray-400 tabular-nums">
+                    {pkrSh(group.items.reduce((a, s) => a + Number(s.amount), 0))} total
+                  </p>
+                </div>
 
-                  {/* Row per sale */}
-                  {group.items.map((s, i) => (
-                    <div key={s.id}
-                      className={`flex items-center gap-3 px-4 py-3 group hover:bg-slate-50 transition border-l-[3px] ${METHOD_COLORS[s.method].border} ${i > 0 || gi > 0 ? 'border-t border-slate-50' : ''}`}>
+                {/* Row per sale */}
+                {group.items.map((s, i) => (
+                  <div key={s.id}
+                    className={`flex items-center gap-3 px-5 py-3 group hover:bg-gray-50 transition border-l-[3px] ${METHOD_COLORS[s.method].border} ${i > 0 || gi > 0 ? 'border-t border-gray-50' : ''}`}>
 
-                      {/* Method badge */}
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${METHOD_COLORS[s.method].pill}`}>
-                        {METHOD_ICONS[s.method]}
-                      </div>
+                    {/* Method badge */}
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${METHOD_COLORS[s.method].pill}`}>
+                      {METHOD_ICONS[s.method]}
+                    </div>
 
-                      {/* Product + Customer */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-bold text-slate-900 truncate">{s.productName}</p>
-                          {s.quantity > 1 && (
-                            <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">×{s.quantity}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {s.customerName ? (
-                            <p className="text-xs text-slate-500 truncate">{s.customerName}</p>
-                          ) : (
-                            <p className="text-xs text-slate-300 italic">Walk-in</p>
-                          )}
-                          {s.customerPhone && <span className="text-slate-200">·</span>}
-                          {s.customerPhone && <p className="text-xs text-slate-400 tabular-nums">{s.customerPhone}</p>}
-                          {s.imeiNumber && <span className="text-slate-200">·</span>}
-                          {s.imeiNumber && <p className="text-[10px] text-slate-400 font-mono truncate max-w-[100px]">{s.imeiNumber}</p>}
-                        </div>
-                      </div>
-
-                      {/* Amount + method */}
-                      <div className="text-right shrink-0 mr-2 hidden sm:block">
-                        <p className="text-base font-bold text-slate-900 tabular-nums">{pkr(Number(s.amount))}</p>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${METHOD_COLORS[s.method].pill}`}>
-                          {METHOD_LABELS[s.method]}
-                        </span>
-                      </div>
-                      {/* Amount on mobile */}
-                      <p className="text-sm font-bold text-slate-900 tabular-nums shrink-0 sm:hidden">{pkrSh(Number(s.amount))}</p>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition">
-                        <button title="Print"
-                          onClick={() => void openCashSaleBill({
-                            shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
-                            customer: { name: s.customerName, phone: s.customerPhone },
-                            product: s.productName, quantity: s.quantity, amount: s.amount,
-                            method: s.method, imeiNumber: s.imeiNumber, note: s.note,
-                            soldAt: s.createdAt, saleId: s.id,
-                          })}
-                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition">
-                          <Printer size={14}/>
-                        </button>
-                        {(s.customerPhone || s.customerName) && (
-                          <a title="WhatsApp"
-                            href={cashSaleWhatsappUrl({
-                              shopName: seller?.shopName ?? 'Receipt', shopPhone: seller?.phone,
-                              customerName: s.customerName, customerPhone: s.customerPhone,
-                              productName: s.productName, quantity: s.quantity, amount: Number(s.amount),
-                              method: s.method, imeiNumber: s.imeiNumber, note: s.note, soldAt: s.createdAt,
-                            })}
-                            target="_blank" rel="noreferrer"
-                            className="p-1.5 text-slate-400 hover:text-[#25D366] hover:bg-green-50 rounded-lg transition">
-                            <MessageCircle size={14}/>
-                          </a>
+                    {/* Product + Customer */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{s.productName}</p>
+                        {s.quantity > 1 && (
+                          <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">×{s.quantity}</span>
                         )}
-                        {isOwner && (
-                          <>
-                            <button title="Edit" onClick={() => setEditingSale(s)}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
-                              <Pencil size={14}/>
-                            </button>
-                            <button title="Delete" onClick={() => setConfirmDelete(s.id)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-                              <Trash2 size={14}/>
-                            </button>
-                          </>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {s.customerName ? (
+                          <p className="text-xs text-gray-500 truncate">{s.customerName}</p>
+                        ) : (
+                          <p className="text-xs text-gray-300 italic">Walk-in</p>
                         )}
+                        {s.customerPhone && <span className="text-gray-200">·</span>}
+                        {s.customerPhone && <p className="text-xs text-gray-400 tabular-nums">{s.customerPhone}</p>}
+                        {s.imeiNumber && <span className="text-gray-200">·</span>}
+                        {s.imeiNumber && <p className="text-[10px] text-gray-400 font-mono truncate max-w-[100px]">{s.imeiNumber}</p>}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ))}
 
-              {/* Pagination */}
-              {salesPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
-                  <button onClick={() => setListPage(p => Math.max(1, p - 1))} disabled={listPage === 1}
-                    className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
-                    <ChevronLeft size={13}/> Pehla
-                  </button>
-                  <span className="text-xs text-slate-500 tabular-nums">{listPage} / {salesPages}</span>
-                  <button onClick={() => setListPage(p => Math.min(salesPages, p + 1))} disabled={listPage === salesPages}
-                    className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
-                    Agla <ChevronRight size={13}/>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                    {/* Amount + method */}
+                    <div className="text-right shrink-0 mr-2 hidden sm:block">
+                      <p className="text-base font-bold text-gray-900 tabular-nums">{pkr(Number(s.amount))}</p>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${METHOD_COLORS[s.method].pill}`}>
+                        {METHOD_LABELS[s.method]}
+                      </span>
+                    </div>
+                    {/* Amount on mobile */}
+                    <p className="text-sm font-bold text-gray-900 tabular-nums shrink-0 sm:hidden">{pkrSh(Number(s.amount))}</p>
 
-      </div>{/* end body */}
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition">
+                      <button title="Print"
+                        onClick={() => void openCashSaleBill({
+                          shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
+                          customer: { name: s.customerName, phone: s.customerPhone },
+                          product: s.productName, quantity: s.quantity, amount: s.amount,
+                          method: s.method, imeiNumber: s.imeiNumber, note: s.note,
+                          soldAt: s.createdAt, saleId: s.id,
+                        })}
+                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">
+                        <Printer size={14}/>
+                      </button>
+                      {(s.customerPhone || s.customerName) && (
+                        <a title="WhatsApp"
+                          href={cashSaleWhatsappUrl({
+                            shopName: seller?.shopName ?? 'Receipt', shopPhone: seller?.phone,
+                            customerName: s.customerName, customerPhone: s.customerPhone,
+                            productName: s.productName, quantity: s.quantity, amount: Number(s.amount),
+                            method: s.method, imeiNumber: s.imeiNumber, note: s.note, soldAt: s.createdAt,
+                          })}
+                          target="_blank" rel="noreferrer"
+                          className="p-1.5 text-gray-400 hover:text-[#25D366] hover:bg-green-50 rounded-lg transition">
+                          <MessageCircle size={14}/>
+                        </a>
+                      )}
+                      {isOwner && (
+                        <>
+                          <button title="Edit" onClick={() => setEditingSale(s)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                            <Pencil size={14}/>
+                          </button>
+                          <button title="Delete" onClick={() => setConfirmDelete(s.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                            <Trash2 size={14}/>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            {/* Pagination */}
+            {salesPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
+                <button onClick={() => setListPage(p => Math.max(1, p - 1))} disabled={listPage === 1}
+                  className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                  <ChevronLeft size={13}/> Pehla
+                </button>
+                <span className="text-xs text-gray-500 tabular-nums">{listPage} / {salesPages}</span>
+                <button onClick={() => setListPage(p => Math.min(salesPages, p + 1))} disabled={listPage === salesPages}
+                  className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                  Agla <ChevronRight size={13}/>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
 
       {/* ══ NEW SALE MODAL ══ */}
       {showModal && (
@@ -515,7 +481,7 @@ export default function CashSalesPage() {
                       method: lastSale.method, imeiNumber: lastSale.imeiNumber, note: lastSale.note,
                       soldAt: lastSale.createdAt, saleId: lastSale.id,
                     })}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                    className={`flex-1 ${btn.secondary}`}>
                     <Printer size={14}/> Print
                   </button>
                   <a href={cashSaleWhatsappUrl({
@@ -556,10 +522,10 @@ export default function CashSalesPage() {
                       <div className="relative mb-2">
                         <input type="text" value={productSearch} onChange={e => setProductSearch(e.target.value)}
                           placeholder="Product ka naam likho…" autoFocus
-                          className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"/>
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+                          className={`${inputCls} pl-9`}/>
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
                       </div>
-                      <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-50">
+                      <div className="max-h-44 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-50">
                         {products.length === 0 ? (
                           <div className="py-5 text-center">
                             <p className="text-xs text-slate-400 mb-2">Koi product nahi mila</p>
@@ -602,13 +568,13 @@ export default function CashSalesPage() {
                         <label className="block text-xs font-bold text-slate-600 mb-1.5">Quantity</label>
                         <input type="number" min={1} max={selectedProd.stock} value={form.quantity}
                           onChange={e => setForm(f => ({ ...f, quantity: Math.max(1, Number(e.target.value)) }))}
-                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" required/>
+                          className={inputCls} required/>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-1.5">Amount (PKR) <span className="text-red-500">*</span></label>
                         <input type="number" min={1} value={form.amount}
                           onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-bold tabular-nums focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" required/>
+                          className={`${inputCls} font-bold tabular-nums`} required/>
                       </div>
                     </div>
 
@@ -635,13 +601,13 @@ export default function CashSalesPage() {
                         <label className="block text-xs font-bold text-slate-600 mb-1.5">Customer <span className="font-normal text-slate-400">(optional)</span></label>
                         <input type="text" value={form.customerName} onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
                           placeholder="Walk-in customer"
-                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
+                          className={inputCls}/>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-1.5">Phone <span className="font-normal text-slate-400">(optional)</span></label>
                         <input type="tel" value={form.customerPhone} onChange={e => setForm(f => ({ ...f, customerPhone: e.target.value }))}
                           placeholder="03XX-XXXXXXX"
-                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
+                          className={inputCls}/>
                       </div>
                     </div>
 
@@ -667,7 +633,7 @@ export default function CashSalesPage() {
                           <input type="text" inputMode="numeric" maxLength={15} value={form.imeiNumber}
                             onChange={e => setForm(f => ({ ...f, imeiNumber: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
                             placeholder="15-digit IMEI"
-                            className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:outline-none focus:border-blue-400 transition"/>
+                            className={`${inputCls} font-mono`}/>
                           {debouncedImei.length === 15 && (
                             imeiChecking ? (
                               <p className="text-[10px] text-slate-400 mt-1">Check ho raha…</p>
@@ -689,7 +655,7 @@ export default function CashSalesPage() {
                         <label className="block text-xs font-bold text-slate-600 mb-1.5">Note <span className="font-normal text-slate-400">(optional)</span></label>
                         <input type="text" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                           placeholder="Kuch aur…"
-                          className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
+                          className={inputCls}/>
                       </div>
                     </div>
                   </>
@@ -777,7 +743,7 @@ function EditModal({
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Amount (PKR)</label>
             <input type="number" min="1" autoFocus value={amount} onChange={e => setAmount(e.target.value)}
-              className="w-full px-3 py-3 border border-slate-200 rounded-xl text-lg font-bold tabular-nums focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"/>
+              className={`${inputCls} text-lg font-bold tabular-nums px-3 py-3`}/>
           </div>
 
           <div>
@@ -799,22 +765,22 @@ function EditModal({
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Customer Name</label>
             <input type="text" placeholder="Walk-in" value={customerName} onChange={e => setCustomerName(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
+              className={inputCls}/>
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Phone</label>
             <input type="tel" placeholder="03xx-xxxxxxx" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
+              className={inputCls}/>
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">IMEI / Serial</label>
             <input type="text" placeholder="Optional" value={imeiNumber} onChange={e => setImeiNumber(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-blue-400 transition"/>
+              className={`${inputCls} font-mono`}/>
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Note</label>
             <input type="text" placeholder="Optional" value={note} onChange={e => setNote(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition"/>
+              className={inputCls}/>
           </div>
         </div>
 
