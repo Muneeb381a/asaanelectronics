@@ -4,7 +4,7 @@ import { InstallmentsService } from './installments.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
-import { resolveStaffScope } from '../../utils/staffScope.js';
+import { resolveStaffScope, resolveStaffScopeForSearch, resolveStaffScopeForPayments } from '../../utils/staffScope.js';
 import { importInstallmentsSchema, updateInstallmentSchema } from '@assaan/shared';
 const svc   = new InstallmentsService();
 const audit = new AuditService();
@@ -22,15 +22,16 @@ export async function listInstallments(req: AuthRequest, res: Response) {
   const sortBy     = req.query['sortBy']     as string | undefined;
   const sortDir    = req.query['sortDir']    as string | undefined;
 
-  // Staff without canViewAllInstallments see only their own customers' installments.
-  // Owners and staff with the permission see all shop installments.
-  const staffUserId = await resolveStaffScope(req);
+  // Staff without canViewAllInstallments only browse their own customers' installments —
+  // but a deliberate search (walk-in customer paying at any counter) looks shop-wide
+  // when they can record payments; payments.record() has no ownership check either way.
+  const staffUserId = await resolveStaffScopeForSearch(req, !!search?.trim());
 
   success(res, await svc.list(req.user!.sellerId!, page, limit, status, search, customerId, frequency, sortBy, sortDir, staffUserId));
 }
 
 export async function getInstallment(req: AuthRequest, res: Response) {
-  success(res, await svc.getOne(req.params['id']!, req.user!.sellerId!, await resolveStaffScope(req)));
+  success(res, await svc.getOne(req.params['id']!, req.user!.sellerId!, await resolveStaffScopeForPayments(req)));
 }
 
 export async function getDueSheet(req: AuthRequest, res: Response) {
@@ -175,7 +176,7 @@ export async function waiverInstallment(req: AuthRequest, res: Response) {
 }
 
 export async function getSettlement(req: AuthRequest, res: Response) {
-  const inst = await svc.getOne(req.params['id']!, req.user!.sellerId!, await resolveStaffScope(req));
+  const inst = await svc.getOne(req.params['id']!, req.user!.sellerId!, await resolveStaffScopeForPayments(req));
   const remaining = Number(inst.remaining);
 
   // Owner can configure early-settlement discount % via seller settings (future)

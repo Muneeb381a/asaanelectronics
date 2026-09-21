@@ -5,7 +5,7 @@ import { SearchService } from './search.service.js';
 import { success } from '../../utils/response.js';
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema.js';
-import { resolveStaffScope } from '../../utils/staffScope.js';
+import { resolveStaffScopeForLookup } from '../../utils/staffScope.js';
 
 const svc = new SearchService();
 
@@ -26,5 +26,7 @@ export async function globalSearch(req: AuthRequest, res: Response) {
     canSearchCnic = !!dbUser?.permissions?.canSearchCnic;
   }
 
-  success(res, await svc.globalSearch(user.sellerId!, q, canSearchCnic, await resolveStaffScope(req)));
+  // The search box itself is only shown to staff who can look up an arbitrary
+  // customer (canSearchCnic and friends) — match that same permission here.
+  success(res, await svc.globalSearch(user.sellerId!, q, canSearchCnic, await resolveStaffScopeForLookup(req)));
 }

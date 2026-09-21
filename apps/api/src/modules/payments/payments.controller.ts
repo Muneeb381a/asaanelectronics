@@ -4,7 +4,7 @@ import { PaymentsService } from './payments.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 import { auditCtx } from '../../utils/auditCtx.js';
-import { resolveStaffScope } from '../../utils/staffScope.js';
+import { resolveStaffScope, resolveStaffScopeForPayments } from '../../utils/staffScope.js';
 import {
   createJazzCashLink, buildPayPageHtml, getPendingLink, markLinkRecorded,
   verifyCallbackHash, isJazzCashConfigured,
@@ -14,15 +14,17 @@ const audit = new AuditService();
 
 export async function listPayments(req: AuthRequest, res: Response) {
   const installmentId = req.query['installmentId'] as string | undefined;
-  const staffUserId = await resolveStaffScope(req);
   if (installmentId) {
+    // Payment history for one installment — only ever fetched from the record-payment UI,
+    // for an installment the staff member already reached through an unscoped search.
     const page  = Math.max(1, parseInt(req.query['page']  as string) || 1);
     const limit = Math.max(1, parseInt(req.query['limit'] as string) || 50);
-    success(res, await svc.listByInstallment(installmentId, req.user!.sellerId!, page, limit, staffUserId));
+    success(res, await svc.listByInstallment(installmentId, req.user!.sellerId!, page, limit, await resolveStaffScopeForPayments(req)));
   } else {
+    // Browsing all payments (reports/exports) stays scoped to the staff member's own collections.
     const from = req.query['from'] as string | undefined;
     const to   = req.query['to']   as string | undefined;
-    success(res, await svc.listBySeller(req.user!.sellerId!, from, to, staffUserId));
+    success(res, await svc.listBySeller(req.user!.sellerId!, from, to, await resolveStaffScope(req)));
   }
 }
 

@@ -23,6 +23,14 @@ export function staffScopeOrTrue(staffUserId: string | undefined, alias = 'c'): 
   return staffUserId ? staffScopeSql(staffUserId, alias) : sql`TRUE`;
 }
 
+async function loadStaffPermissions(userId: string) {
+  const member = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { permissions: true },
+  });
+  return member?.permissions ?? null;
+}
+
 /**
  * Who is this request restricted to?
  * - Owner / super-admin → undefined (sees whole shop)
@@ -33,12 +41,50 @@ export function staffScopeOrTrue(staffUserId: string | undefined, alias = 'c'): 
 export async function resolveStaffScope(req: AuthRequest): Promise<string | undefined> {
   const user = req.user!;
   if (user.role !== 'SELLER_STAFF') return undefined;
-  const member = await db.query.users.findFirst({
-    where: eq(users.id, user.userId),
-    columns: { permissions: true },
-  });
-  const canViewAll = member?.permissions?.canViewAllInstallments ?? false;
-  return canViewAll ? undefined : user.userId;
+  const perms = await loadStaffPermissions(user.userId);
+  return perms?.canViewAllInstallments ? undefined : user.userId;
+}
+
+/**
+ * Same as resolveStaffScope, but ALSO unscoped when `hasSearchTerm` is true and the
+ * staff member can record payments. A customer may walk up to any employee's counter
+ * to pay — not just their own collector — so a deliberate search (not passive
+ * browsing of "my customers") must be able to find that customer shop-wide.
+ * payments.record() itself has no ownership check, so this grants no capability
+ * the staff member didn't already have; it only lets them find what to act on.
+ */
+export async function resolveStaffScopeForSearch(req: AuthRequest, hasSearchTerm: boolean): Promise<string | undefined> {
+  const user = req.user!;
+  if (user.role !== 'SELLER_STAFF') return undefined;
+  const perms = await loadStaffPermissions(user.userId);
+  if (perms?.canViewAllInstallments) return undefined;
+  if (hasSearchTerm && perms?.canRecordPayment) return undefined;
+  return user.userId;
+}
+
+/**
+ * For point-lookups by ID that only feed the payment-recording UI — an installment's
+ * detail or settlement, its payment history, a customer opened from a search result.
+ * The ID was already found through an unscoped search, so treat this the same way.
+ */
+export async function resolveStaffScopeForPayments(req: AuthRequest): Promise<string | undefined> {
+  return resolveStaffScopeForSearch(req, true);
+}
+
+/**
+ * Global search (Ctrl+K) is only shown to staff with canSearchCnic — the same
+ * permission (alongside canAddInstallment/canAddCustomer/canRecordPayment) that
+ * already unlocks the unscoped CNIC lookup on customers.routes.ts. Keep both
+ * "can this staff member look up an arbitrary customer" checks in sync.
+ */
+export async function resolveStaffScopeForLookup(req: AuthRequest): Promise<string | undefined> {
+  const user = req.user!;
+  if (user.role !== 'SELLER_STAFF') return undefined;
+  const perms = await loadStaffPermissions(user.userId);
+  if (perms?.canViewAllInstallments) return undefined;
+  const canLookUpAnyCustomer =
+    perms?.canSearchCnic || perms?.canRecordPayment || perms?.canAddInstallment || perms?.canAddCustomer;
+  return canLookUpAnyCustomer ? undefined : user.userId;
 }
 
 /** 404 when the customer is outside this staff member's scope (or doesn't exist in the shop). */
