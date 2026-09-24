@@ -1,6 +1,6 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { suppliers, supplierInvoices, supplierInvoiceLines, products } from '../../db/schema.js';
+import { suppliers, supplierInvoices, supplierInvoiceLines, supplierPayments, products, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { randomUUID } from 'crypto';
 
@@ -227,14 +227,88 @@ export class SuppliersService {
     return row!;
   }
 
-  async updateInvoicePaid(id: string, sellerId: string, paidAmount: number) {
-    const [row] = await db
-      .update(supplierInvoices)
-      .set({ paidAmount: String(paidAmount) })
-      .where(and(eq(supplierInvoices.id, id), eq(supplierInvoices.sellerId, sellerId)))
-      .returning();
-    if (!row) throw new AppError('Invoice not found', 404);
-    return { ...row, totalAmount: Number(row.totalAmount), paidAmount: Number(row.paidAmount) };
+  // ── Payments (partial, recorded over time) ──────────────────────────────────
+
+  async listPayments(invoiceId: string, sellerId: string) {
+    const invoice = await db.query.supplierInvoices.findFirst({
+      where: and(eq(supplierInvoices.id, invoiceId), eq(supplierInvoices.sellerId, sellerId)),
+      columns: { id: true },
+    });
+    if (!invoice) throw new AppError('Invoice not found', 404);
+
+    const rows = await db
+      .select({
+        id: supplierPayments.id, amount: supplierPayments.amount, method: supplierPayments.method,
+        note: supplierPayments.note, paidOn: supplierPayments.paidOn, createdAt: supplierPayments.createdAt,
+        recordedByName: users.name,
+      })
+      .from(supplierPayments)
+      .leftJoin(users, eq(users.id, supplierPayments.recordedBy))
+      .where(eq(supplierPayments.invoiceId, invoiceId))
+      .orderBy(desc(supplierPayments.paidOn), desc(supplierPayments.createdAt));
+
+    return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+  }
+
+  async recordPayment(invoiceId: string, sellerId: string, actorId: string | undefined, body: {
+    amount: number; method?: string; note?: string; paidOn?: string;
+  }) {
+    return db.transaction(async (tx) => {
+      const [invoice] = await tx
+        .select({ id: supplierInvoices.id, supplierId: supplierInvoices.supplierId, totalAmount: supplierInvoices.totalAmount, paidAmount: supplierInvoices.paidAmount })
+        .from(supplierInvoices)
+        .where(and(eq(supplierInvoices.id, invoiceId), eq(supplierInvoices.sellerId, sellerId)));
+      if (!invoice) throw new AppError('Invoice not found', 404);
+
+      const outstanding = Number(invoice.totalAmount) - Number(invoice.paidAmount);
+      // Round-trip through paisas to sidestep float drift on the boundary check.
+      const outstandingPaisas = Math.round(outstanding * 100);
+      const amountPaisas      = Math.round(body.amount * 100);
+      if (amountPaisas <= 0) throw new AppError('Amount must be greater than zero', 400);
+      if (amountPaisas > outstandingPaisas) {
+        throw new AppError(`Amount exceeds the remaining balance of PKR ${outstanding.toFixed(2)}`, 400);
+      }
+
+      const [payment] = await tx.insert(supplierPayments).values({
+        invoiceId, supplierId: invoice.supplierId, sellerId,
+        amount:  String(body.amount),
+        method:  body.method ?? null,
+        note:    body.note ?? null,
+        paidOn:  body.paidOn ?? new Date().toISOString().slice(0, 10),
+        recordedBy: actorId ?? null,
+      }).returning();
+
+      const [updatedInvoice] = await tx
+        .update(supplierInvoices)
+        .set({ paidAmount: sql`${supplierInvoices.paidAmount} + ${body.amount}` })
+        .where(eq(supplierInvoices.id, invoiceId))
+        .returning();
+
+      return {
+        payment: { ...payment!, amount: Number(payment!.amount) },
+        invoice: { ...updatedInvoice!, totalAmount: Number(updatedInvoice!.totalAmount), paidAmount: Number(updatedInvoice!.paidAmount) },
+      };
+    });
+  }
+
+  async removePayment(paymentId: string, sellerId: string) {
+    return db.transaction(async (tx) => {
+      const [payment] = await tx
+        .select({ id: supplierPayments.id, invoiceId: supplierPayments.invoiceId, amount: supplierPayments.amount })
+        .from(supplierPayments)
+        .where(and(eq(supplierPayments.id, paymentId), eq(supplierPayments.sellerId, sellerId)));
+      if (!payment) throw new AppError('Payment not found', 404);
+
+      await tx.delete(supplierPayments).where(eq(supplierPayments.id, paymentId));
+
+      const [updatedInvoice] = await tx
+        .update(supplierInvoices)
+        .set({ paidAmount: sql`GREATEST(0, ${supplierInvoices.paidAmount} - ${payment.amount})` })
+        .where(eq(supplierInvoices.id, payment.invoiceId))
+        .returning();
+
+      return { ...updatedInvoice!, totalAmount: Number(updatedInvoice!.totalAmount), paidAmount: Number(updatedInvoice!.paidAmount) };
+    });
   }
 
   async removeInvoice(id: string, sellerId: string) {

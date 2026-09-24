@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { validate } from '../../middleware/validate.js';
-import { createSupplierSchema, updateSupplierSchema, createSupplierInvoiceSchema, updateInvoicePaidSchema } from '@assaan/shared';
+import { createSupplierSchema, updateSupplierSchema, createSupplierInvoiceSchema, recordSupplierPaymentSchema } from '@assaan/shared';
 import { authenticate, requireSeller } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/checkPermission.js';
 import {
   listSuppliers, createSupplier, updateSupplier, deleteSupplier,
-  listInvoices, createInvoice, updateInvoicePaid, deleteInvoice,
+  listInvoices, createInvoice, deleteInvoice,
+  listPayments, recordPayment, removePayment,
 } from './suppliers.controller.js';
 
 const router = Router();
@@ -19,7 +20,12 @@ router.delete('/:id', deleteSupplier);
 // Invoice sub-resource
 router.get('/:supplierId/invoices',              listInvoices);
 router.post('/:supplierId/invoices',             validate(createSupplierInvoiceSchema), createInvoice);
-router.patch('/:supplierId/invoices/:invoiceId', validate(updateInvoicePaidSchema), updateInvoicePaid);
 router.delete('/:supplierId/invoices/:invoiceId', deleteInvoice);
+
+// Payments — recorded one at a time against an invoice; paidAmount on the invoice
+// is a running total kept in sync inside the same transaction (see suppliers.service.ts).
+router.get('/:supplierId/invoices/:invoiceId/payments',              listPayments);
+router.post('/:supplierId/invoices/:invoiceId/payments',             validate(recordSupplierPaymentSchema), recordPayment);
+router.delete('/:supplierId/invoices/:invoiceId/payments/:paymentId', removePayment);
 
 export default router;

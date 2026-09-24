@@ -53,6 +53,16 @@ export interface CreateInvoiceLine {
   registrationNumber?: string;
 }
 
+export interface SupplierPayment {
+  id:             string;
+  amount:         number;
+  method:         string | null;
+  note:           string | null;
+  paidOn:         string;
+  createdAt:      string;
+  recordedByName: string | null;
+}
+
 export interface PnLData {
   period:              string;
   installmentRevenue:  number;
@@ -95,11 +105,19 @@ export const suppliersApi = {
   }) =>
     api.post<{ data: SupplierInvoice }>(`/suppliers/${supplierId}/invoices`, body).then(unwrap<SupplierInvoice>),
 
-  updateInvoicePaid: (supplierId: string, invoiceId: string, paidAmount: number) =>
-    api.patch<{ data: SupplierInvoice }>(`/suppliers/${supplierId}/invoices/${invoiceId}`, { paidAmount }).then(unwrap<SupplierInvoice>),
-
   deleteInvoice: (supplierId: string, invoiceId: string) =>
     api.delete(`/suppliers/${supplierId}/invoices/${invoiceId}`),
+
+  listPayments: (supplierId: string, invoiceId: string) =>
+    api.get<{ data: SupplierPayment[] }>(`/suppliers/${supplierId}/invoices/${invoiceId}/payments`).then(unwrap<SupplierPayment[]>),
+
+  recordPayment: (supplierId: string, invoiceId: string, body: { amount: number; method?: string; note?: string; paidOn?: string }) =>
+    api.post<{ data: { payment: SupplierPayment; invoice: SupplierInvoice } }>(
+      `/suppliers/${supplierId}/invoices/${invoiceId}/payments`, body,
+    ).then(unwrap<{ payment: SupplierPayment; invoice: SupplierInvoice }>),
+
+  removePayment: (supplierId: string, invoiceId: string, paymentId: string) =>
+    api.delete<{ data: SupplierInvoice }>(`/suppliers/${supplierId}/invoices/${invoiceId}/payments/${paymentId}`).then(unwrap<SupplierInvoice>),
 
   getPnL: (year: number, month?: number) =>
     api.get<{ data: PnLData }>(`/reports/pnl?year=${year}${month ? `&month=${month}` : ''}`).then(unwrap<PnLData>),

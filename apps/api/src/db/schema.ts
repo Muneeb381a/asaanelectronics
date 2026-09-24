@@ -762,6 +762,27 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   index('idx_sup_inv_date').on(t.invoiceDate),
 ]);
 
+// ── Supplier Payments ─────────────────────────────────────────────────────────
+// One row per instalment paid against an invoice — the auditable history that
+// supplierInvoices.paidAmount (a running total, kept in sync in a transaction
+// alongside these inserts/deletes) doesn't carry on its own.
+export const supplierPayments = pgTable('supplier_payments', {
+  id:         text('id').primaryKey().$defaultFn(() => randomUUID()),
+  invoiceId:  text('invoice_id').notNull().references(() => supplierInvoices.id, { onDelete: 'cascade' }),
+  supplierId: text('supplier_id').notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
+  sellerId:   text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  amount:     decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  method:     text('method'),
+  note:       text('note'),
+  paidOn:     date('paid_on').notNull(),
+  recordedBy: text('recorded_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_sup_pay_invoice').on(t.invoiceId),
+  index('idx_sup_pay_supplier').on(t.supplierId),
+  index('idx_sup_pay_seller_date').on(t.sellerId, t.paidOn),
+]);
+
 // ── Supplier Invoice Lines ────────────────────────────────────────────────────
 export const supplierInvoiceLines = pgTable('supplier_invoice_lines', {
   id:          text('id').primaryKey().$defaultFn(() => randomUUID()),

@@ -28,6 +28,9 @@ export const createSupplierInvoiceSchema = z.object({
   lines:       z.array(invoiceLineSchema).max(500).optional(),
 }).passthrough();
 
-export const updateInvoicePaidSchema = z.object({
-  paidAmount: z.number().min(0),
+export const recordSupplierPaymentSchema = z.object({
+  amount: z.number().positive(),
+  method: z.string().max(30).optional(),
+  note:   z.string().max(500).optional(),
+  paidOn: z.string().max(30).optional(), // defaults to today
 });

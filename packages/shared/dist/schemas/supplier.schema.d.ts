@@ -110,10 +110,19 @@ export declare const createSupplierInvoiceSchema: z.ZodObject<{
         notes: z.ZodOptional<z.ZodString>;
     }, z.ZodTypeAny, "passthrough">>, "many">>;
 }, z.ZodTypeAny, "passthrough">>;
-export declare const updateInvoicePaidSchema: z.ZodObject<{
-    paidAmount: z.ZodNumber;
+export declare const recordSupplierPaymentSchema: z.ZodObject<{
+    amount: z.ZodNumber;
+    method: z.ZodOptional<z.ZodString>;
+    note: z.ZodOptional<z.ZodString>;
+    paidOn: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    paidAmount: number;
+    amount: number;
+    note?: string | undefined;
+    method?: string | undefined;
+    paidOn?: string | undefined;
 }, {
-    paidAmount: number;
+    amount: number;
+    note?: string | undefined;
+    method?: string | undefined;
+    paidOn?: string | undefined;
 }>;

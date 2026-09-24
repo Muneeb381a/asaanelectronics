@@ -35,12 +35,21 @@ export async function createInvoice(req: AuthRequest, res: Response) {
   }), 201);
 }
 
-export async function updateInvoicePaid(req: AuthRequest, res: Response) {
-  const { paidAmount } = req.body as { paidAmount: number };
-  success(res, await svc.updateInvoicePaid(req.params['invoiceId']!, req.user!.sellerId!, paidAmount));
-}
-
 export async function deleteInvoice(req: AuthRequest, res: Response) {
   await svc.removeInvoice(req.params['invoiceId']!, req.user!.sellerId!);
   res.status(204).end();
+}
+
+// ── Payments ────────────────────────────────────────────────────────────────
+
+export async function listPayments(req: AuthRequest, res: Response) {
+  success(res, await svc.listPayments(req.params['invoiceId']!, req.user!.sellerId!));
+}
+
+export async function recordPayment(req: AuthRequest, res: Response) {
+  success(res, await svc.recordPayment(req.params['invoiceId']!, req.user!.sellerId!, req.user!.userId, req.body), 201);
+}
+
+export async function removePayment(req: AuthRequest, res: Response) {
+  success(res, await svc.removePayment(req.params['paymentId']!, req.user!.sellerId!));
 }

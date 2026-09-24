@@ -2,11 +2,12 @@ import { PageHeader, btn, shell } from '../components/ui/Page';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Building2, Plus, Phone, MapPin, CreditCard, Trash2, Pencil, X, Check,
+  Building2, Plus, Phone, MapPin, CreditCard, Trash2, Pencil, X,
   TrendingUp, AlertCircle, Package, ChevronDown, ChevronRight, FileText,
+  Wallet, History,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { suppliersApi, type Supplier, type SupplierInvoice, type CreateInvoiceLine, type PnLData } from '../api/suppliers.api.ts';
+import { suppliersApi, type Supplier, type SupplierInvoice, type SupplierPayment, type CreateInvoiceLine, type PnLData } from '../api/suppliers.api.ts';
 import { productsApi } from '../api/products.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
@@ -341,6 +342,7 @@ function SupplierRow({ supplier, index }: { supplier: Supplier; index: number })
   const [addingInvoice, setAddingInvoice] = useState(false);
   const [expandedInv,   setExpandedInv]   = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [payingInvoice, setPayingInvoice] = useState<SupplierInvoice | null>(null);
 
   const { data: invoices = [] } = useQuery<SupplierInvoice[]>({
     queryKey: ['supplier-invoices', supplier.id],
@@ -352,11 +354,6 @@ function SupplierRow({ supplier, index }: { supplier: Supplier; index: number })
   const deleteMut = useMutation({
     mutationFn: () => suppliersApi.remove(supplier.id),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['suppliers'] }); toast.success('Supplier hata diya'); },
-    onError: (e) => toast.error(getErrorMessage(e)),
-  });
-  const markPaidMut = useMutation({
-    mutationFn: (inv: SupplierInvoice) => suppliersApi.updateInvoicePaid(supplier.id, inv.id, inv.totalAmount),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['supplier-invoices', supplier.id] }); void qc.invalidateQueries({ queryKey: ['suppliers'] }); toast.success('Paid mark ho gaya'); },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
   const deleteInvMut = useMutation({
@@ -374,6 +371,13 @@ function SupplierRow({ supplier, index }: { supplier: Supplier; index: number })
     <>
       {editing       && <SupplierModal supplier={supplier}    onClose={() => setEditing(false)} />}
       {addingInvoice && <InvoiceModal  supplierId={supplier.id} supplierName={supplier.name} onClose={() => setAddingInvoice(false)} />}
+      {payingInvoice && (
+        <RecordPaymentModal
+          supplierId={supplier.id}
+          invoice={payingInvoice}
+          onClose={() => setPayingInvoice(null)}
+        />
+      )}
 
       {/* Main row */}
       <div className={`${index > 0 ? 'border-t border-slate-100' : ''}`}>
@@ -513,9 +517,9 @@ function SupplierRow({ supplier, index }: { supplier: Supplier; index: number })
                           </div>
                           <div className="flex gap-1 shrink-0">
                             {!isPaid && (
-                              <button onClick={() => markPaidMut.mutate(inv)} title="Mark paid"
-                                className="p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-600 transition">
-                                <Check size={11} />
+                              <button onClick={() => setPayingInvoice(inv)} title="Record payment"
+                                className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 transition text-[10px] font-bold">
+                                <Wallet size={11} /> Pay
                               </button>
                             )}
                             <button onClick={() => deleteInvMut.mutate(inv.id)}
@@ -524,16 +528,19 @@ function SupplierRow({ supplier, index }: { supplier: Supplier; index: number })
                             </button>
                           </div>
                         </div>
-                        {expandedInv === inv.id && inv.lines.length > 0 && (
-                          <div className="border-t border-slate-100 px-4 pb-2.5 pt-2 bg-slate-50/60">
-                            <div className="space-y-1">
-                              {inv.lines.map(line => (
-                                <div key={line.id} className="flex items-center justify-between">
-                                  <span className="text-[11px] text-slate-600">{line.productName} <span className="text-slate-400">×{line.quantity}</span></span>
-                                  <span className="text-[11px] font-bold text-slate-700 tabular-nums">{pkr(line.quantity * line.unitPrice)}</span>
-                                </div>
-                              ))}
-                            </div>
+                        {expandedInv === inv.id && (
+                          <div className="border-t border-slate-100 bg-slate-50/60">
+                            {inv.lines.length > 0 && (
+                              <div className="px-4 pb-2.5 pt-2 space-y-1">
+                                {inv.lines.map(line => (
+                                  <div key={line.id} className="flex items-center justify-between">
+                                    <span className="text-[11px] text-slate-600">{line.productName} <span className="text-slate-400">×{line.quantity}</span></span>
+                                    <span className="text-[11px] font-bold text-slate-700 tabular-nums">{pkr(line.quantity * line.unitPrice)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <PaymentHistory supplierId={supplier.id} invoice={inv} />
                           </div>
                         )}
                       </div>
@@ -546,6 +553,178 @@ function SupplierRow({ supplier, index }: { supplier: Supplier; index: number })
         )}
       </div>
     </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   PAYMENT HISTORY — shown under an expanded invoice
+══════════════════════════════════════════════════════════ */
+function PaymentHistory({ supplierId, invoice }: { supplierId: string; invoice: SupplierInvoice }) {
+  const qc = useQueryClient();
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const { data: payments = [], isLoading } = useQuery<SupplierPayment[]>({
+    queryKey: ['supplier-invoice-payments', invoice.id],
+    queryFn:  () => suppliersApi.listPayments(supplierId, invoice.id),
+    staleTime: 30_000,
+  });
+
+  const removeMut = useMutation({
+    mutationFn: (paymentId: string) => suppliersApi.removePayment(supplierId, invoice.id, paymentId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['supplier-invoice-payments', invoice.id] });
+      void qc.invalidateQueries({ queryKey: ['supplier-invoices', supplierId] });
+      void qc.invalidateQueries({ queryKey: ['suppliers'] });
+      toast.success('Payment hata diya');
+      setConfirmId(null);
+    },
+    onError: (e) => { toast.error(getErrorMessage(e)); setConfirmId(null); },
+  });
+
+  return (
+    <div className="px-4 pb-2.5 pt-2 border-t border-slate-100">
+      <div className="flex items-center gap-1.5 mb-2">
+        <History size={11} className="text-slate-400" />
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Payment History</p>
+      </div>
+      {isLoading ? (
+        <p className="text-[11px] text-slate-300">Loading…</p>
+      ) : payments.length === 0 ? (
+        <p className="text-[11px] text-slate-400">Abhi tak koi payment record nahi hui.</p>
+      ) : (
+        <div className="space-y-1">
+          {payments.map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-2 bg-white rounded-lg px-2.5 py-1.5 border border-slate-100">
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold text-emerald-700 tabular-nums">{pkr(p.amount)}</span>
+                <span className="text-[10px] text-slate-400 ml-1.5">{p.paidOn}</span>
+                {p.method && <span className="text-[10px] text-slate-400 ml-1.5">· {p.method}</span>}
+                {p.note && <span className="text-[10px] text-slate-400 ml-1.5 italic truncate">· {p.note}</span>}
+                {p.recordedByName && <span className="text-[10px] text-slate-300 ml-1.5">— {p.recordedByName}</span>}
+              </div>
+              <button onClick={() => setConfirmId(p.id)} title="Undo this payment"
+                className="p-1 rounded-md hover:bg-red-50 text-slate-300 hover:text-red-500 transition shrink-0">
+                <Trash2 size={10} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="Ye payment hata dein?"
+        description="Is payment ka record mit jayega aur invoice ki baaqi raqam wapis barh jayegi."
+        confirmLabel="Haan, hata do"
+        cancelLabel="Nahi"
+        isPending={removeMut.isPending}
+        onConfirm={() => { if (confirmId) removeMut.mutate(confirmId); }}
+        onCancel={() => setConfirmId(null)}
+      />
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   RECORD PAYMENT MODAL
+══════════════════════════════════════════════════════════ */
+function RecordPaymentModal({ supplierId, invoice, onClose }: {
+  supplierId: string; invoice: SupplierInvoice; onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const outstanding = invoice.outstanding;
+  const [amount, setAmount] = useState(String(outstanding));
+  const [method, setMethod] = useState('CASH');
+  const [paidOn, setPaidOn] = useState(todayStr());
+  const [note,   setNote]   = useState('');
+
+  const mut = useMutation({
+    mutationFn: () => suppliersApi.recordPayment(supplierId, invoice.id, {
+      amount: Number(amount), method, paidOn, note: note.trim() || undefined,
+    }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['supplier-invoices', supplierId] });
+      void qc.invalidateQueries({ queryKey: ['supplier-invoice-payments', invoice.id] });
+      void qc.invalidateQueries({ queryKey: ['suppliers'] });
+      toast.success('Payment record ho gayi');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const amountNum = Number(amount);
+  const valid = amountNum > 0 && amountNum <= outstanding + 0.01;
+
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Payment Record Karo</h2>
+            <p className="text-xs text-slate-400 mt-0.5">{invoice.description || invoice.invoiceDate}</p>
+          </div>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-700 transition"><X size={16} /></button>
+        </div>
+
+        <div className="px-5 py-4 space-y-3">
+          <div className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2 text-xs">
+            <span className="text-slate-500">Baaqi raqam</span>
+            <span className="font-bold text-red-600 tabular-nums">{pkr(outstanding)}</span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">Amount (PKR)</label>
+            <input type="number" min={0.01} max={outstanding} step="0.01" autoFocus
+              value={amount} onChange={(e) => setAmount(e.target.value)}
+              className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-bold tabular-nums focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition" />
+            {amountNum > outstanding && (
+              <p className="text-[11px] text-red-500 mt-1">Baaqi raqam se zyada nahi ho sakti.</p>
+            )}
+            <div className="flex gap-1.5 mt-1.5">
+              <button type="button" onClick={() => setAmount(String(outstanding))}
+                className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg hover:bg-emerald-100 transition">
+                Pura ({pkrSh(outstanding)})
+              </button>
+              <button type="button" onClick={() => setAmount(String(Math.round(outstanding / 2)))}
+                className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg hover:bg-slate-200 transition">
+                Aadha
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">Method</label>
+              <select value={method} onChange={(e) => setMethod(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-400 transition bg-white">
+                {['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'].map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">Date</label>
+              <input type="date" value={paidOn} max={todayStr()} onChange={(e) => setPaidOn(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-400 transition" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">Note <span className="font-normal text-slate-400">(optional)</span></label>
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Kuch aur…"
+              className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-400 transition" />
+          </div>
+        </div>
+
+        <div className="flex gap-3 px-5 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="flex-1 py-2.5 text-sm border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition">
+            Cancel
+          </button>
+          <button onClick={() => mut.mutate()} disabled={!valid || mut.isPending}
+            className="flex-1 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition disabled:opacity-50 flex items-center justify-center gap-1.5">
+            <Wallet size={14} /> {mut.isPending ? 'Record ho raha…' : 'Payment Karo'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
