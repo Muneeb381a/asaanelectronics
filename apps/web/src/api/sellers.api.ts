@@ -28,8 +28,9 @@ export interface Seller {
   settings: SellerSettings | null;
 }
 
-interface CreateSellerResponse extends AuthResponse {
+export interface CreateSellerResponse extends AuthResponse {
   seller: Seller;
+  pendingApproval: boolean;
 }
 
 export type PaymentAccountType = 'BANK' | 'JAZZCASH' | 'EASYPAISA' | 'SADAPAY' | 'NAYAPAY' | 'OTHER';

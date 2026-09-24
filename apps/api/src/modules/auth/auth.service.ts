@@ -48,6 +48,27 @@ function safeUser(u: typeof users.$inferSelect) {
   return { id: u.id, name: u.name, email: u.email, role: u.role, sellerId: u.sellerId, permissions: u.permissions };
 }
 
+// Shared by login() and refresh() — the per-request session check in middleware/auth.ts
+// enforces the same rules for a session already in flight; this is the choke point for
+// minting a *new* one.
+async function assertShopAccessible(sellerId: string | null) {
+  if (!sellerId) return;
+  const seller = await db.query.sellers.findFirst({
+    where: eq(sellers.id, sellerId),
+    columns: { isActive: true, trialApprovalStatus: true },
+  });
+  if (!seller) return;
+  if (!seller.isActive) {
+    throw new AppError('Your shop account has been suspended. Contact the platform owner.', 403);
+  }
+  if (seller.trialApprovalStatus === 'PENDING') {
+    throw new AppError('Your shop is awaiting approval from the platform admin. You will get access as soon as it is reviewed.', 403);
+  }
+  if (seller.trialApprovalStatus === 'REJECTED') {
+    throw new AppError('Your trial request was declined. Contact support for details.', 403);
+  }
+}
+
 async function issueTokens(user: typeof users.$inferSelect, device: DeviceInfo = {}) {
   const refreshToken = signRefresh({ userId: user.id });
   const { deviceName, deviceType } = parseDevice(device.userAgent ?? '');
@@ -121,15 +142,7 @@ export class AuthService {
       return { requiresOtp: false as const, ...(await issueTokens(user, device)) };
     }
 
-    if (user.sellerId) {
-      const seller = await db.query.sellers.findFirst({
-        where: eq(sellers.id, user.sellerId),
-        columns: { isActive: true },
-      });
-      if (seller && !seller.isActive) {
-        throw new AppError('Your shop account has been suspended. Contact the platform owner.', 403);
-      }
-    }
+    await assertShopAccessible(user.sellerId);
 
     if (user.role === 'SELLER_STAFF' && user.frozenUntil) {
       const now = new Date();
@@ -255,6 +268,8 @@ export class AuthService {
     if (user.role === 'SELLER_STAFF' && user.frozenUntil && user.frozenUntil > new Date()) {
       throw new AppError('Account is frozen. Contact your shop owner.', 403);
     }
+
+    await assertShopAccessible(user.sellerId);
 
     return issueTokens(user, carried);
   }

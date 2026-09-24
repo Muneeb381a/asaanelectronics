@@ -50,6 +50,10 @@ export class OwnerService {
         ownerName: users.name,
         ownerEmail: users.email,
         ownerId: users.id,
+        signupSource: sellers.signupSource,
+        trialApprovalStatus: sellers.trialApprovalStatus,
+        approvedAt: sellers.approvedAt,
+        rejectionReason: sellers.rejectionReason,
       })
       .from(sellers)
       .leftJoin(users, and(eq(users.sellerId, sellers.id), eq(users.role, 'SELLER_OWNER')));
@@ -82,6 +86,11 @@ export class OwnerService {
         address: body.address,
         plan: body.plan ?? 'TRIAL',
         trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        // Admin-initiated — the admin is already the one deciding, so no separate review step.
+        signupSource: 'ADMIN_CREATED',
+        trialApprovalStatus: 'APPROVED',
+        approvedAt: new Date(),
+        approvedBy: actorId ?? null,
       })
       .returning();
     if (actorId && seller) {
@@ -90,6 +99,38 @@ export class OwnerService {
         { phone: seller.phone, plan: seller.plan });
     }
     return seller;
+  }
+
+  // ── Trial approval (self-signup shops) ────────────────────────────────────
+
+  async approveShopTrial(id: string, actorId: string) {
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true, plan: true, trialApprovalStatus: true } });
+    if (!shop) throw new AppError('Shop not found', 404);
+    const wasPending = shop.trialApprovalStatus === 'PENDING';
+    const [updated] = await db.update(sellers)
+      .set({
+        trialApprovalStatus: 'APPROVED', approvedAt: new Date(), approvedBy: actorId, rejectionReason: null,
+        // The 14-day trial clock shouldn't burn down while the shop sat waiting for review.
+        ...(wasPending && shop.plan === 'TRIAL' ? { trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) } : {}),
+      })
+      .where(eq(sellers.id, id))
+      .returning();
+    void this.logAdmin(actorId, 'SHOP_TRIAL_APPROVED', id, shop.shopName, `Approved trial for "${shop.shopName}"`);
+    invalidateSessionCache();
+    return updated;
+  }
+
+  async rejectShopTrial(id: string, actorId: string, reason?: string) {
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true } });
+    if (!shop) throw new AppError('Shop not found', 404);
+    const [updated] = await db.update(sellers)
+      .set({ trialApprovalStatus: 'REJECTED', rejectionReason: reason ?? null })
+      .where(eq(sellers.id, id))
+      .returning();
+    void this.logAdmin(actorId, 'SHOP_TRIAL_REJECTED', id, shop.shopName,
+      `Rejected trial for "${shop.shopName}"${reason ? ` — ${reason}` : ''}`);
+    invalidateSessionCache();
+    return updated;
   }
 
   async createShopOwner(sellerId: string, body: { name: string; email: string; password: string }, actorId?: string) {
@@ -169,9 +210,14 @@ export class OwnerService {
         trialEndsAt: sellers.trialEndsAt, planExpiresAt: sellers.planExpiresAt,
         createdAt: sellers.createdAt,
         ownerName: users.name, ownerEmail: users.email,
+        signupSource: sellers.signupSource, trialApprovalStatus: sellers.trialApprovalStatus,
       })
       .from(sellers)
       .leftJoin(users, and(eq(users.sellerId, sellers.id), eq(users.role, 'SELLER_OWNER')));
+
+    const pendingApprovals = allShops
+      .filter((s) => s.trialApprovalStatus === 'PENDING')
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     const isExpired = (s: typeof allShops[0]) => {
       if (!s.isActive) return false; // suspended ≠ expired
@@ -245,6 +291,9 @@ export class OwnerService {
       planExpiring7,
       planExpiring14,
       planExpiring30,
+      // Self-signup trials awaiting a decision
+      pendingApprovalCount: pendingApprovals.length,
+      pendingApprovals,
     };
   }
 

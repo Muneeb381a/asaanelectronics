@@ -2,6 +2,9 @@ import { api } from './client.ts';
 
 export type Plan = 'TRIAL' | 'BASIC' | 'PRO' | 'ENTERPRISE';
 
+export type ShopSignupSource = 'SELF_SIGNUP' | 'ADMIN_CREATED';
+export type TrialApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
 export interface Shop {
   id: string;
   shopName: string;
@@ -15,6 +18,10 @@ export interface Shop {
   ownerName: string | null;
   ownerEmail: string | null;
   ownerId: string | null;
+  signupSource: ShopSignupSource;
+  trialApprovalStatus: TrialApprovalStatus;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
 }
 
 export interface CreateShopInput {
@@ -47,6 +54,23 @@ export interface PlatformStats {
   planExpiring7: Shop[];
   planExpiring14: Shop[];
   planExpiring30: Shop[];
+  pendingApprovalCount: number;
+  pendingApprovals: Shop[];
+}
+
+export interface ShopAuditLog {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  description: string;
+  reason: string | null;
+  meta: unknown;
+  createdAt: string;
+  actorId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
+  actorRole: string | null;
 }
 
 export interface ShopUsageLimits {
@@ -205,6 +229,19 @@ export const ownerApi = {
 
   toggleShopStatus: (id: string, isActive: boolean) =>
     api.patch<{ data: Shop }>(`/owner/shops/${id}/status`, { isActive }).then(unwrap<Shop>),
+
+  // Trial approval (self-signup shops)
+  approveShopTrial: (id: string) =>
+    api.patch<{ data: Shop }>(`/owner/shops/${id}/approve`).then(unwrap<Shop>),
+
+  rejectShopTrial: (id: string, reason?: string) =>
+    api.patch<{ data: Shop }>(`/owner/shops/${id}/reject`, { reason }).then(unwrap<Shop>),
+
+  // Shop's own internal activity log
+  getShopAuditLogs: (id: string, params?: { page?: number; limit?: number }) =>
+    api.get<{ data: { data: ShopAuditLog[]; total: number; page: number; limit: number } }>(
+      `/owner/shops/${id}/audit-logs`, { params },
+    ).then(unwrap<{ data: ShopAuditLog[]; total: number; page: number; limit: number }>),
 
   changePlan: (sellerId: string, plan: Plan, planExpiresAt?: string) =>
     api.patch(`/billing/${sellerId}/plan`, { plan, planExpiresAt }).then(unwrap<unknown>),

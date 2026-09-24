@@ -14,6 +14,7 @@ const RegisterPage          = lazy(() => import('../pages/RegisterPage.tsx'));
 const SetupPage             = lazy(() => import('../pages/SetupPage.tsx'));
 const ForgotPasswordPage    = lazy(() => import('../pages/ForgotPasswordPage.tsx'));
 const OnboardingPage        = lazy(() => import('../pages/OnboardingPage.tsx'));
+const TrialPendingPage      = lazy(() => import('../pages/TrialPendingPage.tsx'));
 const ContactPage           = lazy(() => import('../pages/ContactPage.tsx'));
 const DashboardPage         = lazy(() => import('../pages/DashboardPage.tsx'));
 const ProductsPage          = lazy(() => import('../pages/ProductsPage.tsx'));
@@ -119,6 +120,17 @@ function OnboardingRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// Shown right after self-signup while a trial awaits admin approval. The page itself
+// polls and bounces to /dashboard once approved, so this guard just needs a logged-in
+// shop-linked user — no separate "pending" flag on the client to keep in sync.
+function TrialPendingRoute({ children }: { children: ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'SUPER_ADMIN') return <Navigate to="/owner" replace />;
+  if (!user.sellerId) return <Navigate to="/onboarding" replace />;
+  return <>{children}</>;
+}
+
 function GuestRoute({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (!user) return <>{children}</>;
@@ -146,6 +158,7 @@ export const router = createBrowserRouter([
   { path: '/register',        element: <GuestRoute><S><RegisterPage /></S></GuestRoute> },
   { path: '/forgot-password', element: <GuestRoute><S><ForgotPasswordPage /></S></GuestRoute> },
   { path: '/onboarding',      element: <OnboardingRoute><S><OnboardingPage /></S></OnboardingRoute> },
+  { path: '/trial-pending',   element: <TrialPendingRoute><S><TrialPendingPage /></S></TrialPendingRoute> },
   {
     element: <OwnerRoute><OwnerLayout /></OwnerRoute>,
     children: [

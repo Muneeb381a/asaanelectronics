@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { validate } from '../../middleware/validate.js';
-import { createShopSchema, createShopOwnerSchema, toggleShopStatusSchema, addPaymentLogSchema, shopNoteSchema, createBroadcastSchema, updateBroadcastSchema } from '@assaan/shared';
+import { createShopSchema, createShopOwnerSchema, toggleShopStatusSchema, rejectShopSchema, addPaymentLogSchema, shopNoteSchema, createBroadcastSchema, updateBroadcastSchema } from '@assaan/shared';
 import { authenticate, requireSuperAdmin } from '../../middleware/auth.js';
 import {
   listShops, createShop, createShopOwner, deleteShop, toggleShopStatus,
+  approveShopTrial, rejectShopTrial, getShopAuditLogs,
   getPlatformStats,
   getShopUsage,
   listPaymentLogs, addPaymentLog, deletePaymentLog,
@@ -27,6 +28,13 @@ router.post('/shops',                 validate(createShopSchema), createShop);
 router.post('/shops/:id/owner',       validate(createShopOwnerSchema), createShopOwner);
 router.delete('/shops/:id',           deleteShop);
 router.patch('/shops/:id/status',     validate(toggleShopStatusSchema), toggleShopStatus);
+
+// ── Trial approval (self-signup shops) ─────────────────────────────────────────
+router.patch('/shops/:id/approve',    approveShopTrial);
+router.patch('/shops/:id/reject',     validate(rejectShopSchema), rejectShopTrial);
+
+// ── Shop's own internal activity log ───────────────────────────────────────────
+router.get('/shops/:id/audit-logs',   getShopAuditLogs);
 
 // ── A1: Platform stats dashboard ──────────────────────────────────────────────
 router.get('/stats',                  getPlatformStats);

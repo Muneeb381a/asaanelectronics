@@ -9,7 +9,7 @@ import {
   TrendingUp, TrendingDown, Users, BarChart3, X, ChevronRight, StickyNote, Banknote,
   Activity, FileText, Plus, Package, Monitor, Smartphone, Table2,
   ShieldAlert, LogOut, Wifi, CheckCircle2, XCircle, Mail, Megaphone, ToggleLeft, ToggleRight,
-  ListChecks, Circle, Download,
+  ListChecks, Circle, Download, Hourglass, ThumbsUp, ThumbsDown, History,
 } from 'lucide-react';
 import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk, type AdminBroadcast, type ShopOnboarding, type StuckSeverity } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
@@ -20,9 +20,13 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-type ShopStatus = 'active' | 'suspended' | 'expired';
+type ShopStatus = 'active' | 'suspended' | 'expired' | 'pendingApproval' | 'rejected';
 
 function shopStatus(shop: Shop): ShopStatus {
+  // A self-signup trial awaiting (or denied) review takes priority — it's blocked at
+  // login regardless of isActive/expiry, which don't mean anything until reviewed.
+  if (shop.trialApprovalStatus === 'PENDING')  return 'pendingApproval';
+  if (shop.trialApprovalStatus === 'REJECTED') return 'rejected';
   if (!shop.isActive) return 'suspended';
   const now = Date.now();
   if (shop.plan === 'TRIAL' && shop.trialEndsAt && new Date(shop.trialEndsAt).getTime() < now) return 'expired';
@@ -64,9 +68,11 @@ const PLAN_LABELS: Record<Plan, string> = {
 };
 
 const STATUS_META: Record<ShopStatus, { label: string; cls: string; icon: React.ReactNode }> = {
-  active:    { label: 'Active',     cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <ShieldCheck size={10} /> },
-  suspended: { label: 'Suspended',  cls: 'bg-red-100 text-red-600 border-red-200',             icon: <ShieldOff size={10} /> },
-  expired:   { label: 'Expired',    cls: 'bg-orange-100 text-orange-700 border-orange-200',    icon: <AlertTriangle size={10} /> },
+  active:          { label: 'Active',           cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <ShieldCheck size={10} /> },
+  suspended:       { label: 'Suspended',        cls: 'bg-red-100 text-red-600 border-red-200',             icon: <ShieldOff size={10} /> },
+  expired:         { label: 'Expired',          cls: 'bg-orange-100 text-orange-700 border-orange-200',    icon: <AlertTriangle size={10} /> },
+  pendingApproval: { label: 'Pending Approval', cls: 'bg-amber-100 text-amber-700 border-amber-200',       icon: <Hourglass size={10} /> },
+  rejected:        { label: 'Rejected',         cls: 'bg-gray-200 text-gray-600 border-gray-300',          icon: <XCircle size={10} /> },
 };
 
 // ── shared field ─────────────────────────────────────────────────────────────
@@ -300,44 +306,69 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
 // ── shop card ─────────────────────────────────────────────────────────────────
 
-function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, onViewDetails }: {
+function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, onViewDetails, onApprove, onReject }: {
   shop: Shop;
   onAddOwner: () => void;
   onDelete: () => void;
   onToggleStatus: () => void;
   onChangePlan: () => void;
   onViewDetails: () => void;
+  onApprove: () => void;
+  onReject: () => void;
 }) {
   const status = shopStatus(shop);
   const meta   = STATUS_META[status];
   const expiry = daysLabel(shop);
+  const isPending = status === 'pendingApproval';
 
   return (
     <div className={`rounded-2xl border flex flex-col gap-0 overflow-hidden transition-shadow hover:shadow-md ${
-      status === 'suspended' ? 'bg-gray-50 border-gray-200' :
+      status === 'suspended' || status === 'rejected' ? 'bg-gray-50 border-gray-200' :
       status === 'expired'   ? 'bg-orange-50/40 border-orange-100' :
+      status === 'pendingApproval' ? 'bg-amber-50/40 border-amber-200' :
       'bg-white border-gray-100 shadow-sm'
     }`}>
       {/* Top colour bar */}
       <div className={`h-1 w-full ${
-        status === 'suspended' ? 'bg-gray-300' :
+        status === 'suspended' || status === 'rejected' ? 'bg-gray-300' :
         status === 'expired'   ? 'bg-orange-400' :
+        status === 'pendingApproval' ? 'bg-amber-400' :
         'bg-indigo-500'
       }`} />
+
+      {isPending && (
+        <div className="px-5 pt-4 flex items-center gap-2">
+          <button onClick={onApprove}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition">
+            <ThumbsUp size={13} /> Approve trial
+          </button>
+          <button onClick={onReject}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold transition">
+            <ThumbsDown size={13} /> Reject
+          </button>
+        </div>
+      )}
+      {status === 'rejected' && shop.rejectionReason && (
+        <div className="px-5 pt-4">
+          <p className="text-xs text-gray-500 bg-gray-100 rounded-xl px-3 py-2">
+            <span className="font-semibold text-gray-600">Reason: </span>{shop.rejectionReason}
+          </p>
+        </div>
+      )}
 
       <div className="p-5 flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-              status === 'active' ? 'bg-indigo-50' : status === 'expired' ? 'bg-orange-100' : 'bg-gray-100'
+              status === 'active' ? 'bg-indigo-50' : status === 'expired' ? 'bg-orange-100' : status === 'pendingApproval' ? 'bg-amber-100' : 'bg-gray-100'
             }`}>
               <Store size={18} className={
-                status === 'active' ? 'text-indigo-600' : status === 'expired' ? 'text-orange-500' : 'text-gray-400'
+                status === 'active' ? 'text-indigo-600' : status === 'expired' ? 'text-orange-500' : status === 'pendingApproval' ? 'text-amber-500' : 'text-gray-400'
               } />
             </div>
             <div className="min-w-0">
-              <p className={`font-semibold text-sm leading-tight truncate ${status === 'suspended' ? 'text-gray-400' : 'text-gray-900'}`}>
+              <p className={`font-semibold text-sm leading-tight truncate ${status === 'suspended' || status === 'rejected' ? 'text-gray-400' : 'text-gray-900'}`}>
                 {shop.shopName}
               </p>
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -361,15 +392,17 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, on
               className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
               <CreditCard size={14} />
             </button>
-            <button onClick={onToggleStatus}
-              title={status === 'suspended' ? 'Activate shop' : 'Suspend shop'}
-              className={`p-2 rounded-lg transition ${
-                status === 'suspended'
-                  ? 'text-emerald-500 hover:bg-emerald-50'
-                  : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50'
-              }`}>
-              {status === 'suspended' ? <ShieldCheck size={14} /> : <ShieldOff size={14} />}
-            </button>
+            {status !== 'pendingApproval' && status !== 'rejected' && (
+              <button onClick={onToggleStatus}
+                title={status === 'suspended' ? 'Activate shop' : 'Suspend shop'}
+                className={`p-2 rounded-lg transition ${
+                  status === 'suspended'
+                    ? 'text-emerald-500 hover:bg-emerald-50'
+                    : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50'
+                }`}>
+                {status === 'suspended' ? <ShieldCheck size={14} /> : <ShieldOff size={14} />}
+              </button>
+            )}
             <button onClick={onDelete} title="Delete shop"
               className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
               <Trash2 size={14} />
@@ -425,13 +458,15 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, on
 
 // ── filter bar ────────────────────────────────────────────────────────────────
 
-type FilterTab = 'all' | 'active' | 'suspended' | 'expired';
+type FilterTab = 'all' | 'active' | 'suspended' | 'expired' | 'pendingApproval' | 'rejected';
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all',       label: 'All'       },
-  { key: 'active',    label: 'Active'    },
-  { key: 'suspended', label: 'Suspended' },
-  { key: 'expired',   label: 'Expired'   },
+  { key: 'all',             label: 'All'       },
+  { key: 'pendingApproval', label: 'Pending'   },
+  { key: 'active',          label: 'Active'    },
+  { key: 'suspended',       label: 'Suspended' },
+  { key: 'expired',         label: 'Expired'   },
+  { key: 'rejected',        label: 'Rejected'  },
 ];
 
 // ── platform dashboard (A1) ──────────────────────────────────────────────────
@@ -591,7 +626,13 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
 
 const PAYMENT_METHODS = ['BANK', 'JAZZCASH', 'EASYPAISA', 'CASH', 'OTHER'];
 
-type DetailTab = 'overview' | 'sessions';
+type DetailTab = 'overview' | 'activity' | 'sessions';
+
+// Shop activity actions come straight from the shop's own audit log (any of ~40
+// values) — humanize instead of maintaining a duplicate of AuditLogPage's map.
+function humanizeAction(action: string) {
+  return action.toLowerCase().split('_').map((w) => w[0]!.toUpperCase() + w.slice(1)).join(' ');
+}
 
 function timeAgo(dateStr: string | null) {
   if (!dateStr) return 'Never';
@@ -611,11 +652,13 @@ function DeviceIcon({ type }: { type: string | null }) {
   return                         <Monitor    size={14} className="text-gray-500"    />;
 }
 
-function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId }: {
+function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId, onApprove, onReject }: {
   shopId: string;
   onClose: () => void;
   onSendReminder?: (shopId: string) => void;
   sendingId?: string | null;
+  onApprove: (shopId: string) => void;
+  onReject: (shop: Shop) => void;
 }) {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
@@ -627,6 +670,7 @@ function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId }: {
   const [showPayForm, setShowPayForm] = useState(false);
   const [noteText, setNoteText]   = useState('');
   const [killAllPending, setKillAllPending] = useState(false);
+  const [activityPage, setActivityPage] = useState(1);
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ['owner-shop-detail', shopId],
@@ -639,6 +683,13 @@ function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId }: {
     queryFn: () => ownerApi.getShopSessions(shopId),
     staleTime: 15_000,
     enabled: activeTab === 'sessions',
+  });
+
+  const { data: activityData, isLoading: activityLoading } = useQuery({
+    queryKey: ['owner-shop-activity', shopId, activityPage],
+    queryFn: () => ownerApi.getShopAuditLogs(shopId, { page: activityPage, limit: 30 }),
+    staleTime: 30_000,
+    enabled: activeTab === 'activity',
   });
 
   const killSessionMutation = useMutation({
@@ -725,6 +776,7 @@ function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId }: {
         <div className="flex border-b border-gray-100 shrink-0 px-5">
           {([
             { key: 'overview' as const,  label: 'Overview',  icon: <BarChart3 size={13} /> },
+            { key: 'activity' as const,  label: 'Activity',  icon: <History size={13} /> },
             { key: 'sessions' as const,  label: 'Sessions',  icon: <Wifi size={13} />,
               badge: suspiciousCount > 0 ? suspiciousCount : sessions.length || undefined },
           ]).map((t) => (
@@ -774,6 +826,11 @@ function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId }: {
                     Suspended
                   </span>
                 )}
+                {detail.shop.signupSource === 'SELF_SIGNUP' && (
+                  <span className="text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-xl">
+                    Self-signup
+                  </span>
+                )}
                 {onSendReminder && (
                   <button
                     onClick={() => onSendReminder(shopId)}
@@ -786,6 +843,40 @@ function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId }: {
                   </button>
                 )}
               </div>
+
+              {/* Trial approval banner */}
+              {detail.shop.trialApprovalStatus === 'PENDING' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-amber-800 flex items-center gap-1.5">
+                    <Hourglass size={14} /> This trial is awaiting your review
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">Self-signed-up shop — not usable until approved or rejected.</p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <button onClick={() => onApprove(shopId)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition">
+                      <ThumbsUp size={13} /> Approve trial
+                    </button>
+                    <button onClick={() => detail && onReject(detail.shop)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold transition">
+                      <ThumbsDown size={13} /> Reject
+                    </button>
+                  </div>
+                </div>
+              )}
+              {detail.shop.trialApprovalStatus === 'REJECTED' && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                    <XCircle size={14} className="text-gray-400" /> Trial request declined
+                  </p>
+                  {detail.shop.rejectionReason && (
+                    <p className="text-xs text-gray-500 mt-1">{detail.shop.rejectionReason}</p>
+                  )}
+                  <button onClick={() => onApprove(shopId)}
+                    className="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+                    Approve anyway →
+                  </button>
+                </div>
+              )}
 
               {/* Revenue + activity */}
               <div className="grid grid-cols-2 gap-3">
@@ -939,6 +1030,47 @@ function ShopDetailPanel({ shopId, onClose, onSendReminder, sendingId }: {
             <div className="text-center text-sm text-red-500 py-8">Failed to load shop details.</div>
           ) : null}
 
+          {/* Activity tab — what happened inside this shop (not admin actions) */}
+          {activeTab === 'activity' && (
+            <div className="space-y-2">
+              {activityLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}
+                </div>
+              ) : !activityData || activityData.data.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-10">No activity recorded yet</p>
+              ) : (
+                <>
+                  {activityData.data.map((log) => (
+                    <div key={log.id} className="border border-gray-100 rounded-xl px-3 py-2.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex px-2 py-0.5 rounded-lg text-[10px] font-bold border text-gray-600 bg-gray-50 border-gray-200">
+                          {humanizeAction(log.action)}
+                        </span>
+                        {log.actorName && <span className="text-xs text-gray-500 truncate">{log.actorName}</span>}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1 leading-relaxed">{log.description}</p>
+                      <span className="text-[10px] text-gray-400 mt-1 block">{fmtDate(log.createdAt)}</span>
+                    </div>
+                  ))}
+                  {activityData.total > activityData.limit && (
+                    <div className="flex items-center justify-between pt-2">
+                      <button onClick={() => setActivityPage((p) => Math.max(1, p - 1))} disabled={activityPage === 1}
+                        className="text-xs font-semibold text-gray-500 disabled:opacity-30 hover:text-gray-700 transition">← Newer</button>
+                      <span className="text-[11px] text-gray-400">
+                        {(activityPage - 1) * activityData.limit + 1}–{Math.min(activityPage * activityData.limit, activityData.total)} / {activityData.total}
+                      </span>
+                      <button
+                        onClick={() => setActivityPage((p) => p + 1)}
+                        disabled={activityPage * activityData.limit >= activityData.total}
+                        className="text-xs font-semibold text-gray-500 disabled:opacity-30 hover:text-gray-700 transition">Older →</button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Sessions tab */}
           {activeTab === 'sessions' && (
             <div className="space-y-4">
@@ -1079,6 +1211,8 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   SHOP_DELETED:        { label: 'Shop Deleted',        color: 'text-red-600    bg-red-50    border-red-200'       },
   SHOP_ACTIVATED:      { label: 'Shop Activated',      color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
   SHOP_SUSPENDED:      { label: 'Shop Suspended',      color: 'text-orange-600 bg-orange-50 border-orange-200'   },
+  SHOP_TRIAL_APPROVED: { label: 'Trial Approved',      color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+  SHOP_TRIAL_REJECTED: { label: 'Trial Rejected',      color: 'text-red-600    bg-red-50    border-red-200'      },
   SHOP_OWNER_CREATED:  { label: 'Owner Added',         color: 'text-indigo-600 bg-indigo-50 border-indigo-200'   },
   PLAN_CHANGED:        { label: 'Plan Changed',        color: 'text-purple-600 bg-purple-50 border-purple-200'   },
   PAYMENT_LOG_ADDED:   { label: 'Payment Logged',      color: 'text-blue-600   bg-blue-50   border-blue-200'     },
@@ -1922,6 +2056,119 @@ function ChurnRiskPanel({ onClose, onViewShop }: {
   );
 }
 
+// ── Pending trial approvals ──────────────────────────────────────────────────
+
+function PendingApprovalsPanel({ onClose, onViewShop, onApprove, onReject, approvingId }: {
+  onClose: () => void;
+  onViewShop: (id: string) => void;
+  onApprove: (shopId: string) => void;
+  onReject: (shop: Shop) => void;
+  approvingId: string | null;
+}) {
+  const { data: shops = [], isLoading } = useQuery({
+    queryKey: ['owner-shops'],
+    queryFn: ownerApi.listShops,
+  });
+
+  const pending = shops
+    .filter((s) => s.trialApprovalStatus === 'PENDING')
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center">
+            <Hourglass size={16} className="text-amber-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-gray-900">Pending Trial Approvals</p>
+            <p className="text-xs text-gray-400">Self-signup shops jo review ka intezar kar rahe hain</p>
+          </div>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />)}
+            </div>
+          ) : pending.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 size={24} className="text-emerald-500" />
+              </div>
+              <p className="text-sm font-semibold text-gray-700">Sab review ho chuka hai</p>
+              <p className="text-xs text-gray-400 mt-1">Koi pending trial nahi hai</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pending.map((shop) => (
+                <div key={shop.id} className="bg-amber-50/60 border border-amber-100 rounded-2xl p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-gray-900 truncate">{shop.shopName}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{shop.phone}</p>
+                      {shop.ownerName && (
+                        <p className="text-xs text-gray-400 mt-0.5">{shop.ownerName} · {shop.ownerEmail}</p>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-gray-400 shrink-0">{timeAgo(shop.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <button onClick={() => onApprove(shop.id)} disabled={approvingId === shop.id}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold transition">
+                      {approvingId === shop.id ? '…' : <><ThumbsUp size={13} /> Approve</>}
+                    </button>
+                    <button onClick={() => onReject(shop)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold transition">
+                      <ThumbsDown size={13} /> Reject
+                    </button>
+                    <button onClick={() => onViewShop(shop.id)} title="View details"
+                      className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-white rounded-xl transition">
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function RejectShopModal({ shop, onClose, onSubmit, isPending }: {
+  shop: Shop; onClose: () => void; onSubmit: (reason: string) => void; isPending: boolean;
+}) {
+  const [reason, setReason] = useState('');
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h2 className="text-base font-bold text-gray-900 mb-1">Reject "{shop.shopName}"?</h2>
+        <p className="text-xs text-gray-400 mb-4">Owner login nahi kar sakega. Optionally batayein kyun.</p>
+        <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
+          placeholder="Reason (optional) — e.g. duplicate signup, suspicious details…"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 transition resize-none" />
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button onClick={() => onSubmit(reason.trim())} disabled={isPending}
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition disabled:opacity-50">
+            {isPending ? 'Rejecting…' : 'Reject Trial'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 type Modal = { type: 'shop' } | { type: 'owner'; shop: Shop } | { type: 'plan'; shop: Shop } | null;
@@ -1940,6 +2187,9 @@ export default function ShopsPage() {
   const [showChurnPanel, setShowChurnPanel] = useState(false);
   const [showBroadcastPanel, setShowBroadcastPanel] = useState(false);
   const [showOnboardingPanel, setShowOnboardingPanel] = useState(false);
+  const [showPendingPanel, setShowPendingPanel] = useState(false);
+  const [rejectPrompt, setRejectPrompt] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1949,6 +2199,7 @@ export default function ShopsPage() {
     if (panel === 'onboarding')  setShowOnboardingPanel(true);
     if (panel === 'broadcasts')  setShowBroadcastPanel(true);
     if (panel === 'audit')       setShowAuditLog(true);
+    if (panel === 'pending')     setShowPendingPanel(true);
     setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -1995,6 +2246,31 @@ export default function ShopsPage() {
     onError: (e) => { toast.error(getErrorMessage(e)); setStatusConfirm({ open: false, shop: null }); },
   });
 
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => ownerApi.approveShopTrial(id),
+    onMutate: (id) => setApprovingId(id),
+    onSuccess: (_, id) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['owner-stats'] });
+      qc.invalidateQueries({ queryKey: ['owner-shop-detail', id] });
+      setApprovingId(null);
+      toast.success('Trial approved — owner can now log in');
+    },
+    onError: (e) => { setApprovingId(null); toast.error(getErrorMessage(e)); },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => ownerApi.rejectShopTrial(id, reason),
+    onSuccess: (_, vars) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['owner-stats'] });
+      qc.invalidateQueries({ queryKey: ['owner-shop-detail', vars.id] });
+      toast.success('Trial rejected');
+      setRejectPrompt({ open: false, shop: null });
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
   const changePlanMutation = useMutation({
     mutationFn: ({ id, plan, expiresAt }: { id: string; plan: Plan; expiresAt?: string }) =>
       ownerApi.changePlan(id, plan, expiresAt),
@@ -2030,10 +2306,12 @@ export default function ShopsPage() {
 
   // counts per filter
   const counts = useMemo(() => ({
-    all:       shops.length,
-    active:    shops.filter((s) => shopStatus(s) === 'active').length,
-    suspended: shops.filter((s) => shopStatus(s) === 'suspended').length,
-    expired:   shops.filter((s) => shopStatus(s) === 'expired').length,
+    all:             shops.length,
+    active:          shops.filter((s) => shopStatus(s) === 'active').length,
+    suspended:       shops.filter((s) => shopStatus(s) === 'suspended').length,
+    expired:         shops.filter((s) => shopStatus(s) === 'expired').length,
+    pendingApproval: shops.filter((s) => shopStatus(s) === 'pendingApproval').length,
+    rejected:        shops.filter((s) => shopStatus(s) === 'rejected').length,
   }), [shops]);
 
   const filtered = useMemo(() => {
@@ -2101,8 +2379,18 @@ export default function ShopsPage() {
       </div>
 
       {/* Admin tool quick-access strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         {[
+          {
+            label: 'Pending Trials',
+            desc: counts.pendingApproval > 0 ? `${counts.pendingApproval} review ka intezar mein` : 'Sab review ho chuka hai',
+            icon: Hourglass,
+            onClick: () => setShowPendingPanel(true),
+            cls: counts.pendingApproval > 0
+              ? 'border-amber-300 hover:border-amber-400 hover:bg-amber-50 bg-amber-50/40'
+              : 'border-amber-100 hover:border-amber-300 hover:bg-amber-50',
+            iconCls: 'text-amber-600 bg-amber-50',
+          },
           {
             label: 'Churn Risk',
             desc: 'Shops jo band hone wali hain',
@@ -2137,7 +2425,12 @@ export default function ShopsPage() {
           },
         ].map(({ label, desc, icon: Icon, onClick, cls, iconCls }) => (
           <button key={label} onClick={onClick}
-            className={`flex items-center gap-3 p-3.5 rounded-2xl border bg-white text-left transition-all hover:shadow-sm ${cls}`}>
+            className={`relative flex items-center gap-3 p-3.5 rounded-2xl border bg-white text-left transition-all hover:shadow-sm ${cls}`}>
+            {label === 'Pending Trials' && counts.pendingApproval > 0 && (
+              <span className="absolute top-3 right-3 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold">
+                {counts.pendingApproval}
+              </span>
+            )}
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconCls}`}>
               <Icon size={16} />
             </div>
@@ -2159,20 +2452,24 @@ export default function ShopsPage() {
       )}
 
       {/* Quick filter stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {[
-          { label: 'Total',     value: counts.all,       color: 'text-gray-900',    bg: 'bg-gray-50',    border: 'border-gray-100' },
-          { label: 'Active',    value: counts.active,    color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-          { label: 'Suspended', value: counts.suspended, color: 'text-red-500',     bg: 'bg-red-50',     border: 'border-red-100' },
-          { label: 'Expired',   value: counts.expired,   color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100' },
-        ].map((s) => (
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+        {([
+          { key: 'all' as FilterTab,             label: 'Total',     value: counts.all,             color: 'text-gray-900',    bg: 'bg-gray-50',    border: 'border-gray-100' },
+          { key: 'pendingApproval' as FilterTab, label: 'Pending',   value: counts.pendingApproval, color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-100' },
+          { key: 'active' as FilterTab,          label: 'Active',    value: counts.active,          color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+          { key: 'suspended' as FilterTab,       label: 'Suspended', value: counts.suspended,        color: 'text-red-500',     bg: 'bg-red-50',     border: 'border-red-100' },
+          { key: 'expired' as FilterTab,         label: 'Expired',   value: counts.expired,          color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100' },
+        ]).map((s) => (
           <button
-            key={s.label}
-            onClick={() => setFilter((s.label === 'Total' ? 'all' : s.label.toLowerCase()) as FilterTab)}
-            className={`${s.bg} border ${s.border} rounded-2xl p-4 text-left transition hover:shadow-sm ${
-              filter === s.label.toLowerCase() ? 'ring-2 ring-indigo-400' : ''
+            key={s.key}
+            onClick={() => setFilter(s.key)}
+            className={`${s.bg} border ${s.border} rounded-2xl p-4 text-left transition hover:shadow-sm relative ${
+              filter === s.key ? 'ring-2 ring-indigo-400' : ''
             }`}
           >
+            {s.key === 'pendingApproval' && s.value > 0 && (
+              <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            )}
             <p className="text-xs text-gray-500 font-medium">{s.label}</p>
             <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
           </button>
@@ -2249,6 +2546,8 @@ export default function ShopsPage() {
               onDelete={() => setDeleteConfirm({ open: true, shop })}
               onToggleStatus={() => setStatusConfirm({ open: true, shop })}
               onViewDetails={() => setDetailShopId(shop.id)}
+              onApprove={() => approveMutation.mutate(shop.id)}
+              onReject={() => setRejectPrompt({ open: true, shop })}
             />
           ))}
         </div>
@@ -2327,6 +2626,29 @@ export default function ShopsPage() {
           onClose={() => setDetailShopId(null)}
           onSendReminder={(id) => sendReminderMutation.mutate(id)}
           sendingId={sendingReminderId}
+          onApprove={(id) => approveMutation.mutate(id)}
+          onReject={(shop) => setRejectPrompt({ open: true, shop })}
+        />
+      )}
+
+      {/* Pending trial approvals */}
+      {showPendingPanel && (
+        <PendingApprovalsPanel
+          onClose={() => setShowPendingPanel(false)}
+          onViewShop={(id) => { setShowPendingPanel(false); setDetailShopId(id); }}
+          onApprove={(id) => approveMutation.mutate(id)}
+          onReject={(shop) => setRejectPrompt({ open: true, shop })}
+          approvingId={approvingId}
+        />
+      )}
+
+      {/* Reject trial modal */}
+      {rejectPrompt.open && rejectPrompt.shop && (
+        <RejectShopModal
+          shop={rejectPrompt.shop}
+          onClose={() => setRejectPrompt({ open: false, shop: null })}
+          onSubmit={(reason) => rejectMutation.mutate({ id: rejectPrompt.shop!.id, reason: reason || undefined })}
+          isPending={rejectMutation.isPending}
         />
       )}
 

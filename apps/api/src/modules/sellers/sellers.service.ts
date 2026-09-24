@@ -17,6 +17,9 @@ export class SellersService {
         phone: body.phone,
         address: body.address,
         trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        // Self-signup shops need an admin to review and approve before the trial is usable.
+        signupSource: 'SELF_SIGNUP',
+        trialApprovalStatus: 'PENDING',
       })
       .returning();
 
@@ -27,22 +30,25 @@ export class SellersService {
       .set({ sellerId: seller.id, role: 'SELLER_OWNER' })
       .where(eq(users.id, userId));
 
-    // Re-issue tokens so sellerId is baked into the new JWT
-    const accessToken = signAccess({ userId, sellerId: seller.id, role: 'SELLER_OWNER' });
     const refreshToken = signRefresh({ userId });
 
     await db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
-    await db.insert(refreshTokens).values({
+    const [session] = await db.insert(refreshTokens).values({
       userId,
       token: refreshToken,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    });
+    }).returning({ id: refreshTokens.id });
+
+    // sessionId must be baked into the access token — it's what makes the pending-approval
+    // check in middleware/auth.ts apply to this very first session, not just future logins.
+    const accessToken = signAccess({ userId, sellerId: seller.id, role: 'SELLER_OWNER', sessionId: session!.id });
 
     return {
       seller,
       accessToken,
       refreshToken,
       user: { id: user.id, name: user.name, email: user.email, role: 'SELLER_OWNER', sellerId: seller.id },
+      pendingApproval: seller.trialApprovalStatus === 'PENDING',
     };
   }
 

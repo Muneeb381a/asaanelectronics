@@ -21,7 +21,7 @@ export default function OnboardingPage() {
     mutationFn: sellersApi.create,
     onSuccess: (data) => {
       setAuth(data.user, data.accessToken, data.refreshToken);
-      void navigate('/dashboard');
+      void navigate(data.pendingApproval ? '/trial-pending' : '/dashboard');
     },
   });
 

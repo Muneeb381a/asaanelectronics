@@ -17,6 +17,8 @@ import { randomUUID } from 'crypto';
 export const roleEnum = pgEnum('role', ['SUPER_ADMIN', 'SELLER_OWNER', 'SELLER_STAFF']);
 export const otpPurposeEnum = pgEnum('otp_purpose', ['LOGIN', 'PASSWORD_RESET']);
 export const planEnum = pgEnum('plan', ['TRIAL', 'BASIC', 'PRO', 'ENTERPRISE']);
+export const shopSignupSourceEnum = pgEnum('shop_signup_source', ['SELF_SIGNUP', 'ADMIN_CREATED']);
+export const trialApprovalStatusEnum = pgEnum('trial_approval_status', ['PENDING', 'APPROVED', 'REJECTED']);
 export const verificationStatusEnum = pgEnum('verification_status', ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED']);
 export const installmentStatusEnum = pgEnum('installment_status', [
   'PENDING',
@@ -71,6 +73,15 @@ export const sellers = pgTable('sellers', {
   trialEndsAt:   timestamp('trial_ends_at'),
   planExpiresAt: timestamp('plan_expires_at'),
   isActive:      boolean('is_active').default(true).notNull(),
+  // Self-signup shops start PENDING and are blocked from login until an admin reviews
+  // them (approve or reject). Admin-created shops default straight to APPROVED.
+  signupSource:         shopSignupSourceEnum('signup_source').default('ADMIN_CREATED').notNull(),
+  trialApprovalStatus:  trialApprovalStatusEnum('trial_approval_status').default('APPROVED').notNull(),
+  approvedAt:           timestamp('approved_at'),
+  // No FK to users — `sellers` is declared before `users` in this file and a forward
+  // reference here breaks TS's circular-inference check. Admin id only, best-effort.
+  approvedBy:           text('approved_by'),
+  rejectionReason:      text('rejection_reason'),
   murabahaMode:  boolean('murabaha_mode').default(false).notNull(),
   settings:      json('settings').$type<{
     dailyTarget?: number;

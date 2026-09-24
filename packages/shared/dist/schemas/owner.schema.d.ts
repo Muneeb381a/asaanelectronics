@@ -35,6 +35,13 @@ export declare const toggleShopStatusSchema: z.ZodObject<{
 }, {
     isActive: boolean;
 }>;
+export declare const rejectShopSchema: z.ZodObject<{
+    reason: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    reason?: string | undefined;
+}, {
+    reason?: string | undefined;
+}>;
 export declare const addPaymentLogSchema: z.ZodObject<{
     amount: z.ZodNumber;
     method: z.ZodDefault<z.ZodOptional<z.ZodString>>;

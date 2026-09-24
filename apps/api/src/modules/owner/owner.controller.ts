@@ -1,9 +1,11 @@
 import type { Response } from 'express';
 import type { AuthRequest } from '../../middleware/auth.js';
 import { OwnerService } from './owner.service.js';
+import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
 
 const svc = new OwnerService();
+const auditSvc = new AuditService();
 
 export async function listShops(_req: AuthRequest, res: Response) {
   success(res, await svc.listShops());
@@ -25,6 +27,26 @@ export async function deleteShop(req: AuthRequest, res: Response) {
 export async function toggleShopStatus(req: AuthRequest, res: Response) {
   const { isActive } = req.body as { isActive: boolean };
   success(res, await svc.toggleShopStatus(req.params['id'] as string, isActive, req.user!.userId));
+}
+
+// ── Trial approval (self-signup shops) ────────────────────────────────────────
+export async function approveShopTrial(req: AuthRequest, res: Response) {
+  success(res, await svc.approveShopTrial(req.params['id'] as string, req.user!.userId));
+}
+
+export async function rejectShopTrial(req: AuthRequest, res: Response) {
+  const { reason } = req.body as { reason?: string };
+  success(res, await svc.rejectShopTrial(req.params['id'] as string, req.user!.userId, reason));
+}
+
+// ── Shop's own activity log (what happened inside the shop, not admin actions) ─
+export async function getShopAuditLogs(req: AuthRequest, res: Response) {
+  const { from, to, userId, action, entityType, page, limit } = req.query as Record<string, string>;
+  success(res, await auditSvc.list(req.params['id'] as string, {
+    from, to, userId, action, entityType,
+    page:  page  ? Number(page)  : undefined,
+    limit: limit ? Number(limit) : undefined,
+  }));
 }
 
 // ── A1: Platform stats ────────────────────────────────────────────────────────

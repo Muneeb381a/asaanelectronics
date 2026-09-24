@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { verifyAccess } from '../utils/jwt.js';
 import { AppError } from './error.js';
 import { db } from '../db/index.js';
-import { refreshTokens, users } from '../db/schema.js';
+import { refreshTokens, users, sellers } from '../db/schema.js';
 
 export interface AuthRequest extends Request {
   user?: { userId: string; sellerId: string | null; role: string; sessionId?: string };
@@ -21,14 +21,28 @@ async function checkSession(sessionId: string, userId: string): Promise<SessionC
   if (hit && Date.now() - hit.at < SESSION_TTL_MS) return hit.result;
 
   const [row] = await db
-    .select({ id: refreshTokens.id, frozenUntil: users.frozenUntil })
+    .select({
+      id: refreshTokens.id,
+      frozenUntil: users.frozenUntil,
+      role: users.role,
+      sellerIsActive: sellers.isActive,
+      trialApprovalStatus: sellers.trialApprovalStatus,
+    })
     .from(refreshTokens)
     .innerJoin(users, eq(users.id, refreshTokens.userId))
+    .leftJoin(sellers, eq(sellers.id, users.sellerId))
     .where(and(eq(refreshTokens.id, sessionId), eq(refreshTokens.userId, userId)));
 
   let result: SessionCheck;
   if (!row) result = { ok: false, reason: 'Session expired. Please log in again.', code: 401 };
   else if (row.frozenUntil && row.frozenUntil > new Date()) result = { ok: false, reason: 'Account is frozen. Contact the shop owner.', code: 403 };
+  // Seller-level checks don't apply to the platform admin (no sellerId).
+  else if (row.role !== 'SUPER_ADMIN' && row.sellerIsActive === false)
+    result = { ok: false, reason: 'Your shop account has been suspended. Contact the platform owner.', code: 403 };
+  else if (row.role !== 'SUPER_ADMIN' && row.trialApprovalStatus === 'PENDING')
+    result = { ok: false, reason: 'Your shop is awaiting approval from the platform admin. You will get access as soon as it is reviewed.', code: 403 };
+  else if (row.role !== 'SUPER_ADMIN' && row.trialApprovalStatus === 'REJECTED')
+    result = { ok: false, reason: 'Your trial request was declined. Contact support for details.', code: 403 };
   else result = { ok: true };
 
   if (sessionCache.size > 5000) sessionCache.clear();

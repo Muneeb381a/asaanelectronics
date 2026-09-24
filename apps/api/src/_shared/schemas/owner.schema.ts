@@ -15,6 +15,8 @@ export const createShopOwnerSchema = z.object({
 
 export const toggleShopStatusSchema = z.object({ isActive: z.boolean() });
 
+export const rejectShopSchema = z.object({ reason: z.string().max(500).optional() });
+
 export const addPaymentLogSchema = z.object({
   amount:    z.number().positive(),
   method:    z.string().max(30).optional().default('BANK'),
