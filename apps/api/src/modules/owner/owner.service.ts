@@ -65,16 +65,30 @@ export class OwnerService {
     const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true } });
     if (!shop) throw new AppError('Shop not found', 404);
     const [updated] = await db.update(sellers).set({ isActive }).where(eq(sellers.id, id)).returning();
+
+    let sessionsKilled = 0;
+    if (!isActive) {
+      // Suspending a shop must cut off whoever is already logged in, not just block
+      // new logins — otherwise a live 15-minute access token keeps working regardless.
+      const shopUsers = await db.select({ id: users.id }).from(users).where(eq(users.sellerId, id));
+      const userIds = shopUsers.map((u) => u.id);
+      if (userIds.length > 0) {
+        const deleted = await db.delete(refreshTokens).where(inArray(refreshTokens.userId, userIds)).returning({ id: refreshTokens.id });
+        sessionsKilled = deleted.length;
+      }
+      invalidateSessionCache();
+    }
+
     if (actorId) {
       void this.logAdmin(
         actorId,
         isActive ? 'SHOP_ACTIVATED' : 'SHOP_SUSPENDED',
         id,
         shop.shopName,
-        `${isActive ? 'Activated' : 'Suspended'} shop "${shop.shopName}"`,
+        `${isActive ? 'Activated' : 'Suspended'} shop "${shop.shopName}"${sessionsKilled > 0 ? ` — ${sessionsKilled} session(s) force-logged-out` : ''}`,
       );
     }
-    return updated;
+    return { ...updated, sessionsKilled };
   }
 
   async createShop(body: { shopName: string; phone: string; address?: string; plan?: 'TRIAL' | 'BASIC' | 'PRO' }, actorId?: string) {

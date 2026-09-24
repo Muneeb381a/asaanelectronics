@@ -2238,9 +2238,13 @@ export default function ShopsPage() {
   const toggleStatusMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       ownerApi.toggleShopStatus(id, isActive),
-    onSuccess: (_, vars) => {
+    onSuccess: (result, vars) => {
       invalidate();
-      toast.success(vars.isActive ? 'Shop activated' : 'Shop suspended');
+      toast.success(
+        vars.isActive
+          ? 'Shop activated'
+          : `Shop suspended${result.sessionsKilled > 0 ? ` — ${result.sessionsKilled} session${result.sessionsKilled !== 1 ? 's' : ''} force-logged-out` : ''}`,
+      );
       setStatusConfirm({ open: false, shop: null });
     },
     onError: (e) => { toast.error(getErrorMessage(e)); setStatusConfirm({ open: false, shop: null }); },
@@ -2605,7 +2609,7 @@ export default function ShopsPage() {
         description={
           willActivate
             ? `"${pendingToggle?.shopName}" ko wapas activate kar diya jaega. Owner login kar sakenge.`
-            : `"${pendingToggle?.shopName}" suspend ho jaegi. Owner aur staff login nahi kar sakenge.`
+            : `"${pendingToggle?.shopName}" suspend ho jaegi. Owner aur staff login nahi kar sakenge, aur jo already logged in hain unhein bhi turant logout kar diya jaega.`
         }
         confirmLabel={willActivate ? 'Activate Karo' : 'Suspend Karo'}
         variant={willActivate ? 'info' : 'warning'}

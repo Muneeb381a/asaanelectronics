@@ -228,7 +228,8 @@ export const ownerApi = {
     api.delete(`/owner/shops/${id}`),
 
   toggleShopStatus: (id: string, isActive: boolean) =>
-    api.patch<{ data: Shop }>(`/owner/shops/${id}/status`, { isActive }).then(unwrap<Shop>),
+    api.patch<{ data: Shop & { sessionsKilled: number } }>(`/owner/shops/${id}/status`, { isActive })
+      .then(unwrap<Shop & { sessionsKilled: number }>),
 
   // Trial approval (self-signup shops)
   approveShopTrial: (id: string) =>
