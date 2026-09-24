@@ -41,7 +41,7 @@ export const expenseCategoryEnum = pgEnum('expense_category', [
 ]);
 
 export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['CREDIT', 'DEBIT']);
-export const ledgerRefTypeEnum   = pgEnum('ledger_ref_type',   ['PAYMENT', 'EXPENSE', 'MANUAL']);
+export const ledgerRefTypeEnum   = pgEnum('ledger_ref_type',   ['PAYMENT', 'EXPENSE', 'MANUAL', 'SUPPLIER_PAYMENT']);
 
 export const letterStatusEnum = pgEnum('letter_status', [
   'NONE', 'FIRST_NOTICE', 'SECOND_NOTICE', 'LEGAL_NOTICE', 'FILED',

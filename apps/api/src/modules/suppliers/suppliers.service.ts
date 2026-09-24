@@ -1,8 +1,9 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { suppliers, supplierInvoices, supplierInvoiceLines, supplierPayments, products, users } from '../../db/schema.js';
+import { suppliers, supplierInvoices, supplierInvoiceLines, supplierPayments, products, users, ledgerEntries } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { randomUUID } from 'crypto';
+import { accountingSvc } from '../accounting/accounting.service.js';
 
 export class SuppliersService {
   async list(sellerId: string) {
@@ -57,11 +58,27 @@ export class SuppliersService {
   }
 
   async remove(id: string, sellerId: string) {
-    const [row] = await db
-      .delete(suppliers)
-      .where(and(eq(suppliers.id, id), eq(suppliers.sellerId, sellerId)))
-      .returning({ id: suppliers.id });
-    if (!row) throw new AppError('Supplier not found', 404);
+    return db.transaction(async (tx) => {
+      // Same reason as removeInvoice(): payments cascade-delete with the supplier but
+      // their ledger/accounting postings need voiding explicitly.
+      const paidRows = await tx
+        .select({ id: supplierPayments.id })
+        .from(supplierPayments)
+        .where(eq(supplierPayments.supplierId, id));
+      const paymentIds = paidRows.map((p) => p.id);
+      if (paymentIds.length > 0) {
+        await tx.delete(ledgerEntries).where(
+          and(inArray(ledgerEntries.referenceId, paymentIds), eq(ledgerEntries.refType, 'SUPPLIER_PAYMENT')),
+        );
+        await accountingSvc.voidByRef(sellerId, 'SUPPLIER_PAYMENT', paymentIds, tx);
+      }
+
+      const [row] = await tx
+        .delete(suppliers)
+        .where(and(eq(suppliers.id, id), eq(suppliers.sellerId, sellerId)))
+        .returning({ id: suppliers.id });
+      if (!row) throw new AppError('Supplier not found', 404);
+    });
   }
 
   // ── Invoices ──────────────────────────────────────────────────────────────
@@ -254,13 +271,18 @@ export class SuppliersService {
     amount: number; method?: string; note?: string; paidOn?: string;
   }) {
     return db.transaction(async (tx) => {
-      const [invoice] = await tx
-        .select({ id: supplierInvoices.id, supplierId: supplierInvoices.supplierId, totalAmount: supplierInvoices.totalAmount, paidAmount: supplierInvoices.paidAmount })
+      const [row] = await tx
+        .select({
+          id: supplierInvoices.id, supplierId: supplierInvoices.supplierId,
+          totalAmount: supplierInvoices.totalAmount, paidAmount: supplierInvoices.paidAmount,
+          description: supplierInvoices.description, supplierName: suppliers.name,
+        })
         .from(supplierInvoices)
+        .innerJoin(suppliers, eq(suppliers.id, supplierInvoices.supplierId))
         .where(and(eq(supplierInvoices.id, invoiceId), eq(supplierInvoices.sellerId, sellerId)));
-      if (!invoice) throw new AppError('Invoice not found', 404);
+      if (!row) throw new AppError('Invoice not found', 404);
 
-      const outstanding = Number(invoice.totalAmount) - Number(invoice.paidAmount);
+      const outstanding = Number(row.totalAmount) - Number(row.paidAmount);
       // Round-trip through paisas to sidestep float drift on the boundary check.
       const outstandingPaisas = Math.round(outstanding * 100);
       const amountPaisas      = Math.round(body.amount * 100);
@@ -269,12 +291,14 @@ export class SuppliersService {
         throw new AppError(`Amount exceeds the remaining balance of PKR ${outstanding.toFixed(2)}`, 400);
       }
 
+      const paidOn = body.paidOn ?? new Date().toISOString().slice(0, 10);
+
       const [payment] = await tx.insert(supplierPayments).values({
-        invoiceId, supplierId: invoice.supplierId, sellerId,
+        invoiceId, supplierId: row.supplierId, sellerId,
         amount:  String(body.amount),
         method:  body.method ?? null,
         note:    body.note ?? null,
-        paidOn:  body.paidOn ?? new Date().toISOString().slice(0, 10),
+        paidOn,
         recordedBy: actorId ?? null,
       }).returning();
 
@@ -283,6 +307,21 @@ export class SuppliersService {
         .set({ paidAmount: sql`${supplierInvoices.paidAmount} + ${body.amount}` })
         .where(eq(supplierInvoices.id, invoiceId))
         .returning();
+
+      // Real cash leaving the shop — post it to the cash book / double-entry books,
+      // the same way expenses.service.ts posts an expense (Dr Purchase Expense / Cr Cash).
+      const memo = `Supplier payment — ${row.supplierName}${row.description ? ` (${row.description})` : ''}`;
+      await tx.insert(ledgerEntries).values({
+        sellerId,
+        type: 'DEBIT',
+        category: 'PURCHASE',
+        amount: String(body.amount),
+        description: memo,
+        date: new Date(paidOn),
+        referenceId: payment!.id,
+        refType: 'SUPPLIER_PAYMENT',
+      });
+      await accountingSvc.postSupplierPaymentEntry(sellerId, { paymentId: payment!.id, amount: body.amount, memo, userId: actorId }, tx);
 
       return {
         payment: { ...payment!, amount: Number(payment!.amount) },
@@ -307,15 +346,37 @@ export class SuppliersService {
         .where(eq(supplierInvoices.id, payment.invoiceId))
         .returning();
 
+      // Undo the cash-book / double-entry postings made when this payment was recorded.
+      await tx.delete(ledgerEntries).where(
+        and(eq(ledgerEntries.referenceId, paymentId), eq(ledgerEntries.refType, 'SUPPLIER_PAYMENT')),
+      );
+      await accountingSvc.voidByRef(sellerId, 'SUPPLIER_PAYMENT', paymentId, tx);
+
       return { ...updatedInvoice!, totalAmount: Number(updatedInvoice!.totalAmount), paidAmount: Number(updatedInvoice!.paidAmount) };
     });
   }
 
   async removeInvoice(id: string, sellerId: string) {
-    const [row] = await db
-      .delete(supplierInvoices)
-      .where(and(eq(supplierInvoices.id, id), eq(supplierInvoices.sellerId, sellerId)))
-      .returning({ id: supplierInvoices.id });
-    if (!row) throw new AppError('Invoice not found', 404);
+    return db.transaction(async (tx) => {
+      // supplier_payments cascade-deletes with the invoice, but their ledger/accounting
+      // postings don't — void those first or the cash book keeps a phantom outflow.
+      const paidRows = await tx
+        .select({ id: supplierPayments.id })
+        .from(supplierPayments)
+        .where(eq(supplierPayments.invoiceId, id));
+      const paymentIds = paidRows.map((p) => p.id);
+      if (paymentIds.length > 0) {
+        await tx.delete(ledgerEntries).where(
+          and(inArray(ledgerEntries.referenceId, paymentIds), eq(ledgerEntries.refType, 'SUPPLIER_PAYMENT')),
+        );
+        await accountingSvc.voidByRef(sellerId, 'SUPPLIER_PAYMENT', paymentIds, tx);
+      }
+
+      const [row] = await tx
+        .delete(supplierInvoices)
+        .where(and(eq(supplierInvoices.id, id), eq(supplierInvoices.sellerId, sellerId)))
+        .returning({ id: supplierInvoices.id });
+      if (!row) throw new AppError('Invoice not found', 404);
+    });
   }
 }

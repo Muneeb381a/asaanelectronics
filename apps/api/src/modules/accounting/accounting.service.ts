@@ -152,6 +152,21 @@ export class AccountingService {
     }, ex);
   }
 
+  /** Cash paid to a supplier against stock already received: Dr Purchase Expense / Cr Cash. */
+  async postSupplierPaymentEntry(sellerId: string, data: {
+    paymentId: string; amount: number; memo?: string; userId?: string;
+  }, ex: Executor = db) {
+    const acct = await this.getAcctIds(sellerId, ['1000', '5300'], ex);
+    await this.postEntry(sellerId, {
+      memo: data.memo ?? `Supplier payment — PKR ${data.amount.toLocaleString()}`,
+      refType: 'SUPPLIER_PAYMENT', refId: data.paymentId, createdBy: data.userId,
+      lines: [
+        { accountId: acct['5300']!, debit: data.amount, credit: 0 },
+        { accountId: acct['1000']!, debit: 0,            credit: data.amount },
+      ],
+    }, ex);
+  }
+
   async getBalances(sellerId: string) {
     await this.initSellerAccounts(sellerId);
 
