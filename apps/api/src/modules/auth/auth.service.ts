@@ -53,9 +53,12 @@ async function assertShopAccessible(sellerId: string | null) {
   if (!sellerId) return;
   const seller = await db.query.sellers.findFirst({
     where: eq(sellers.id, sellerId),
-    columns: { isActive: true, trialApprovalStatus: true },
+    columns: { isActive: true, trialApprovalStatus: true, deletedAt: true },
   });
   if (!seller) return;
+  if (seller.deletedAt) {
+    throw new AppError('This shop has been removed. Contact the platform owner.', 403);
+  }
   if (!seller.isActive) {
     throw new AppError('Your shop account has been suspended. Contact the platform owner.', 403);
   }

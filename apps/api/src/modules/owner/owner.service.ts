@@ -11,6 +11,7 @@ import { invalidateSessionCache } from '../../middleware/auth.js';
 import { hashPassword } from '../../utils/hash.js';
 import { PLAN_LIMITS } from '../../config/plans.js';
 import { sendRenewalReminderEmail } from '../../utils/email.js';
+import { createBackup } from '../backups/backups.service.js';
 
 export class OwnerService {
   // ── A10: Admin audit log helper ───────────────────────────────────────────
@@ -54,6 +55,7 @@ export class OwnerService {
         trialApprovalStatus: sellers.trialApprovalStatus,
         approvedAt: sellers.approvedAt,
         rejectionReason: sellers.rejectionReason,
+        deletedAt: sellers.deletedAt,
       })
       .from(sellers)
       .leftJoin(users, and(eq(users.sellerId, sellers.id), eq(users.role, 'SELLER_OWNER')));
@@ -216,14 +218,56 @@ export class OwnerService {
       `Removed platform admin account "${admin.name}" (${admin.email})`);
   }
 
+  // "Delete Shop" archives — it never hard-deletes. No shop's data is ever erased or
+  // lost, by policy. A mandatory final backup is taken first (the deletion is aborted
+  // if that fails), then the shop is soft-deleted: hidden everywhere, blocked at login,
+  // skipped by every cron — but every row it owns stays in the database untouched.
+  // Restoring is just clearing deletedAt. See purgeShop() for the separate, rare,
+  // deliberate action that actually removes data, run long after archival if ever needed.
   async deleteShop(id: string, actorId?: string) {
-    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true } });
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true, deletedAt: true } });
     if (!shop) throw new AppError('Shop not found', 404);
+    if (shop.deletedAt) throw new AppError('This shop is already archived.', 409);
 
-    // Log before deletion so seller_id reference still exists
+    await createBackup(id, 'shop_deleted');
+
+    await db.update(sellers).set({ deletedAt: new Date() }).where(eq(sellers.id, id));
+
+    const shopUserIds = (await db.select({ id: users.id }).from(users).where(eq(users.sellerId, id))).map((r) => r.id);
+    if (shopUserIds.length) await db.delete(refreshTokens).where(inArray(refreshTokens.userId, shopUserIds));
+    invalidateSessionCache();
+
     if (actorId) {
-      await this.logAdmin(actorId, 'SHOP_DELETED', null, shop.shopName,
-        `Permanently deleted shop "${shop.shopName}" and all its data`);
+      await this.logAdmin(actorId, 'SHOP_ARCHIVED', id, shop.shopName,
+        `Archived shop "${shop.shopName}" (soft delete — a final backup was taken first; all data preserved, sessions logged out)`);
+    }
+  }
+
+  // Un-deletes an archived shop — instant, since nothing was ever removed.
+  async restoreShop(id: string, actorId?: string) {
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true, deletedAt: true } });
+    if (!shop) throw new AppError('Shop not found', 404);
+    if (!shop.deletedAt) throw new AppError('This shop is not archived.', 409);
+
+    await db.update(sellers).set({ deletedAt: null }).where(eq(sellers.id, id));
+
+    if (actorId) {
+      await this.logAdmin(actorId, 'SHOP_UNARCHIVED', id, shop.shopName, `Restored archived shop "${shop.shopName}" — login access reinstated`);
+    }
+  }
+
+  // The true permanent purge — distinct from deleteShop(), never the default outcome
+  // of clicking "Delete Shop". Only ever run manually, long after a shop has been
+  // archived, and only for a shop that IS already archived (a second, deliberate
+  // confirmation on top of the UI's own name-typing confirmation).
+  async purgeShop(id: string, actorId?: string) {
+    const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true, deletedAt: true } });
+    if (!shop) throw new AppError('Shop not found', 404);
+    if (!shop.deletedAt) throw new AppError('Only an already-archived shop can be purged. Archive it first.', 409);
+
+    if (actorId) {
+      await this.logAdmin(actorId, 'SHOP_PURGED', null, shop.shopName,
+        `Permanently purged archived shop "${shop.shopName}" and all its data — its final backup (taken at archive time) is the only copy left`);
     }
 
     await db.transaction(async (tx) => {
@@ -276,7 +320,8 @@ export class OwnerService {
         signupSource: sellers.signupSource, trialApprovalStatus: sellers.trialApprovalStatus,
       })
       .from(sellers)
-      .leftJoin(users, and(eq(users.sellerId, sellers.id), eq(users.role, 'SELLER_OWNER')));
+      .leftJoin(users, and(eq(users.sellerId, sellers.id), eq(users.role, 'SELLER_OWNER')))
+      .where(isNull(sellers.deletedAt)); // archived shops are out of normal use — exclude from every live-shop metric
 
     const pendingApprovals = allShops
       .filter((s) => s.trialApprovalStatus === 'PENDING')

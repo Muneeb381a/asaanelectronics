@@ -8,6 +8,7 @@ import {
   Users, TrendingUp, BookOpen, Plus, CreditCard, KeyRound, Eye, EyeOff, Target,
   MessageSquare, Pencil, Check, X, Settings, Store, Wallet, Lock, ChevronRight,
   BadgeCheck, Zap, Package, Globe, Save, RotateCcw, Percent, CalendarClock, Sparkles,
+  Database, Download, History,
 } from 'lucide-react';
 import { setTimezone as applyTimezone } from '../utils/dateFormat.ts';
 import { sellersApi, type PaymentAccount, type PaymentAccountType, type Seller, type SellerSettings } from '../api/sellers.api.ts';
@@ -21,6 +22,7 @@ import { useAuthStore } from '../store/auth.store.ts';
 import { useNavigate } from 'react-router-dom';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
+import { backupsApi, type BackupListItem } from '../api/backups.api.ts';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Primitives
@@ -839,18 +841,119 @@ function SecurityTab() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Backups tab
+──────────────────────────────────────────────────────────────────────────── */
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const TRIGGER_LABEL: Record<BackupListItem['trigger'], string> = {
+  auto: 'Automatic', manual: 'Manual', 'pre-restore': 'Pre-restore snapshot', shop_deleted: 'Final (shop archived)',
+};
+
+function BackupsTab({ isOwner }: { isOwner: boolean }) {
+  const qc = useQueryClient();
+  const [restoreTarget, setRestoreTarget] = useState<BackupListItem | null>(null);
+
+  const { data: backups = [], isLoading } = useQuery({ queryKey: ['backups'], queryFn: backupsApi.list, staleTime: 15_000 });
+
+  const createMutation = useMutation({
+    mutationFn: () => backupsApi.create(),
+    onSuccess: () => { toast.success('Backup ban gaya'); void qc.invalidateQueries({ queryKey: ['backups'] }); },
+    onError: (e) => toast.error(getErrorMessage(e, 'Backup nahi bana')),
+  });
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => backupsApi.restore(id),
+    onSuccess: () => { toast.success('Shop restore ho gayi — dobara login karein'); },
+    onError: (e) => toast.error(getErrorMessage(e, 'Restore nahi hua')),
+    onSettled: () => setRestoreTarget(null),
+  });
+
+  const lastManual = backups.find((b) => b.trigger === 'manual');
+  const cooldownActive = !!lastManual && Date.now() - new Date(lastManual.createdAt).getTime() < 60 * 60 * 1000;
+
+  async function handleDownload(b: BackupListItem) {
+    try {
+      const blob = await backupsApi.download(b.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-${b.createdAt.slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Download nahi hua'));
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardHeader icon={Database} tone="blue" title="Backups"
+          subtitle="Har shop ka apna encrypted backup — khud le sakte hain aur zaroorat par restore kar sakte hain"
+          action={
+            <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || cooldownActive}
+              title={cooldownActive ? 'Ek ghante mein sirf ek manual backup ban sakta hai' : undefined}
+              className={btnPrimary}>
+              <Save size={13} /> {createMutation.isPending ? 'Ban raha hai…' : 'Back up now'}
+            </button>
+          } />
+        <div className="p-5 sm:p-6 space-y-3">
+          {isLoading ? <RowSkeleton rows={3} /> : backups.length === 0 ? (
+            <EmptyBox icon={Database} title="Abhi koi backup nahi" hint="Back up now dabayen, ya paid plan par har raat automatic backup ban jata hai" />
+          ) : (
+            <div className="space-y-2">
+              {backups.map((b) => (
+                <div key={b.id} className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-white ring-1 ring-slate-200 text-slate-500">
+                    <History size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">{TRIGGER_LABEL[b.trigger]}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 tabular-nums">{fmtDate(b.createdAt)} · {timeAgo(b.createdAt)} · {fmtBytes(b.sizeBytes)}</p>
+                  </div>
+                  <button onClick={() => void handleDownload(b)} title="Download" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition shrink-0">
+                    <Download size={14} />
+                  </button>
+                  {isOwner && (
+                    <button onClick={() => setRestoreTarget(b)} title="Restore" className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition shrink-0">
+                      <RotateCcw size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <ConfirmDialog open={!!restoreTarget} title="Is backup se restore karein?"
+        description={restoreTarget ? `Shop ka aaj tak ka data ${fmtDate(restoreTarget.createdAt)} (${timeAgo(restoreTarget.createdAt)}) ki state se replace ho jayega. Us ke baad ka koi bhi naya data (sales, payments) mit jayega — restore se pehle ek aur backup khud-ba-khud ban jata hai, is liye ye qadam wapis ja sakta hai, lekin dhyan se aage barhein.` : ''}
+        confirmLabel="Restore karein" isPending={restoreMutation.isPending}
+        onConfirm={() => { if (restoreTarget) restoreMutation.mutate(restoreTarget.id); }} onCancel={() => setRestoreTarget(null)} />
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Page shell
 ──────────────────────────────────────────────────────────────────────────── */
 
-type TabKey = 'shop' | 'plan' | 'targets' | 'payments' | 'templates' | 'security';
+type TabKey = 'shop' | 'plan' | 'targets' | 'payments' | 'templates' | 'security' | 'backups';
 
-const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; ownerOnly?: boolean }[] = [
+const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; ownerOnly?: boolean; permKey?: string }[] = [
   { key: 'shop',      label: 'Shop',             icon: Store                          },
   { key: 'plan',      label: 'Plan & Usage',     icon: BadgeCheck                     },
   { key: 'targets',   label: 'Targets & Rules',  icon: Target,        ownerOnly: true },
   { key: 'payments',  label: 'Payment Accounts', icon: CreditCard                     },
   { key: 'templates', label: 'WhatsApp',         icon: MessageSquare, ownerOnly: true },
   { key: 'security',  label: 'Security',         icon: Lock                           },
+  { key: 'backups',   label: 'Backups',          icon: Database,      permKey: 'canExportData' },
 ];
 
 export default function SettingsPage() {
@@ -868,7 +971,8 @@ export default function SettingsPage() {
   const { data: shop, isLoading } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
   const { data: usage } = useQuery({ queryKey: ['billing-usage'], queryFn: billingApi.getUsage, staleTime: 60_000 });
 
-  const tabs = TABS.filter((t) => !t.ownerOnly || isOwner);
+  const perms = user?.permissions as Record<string, boolean> | null | undefined;
+  const tabs = TABS.filter((t) => (!t.ownerOnly || isOwner) && (!t.permKey || isOwner || !!perms?.[t.permKey]));
   useEffect(() => { if (!tabs.find((t) => t.key === active)) setActive('shop'); }, [isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Warn before the browser closes with unsaved edits.
@@ -924,6 +1028,7 @@ export default function SettingsPage() {
         <div hidden={active !== 'payments'}><PaymentsTab isOwner={isOwner} /></div>
         {isOwner && <div hidden={active !== 'templates'}><TemplatesTab /></div>}
         <div hidden={active !== 'security'}><SecurityTab /></div>
+        {(isOwner || !!perms?.canExportData) && <div hidden={active !== 'backups'}><BackupsTab isOwner={isOwner} /></div>}
       </div>
     </div>
   );

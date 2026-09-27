@@ -8,6 +8,7 @@ export type PlanLimits = {
   priceMonthly: number;  // PKR, 0 = free, -1 = custom
   trialDays:    number;
   badge:        string;
+  hasAutomaticBackups: boolean;
 };
 
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
@@ -19,6 +20,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     priceMonthly: 0,
     trialDays:    14,
     badge:        'amber',
+    hasAutomaticBackups: false,
   },
   BASIC: {
     customers:    500,
@@ -28,6 +30,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     priceMonthly: 2999,
     trialDays:    0,
     badge:        'blue',
+    hasAutomaticBackups: true,
   },
   PRO: {
     customers:    5000,
@@ -37,6 +40,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     priceMonthly: 7999,
     trialDays:    0,
     badge:        'purple',
+    hasAutomaticBackups: true,
   },
   ENTERPRISE: {
     customers:    -1,
@@ -46,6 +50,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     priceMonthly: -1,
     trialDays:    0,
     badge:        'indigo',
+    hasAutomaticBackups: true,
   },
 };
 

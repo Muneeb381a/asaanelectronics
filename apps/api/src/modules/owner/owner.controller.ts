@@ -3,6 +3,7 @@ import type { AuthRequest } from '../../middleware/auth.js';
 import { OwnerService } from './owner.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { success } from '../../utils/response.js';
+import * as backupsSvc from '../backups/backups.service.js';
 
 const svc = new OwnerService();
 const auditSvc = new AuditService();
@@ -36,6 +37,32 @@ export async function removeAdmin(req: AuthRequest, res: Response) {
 export async function deleteShop(req: AuthRequest, res: Response) {
   await svc.deleteShop(req.params['id'] as string, req.user!.userId);
   success(res, null);
+}
+
+export async function restoreShop(req: AuthRequest, res: Response) {
+  await svc.restoreShop(req.params['id'] as string, req.user!.userId);
+  success(res, null);
+}
+
+export async function purgeShop(req: AuthRequest, res: Response) {
+  await svc.purgeShop(req.params['id'] as string, req.user!.userId);
+  success(res, null);
+}
+
+// ── Backups: read-only support access for any shop, plus admin-assisted restore ────
+export async function getShopBackups(req: AuthRequest, res: Response) {
+  success(res, await backupsSvc.listBackups(req.params['id'] as string));
+}
+
+export async function restoreShopBackup(req: AuthRequest, res: Response) {
+  const sellerId = req.params['id'] as string;
+  const key = decodeURIComponent(req.params['backupId'] as string);
+  await backupsSvc.restoreBackup(sellerId, key);
+  await auditSvc.log({
+    sellerId, userId: req.user!.userId, action: 'SHOP_RESTORED_BY_ADMIN', entityType: 'backup',
+    entityId: key, description: `Platform admin restored this shop from backup ${key}`,
+  });
+  success(res, { restored: true });
 }
 
 export async function toggleShopStatus(req: AuthRequest, res: Response) {

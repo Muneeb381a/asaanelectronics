@@ -22,6 +22,7 @@ export interface Shop {
   trialApprovalStatus: TrialApprovalStatus;
   approvedAt?: string | null;
   rejectionReason?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface CreateShopInput {
@@ -243,6 +244,12 @@ export const ownerApi = {
 
   deleteShop: (id: string) =>
     api.delete(`/owner/shops/${id}`),
+
+  restoreShop: (id: string) =>
+    api.patch(`/owner/shops/${id}/restore`),
+
+  purgeShop: (id: string) =>
+    api.delete(`/owner/shops/${id}/purge`),
 
   toggleShopStatus: (id: string, isActive: boolean) =>
     api.patch<{ data: Shop & { sessionsKilled: number } }>(`/owner/shops/${id}/status`, { isActive })

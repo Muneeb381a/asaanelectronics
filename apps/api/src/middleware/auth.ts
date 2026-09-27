@@ -27,6 +27,7 @@ async function checkSession(sessionId: string, userId: string): Promise<SessionC
       role: users.role,
       sellerIsActive: sellers.isActive,
       trialApprovalStatus: sellers.trialApprovalStatus,
+      sellerDeletedAt: sellers.deletedAt,
     })
     .from(refreshTokens)
     .innerJoin(users, eq(users.id, refreshTokens.userId))
@@ -37,6 +38,7 @@ async function checkSession(sessionId: string, userId: string): Promise<SessionC
   if (!row) result = { ok: false, reason: 'Session expired. Please log in again.', code: 401 };
   else if (row.frozenUntil && row.frozenUntil > new Date()) result = { ok: false, reason: 'Account is frozen. Contact the shop owner.', code: 403 };
   // Seller-level checks don't apply to the platform admin (no sellerId).
+  else if (row.role !== 'SUPER_ADMIN' && row.sellerDeletedAt) result = { ok: false, reason: 'This shop has been removed. Contact the platform owner.', code: 403 };
   else if (row.role !== 'SUPER_ADMIN' && row.sellerIsActive === false)
     result = { ok: false, reason: 'Your shop account has been suspended. Contact the platform owner.', code: 403 };
   else if (row.role !== 'SUPER_ADMIN' && row.trialApprovalStatus === 'PENDING')

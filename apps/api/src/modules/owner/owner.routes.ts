@@ -3,7 +3,8 @@ import { validate } from '../../middleware/validate.js';
 import { createShopSchema, createShopOwnerSchema, createAdminSchema, toggleShopStatusSchema, rejectShopSchema, addPaymentLogSchema, shopNoteSchema, createBroadcastSchema, updateBroadcastSchema } from '@assaan/shared';
 import { authenticate, requireSuperAdmin } from '../../middleware/auth.js';
 import {
-  listShops, createShop, createShopOwner, deleteShop, toggleShopStatus,
+  listShops, createShop, createShopOwner, deleteShop, restoreShop, purgeShop, toggleShopStatus,
+  getShopBackups, restoreShopBackup,
   listAdmins, createAdmin, removeAdmin,
   approveShopTrial, rejectShopTrial, getShopAuditLogs,
   getPlatformStats,
@@ -28,7 +29,13 @@ router.get('/shops/export',           exportShopsCSV);   // must be before /shop
 router.post('/shops',                 validate(createShopSchema), createShop);
 router.post('/shops/:id/owner',       validate(createShopOwnerSchema), createShopOwner);
 router.delete('/shops/:id',           deleteShop);
+router.patch('/shops/:id/restore',    restoreShop);
+router.delete('/shops/:id/purge',     purgeShop);
 router.patch('/shops/:id/status',     validate(toggleShopStatusSchema), toggleShopStatus);
+
+// ── Backups: read-only support access + admin-assisted restore ──────────────────
+router.get('/shops/:id/backups',                     getShopBackups);
+router.post('/shops/:id/backups/:backupId/restore',  restoreShopBackup);
 
 // ── Platform admin accounts (create a second one, or remove one) ────────────────
 router.get('/admins',                 listAdmins);

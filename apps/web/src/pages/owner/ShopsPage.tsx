@@ -21,9 +21,12 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-type ShopStatus = 'active' | 'suspended' | 'expired' | 'pendingApproval' | 'rejected';
+type ShopStatus = 'active' | 'suspended' | 'expired' | 'pendingApproval' | 'rejected' | 'archived';
 
 function shopStatus(shop: Shop): ShopStatus {
+  // Archived (soft-deleted) beats every other status — an archived shop is blocked at
+  // login and out of normal use regardless of plan/trial/suspension state underneath.
+  if (shop.deletedAt) return 'archived';
   // A self-signup trial awaiting (or denied) review takes priority — it's blocked at
   // login regardless of isActive/expiry, which don't mean anything until reviewed.
   if (shop.trialApprovalStatus === 'PENDING')  return 'pendingApproval';
@@ -74,6 +77,7 @@ const STATUS_META: Record<ShopStatus, { label: string; cls: string; icon: React.
   expired:         { label: 'Expired',          cls: 'bg-orange-100 text-orange-700 border-orange-200',    icon: <AlertTriangle size={10} /> },
   pendingApproval: { label: 'Pending Approval', cls: 'bg-amber-100 text-amber-700 border-amber-200',       icon: <Hourglass size={10} /> },
   rejected:        { label: 'Rejected',         cls: 'bg-gray-200 text-gray-600 border-gray-300',          icon: <XCircle size={10} /> },
+  archived:        { label: 'Archived',         cls: 'bg-slate-200 text-slate-600 border-slate-300',       icon: <History size={10} /> },
 };
 
 // ── shared field ─────────────────────────────────────────────────────────────
@@ -307,10 +311,11 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
 // ── shop card ─────────────────────────────────────────────────────────────────
 
-function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, onViewDetails, onApprove, onReject }: {
+function ShopCard({ shop, onAddOwner, onDelete, onRestore, onToggleStatus, onChangePlan, onViewDetails, onApprove, onReject }: {
   shop: Shop;
   onAddOwner: () => void;
   onDelete: () => void;
+  onRestore: () => void;
   onToggleStatus: () => void;
   onChangePlan: () => void;
   onViewDetails: () => void;
@@ -321,9 +326,11 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, on
   const meta   = STATUS_META[status];
   const expiry = daysLabel(shop);
   const isPending = status === 'pendingApproval';
+  const isArchived = status === 'archived';
 
   return (
     <div className={`rounded-2xl border flex flex-col gap-0 overflow-hidden transition-shadow hover:shadow-md ${
+      isArchived ? 'bg-slate-50 border-slate-200' :
       status === 'suspended' || status === 'rejected' ? 'bg-gray-50 border-gray-200' :
       status === 'expired'   ? 'bg-orange-50/40 border-orange-100' :
       status === 'pendingApproval' ? 'bg-amber-50/40 border-amber-200' :
@@ -331,6 +338,7 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, on
     }`}>
       {/* Top colour bar */}
       <div className={`h-1 w-full ${
+        isArchived ? 'bg-slate-400' :
         status === 'suspended' || status === 'rejected' ? 'bg-gray-300' :
         status === 'expired'   ? 'bg-orange-400' :
         status === 'pendingApproval' ? 'bg-amber-400' :
@@ -369,7 +377,7 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, on
               } />
             </div>
             <div className="min-w-0">
-              <p className={`font-semibold text-sm leading-tight truncate ${status === 'suspended' || status === 'rejected' ? 'text-gray-400' : 'text-gray-900'}`}>
+              <p className={`font-semibold text-sm leading-tight truncate ${status === 'suspended' || status === 'rejected' || isArchived ? 'text-gray-400' : 'text-gray-900'}`}>
                 {shop.shopName}
               </p>
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -389,11 +397,13 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, on
               className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
               <ChevronRight size={14} />
             </button>
-            <button onClick={onChangePlan} title="Change plan"
-              className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
-              <CreditCard size={14} />
-            </button>
-            {status !== 'pendingApproval' && status !== 'rejected' && (
+            {!isArchived && (
+              <button onClick={onChangePlan} title="Change plan"
+                className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
+                <CreditCard size={14} />
+              </button>
+            )}
+            {!isArchived && status !== 'pendingApproval' && status !== 'rejected' && (
               <button onClick={onToggleStatus}
                 title={status === 'suspended' ? 'Activate shop' : 'Suspend shop'}
                 className={`p-2 rounded-lg transition ${
@@ -404,10 +414,17 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, on
                 {status === 'suspended' ? <ShieldCheck size={14} /> : <ShieldOff size={14} />}
               </button>
             )}
-            <button onClick={onDelete} title="Delete shop"
-              className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-              <Trash2 size={14} />
-            </button>
+            {isArchived ? (
+              <button onClick={onRestore} title="Restore shop"
+                className="p-2 text-gray-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition">
+                <History size={14} />
+              </button>
+            ) : (
+              <button onClick={onDelete} title="Archive shop"
+                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -459,7 +476,7 @@ function ShopCard({ shop, onAddOwner, onDelete, onToggleStatus, onChangePlan, on
 
 // ── filter bar ────────────────────────────────────────────────────────────────
 
-type FilterTab = 'all' | 'active' | 'suspended' | 'expired' | 'pendingApproval' | 'rejected';
+type FilterTab = 'all' | 'active' | 'suspended' | 'expired' | 'pendingApproval' | 'rejected' | 'archived';
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'all',             label: 'All'       },
@@ -468,6 +485,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'suspended',       label: 'Suspended' },
   { key: 'expired',         label: 'Expired'   },
   { key: 'rejected',        label: 'Rejected'  },
+  { key: 'archived',        label: 'Archived'  },
 ];
 
 // ── platform dashboard (A1) ──────────────────────────────────────────────────
@@ -2379,8 +2397,14 @@ export default function ShopsPage() {
 
   const deleteShopMutation = useMutation({
     mutationFn: ownerApi.deleteShop,
-    onSuccess: () => { invalidate(); toast.success('Shop deleted'); setDeleteConfirm({ open: false, shop: null }); },
+    onSuccess: () => { invalidate(); toast.success('Shop archived — data mehfooz hai, kabhi bhi restore ho sakti hai'); setDeleteConfirm({ open: false, shop: null }); },
     onError: (e) => { toast.error(getErrorMessage(e)); setDeleteConfirm({ open: false, shop: null }); },
+  });
+
+  const restoreShopMutation = useMutation({
+    mutationFn: ownerApi.restoreShop,
+    onSuccess: () => { invalidate(); toast.success('Shop restore ho gayi — login access wapas mil gaya'); },
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const toggleStatusMutation = useMutation({
@@ -2464,6 +2488,7 @@ export default function ShopsPage() {
     expired:         shops.filter((s) => shopStatus(s) === 'expired').length,
     pendingApproval: shops.filter((s) => shopStatus(s) === 'pendingApproval').length,
     rejected:        shops.filter((s) => shopStatus(s) === 'rejected').length,
+    archived:        shops.filter((s) => shopStatus(s) === 'archived').length,
   }), [shops]);
 
   const filtered = useMemo(() => {
@@ -2704,6 +2729,7 @@ export default function ShopsPage() {
               onAddOwner={() => setModal({ type: 'owner', shop })}
               onChangePlan={() => setModal({ type: 'plan', shop })}
               onDelete={() => setDeleteConfirm({ open: true, shop })}
+              onRestore={() => restoreShopMutation.mutate(shop.id)}
               onToggleStatus={() => setStatusConfirm({ open: true, shop })}
               onViewDetails={() => setDetailShopId(shop.id)}
               onApprove={() => approveMutation.mutate(shop.id)}
@@ -2746,12 +2772,12 @@ export default function ShopsPage() {
         </div>
       )}
 
-      {/* Delete confirm */}
+      {/* Delete confirm — this archives, it never erases; policy is no shop's data is ever lost */}
       <ConfirmDialog
         open={deleteConfirm.open}
-        title="Shop Permanently Delete Karo?"
-        description={`"${deleteConfirm.shop?.shopName ?? ''}" aur iska sara data — customers, installments, payments, products, staff accounts — permanently delete ho jaega. Ye action undo nahi ho sakta.`}
-        confirmLabel="Haan, Delete Karo"
+        title="Shop Archive Karo?"
+        description={`"${deleteConfirm.shop?.shopName ?? ''}" hide ho jaegi is list se, login access band ho jaega, aur ek final backup pehle khud-ba-khud le liya jaega. Koi bhi data delete nahi hota — shop ko kabhi bhi restore kiya ja sakta hai.`}
+        confirmLabel="Haan, Archive Karo"
         variant="danger"
         isPending={deleteShopMutation.isPending}
         onConfirm={() => { if (deleteConfirm.shop) deleteShopMutation.mutate(deleteConfirm.shop.id); }}

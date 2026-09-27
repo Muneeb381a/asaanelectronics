@@ -83,6 +83,12 @@ export const sellers = pgTable('sellers', {
   approvedBy:           text('approved_by'),
   rejectionReason:      text('rejection_reason'),
   murabahaMode:  boolean('murabaha_mode').default(false).notNull(),
+  // Soft delete — "Delete Shop" archives, it never hard-deletes (no shop's data is ever erased).
+  // A shop with deletedAt set is hidden everywhere, blocked at login, and skipped by every
+  // cron, but every row it owns stays in the database untouched. See purgeShop() for the
+  // separate, rare, deliberate action that actually removes data.
+  deletedAt:     timestamp('deleted_at'),
+  lastBackupAt:  timestamp('last_backup_at'),
   settings:      json('settings').$type<{
     dailyTarget?: number;
     weeklyTarget?: number;
