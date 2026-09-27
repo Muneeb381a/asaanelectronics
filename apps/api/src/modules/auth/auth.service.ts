@@ -138,10 +138,9 @@ export class AuthService {
       throw new AppError('Invalid credentials', 401);
     }
 
-    if (user.role === 'SUPER_ADMIN') {
-      return { requiresOtp: false as const, ...(await issueTokens(user, device)) };
-    }
-
+    // SUPER_ADMIN used to skip OTP entirely — it's the single most destructive
+    // credential in the system (deleteShop() permanently wipes a shop's data), so
+    // it now goes through the same email-OTP step as everyone else.
     await assertShopAccessible(user.sellerId);
 
     if (user.role === 'SELLER_STAFF' && user.frozenUntil) {

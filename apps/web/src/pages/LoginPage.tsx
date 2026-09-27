@@ -20,7 +20,7 @@ type Mode = 'owner' | 'shop';
 const ownerBullets = [
   { icon: Crown,     text: 'Manage all registered shops from one place' },
   { icon: BarChart3, text: 'Monitor payments and performance across shops' },
-  { icon: Shield,    text: 'Full platform control — no OTP required' },
+  { icon: Shield,    text: 'OTP-verified sign-in for full platform control' },
 ];
 const shopBullets = [
   { icon: Shield,    text: 'OTP-secured login keeps your data safe' },
@@ -500,9 +500,10 @@ export default function LoginPage() {
               email={getValues('email')}
               otpToken={otpToken}
               onBack={() => setStep('credentials')}
-              onSuccess={(user, access, refresh) => {
-                setAuth(user as Parameters<typeof setAuth>[0], access, refresh);
-                void navigate('/dashboard');
+              onSuccess={(rawUser, access, refresh) => {
+                const user = rawUser as Parameters<typeof setAuth>[0];
+                setAuth(user, access, refresh);
+                void navigate(user.role === 'SUPER_ADMIN' ? '/owner' : '/dashboard');
               }}
             />
           ) : (
