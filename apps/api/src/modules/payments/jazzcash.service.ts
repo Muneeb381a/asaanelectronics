@@ -156,7 +156,10 @@ export function verifyCallbackHash(params: Record<string, string>): boolean {
   if (!salt) return false;
   const { pp_SecureHash: receivedHash, ...rest } = params;
   const computed = secureHash(salt, rest);
-  return computed === receivedHash?.toUpperCase();
+  if (!receivedHash) return false;
+  const a = Buffer.from(computed);
+  const b = Buffer.from(receivedHash.toUpperCase());
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 export async function buildPayPageHtml(txnRefNo: string): Promise<string | null> {

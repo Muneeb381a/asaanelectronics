@@ -167,6 +167,51 @@ export class OwnerService {
     return { id: user!.id, name: user!.name, email: user!.email, sellerId: user!.sellerId };
   }
 
+  // ── Platform admin accounts ────────────────────────────────────────────────
+  // /auth/setup only ever creates the first SUPER_ADMIN; these let an existing
+  // one add a second (recovery if one account is locked out, or a co-founder /
+  // support role) or remove one — always leaving at least one behind.
+
+  async listAdmins() {
+    return db.query.users.findMany({
+      where: eq(users.role, 'SUPER_ADMIN'),
+      columns: { id: true, name: true, email: true, createdAt: true },
+      orderBy: (u, { asc }) => [asc(u.createdAt)],
+    });
+  }
+
+  async createAdmin(body: { name: string; email: string; password: string }, actorId: string) {
+    const existing = await db.query.users.findFirst({ where: eq(users.email, body.email), columns: { id: true } });
+    if (existing) throw new AppError('Email already registered', 409);
+
+    const password = await hashPassword(body.password);
+    const [user] = await db
+      .insert(users)
+      .values({ name: body.name, email: body.email, password, role: 'SUPER_ADMIN' })
+      .returning();
+
+    void this.logAdmin(actorId, 'ADMIN_CREATED', null, null,
+      `Created a second platform admin account "${body.name}" (${body.email})`);
+    return { id: user!.id, name: user!.name, email: user!.email, createdAt: user!.createdAt };
+  }
+
+  async removeAdmin(id: string, actorId: string) {
+    if (id === actorId) throw new AppError('You cannot remove your own admin account.', 400);
+
+    const admin = await db.query.users.findFirst({ where: and(eq(users.id, id), eq(users.role, 'SUPER_ADMIN')), columns: { id: true, name: true, email: true } });
+    if (!admin) throw new AppError('Admin not found', 404);
+
+    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.role, 'SUPER_ADMIN'));
+    if (count <= 1) throw new AppError('Cannot remove the last remaining admin account.', 400);
+
+    await db.delete(refreshTokens).where(eq(refreshTokens.userId, id));
+    await db.delete(users).where(eq(users.id, id));
+    invalidateSessionCache();
+
+    void this.logAdmin(actorId, 'ADMIN_REMOVED', null, null,
+      `Removed platform admin account "${admin.name}" (${admin.email})`);
+  }
+
   async deleteShop(id: string, actorId?: string) {
     const shop = await db.query.sellers.findFirst({ where: eq(sellers.id, id), columns: { id: true, shopName: true } });
     if (!shop) throw new AppError('Shop not found', 404);

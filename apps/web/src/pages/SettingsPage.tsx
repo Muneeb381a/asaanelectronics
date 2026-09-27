@@ -712,7 +712,7 @@ function TemplatesTab() {
 ──────────────────────────────────────────────────────────────────────────── */
 
 function PasswordStrength({ value }: { value: string }) {
-  const score = [value.length >= 8, /[A-Z]/.test(value), /[0-9]/.test(value), /[^A-Za-z0-9]/.test(value)].filter(Boolean).length;
+  const score = [value.length >= 10, /[A-Z]/.test(value), /[0-9]/.test(value), /[^A-Za-z0-9]/.test(value)].filter(Boolean).length;
   if (!value) return null;
   const labels = ['Bahut kamzor', 'Kamzor', 'Theek', 'Acha', 'Mazboot'];
   const colors = ['bg-red-400', 'bg-red-400', 'bg-amber-400', 'bg-emerald-400', 'bg-emerald-500'];
@@ -740,7 +740,7 @@ function SecurityTab() {
     onError: (e) => toast.error(getErrorMessage(e, 'Password change nahi hua')),
   });
   const mismatch = next.length > 0 && confirm.length > 0 && next !== confirm;
-  const canSubmit = current.length > 0 && next.length >= 8 && next === confirm && !pwMutation.isPending;
+  const canSubmit = current.length > 0 && next.length >= 10 && next === confirm && !pwMutation.isPending;
 
   const [revokeAllConfirm, setRevokeAllConfirm] = useState(false);
   const [revokeId, setRevokeId] = useState<string | null>(null);
@@ -763,14 +763,14 @@ function SecurityTab() {
   return (
     <div className="space-y-5">
       <Card>
-        <CardHeader icon={KeyRound} tone="slate" title="Change Password" subtitle="Kam az kam 8 characters; change ke baad doosre devices logout ho jate hain" />
+        <CardHeader icon={KeyRound} tone="slate" title="Change Password" subtitle="Kam az kam 10 characters; change ke baad doosre devices logout ho jate hain" />
         <div className="p-5 sm:p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Current password">
               <input type={showPw ? 'text' : 'password'} value={current} onChange={(e) => setCurrent(e.target.value)} className={inp} placeholder="••••••••" autoComplete="current-password" />
             </Field>
             <Field label="New password">
-              <input type={showPw ? 'text' : 'password'} value={next} onChange={(e) => setNext(e.target.value)} className={inp} placeholder="Min 8 characters" autoComplete="new-password" />
+              <input type={showPw ? 'text' : 'password'} value={next} onChange={(e) => setNext(e.target.value)} className={inp} placeholder="Min 10 characters" autoComplete="new-password" />
               <PasswordStrength value={next} />
             </Field>
             <Field label="Confirm new password">

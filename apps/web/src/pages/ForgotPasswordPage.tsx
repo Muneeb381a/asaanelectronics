@@ -155,7 +155,7 @@ export default function ForgotPasswordPage() {
                     type={showPw ? 'text' : 'password'}
                     value={newPw}
                     onChange={(e) => setNewPw(e.target.value)}
-                    placeholder="Min 8 characters"
+                    placeholder="Min 10 characters"
                     className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 transition"
                   />
                   <button

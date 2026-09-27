@@ -8,9 +8,14 @@ export const createShopSchema = z.object({
 export const createShopOwnerSchema = z.object({
     name: z.string().min(2).max(100),
     email: z.string().email().max(255),
-    password: z.string().min(8).max(128),
+    password: z.string().min(10, 'Password must be at least 10 characters').max(128),
 });
 export const toggleShopStatusSchema = z.object({ isActive: z.boolean() });
+export const createAdminSchema = z.object({
+    name: z.string().min(2).max(100),
+    email: z.string().email().max(255),
+    password: z.string().min(10, 'Password must be at least 10 characters').max(128),
+});
 export const rejectShopSchema = z.object({ reason: z.string().max(500).optional() });
 export const addPaymentLogSchema = z.object({
     amount: z.number().positive(),

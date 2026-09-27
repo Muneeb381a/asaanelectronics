@@ -212,6 +212,13 @@ export interface ShopChurnScore {
   shopAgeDays: number;
 }
 
+export interface PlatformAdmin {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const ownerApi = {
@@ -220,6 +227,16 @@ export const ownerApi = {
 
   createShop: (data: CreateShopInput) =>
     api.post<{ data: Shop }>('/owner/shops', data).then(unwrap<Shop>),
+
+  // Platform admin accounts
+  listAdmins: () =>
+    api.get<{ data: PlatformAdmin[] }>('/owner/admins').then(unwrap<PlatformAdmin[]>),
+
+  createAdmin: (data: { name: string; email: string; password: string }) =>
+    api.post<{ data: PlatformAdmin }>('/owner/admins', data).then(unwrap<PlatformAdmin>),
+
+  removeAdmin: (id: string) =>
+    api.delete(`/owner/admins/${id}`),
 
   createShopOwner: (shopId: string, data: CreateShopOwnerInput) =>
     api.post(`/owner/shops/${shopId}/owner`, data).then(unwrap<unknown>),

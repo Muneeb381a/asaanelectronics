@@ -19,6 +19,20 @@ export async function createShopOwner(req: AuthRequest, res: Response) {
   success(res, await svc.createShopOwner(req.params['id'] as string, req.body, req.user!.userId), 201);
 }
 
+// ── Platform admin accounts ────────────────────────────────────────────────
+export async function listAdmins(_req: AuthRequest, res: Response) {
+  success(res, await svc.listAdmins());
+}
+
+export async function createAdmin(req: AuthRequest, res: Response) {
+  success(res, await svc.createAdmin(req.body, req.user!.userId), 201);
+}
+
+export async function removeAdmin(req: AuthRequest, res: Response) {
+  await svc.removeAdmin(req.params['id'] as string, req.user!.userId);
+  res.status(204).end();
+}
+
 export async function deleteShop(req: AuthRequest, res: Response) {
   await svc.deleteShop(req.params['id'] as string, req.user!.userId);
   success(res, null);

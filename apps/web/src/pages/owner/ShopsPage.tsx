@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ownerApi, type Shop, type CreateShopInput, type CreateShopOwnerInput, type Plan, type PlatformStats, type SuperAdminAuditLog, type ShopSession, type ShopChurnScore, type ChurnRisk, type AdminBroadcast, type ShopOnboarding, type StuckSeverity } from '../../api/owner.api.ts';
 import { authApi } from '../../api/auth.api.ts';
+import { useAuthStore } from '../../store/auth.store.ts';
 import { getErrorMessage } from '../../utils/error.ts';
 import { CardSkeleton } from '../../components/ui/Skeleton.tsx';
 import { fmtDate } from '../../utils/dateFormat.ts';
@@ -149,7 +150,7 @@ function OwnerFormModal({ shop, onClose, onSubmit, isPending }: {
       </div>
       <Field label="Full name" value={form.name} onChange={(v) => set('name', v)} placeholder="Owner's full name" />
       <Field label="Email" value={form.email} onChange={(v) => set('email', v)} type="email" placeholder="owner@example.com" />
-      <Field label="Password" value={form.password} onChange={(v) => set('password', v)} type="password" placeholder="Min 8 characters" />
+      <Field label="Password" value={form.password} onChange={(v) => set('password', v)} type="password" placeholder="Min 10 characters" />
       <div className="flex gap-2 pt-1">
         <button onClick={onClose}
           className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">Cancel</button>
@@ -236,7 +237,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
   const inp = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition';
   const mismatch = next.length > 0 && confirm.length > 0 && next !== confirm;
-  const canSubmit = current.length > 0 && next.length >= 8 && next === confirm && !mutation.isPending;
+  const canSubmit = current.length > 0 && next.length >= 10 && next === confirm && !mutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
@@ -248,7 +249,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <h2 className="text-base font-bold text-gray-900">Password Change Karo</h2>
-            <p className="text-xs text-gray-400">Naya password min 8 characters ka hona chahiye</p>
+            <p className="text-xs text-gray-400">Naya password min 10 characters ka hona chahiye</p>
           </div>
         </div>
 
@@ -269,14 +270,14 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Naya Password</label>
             <div className="relative">
               <input type={showNext ? 'text' : 'password'} value={next}
-                onChange={(e) => setNext(e.target.value)} className={inp} placeholder="Min 8 characters" />
+                onChange={(e) => setNext(e.target.value)} className={inp} placeholder="Min 10 characters" />
               <button type="button" onClick={() => setShowNext((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {showNext ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
             {next.length > 0 && next.length < 8 && (
-              <p className="text-xs text-red-500 mt-1">Kam se kam 8 characters chahiye</p>
+              <p className="text-xs text-red-500 mt-1">Kam se kam 10 characters chahiye</p>
             )}
           </div>
 
@@ -1213,6 +1214,8 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   SHOP_SUSPENDED:      { label: 'Shop Suspended',      color: 'text-orange-600 bg-orange-50 border-orange-200'   },
   SHOP_TRIAL_APPROVED: { label: 'Trial Approved',      color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
   SHOP_TRIAL_REJECTED: { label: 'Trial Rejected',      color: 'text-red-600    bg-red-50    border-red-200'      },
+  ADMIN_CREATED:       { label: 'Admin Added',          color: 'text-indigo-600 bg-indigo-50 border-indigo-200'   },
+  ADMIN_REMOVED:       { label: 'Admin Removed',        color: 'text-red-600    bg-red-50    border-red-200'      },
   SHOP_OWNER_CREATED:  { label: 'Owner Added',         color: 'text-indigo-600 bg-indigo-50 border-indigo-200'   },
   PLAN_CHANGED:        { label: 'Plan Changed',        color: 'text-purple-600 bg-purple-50 border-purple-200'   },
   PAYMENT_LOG_ADDED:   { label: 'Payment Logged',      color: 'text-blue-600   bg-blue-50   border-blue-200'     },
@@ -2169,6 +2172,140 @@ function RejectShopModal({ shop, onClose, onSubmit, isPending }: {
   );
 }
 
+// ── Platform admin accounts ──────────────────────────────────────────────────
+
+function AdminsPanel({ onClose, myUserId }: { onClose: () => void; myUserId?: string }) {
+  const qc = useQueryClient();
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const { data: admins = [], isLoading } = useQuery({
+    queryKey: ['owner-admins'],
+    queryFn: ownerApi.listAdmins,
+  });
+
+  const createMut = useMutation({
+    mutationFn: () => ownerApi.createAdmin(form),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['owner-admins'] });
+      setForm({ name: '', email: '', password: '' });
+      setShowAdd(false);
+      toast.success('Naya admin account ban gaya');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const removeMut = useMutation({
+    mutationFn: (id: string) => ownerApi.removeAdmin(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['owner-admins'] });
+      toast.success('Admin account hata diya');
+      setConfirmId(null);
+    },
+    onError: (e) => { toast.error(getErrorMessage(e)); setConfirmId(null); },
+  });
+
+  const canSubmit = form.name.trim().length >= 2 && form.email.includes('@') && form.password.length >= 10;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
+            <Crown size={16} className="text-indigo-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-gray-900">Platform Admins</p>
+            <p className="text-xs text-gray-400">Poore platform ka full access rakhne wale accounts</p>
+          </div>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-start gap-2">
+            <ShieldAlert size={14} className="text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700 leading-relaxed">
+              Ye account kisi bhi shop ka data permanently delete kar sakta hai. Sirf trusted logon ko hi banayein.
+            </p>
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {admins.map((a) => (
+                <div key={a.id} className="flex items-center gap-3 border border-gray-100 rounded-xl px-3 py-2.5">
+                  <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-xs font-bold shrink-0">
+                    {a.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {a.name} {a.id === myUserId && <span className="text-[10px] font-normal text-gray-400">(aap)</span>}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">{a.email}</p>
+                  </div>
+                  {a.id !== myUserId && admins.length > 1 && (
+                    <button onClick={() => setConfirmId(a.id)} title="Remove admin"
+                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition shrink-0">
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showAdd ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+              <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Full name"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" />
+              <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="Email"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" />
+              <input type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                placeholder="Min 10 characters"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" />
+              <div className="flex gap-2">
+                <button onClick={() => setShowAdd(false)} className="flex-1 py-2 text-sm border border-gray-200 text-gray-600 rounded-xl hover:bg-white transition">
+                  Cancel
+                </button>
+                <button onClick={() => createMut.mutate()} disabled={!canSubmit || createMut.isPending}
+                  className="flex-1 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50">
+                  {createMut.isPending ? 'Ban raha…' : 'Admin Banao'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowAdd(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-indigo-200 text-indigo-500 hover:bg-indigo-50 text-sm font-medium transition">
+              <UserPlus size={14} /> Naya admin add karo
+            </button>
+          )}
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="Admin account hata dein?"
+        description="Ye account ab platform mein login nahi kar sakega. Ye undo nahi ho sakta."
+        confirmLabel="Haan, hata do"
+        cancelLabel="Nahi"
+        variant="danger"
+        isPending={removeMut.isPending}
+        onConfirm={() => { if (confirmId) removeMut.mutate(confirmId); }}
+        onCancel={() => setConfirmId(null)}
+      />
+    </>
+  );
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 type Modal = { type: 'shop' } | { type: 'owner'; shop: Shop } | { type: 'plan'; shop: Shop } | null;
@@ -2188,6 +2325,8 @@ export default function ShopsPage() {
   const [showBroadcastPanel, setShowBroadcastPanel] = useState(false);
   const [showOnboardingPanel, setShowOnboardingPanel] = useState(false);
   const [showPendingPanel, setShowPendingPanel] = useState(false);
+  const [showAdminsPanel, setShowAdminsPanel] = useState(false);
+  const myUserId = useAuthStore((s) => s.user?.id);
   const [rejectPrompt, setRejectPrompt] = useState<{ open: boolean; shop: Shop | null }>({ open: false, shop: null });
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
@@ -2200,6 +2339,7 @@ export default function ShopsPage() {
     if (panel === 'broadcasts')  setShowBroadcastPanel(true);
     if (panel === 'audit')       setShowAuditLog(true);
     if (panel === 'pending')     setShowPendingPanel(true);
+    if (panel === 'admins')      setShowAdminsPanel(true);
     setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -2383,8 +2523,16 @@ export default function ShopsPage() {
       </div>
 
       {/* Admin tool quick-access strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-6">
         {[
+          {
+            label: 'Platform Admins',
+            desc: 'Doosra admin account add karo',
+            icon: Crown,
+            onClick: () => setShowAdminsPanel(true),
+            cls: 'border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50',
+            iconCls: 'text-indigo-600 bg-indigo-50',
+          },
           {
             label: 'Pending Trials',
             desc: counts.pendingApproval > 0 ? `${counts.pendingApproval} review ka intezar mein` : 'Sab review ho chuka hai',
@@ -2633,6 +2781,11 @@ export default function ShopsPage() {
           onApprove={(id) => approveMutation.mutate(id)}
           onReject={(shop) => setRejectPrompt({ open: true, shop })}
         />
+      )}
+
+      {/* Platform admin accounts */}
+      {showAdminsPanel && (
+        <AdminsPanel onClose={() => setShowAdminsPanel(false)} myUserId={myUserId} />
       )}
 
       {/* Pending trial approvals */}

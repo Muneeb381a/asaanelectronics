@@ -71,7 +71,7 @@ export default function RegisterPage() {
 
   const pw = watch('password') ?? '';
   const pwChecks = [
-    { label: 'At least 8 characters', ok: pw.length >= 8 },
+    { label: 'At least 10 characters', ok: pw.length >= 10 },
   ];
 
   const { mutate, isPending, error } = useMutation({
@@ -153,7 +153,7 @@ export default function RegisterPage() {
                   <input
                     type={showPw ? 'text' : 'password'}
                     autoComplete="new-password"
-                    placeholder="Min 8 characters"
+                    placeholder="Min 10 characters"
                     {...register('password')}
                     className={`w-full px-4 py-3 pr-11 border rounded-xl text-sm outline-none transition ${
                       errors.password

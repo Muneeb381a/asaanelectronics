@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { validate } from '../../middleware/validate.js';
-import { createShopSchema, createShopOwnerSchema, toggleShopStatusSchema, rejectShopSchema, addPaymentLogSchema, shopNoteSchema, createBroadcastSchema, updateBroadcastSchema } from '@assaan/shared';
+import { createShopSchema, createShopOwnerSchema, createAdminSchema, toggleShopStatusSchema, rejectShopSchema, addPaymentLogSchema, shopNoteSchema, createBroadcastSchema, updateBroadcastSchema } from '@assaan/shared';
 import { authenticate, requireSuperAdmin } from '../../middleware/auth.js';
 import {
   listShops, createShop, createShopOwner, deleteShop, toggleShopStatus,
+  listAdmins, createAdmin, removeAdmin,
   approveShopTrial, rejectShopTrial, getShopAuditLogs,
   getPlatformStats,
   getShopUsage,
@@ -28,6 +29,11 @@ router.post('/shops',                 validate(createShopSchema), createShop);
 router.post('/shops/:id/owner',       validate(createShopOwnerSchema), createShopOwner);
 router.delete('/shops/:id',           deleteShop);
 router.patch('/shops/:id/status',     validate(toggleShopStatusSchema), toggleShopStatus);
+
+// ── Platform admin accounts (create a second one, or remove one) ────────────────
+router.get('/admins',                 listAdmins);
+router.post('/admins',                validate(createAdminSchema), createAdmin);
+router.delete('/admins/:id',          removeAdmin);
 
 // ── Trial approval (self-signup shops) ─────────────────────────────────────────
 router.patch('/shops/:id/approve',    approveShopTrial);

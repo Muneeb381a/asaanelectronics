@@ -27,7 +27,7 @@ export async function verifyCnic(rawCnic: string): Promise<NadraResult> {
   }
 
   try {
-    const url = `${env.NADRA_API_URL}/verify?cnic=${cnic}&api_key=${env.NADRA_API_KEY}`;
+    const url = `${env.NADRA_API_URL}/verify?cnic=${encodeURIComponent(cnic)}&api_key=${encodeURIComponent(env.NADRA_API_KEY!)}`;
     const res = await fetch(url, {
       signal: AbortSignal.timeout(12_000),
       headers: { Accept: 'application/json' },
