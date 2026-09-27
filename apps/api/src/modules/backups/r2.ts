@@ -19,6 +19,10 @@ function s3(): S3Client {
       region: 'auto',
       endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
       credentials: { accessKeyId: env.R2_ACCESS_KEY_ID!, secretAccessKey: env.R2_SECRET_ACCESS_KEY! },
+      // Newer AWS SDK v3 defaults add checksum trailers R2 doesn't support, which R2
+      // rejects as a plain 403 AccessDenied — restore the pre-checksum-era behavior.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     });
   }
   return client;
