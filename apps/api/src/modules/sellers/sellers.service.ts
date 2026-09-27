@@ -3,6 +3,7 @@ import { db } from '../../db/index.js';
 import { sellers, users, refreshTokens, paymentAccounts } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { signAccess, signRefresh } from '../../utils/jwt.js';
+import { hashToken } from '../../utils/hash.js';
 
 export class SellersService {
   async create(userId: string, body: { shopName: string; phone: string; address?: string }) {
@@ -35,7 +36,7 @@ export class SellersService {
     await db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
     const [session] = await db.insert(refreshTokens).values({
       userId,
-      token: refreshToken,
+      token: hashToken(refreshToken),
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     }).returning({ id: refreshTokens.id });
 

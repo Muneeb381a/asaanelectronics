@@ -1,8 +1,7 @@
 import { and, eq, gt, ne, or, sql } from 'drizzle-orm';
-import { createHash } from 'crypto';
 import { db } from '../../db/index.js';
 import { users, refreshTokens, otps, sellers } from '../../db/schema.js';
-import { hashPassword, comparePassword } from '../../utils/hash.js';
+import { hashPassword, comparePassword, hashToken } from '../../utils/hash.js';
 import { signAccess, signRefresh, verifyRefresh, signOtpToken, verifyOtpToken } from '../../utils/jwt.js';
 import { generateOtp, hashOtp, verifyOtp } from '../../utils/otp.js';
 import { sendOtpEmail } from '../../utils/email.js';
@@ -13,9 +12,8 @@ const REFRESH_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
 const OTP_TTL_MS      = 10 * 60 * 1000;
 const MAX_OTP_ATTEMPTS = 3;
 
-// Refresh tokens are stored hashed so a DB read alone cannot hijack a session.
-// Lookups also accept the raw form so sessions issued before this change keep working.
-const hashToken = (t: string) => createHash('sha256').update(t).digest('hex');
+// Lookups also accept the raw form so any session stored before every insert path
+// hashed its token (see hashToken() in utils/hash.ts) keeps working.
 const tokenMatches = (t: string) => or(eq(refreshTokens.token, hashToken(t)), eq(refreshTokens.token, t))!;
 
 type DeviceInfo = { ip?: string; userAgent?: string };

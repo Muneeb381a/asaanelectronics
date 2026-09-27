@@ -31,3 +31,11 @@ export async function hashPassword(password: string) {
 export async function comparePassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
+
+// Refresh tokens are stored hashed so a DB read alone cannot hijack a session.
+// Every code path that inserts into `refreshTokens` must use this — see
+// tokenMatches() in auth.service.ts for the read side (accepts old raw-stored
+// rows too, for sessions issued before a given path adopted hashing).
+export function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
