@@ -2261,7 +2261,15 @@ function AdminsPanel({ onClose, myUserId }: { onClose: () => void; myUserId?: st
             </div>
           )}
 
-          {showAdd ? (
+          {admins.length >= 1 ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-start gap-2">
+              <ShieldCheck size={14} className="text-gray-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Ye platform sirf ek admin account tak mehdood hai — policy ke tor par. Naya admin add karne ka button
+                is liye nahi dikhaya gaya.
+              </p>
+            </div>
+          ) : showAdd ? (
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
               <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Full name"

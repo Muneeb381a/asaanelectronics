@@ -168,9 +168,10 @@ export class OwnerService {
   }
 
   // ── Platform admin accounts ────────────────────────────────────────────────
-  // /auth/setup only ever creates the first SUPER_ADMIN; these let an existing
-  // one add a second (recovery if one account is locked out, or a co-founder /
-  // support role) or remove one — always leaving at least one behind.
+  // By deliberate policy this platform is limited to exactly one SUPER_ADMIN —
+  // createAdmin() below refuses to run once that one exists. Endpoint kept
+  // (rather than removed) so lifting the policy later needs one line, not a
+  // rebuild; listAdmins()/removeAdmin() stay in place for visibility.
 
   async listAdmins() {
     return db.query.users.findMany({
@@ -181,6 +182,9 @@ export class OwnerService {
   }
 
   async createAdmin(body: { name: string; email: string; password: string }, actorId: string) {
+    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.role, 'SUPER_ADMIN'));
+    if (count >= 1) throw new AppError('This platform is limited to a single admin account.', 409);
+
     const existing = await db.query.users.findFirst({ where: eq(users.email, body.email), columns: { id: true } });
     if (existing) throw new AppError('Email already registered', 409);
 
