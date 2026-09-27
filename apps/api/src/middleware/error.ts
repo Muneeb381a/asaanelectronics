@@ -52,6 +52,20 @@ export function errorMiddleware(
     }
   }
 
+  // body-parser/raw-body throw plain errors with a `status` (413 too-large, 400 bad JSON)
+  // — without this they fell through to the generic 500 below, logging a scary
+  // "Internal server error" for what's actually a client mistake.
+  const httpErr = err as Error & { status?: number; statusCode?: number; type?: string };
+  const clientStatus = httpErr.status ?? httpErr.statusCode;
+  if (clientStatus && clientStatus >= 400 && clientStatus < 500) {
+    const message = httpErr.type === 'entity.too.large'
+      ? 'Request body is too large.'
+      : httpErr.type === 'entity.parse.failed'
+        ? 'Malformed request body.'
+        : 'Bad request.';
+    return res.status(clientStatus).json({ success: false, data: null, error: message });
+  }
+
   console.error('[Unhandled error]', { message: err.message, code: (err as Error & { code?: string }).code, stack: err.stack });
   res.status(500).json({ success: false, data: null, error: 'Internal server error' });
 }

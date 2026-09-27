@@ -13,6 +13,10 @@
     "build:web": "pnpm --filter @assaan/web build"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["tesseract.js", "bcrypt", "esbuild", "sharp", "better-sqlite3"]
+    "onlyBuiltDependencies": ["tesseract.js", "bcrypt", "esbuild", "sharp", "better-sqlite3"],
+    "overrides": {
+      "body-parser": "^2.3.0",
+      "qs": "^6.16.0"
+    }
   }
 }

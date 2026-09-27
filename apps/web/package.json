@@ -12,7 +12,7 @@
     "@assaan/shared": "workspace:*",
     "@hookform/resolvers": "^3.10.0",
     "@tanstack/react-query": "^5.100.10",
-    "axios": "^1.16.1",
+    "axios": "^1.20.0",
     "lucide-react": "^1.16.0",
     "papaparse": "^5.5.3",
     "qrcode": "^1.5.4",
@@ -20,7 +20,7 @@
     "react-dom": "^19.2.6",
     "react-hook-form": "^7.75.0",
     "react-hot-toast": "^2.6.0",
-    "react-router-dom": "^7.15.1",
+    "react-router-dom": "^7.18.4",
     "zod": "^3.25.76",
     "zustand": "^5.0.13"
   },
