@@ -39,7 +39,7 @@ export const authApi = {
   resendOtp: (data: { otpToken: string }) =>
     api.post<{ data: { otpToken: string } }>('/auth/resend-otp', data).then(unwrap<{ otpToken: string }>),
 
-  forgotPassword: (data: { email: string }) =>
+  forgotPassword: (data: { email: string; turnstileToken?: string }) =>
     api.post('/auth/forgot-password', data),
 
   resetPassword: (data: { email: string; code: string; newPassword: string }) =>

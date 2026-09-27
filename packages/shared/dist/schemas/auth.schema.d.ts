@@ -3,24 +3,30 @@ export declare const registerSchema: z.ZodObject<{
     name: z.ZodString;
     email: z.ZodString;
     password: z.ZodString;
+    turnstileToken: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     email: string;
     password: string;
+    turnstileToken?: string | undefined;
 }, {
     name: string;
     email: string;
     password: string;
+    turnstileToken?: string | undefined;
 }>;
 export declare const loginSchema: z.ZodObject<{
     email: z.ZodString;
     password: z.ZodString;
+    turnstileToken: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     email: string;
     password: string;
+    turnstileToken?: string | undefined;
 }, {
     email: string;
     password: string;
+    turnstileToken?: string | undefined;
 }>;
 export declare const changePasswordSchema: z.ZodObject<{
     currentPassword: z.ZodString;
@@ -51,10 +57,13 @@ export declare const resendOtpSchema: z.ZodObject<{
 }>;
 export declare const forgotPasswordSchema: z.ZodObject<{
     email: z.ZodString;
+    turnstileToken: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     email: string;
+    turnstileToken?: string | undefined;
 }, {
     email: string;
+    turnstileToken?: string | undefined;
 }>;
 export declare const resetPasswordSchema: z.ZodObject<{
     email: z.ZodString;

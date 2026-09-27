@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import Turnstile, { type TurnstileHandle } from '../components/ui/Turnstile.tsx';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -64,6 +65,8 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const setAuth  = useAuthStore((s) => s.setAuth);
   const [showPw, setShowPw] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -80,6 +83,7 @@ export default function RegisterPage() {
       setAuth(data.user, data.accessToken, data.refreshToken);
       void navigate('/onboarding');
     },
+    onError: () => turnstileRef.current?.reset(),
   });
 
   const apiError = error ? getErrorMessage(error) : null;
@@ -105,7 +109,7 @@ export default function RegisterPage() {
               <p className="text-sm text-gray-500 mt-1">Free for 14 days. No card required.</p>
             </div>
 
-            <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-5">
+            <form onSubmit={handleSubmit((d) => mutate({ ...d, turnstileToken: turnstileToken || undefined }))} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
                 <input
@@ -194,6 +198,8 @@ export default function RegisterPage() {
                   <p className="text-sm text-red-600">{apiError}</p>
                 </div>
               )}
+
+              <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
               <button
                 type="submit"

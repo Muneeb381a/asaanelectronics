@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Turnstile, { type TurnstileHandle } from '../components/ui/Turnstile.tsx';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -434,6 +435,8 @@ export default function LoginPage() {
   const [step,     setStep]     = useState<Step>('credentials');
   const [otpToken, setOtpToken] = useState('');
   const [showPw,   setShowPw]   = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const { register, handleSubmit, getValues, reset, formState: { errors } } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -454,6 +457,7 @@ export default function LoginPage() {
         setStep('otp');
       }
     },
+    onError: () => turnstileRef.current?.reset(),
   });
 
   const loginError = loginMutation.error ? getErrorMessage(loginMutation.error) : null;
@@ -552,7 +556,7 @@ export default function LoginPage() {
                   )}
                 </div>
 
-                <form onSubmit={handleSubmit((d) => loginMutation.mutate(d))} className="space-y-5">
+                <form onSubmit={handleSubmit((d) => loginMutation.mutate({ ...d, turnstileToken: turnstileToken || undefined }))} className="space-y-5">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                     <input
@@ -615,6 +619,8 @@ export default function LoginPage() {
                       <p className="text-sm text-red-600">{loginError}</p>
                     </div>
                   )}
+
+                  <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
                   <button type="submit" disabled={loginMutation.isPending}
                     className={`w-full py-3 text-white text-sm font-semibold rounded-xl transition shadow-sm disabled:opacity-60 ${

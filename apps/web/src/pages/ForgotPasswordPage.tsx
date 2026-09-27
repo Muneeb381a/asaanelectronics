@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react';
 import { authApi } from '../api/auth.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import Turnstile, { type TurnstileHandle } from '../components/ui/Turnstile.tsx';
 
 type Step = 'email' | 'otp' | 'done';
 
@@ -17,10 +18,14 @@ export default function ForgotPasswordPage() {
   const [showPw, setShowPw]       = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const inputsRef                 = useRef<(HTMLInputElement | null)[]>([]);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const emailTurnstileRef  = useRef<TurnstileHandle>(null);
+  const resendTurnstileRef = useRef<TurnstileHandle>(null);
 
   const sendMutation = useMutation({
-    mutationFn: () => authApi.forgotPassword({ email }),
+    mutationFn: () => authApi.forgotPassword({ email, turnstileToken: turnstileToken || undefined }),
     onSuccess: () => setStep('otp'),
+    onError: () => { emailTurnstileRef.current?.reset(); resendTurnstileRef.current?.reset(); },
   });
 
   const resetMutation = useMutation({
@@ -95,6 +100,8 @@ export default function ForgotPasswordPage() {
                   <p className="text-sm text-red-600">{sendError}</p>
                 </div>
               )}
+
+              <Turnstile ref={emailTurnstileRef} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
               <button
                 onClick={() => sendMutation.mutate()}
@@ -212,6 +219,8 @@ export default function ForgotPasswordPage() {
             >
               {resetMutation.isPending ? 'Resetting…' : 'Reset password'}
             </button>
+
+            <Turnstile ref={resendTurnstileRef} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
             <button
               onClick={() => { sendMutation.mutate(); setCode(''); }}

@@ -4,11 +4,13 @@ export const registerSchema = z.object({
   name:     z.string().min(2, 'Name must be at least 2 characters').max(100),
   email:    z.string().email('Invalid email').max(255),
   password: z.string().min(10, 'Password must be at least 10 characters').max(128),
+  turnstileToken: z.string().max(4096).optional(),
 });
 
 export const loginSchema = z.object({
   email:    z.string().email('Invalid email').max(255),
   password: z.string().min(1, 'Password is required').max(128),
+  turnstileToken: z.string().max(4096).optional(),
 });
 
 export const changePasswordSchema = z.object({
@@ -27,6 +29,7 @@ export const resendOtpSchema = z.object({
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email').max(255),
+  turnstileToken: z.string().max(4096).optional(),
 });
 
 export const resetPasswordSchema = z.object({

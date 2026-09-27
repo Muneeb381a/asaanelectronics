@@ -7,6 +7,7 @@ import {
 import { ipBlockMiddleware } from '../../middleware/ipBlock.js';
 import { loginLimiter } from '../../middleware/limiters.js';
 import { authenticate } from '../../middleware/auth.js';
+import { requireTurnstile } from '../../middleware/turnstile.js';
 import {
   setup, register, login, verifyLoginOtp, resendOtp,
   forgotPassword, resetPassword, refresh, logout, changePassword,
@@ -15,12 +16,12 @@ import {
 const router = Router();
 
 router.post('/setup',           validate(registerSchema), setup);
-router.post('/register',        validate(registerSchema), register);
+router.post('/register',        validate(registerSchema), requireTurnstile, register);
 // Login + OTP verification get IP-block check AND the strict per-IP rate limit
-router.post('/login',           ipBlockMiddleware, loginLimiter, validate(loginSchema), login);
+router.post('/login',           ipBlockMiddleware, loginLimiter, validate(loginSchema), requireTurnstile, login);
 router.post('/verify-otp',      ipBlockMiddleware, loginLimiter, validate(verifyOtpSchema), verifyLoginOtp);
 router.post('/resend-otp',      loginLimiter, validate(resendOtpSchema), resendOtp);
-router.post('/forgot-password', loginLimiter, validate(forgotPasswordSchema), forgotPassword);
+router.post('/forgot-password', loginLimiter, validate(forgotPasswordSchema), requireTurnstile, forgotPassword);
 router.post('/reset-password',  ipBlockMiddleware, loginLimiter, validate(resetPasswordSchema), resetPassword);
 router.post('/refresh',         validate(refreshTokenSchema), refresh);
 router.post('/logout',          validate(refreshTokenSchema), logout);
