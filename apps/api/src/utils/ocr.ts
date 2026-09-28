@@ -133,7 +133,11 @@ async function groqVision(buffer: Buffer, prompt: string): Promise<string> {
 
 interface GeminiResponse { candidates?: { content?: { parts?: { text?: string }[] } }[] }
 
-async function geminiVision(buffer: Buffer, prompt: string): Promise<string> {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function geminiCall(buffer: Buffer, prompt: string): Promise<string> {
   const imageB64 = (await prepareForVision(buffer)).toString('base64');
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
@@ -161,6 +165,21 @@ async function geminiVision(buffer: Buffer, prompt: string): Promise<string> {
 
   const json = (await res.json()) as GeminiResponse;
   return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+}
+
+// 503 ("model overloaded") and 429 (rate limit) are transient — Google's own error
+// message literally says "usually temporary, try again later". One short-backoff
+// retry resolves most of these without ever needing the Groq fallback.
+async function geminiVision(buffer: Buffer, prompt: string): Promise<string> {
+  try {
+    return await geminiCall(buffer, prompt);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/Gemini API (503|429)/.test(msg)) throw err;
+    console.warn('[OCR] Gemini transient error, retrying once after backoff:', msg);
+    await sleep(1500);
+    return geminiCall(buffer, prompt);
+  }
 }
 
 // Tries Gemini first (stronger at dense text), falls back to Groq (fast, free)
