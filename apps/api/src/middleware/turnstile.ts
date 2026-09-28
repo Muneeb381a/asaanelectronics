@@ -10,7 +10,10 @@ export function turnstileConfigured(): boolean {
 
 export async function verifyTurnstileToken(token: string | undefined, remoteIp?: string): Promise<boolean> {
   if (!env.TURNSTILE_SECRET_KEY) return true;
-  if (!token) return false;
+  if (!token) {
+    console.warn('[turnstile] no token in request body — widget likely never fired onVerify');
+    return false;
+  }
   try {
     const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
@@ -21,11 +24,13 @@ export async function verifyTurnstileToken(token: string | undefined, remoteIp?:
         ...(remoteIp ? { remoteip: remoteIp } : {}),
       }),
     });
-    const data = (await res.json()) as { success: boolean };
+    const data = (await res.json()) as { success: boolean; ['error-codes']?: string[] };
+    if (!data.success) console.warn('[turnstile] siteverify rejected token:', data['error-codes']);
     return !!data.success;
-  } catch {
+  } catch (err) {
     // Cloudflare's own verify endpoint being briefly unreachable is rare enough that
     // failing closed (block) is the safer default over silently letting bots through.
+    console.error('[turnstile] siteverify request failed:', err);
     return false;
   }
 }
