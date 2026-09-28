@@ -28,6 +28,12 @@ export async function lookupByCnic(req: AuthRequest, res: Response) {
   success(res, await svc.lookupByCnic(req.user!.sellerId!, cnic));
 }
 
+export async function checkCnicExists(req: AuthRequest, res: Response) {
+  const cnic = (req.query['cnic'] as string ?? '').replace(/-/g, '');
+  if (cnic.length < 13) return success(res, { exists: false, customer: null });
+  success(res, await svc.checkCnicExists(req.user!.sellerId!, cnic));
+}
+
 export async function listCustomers(req: AuthRequest, res: Response) {
   const page      = Math.max(1, Number(req.query['page']) || 1);
   const limit     = Math.min(Math.max(1, Number(req.query['limit']) || 20), 100);

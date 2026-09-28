@@ -333,6 +333,23 @@ export class CustomersService {
     return Number(result[0]?.count ?? 0);
   }
 
+  // Lightweight — just "does this CNIC already exist in this shop", for the frontend
+  // to warn the moment OCR reads a CNIC, before the staff fills the rest of the form.
+  // Deliberately shop-wide (not staff-scoped): the point is stopping a double entry
+  // anywhere in the shop, same as create()'s own duplicate check further down.
+  async checkCnicExists(sellerId: string, cnic: string) {
+    const [hmacHash, legacyHash] = hashCnicBoth(cnic);
+    const row = await db.query.customers.findFirst({
+      where: and(
+        eq(customers.sellerId, sellerId),
+        isNull(customers.deletedAt),
+        or(eq(customers.cnicHash, hmacHash), eq(customers.cnicHash, legacyHash)),
+      ),
+      columns: { id: true, name: true, cnicMasked: true, phone: true },
+    });
+    return { exists: !!row, customer: row ?? null };
+  }
+
   async lookupByCnic(sellerId: string, cnic: string) {
     const [hmacHash, legacyHash] = hashCnicBoth(cnic);
     const hash = hmacHash;

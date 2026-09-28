@@ -5,7 +5,7 @@ import { validate } from '../../middleware/validate.js';
 import { createCustomerSchema, updateCustomerSchema, assignAvoSchema, blacklistCustomerSchema, customerNoteSchema, createCustomerDocumentSchema, updateCustomerDocumentSchema } from '@assaan/shared';
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer, assignAvo,
-  getLifecycleCounts, getRiskBreakdown, lookupByCnic, getUpcomingBirthdays, getReferralLeaderboard,
+  getLifecycleCounts, getRiskBreakdown, lookupByCnic, checkCnicExists, getUpcomingBirthdays, getReferralLeaderboard,
   nadraVerifyCnic, nadraStatus, blacklistCustomer, unblacklistCustomer,
 } from './customers.controller.js';
 import { listGuarantors } from './guarantors.controller.js';
@@ -29,6 +29,7 @@ router.post('/nadra-verify',        requireOwner, nadraVerifyCnic);
 router.get('/upcoming-birthdays',   getUpcomingBirthdays);
 router.get('/referral-leaderboard', requirePermission('canViewReports'), getReferralLeaderboard);
 router.get('/lookup',           requirePermission(['canSearchCnic', 'canAddInstallment', 'canAddCustomer', 'canRecordPayment']), lookupByCnic);
+router.get('/check-cnic',       requirePermission('canAddCustomer'), checkCnicExists);
 router.get('/',                 canAccessCustomers, listCustomers);
 router.get('/:id',              canAccessCustomers, getCustomer);
 router.get('/:id/risk-breakdown', requirePermission('canViewReports'), getRiskBreakdown);

@@ -150,6 +150,11 @@ export const customersApi = {
   lifecycleCounts: () =>
     api.get<{ data: { data: Record<string, number> } }>('/customers/lifecycle-counts').then((r) => r.data.data),
 
+  checkCnicExists: (cnic: string) =>
+    api.get<{ data: { exists: boolean; customer: { id: string; name: string; cnicMasked: string; phone: string } | null } }>(
+      '/customers/check-cnic', { params: { cnic } },
+    ).then(unwrap<{ exists: boolean; customer: { id: string; name: string; cnicMasked: string; phone: string } | null }>),
+
   getOne: (id: string) =>
     api.get<{ data: Customer }>(`/customers/${id}`).then(unwrap<Customer>),
 

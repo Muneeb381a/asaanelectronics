@@ -3,9 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createCustomerSchema } from '@assaan/shared';
-import { User, Shield, Image, ChevronRight, ChevronLeft, Check, ImageIcon, X } from 'lucide-react';
+import { User, Shield, Image, ChevronRight, ChevronLeft, Check, ImageIcon, X, AlertTriangle } from 'lucide-react';
 import { api } from '../../api/client.ts';
-import type { Customer } from '../../api/customers.api.ts';
+import { customersApi, type Customer } from '../../api/customers.api.ts';
 import LocationPicker from '../../components/LocationPicker.tsx';
 
 type OcrStatus = 'ok' | 'empty' | 'unavailable' | 'error';
@@ -376,6 +376,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
   const [autoFillHint,    setAutoFillHint]     = useState<string | null>(null);
   const [autoFillWarn,    setAutoFillWarn]     = useState<string | null>(null);
   const [referredById,    setReferredById]     = useState<string | null>(customer?.referredById ?? null);
+  // Checked the moment OCR reads a CNIC — so a duplicate customer surfaces before the
+  // staff fills in the rest of the form, not as a rejection after Save.
+  const [duplicateCustomer, setDuplicateCustomer] = useState<{ id: string; name: string; cnicMasked: string } | null>(null);
 
   const schema = isEdit ? editSchema : createCustomerSchema;
 
@@ -434,6 +437,19 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer?.id]);
+
+  // Fires on a full, valid CNIC — from OCR or manual typing. Shop-wide check (not
+  // staff-scoped), matching the backend's own create()-time duplicate guard, so this
+  // is a preview of that same rejection, not a different rule.
+  const checkDuplicate = useCallback(async (cnicValue: string) => {
+    if (isEdit || !cnicRegex.test(cnicValue)) { setDuplicateCustomer(null); return; }
+    try {
+      const res = await customersApi.checkCnicExists(cnicValue);
+      setDuplicateCustomer(res.customer);
+    } catch {
+      // Best-effort preview only — Save still does the authoritative check server-side.
+    }
+  }, [isEdit]);
 
   async function next() {
     if (step === 0) {
@@ -534,7 +550,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
                     if (v && extracted) {
                       const filled: string[] = [];
                       const dob = toIsoDate(extracted.dob);
-                      if (extracted.cnic)       { setValue('cnic',       formatCnic(extracted.cnic), { shouldValidate: true }); filled.push('CNIC'); }
+                      if (extracted.cnic)       { const fc = formatCnic(extracted.cnic); setValue('cnic', fc, { shouldValidate: true }); filled.push('CNIC'); void checkDuplicate(fc); }
                       if (extracted.name)       { setValue('name',       extracted.name,             { shouldValidate: true }); filled.push('Name'); }
                       if (extracted.fatherName) { setValue('fatherName', extracted.fatherName,       { shouldValidate: true }); filled.push('Father Name'); }
                       if (extracted.expiryDate) { setValue('cnicExpiry', extracted.expiryDate,       { shouldValidate: true }); filled.push('Expiry'); }
@@ -572,9 +588,19 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
             </Field>
             <Field label={isEdit ? 'ID Card Number (CNIC)' : 'CNIC'} error={errors.cnic?.message} optional={isEdit}>
               <input {...register('cnic')} placeholder={isEdit ? (customer.cnicMasked ?? 'XXXXX-XXXXXXX-X') : 'XXXXX-XXXXXXX-X'} maxLength={15} className={inp}
-                onChange={(e) => { e.target.value = formatCnic(e.target.value); register('cnic').onChange(e); }} />
+                onChange={(e) => { e.target.value = formatCnic(e.target.value); register('cnic').onChange(e); }}
+                onBlur={(e) => { register('cnic').onBlur(e); void checkDuplicate(e.target.value); }} />
               {isEdit && <p className="text-xs text-gray-400 mt-1">Current: {customer.cnicMasked} — leave blank to keep unchanged, or enter new CNIC to update</p>}
             </Field>
+            {duplicateCustomer && (
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                <span>
+                  Ye CNIC pehle se maujood hai — <strong>{duplicateCustomer.name}</strong> ({duplicateCustomer.cnicMasked}).
+                  Naya customer add karne se pehle check kar lein ke ye wahi customer to nahi.
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Father Name" optional>
                 <input {...register('fatherName')} placeholder="Father's full name" className={inp} />
