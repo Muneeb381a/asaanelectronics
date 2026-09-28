@@ -14,6 +14,7 @@ const schema = z.object({
   EMAIL_FROM: z.string().optional(),
   CORS_ORIGIN: z.string(),
   GROQ_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
   JAZZCASH_MERCHANT_ID:   z.string().optional(),
   JAZZCASH_PASSWORD:      z.string().optional(),
   JAZZCASH_INTEGRITY_SALT: z.string().optional(),

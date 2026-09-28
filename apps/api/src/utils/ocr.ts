@@ -19,9 +19,14 @@ const EMPTY: DocumentExtracted = {
   address: null, bankName: null, accountNo: null, chequeNo: null,
 };
 
-// ─── Groq vision path ────────────────────────────────────────────────────────
-// Llama 4 Scout on Groq: free tier, ~2 s response, handles dark/blurry/rotated
-// images natively, and returns structured JSON — no regex parsing needed.
+// ─── Vision providers ────────────────────────────────────────────────────────
+// Gemini is primary: meaningfully stronger than Llama 4 at reading dense printed
+// text (names, dates) rather than just fixed-pattern digits — Groq's Llama 4
+// models were reliably getting the CNIC number right (a rigid 13-digit pattern
+// any model can pick out) but returning null for name/father-name/dates. Groq
+// stays as an automatic fallback (it's fast and free) if Gemini is unset or errors.
+
+const GEMINI_MODEL = 'gemini-3.8-flash';
 
 // Primary + fallback: Groq retires model ids without notice, so a 4xx on the
 // first model retries once on the second before giving up.
@@ -124,14 +129,62 @@ async function groqVision(buffer: Buffer, prompt: string): Promise<string> {
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
+// ─── Gemini vision path ──────────────────────────────────────────────────────
+
+interface GeminiResponse { candidates?: { content?: { parts?: { text?: string }[] } }[] }
+
+async function geminiVision(buffer: Buffer, prompt: string): Promise<string> {
+  const imageB64 = (await prepareForVision(buffer)).toString('base64');
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: 'image/jpeg', data: imageB64 } },
+            { text: prompt },
+          ],
+        }],
+        // thinkingBudget: 0 — this is deterministic field extraction, not a reasoning
+        // task; thinking mode only adds latency and burns quota for no benefit here.
+        generationConfig: { temperature: 0, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Gemini API ${res.status}: ${body.slice(0, 300)}`);
+  }
+
+  const json = (await res.json()) as GeminiResponse;
+  return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+}
+
+// Tries Gemini first (stronger at dense text), falls back to Groq (fast, free)
+// if Gemini isn't configured or errors. Throws only if neither is usable.
+async function visionCall(buffer: Buffer, prompt: string): Promise<string> {
+  if (env.GEMINI_API_KEY) {
+    try {
+      return await geminiVision(buffer, prompt);
+    } catch (err) {
+      console.warn('[OCR] Gemini failed, falling back to Groq:', err instanceof Error ? err.message : err);
+      if (!env.GROQ_API_KEY) throw err;
+    }
+  }
+  return groqVision(buffer, prompt);
+}
+
 // Strip ```json ... ``` fences that models sometimes add despite the prompt
 function stripFences(s: string): string {
   return s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 }
 
-async function extractCnicViaGroq(buffer: Buffer): Promise<DocumentExtracted> {
-  const raw = await groqVision(buffer, CNIC_PROMPT);
-  if (env.NODE_ENV !== 'production') console.log('[Groq CNIC raw]:', raw);
+async function extractCnicViaAi(buffer: Buffer): Promise<DocumentExtracted> {
+  const raw = await visionCall(buffer, CNIC_PROMPT);
+  if (env.NODE_ENV !== 'production') console.log('[OCR CNIC raw]:', raw);
 
   try {
     const parsed = JSON.parse(stripFences(raw)) as Partial<DocumentExtracted>;
@@ -146,14 +199,14 @@ async function extractCnicViaGroq(buffer: Buffer): Promise<DocumentExtracted> {
     };
   } catch {
     // Model returned plain text instead of JSON — fall back to regex parsing
-    console.warn('[Groq] JSON parse failed, falling back to regex on raw text');
+    console.warn('[OCR] JSON parse failed, falling back to regex on raw text');
     return extractCnicFromText(raw);
   }
 }
 
-async function extractChequeViaGroq(buffer: Buffer): Promise<DocumentExtracted> {
-  const raw = await groqVision(buffer, CHEQUE_PROMPT);
-  console.log('[Groq cheque raw]:', raw);
+async function extractChequeViaAi(buffer: Buffer): Promise<DocumentExtracted> {
+  const raw = await visionCall(buffer, CHEQUE_PROMPT);
+  console.log('[OCR cheque raw]:', raw);
 
   try {
     const parsed = JSON.parse(stripFences(raw)) as { bankName?: string; accountNo?: string; chequeNo?: string };
@@ -326,15 +379,15 @@ export async function extractDocumentData(
   try {
     let extracted: DocumentExtracted;
 
-    if (env.GROQ_API_KEY) {
-      const fn = docType === 'cnic' ? extractCnicViaGroq : extractChequeViaGroq;
+    if (env.GEMINI_API_KEY || env.GROQ_API_KEY) {
+      const fn = docType === 'cnic' ? extractCnicViaAi : extractChequeViaAi;
       extracted = await withTimeout(fn(buffer), 25_000, EMPTY);
     } else if (env.NODE_ENV === 'production' || process.env['VERCEL']) {
       // Tesseract cannot run inside a serverless function; say so instead of silently returning nothing.
-      console.error('[OCR] GROQ_API_KEY is not set — document auto-read is disabled in production');
+      console.error('[OCR] Neither GEMINI_API_KEY nor GROQ_API_KEY is set — document auto-read is disabled in production');
       return { extracted: EMPTY, _ocrRaw: 'ocr-unavailable', status: 'unavailable' };
     } else {
-      console.log('[OCR] path: Tesseract (set GROQ_API_KEY for production)');
+      console.log('[OCR] path: Tesseract (set GEMINI_API_KEY or GROQ_API_KEY for production)');
       extracted = await withTimeout(extractViaTesseract(buffer, docType), 45_000, EMPTY);
     }
 
