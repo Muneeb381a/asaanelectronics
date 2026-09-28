@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import Turnstile, { type TurnstileHandle } from '../components/ui/Turnstile.tsx';
+import Turnstile, { isTurnstileEnabled, type TurnstileHandle } from '../components/ui/Turnstile.tsx';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -622,11 +622,11 @@ export default function LoginPage() {
 
                   <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
-                  <button type="submit" disabled={loginMutation.isPending}
+                  <button type="submit" disabled={loginMutation.isPending || (isTurnstileEnabled() && !turnstileToken)}
                     className={`w-full py-3 text-white text-sm font-semibold rounded-xl transition shadow-sm disabled:opacity-60 ${
                       isOwner ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
                     }`}>
-                    {loginMutation.isPending ? 'Signing in…' : 'Continue'}
+                    {loginMutation.isPending ? 'Signing in…' : isTurnstileEnabled() && !turnstileToken ? 'Verifying…' : 'Continue'}
                   </button>
                 </form>
 

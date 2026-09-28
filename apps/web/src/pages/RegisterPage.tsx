@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import Turnstile, { type TurnstileHandle } from '../components/ui/Turnstile.tsx';
+import Turnstile, { isTurnstileEnabled, type TurnstileHandle } from '../components/ui/Turnstile.tsx';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -203,10 +203,10 @@ export default function RegisterPage() {
 
               <button
                 type="submit"
-                disabled={isPending}
+                disabled={isPending || (isTurnstileEnabled() && !turnstileToken)}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-semibold rounded-xl transition shadow-sm shadow-blue-200"
               >
-                {isPending ? 'Creating account…' : 'Create account'}
+                {isPending ? 'Creating account…' : isTurnstileEnabled() && !turnstileToken ? 'Verifying…' : 'Create account'}
               </button>
             </form>
 

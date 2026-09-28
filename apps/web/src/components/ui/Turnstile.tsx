@@ -19,6 +19,13 @@ declare global {
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
+// Lets a form gate its submit button until a token exists — the widget's background
+// verification takes a moment, and submitting before it finishes sends an empty
+// token that the server has to reject and the user has to retry.
+export function isTurnstileEnabled(): boolean {
+  return !!SITE_KEY;
+}
+
 let scriptPromise: Promise<void> | null = null;
 function loadTurnstileScript(): Promise<void> {
   if (window.turnstile) return Promise.resolve();

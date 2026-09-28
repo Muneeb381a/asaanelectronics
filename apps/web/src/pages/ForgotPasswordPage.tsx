@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Eye, EyeOff, AlertCircle, Mail } from 'lucide-react';
 import { authApi } from '../api/auth.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
-import Turnstile, { type TurnstileHandle } from '../components/ui/Turnstile.tsx';
+import Turnstile, { isTurnstileEnabled, type TurnstileHandle } from '../components/ui/Turnstile.tsx';
 
 type Step = 'email' | 'otp' | 'done';
 
@@ -105,10 +105,10 @@ export default function ForgotPasswordPage() {
 
               <button
                 onClick={() => sendMutation.mutate()}
-                disabled={!email || sendMutation.isPending}
+                disabled={!email || sendMutation.isPending || (isTurnstileEnabled() && !turnstileToken)}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-semibold rounded-xl transition shadow-sm shadow-blue-200"
               >
-                {sendMutation.isPending ? 'Sending…' : 'Send reset code'}
+                {sendMutation.isPending ? 'Sending…' : isTurnstileEnabled() && !turnstileToken ? 'Verifying…' : 'Send reset code'}
               </button>
             </div>
           </div>
@@ -224,10 +224,10 @@ export default function ForgotPasswordPage() {
 
             <button
               onClick={() => { sendMutation.mutate(); setCode(''); }}
-              disabled={sendMutation.isPending}
-              className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 transition"
+              disabled={sendMutation.isPending || (isTurnstileEnabled() && !turnstileToken)}
+              className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 transition disabled:opacity-50"
             >
-              Didn&apos;t receive it? Resend
+              {isTurnstileEnabled() && !turnstileToken ? 'Verifying…' : "Didn't receive it? Resend"}
             </button>
           </div>
         )}
