@@ -123,16 +123,39 @@ function Field({ label, optional, error, children }: {
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">
-        {label}{optional ? <span className="text-gray-400 font-normal"> (optional)</span> : <span className="text-red-500 ml-0.5">*</span>}
+      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+        {label}{optional ? <span className="text-slate-400 font-normal"> (optional)</span> : <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
     </div>
   );
 }
 
-const inp = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition';
+function SectionCard({ icon: Icon, tone, title, subtitle, children }: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  tone: 'blue' | 'slate'; title: string; subtitle?: string; children: React.ReactNode;
+}) {
+  const tones = tone === 'blue'
+    ? { wrap: 'border-blue-100 bg-blue-50/40', badge: 'bg-blue-100 text-blue-600' }
+    : { wrap: 'border-slate-200 bg-slate-50/60', badge: 'bg-slate-200 text-slate-600' };
+  return (
+    <div className={`rounded-2xl border p-3.5 space-y-2.5 ${tones.wrap}`}>
+      <div className="flex items-center gap-2.5">
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tones.badge}`}>
+          <Icon size={13} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-slate-800 leading-tight">{title}</p>
+          {subtitle && <p className="text-[11px] text-slate-400 leading-snug">{subtitle}</p>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const inp = 'w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition bg-white placeholder:text-slate-400';
 
 function Spinner() {
   return (
@@ -237,11 +260,11 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
 
   return (
     <div>
-      <p className="text-xs font-medium text-gray-600 mb-1">
+      <p className="text-xs font-semibold text-slate-600 mb-1.5">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </p>
       {value ? (
-        <div className={`relative w-full ${h} rounded-xl overflow-hidden border border-gray-200 group`}>
+        <div className={`relative w-full ${h} rounded-xl overflow-hidden border border-slate-200 shadow-sm group`}>
           <img src={value} alt={label} className="w-full h-full object-cover" />
           <button type="button" onClick={() => { onChange(null); setFileError(null); }}
             className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition">
@@ -250,12 +273,12 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
         </div>
       ) : (
         <button type="button" onClick={() => ref.current?.click()} disabled={uploading}
-          className={`w-full ${h} border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition disabled:cursor-not-allowed ${
+          className={`w-full ${h} border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-all disabled:cursor-not-allowed bg-white ${
             uploading
               ? 'border-blue-300 bg-blue-50'
               : showError || fileError
               ? 'border-red-400 text-red-400 bg-red-50 hover:border-red-500'
-              : 'border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-500'
+              : 'border-slate-200 text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50/30'
           }`}>
           {uploading ? (
             <>
@@ -479,46 +502,46 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
   return (
     <div className="flex flex-col gap-5">
       {/* Step indicators */}
-      <div className="flex items-center gap-0">
+      <div className="flex items-center gap-0 px-0.5">
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           const done = i < step; const active = i === step;
           return (
             <div key={i} className="flex items-center flex-1 last:flex-none">
-              <div className={`flex items-center gap-1.5 shrink-0 ${active ? 'text-blue-600' : done ? 'text-green-500' : 'text-gray-300'}`}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
-                  active ? 'border-blue-600 bg-blue-50' : done ? 'border-green-500 bg-green-50' : 'border-gray-200'
+              <div className={`flex items-center gap-1.5 shrink-0 ${active ? 'text-blue-600' : done ? 'text-emerald-500' : 'text-slate-300'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                  active ? 'border-blue-600 bg-blue-50 shadow-sm shadow-blue-100' : done ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white'
                 }`}>
-                  {done ? <Check size={12} /> : <Icon size={12} />}
+                  {done ? <Check size={13} /> : <Icon size={13} />}
                 </div>
-                <span className={`text-xs font-medium hidden sm:block ${active ? 'text-blue-600' : done ? 'text-green-500' : 'text-gray-400'}`}>
+                <span className={`text-xs font-semibold hidden sm:block ${active ? 'text-blue-600' : done ? 'text-emerald-500' : 'text-slate-400'}`}>
                   {s.label}
                 </span>
               </div>
-              {i < STEPS.length - 1 && <div className={`flex-1 h-px mx-2 ${i < step ? 'bg-green-300' : 'bg-gray-100'}`} />}
+              {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 mx-2 rounded-full ${i < step ? 'bg-emerald-300' : 'bg-slate-100'}`} />}
             </div>
           );
         })}
       </div>
 
-      <form onSubmit={handleSubmit(handleFinalSubmit)} className="space-y-3">
+      <form onSubmit={handleSubmit(handleFinalSubmit)} className="space-y-4">
 
         {/* ── Step 0: Customer Info ── */}
         {step === 0 && (
           <>
             {/* Customer type toggle */}
-            <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl">
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-xl ring-1 ring-slate-200/60">
               {(['regular', 'dukaan-dar'] as const).map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setIsDukaanDar(type === 'dukaan-dar')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
                     (type === 'dukaan-dar') === isDukaanDar
                       ? type === 'dukaan-dar'
-                        ? 'bg-orange-500 text-white shadow-sm'
-                        : 'bg-white text-gray-800 shadow-sm'
-                      : 'text-gray-500'
+                        ? 'bg-orange-500 text-white shadow-sm shadow-orange-200'
+                        : 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
                   {type === 'regular' ? 'Regular Customer' : 'Dukaan-Dar (Shop Owner)'}
@@ -528,17 +551,16 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
 
             {/* Dukaan-dar info banner */}
             {isDukaanDar && (
-              <div className="flex items-start gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-800">
-                <span className="w-1.5 h-1.5 mt-0.5 rounded-full bg-orange-500 shrink-0" />
+              <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-800 leading-relaxed">
+                <span className="w-1.5 h-1.5 mt-1 rounded-full bg-orange-500 shrink-0" />
                 <span>Shop owner customer — daily installment plan with 25% markup. Guarantors must also be shop owners.</span>
               </div>
             )}
 
             {/* CNIC photos — shown in both create and edit mode */}
-            <div className={`rounded-xl border p-3 space-y-2 ${isEdit ? 'border-gray-200 bg-gray-50/60' : 'border-blue-100 bg-blue-50/60'}`}>
-              <p className="text-xs font-semibold text-gray-700">
-                {isEdit ? 'ID Card Photos' : 'Upload ID Card — details will auto-fill below'}
-              </p>
+            <SectionCard icon={Image} tone={isEdit ? 'slate' : 'blue'}
+              title={isEdit ? 'ID Card Photos' : 'Upload ID Card'}
+              subtitle={isEdit ? undefined : 'Details will auto-fill below'}>
               <div className="grid grid-cols-2 gap-3">
                 <PhotoUpload label="CNIC Front" folder="assaan/cnic" value={cnicFrontUrl}
                   hasError={!!errors.cnicFrontUrl} compact
@@ -581,7 +603,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
                   {autoFillWarn}
                 </p>
               )}
-            </div>
+            </SectionCard>
 
             <Field label="Full Name" error={errors.name?.message}>
               <input {...register('name')} placeholder="Muhammad Ali" className={inp} />
@@ -593,7 +615,7 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
               {isEdit && <p className="text-xs text-gray-400 mt-1">Current: {customer.cnicMasked} — leave blank to keep unchanged, or enter new CNIC to update</p>}
             </Field>
             {duplicateCustomer && (
-              <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+              <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 leading-relaxed">
                 <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                 <span>
                   Ye CNIC pehle se maujood hai — <strong>{duplicateCustomer.name}</strong> ({duplicateCustomer.cnicMasked}).
@@ -725,19 +747,19 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
         )}
 
         {/* Navigation */}
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-3 border-t border-slate-100">
           <button type="button" onClick={step === 0 ? onCancel : () => setStep((s) => s - 1)}
-            className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+            className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
             <ChevronLeft size={14} />{step === 0 ? 'Cancel' : 'Back'}
           </button>
           {step < STEPS.length - 1 ? (
             <button type="button" onClick={next}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-blue-700 transition">
+              className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 transition shadow-sm shadow-blue-200">
               Next <ChevronRight size={14} />
             </button>
           ) : (
             <button type="submit" disabled={isPending}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl py-2 text-sm font-medium transition">
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl py-2.5 text-sm font-semibold transition shadow-sm shadow-blue-200">
               {isPending ? 'Saving…' : 'Save Customer'}
             </button>
           )}
