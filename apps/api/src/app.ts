@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import morgan from 'morgan';
 import { rateLimit } from 'express-rate-limit';
 import { env } from './config/env.js';
@@ -53,6 +54,9 @@ const app = express();
 
 app.set('trust proxy', 1); // Vercel / any reverse proxy sets X-Forwarded-For
 app.use(helmet());
+// Vercel's edge compressed responses automatically; a raw server (DigitalOcean) doesn't
+// unless the app does it — JSON payloads over slower mobile networks benefit the most.
+app.use(compression());
 app.use(cors({
   origin: (origin, cb) => {
     if (isAllowedOrigin(origin)) return cb(null, true);
