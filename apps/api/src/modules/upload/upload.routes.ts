@@ -132,8 +132,8 @@ router.post('/', uploadLimiter, upload.single('file'), async (req: Request, res:
       return res.json({ success: true, data: { url, hash, extracted: dbHit, _ocrRaw: 'db-cached', ocrStatus: 'ok' } });
     }
 
-    // ── Cache miss: call Groq ──
-    console.log('[OCR] cache miss — calling Groq');
+    // ── Cache miss: call the vision AI provider (Gemini, falling back to Groq) ──
+    console.log('[OCR] cache miss — extracting via AI');
     const { extracted, _ocrRaw, status } = await extractDocumentData(req.file.buffer, docType);
 
     // Only cache real results; an empty/failed read must be retried on the next upload.

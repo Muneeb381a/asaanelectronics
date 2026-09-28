@@ -165,16 +165,24 @@ async function geminiVision(buffer: Buffer, prompt: string): Promise<string> {
 
 // Tries Gemini first (stronger at dense text), falls back to Groq (fast, free)
 // if Gemini isn't configured or errors. Throws only if neither is usable.
+// Logs unconditionally (not gated behind NODE_ENV) — which provider actually
+// served a given extraction has to be visible in production logs, not just dev.
 async function visionCall(buffer: Buffer, prompt: string): Promise<string> {
   if (env.GEMINI_API_KEY) {
     try {
-      return await geminiVision(buffer, prompt);
+      const result = await geminiVision(buffer, prompt);
+      console.log('[OCR] provider: Gemini (succeeded)');
+      return result;
     } catch (err) {
       console.warn('[OCR] Gemini failed, falling back to Groq:', err instanceof Error ? err.message : err);
       if (!env.GROQ_API_KEY) throw err;
     }
+  } else {
+    console.log('[OCR] GEMINI_API_KEY not set — going straight to Groq');
   }
-  return groqVision(buffer, prompt);
+  const result = await groqVision(buffer, prompt);
+  console.log('[OCR] provider: Groq (succeeded)');
+  return result;
 }
 
 // Strip ```json ... ``` fences that models sometimes add despite the prompt
