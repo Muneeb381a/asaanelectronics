@@ -137,7 +137,7 @@ function SectionCard({ icon: Icon, tone, title, subtitle, children }: {
   tone: 'blue' | 'slate'; title: string; subtitle?: string; children: React.ReactNode;
 }) {
   const tones = tone === 'blue'
-    ? { wrap: 'border-blue-100 bg-blue-50/40', badge: 'bg-blue-100 text-blue-600' }
+    ? { wrap: 'border-blue-100 bg-linear-to-br from-blue-50/70 to-indigo-50/40', badge: 'bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-sm shadow-blue-200' }
     : { wrap: 'border-slate-200 bg-slate-50/60', badge: 'bg-slate-200 text-slate-600' };
   return (
     <div className={`rounded-2xl border p-3.5 space-y-2.5 ${tones.wrap}`}>

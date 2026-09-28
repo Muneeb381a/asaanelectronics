@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
-import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon } from 'lucide-react';
+import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon, UserPlus, UserCog } from 'lucide-react';
 import { customersApi, type Customer, type CustomerDoc, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import type { CreateCustomerInput } from '@assaan/shared';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
@@ -1588,11 +1588,17 @@ function StaffCnicView({
       {/* Add/Edit customer modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[calc(100vh-2rem)]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-              <h2 className="text-base font-semibold text-gray-900">Register New Customer</h2>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 shrink-0 bg-linear-to-r from-blue-50/80 to-white">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm shadow-blue-200">
+                <UserPlus size={18} className="text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-bold text-slate-900 leading-tight">Register New Customer</h2>
+                <p className="text-xs text-slate-400 mt-0.5">CNIC card upload karen, tafseelat khud aa jayengi</p>
+              </div>
               <button onClick={() => setModal(null)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition shrink-0">
                 <X size={16} />
               </button>
             </div>
@@ -2115,10 +2121,25 @@ export default function CustomersPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
           onClick={(e) => { if (e.target === e.currentTarget) safeCloseModal(); }}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[92vh] overflow-y-auto">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">
-              {modal.mode === 'add' ? 'Add Customer' : 'Edit Customer'}
-            </h2>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[92vh] overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 shrink-0 bg-linear-to-r from-blue-50/80 to-white">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-sm shadow-blue-200">
+                {modal.mode === 'add' ? <UserPlus size={18} className="text-white" /> : <UserCog size={18} className="text-white" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-bold text-slate-900 leading-tight">
+                  {modal.mode === 'add' ? 'Add Customer' : 'Edit Customer'}
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {modal.mode === 'add' ? 'Naya customer record banayen' : 'Customer ki details update karen'}
+                </p>
+              </div>
+              <button onClick={safeCloseModal}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition shrink-0">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-5">
             <CustomerForm
               customer={modal.mode === 'edit' ? modal.customer : undefined}
               isPending={createMutation.isPending || updateMutation.isPending}
@@ -2135,6 +2156,7 @@ export default function CustomersPage() {
                 }
               }}
             />
+            </div>
           </div>
         </div>
       )}
