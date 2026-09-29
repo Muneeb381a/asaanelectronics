@@ -21,18 +21,28 @@ type Intent = {
 
 const CNIC_RE = /\d{5}-?\d{7}-?\d\b/;
 
+// Roman Urdu has no fixed spelling ("aaj" vs "aj", "wasooli" vs "wasuli" vs "vasooli")
+// — these are intentionally loose substring/word-boundary matches, not exact words.
+const TODAY_RE     = /\ba+j\b/;                                     // aj, aaj, aaaj
+const MONTH_RE     = /mahin|mahee|month/;                            // mahina/mahine/maheena/month
+const MONEY_IN_RE  = /collection|wasool|vasool|payment|paisa|wasuli/; // collection/wasooli/payment/paisa
+const BUSINESS_KEYWORDS_RE = /collection|wasool|vasool|payment|paisa|profit|faida|fayda|munafa|nuksan|loss|overdue|baqaya|udhar|stock|installment|qist|customer|grahak/;
+
 const INTENTS: Intent[] = [
   { id: 'greeting',        test: (m) => /^(hi|hello|salam|assalam|asalam|hey)\b/.test(m) },
   { id: 'help',            test: (m) => /help|madad|kya poochh|kya pooch|what can you/.test(m) },
   { id: 'cnic_lookup',     test: (m) => CNIC_RE.test(m) },
-  { id: 'today_collection', test: (m) => /aaj/.test(m) && /collection|wasooli|wasuli|vasooli/.test(m) },
-  { id: 'month_collection', test: (m) => /(mahin|mahine|month)/.test(m) && /collection|wasooli|wasuli|vasooli/.test(m) },
+  { id: 'today_collection', test: (m) => TODAY_RE.test(m) && MONEY_IN_RE.test(m) },
+  { id: 'month_collection', test: (m) => MONTH_RE.test(m) && MONEY_IN_RE.test(m) },
   { id: 'profit',          test: (m) => /profit|faida|fayda|munafa|nuksan|loss|p ?& ?l|p and l/.test(m) },
   { id: 'overdue',         test: (m) => /overdue|late payment|baqaya|udhar|due customer/.test(m) },
   { id: 'low_stock',       test: (m) => /(stock)/.test(m) && /kam|low|khatam|khatm/.test(m) },
   { id: 'active_count',    test: (m) => /(kitn|how many|total).*(installment|qist)/.test(m) },
   { id: 'customer_count',  test: (m) => /(kitn|how many|total).*(customer|grahak)/.test(m) },
-  { id: 'customer_search', test: (m) => /^(?:search |dhoond |find )?[a-z][a-z .]{2,40}$/.test(m) && m.split(' ').length <= 5 },
+  // Only treat short plain text as a name search when it doesn't look like a
+  // business question that just failed to match above (misspelled "aj"/"mahina"/
+  // etc.) — those should fall through to "didn't understand", not a fake name search.
+  { id: 'customer_search', test: (m) => !BUSINESS_KEYWORDS_RE.test(m) && /^(?:search |dhoond |find )?[a-z][a-z .]{2,40}$/.test(m) && m.split(' ').length <= 5 },
 ];
 
 function normalize(raw: string): string {

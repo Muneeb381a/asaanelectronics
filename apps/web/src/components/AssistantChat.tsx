@@ -45,17 +45,17 @@ export default function AssistantChat() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[360px] h-[70vh] sm:h-[480px] max-h-[600px] bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-blue-600 to-indigo-600 text-white shrink-0">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-              <Bot size={16} />
+        <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[320px] h-[65vh] sm:h-[420px] max-h-[520px] bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 flex flex-col overflow-hidden">
+          <div className="flex items-center gap-2 px-3.5 py-2.5 bg-linear-to-r from-blue-600 to-indigo-600 text-white shrink-0">
+            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <Bot size={13} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold leading-tight">Shop Assistant</p>
-              <p className="text-[11px] text-blue-100">Apni shop ke bare mein poochein</p>
+              <p className="text-[13px] font-bold leading-tight">Shop Assistant</p>
+              <p className="text-[10px] text-blue-100">Apni shop ke bare mein poochein</p>
             </div>
             <button onClick={() => setOpen(false)} className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition">
-              <X size={16} />
+              <X size={14} />
             </button>
           </div>
 
@@ -72,8 +72,13 @@ export default function AssistantChat() {
               </div>
             )}
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm whitespace-pre-line leading-relaxed ${
+              <div key={i} className={`flex items-end gap-1.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {m.role === 'bot' && (
+                  <div className="w-5 h-5 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 mb-0.5">
+                    <Bot size={11} className="text-white" />
+                  </div>
+                )}
+                <div className={`max-w-[78%] px-3 py-2 rounded-xl text-[13px] whitespace-pre-line leading-snug ${
                   m.role === 'user' ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white text-slate-700 ring-1 ring-slate-200 rounded-bl-sm'
                 }`}>
                   {m.text}
@@ -81,8 +86,11 @@ export default function AssistantChat() {
               </div>
             ))}
             {sending && (
-              <div className="flex justify-start">
-                <div className="bg-white ring-1 ring-slate-200 rounded-2xl rounded-bl-sm px-3.5 py-3">
+              <div className="flex items-end gap-1.5 justify-start">
+                <div className="w-5 h-5 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 mb-0.5">
+                  <Bot size={11} className="text-white" />
+                </div>
+                <div className="bg-white ring-1 ring-slate-200 rounded-xl rounded-bl-sm px-3 py-2.5">
                   <div className="flex gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce [animation-delay:-0.3s]" />
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce [animation-delay:-0.15s]" />
@@ -93,20 +101,20 @@ export default function AssistantChat() {
             )}
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); void send(input); }} className="flex items-center gap-2 p-2.5 border-t border-slate-100 shrink-0 bg-white">
+          <form onSubmit={(e) => { e.preventDefault(); void send(input); }} className="flex items-center gap-1.5 p-2 border-t border-slate-100 shrink-0 bg-white">
             <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Apna sawal likhein..."
-              className="flex-1 px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-[13px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
             <button type="submit" disabled={!input.trim() || sending}
-              className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl transition shrink-0">
-              <Send size={16} />
+              className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl transition shrink-0">
+              <Send size={15} />
             </button>
           </form>
         </div>
       )}
 
       <button onClick={() => setOpen((o) => !o)} title="Shop Assistant"
-        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-14 h-14 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-300/50 flex items-center justify-center hover:scale-105 transition-transform">
-        {open ? <X size={22} /> : <MessageCircle size={22} />}
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-12 h-12 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-300/50 flex items-center justify-center hover:scale-105 transition-transform">
+        {open ? <X size={20} /> : <MessageCircle size={20} />}
       </button>
     </>
   );
