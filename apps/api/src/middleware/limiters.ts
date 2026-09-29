@@ -31,3 +31,11 @@ export const uploadLimiter = safeLimit(rateLimit({
   validate: { xForwardedForHeader: false },
   message: { success: false, data: null, error: 'Too many uploads. Please wait a minute.' },
 }));
+
+// Assistant chat: no AI cost, but keeps someone from hammering stats/report queries
+export const assistantLimiter = safeLimit(rateLimit({
+  windowMs: 60_000, max: 30,
+  standardHeaders: true, legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { success: false, data: null, error: 'Thora sa rukein, itni jaldi jaldi messages na bhejein.' },
+}));

@@ -49,6 +49,7 @@ import broadcastsRoutes           from './modules/broadcasts/broadcasts.routes.j
 import categoryTemplatesRoutes    from './modules/categoryTemplates/categoryTemplates.routes.js';
 import agentPortfolioRoutes       from './modules/agentPortfolio/agentPortfolio.routes.js';
 import backupsRoutes              from './modules/backups/backups.routes.js';
+import assistantRoutes            from './modules/assistant/assistant.routes.js';
 
 const app = express();
 
@@ -138,6 +139,7 @@ app.use('/api/broadcasts',            broadcastsRoutes);
 app.use('/api/category-templates',    categoryTemplatesRoutes);
 app.use('/api/agent-portfolio',       agentPortfolioRoutes);
 app.use('/api/backups',               backupsRoutes);
+app.use('/api/assistant',             assistantRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
 app.use(errorMiddleware);

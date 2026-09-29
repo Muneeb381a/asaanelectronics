@@ -18,6 +18,7 @@ import { billingApi } from '../api/billing.api.ts';
 import { broadcastsApi, type Broadcast } from '../api/broadcasts.api.ts';
 import ProfileModal from '../components/ProfileModal.tsx';
 import GlobalSearch from '../components/GlobalSearch.tsx';
+import AssistantChat from '../components/AssistantChat.tsx';
 
 // ── Nav item definitions ───────────────────────────────────────────────────────
 
@@ -567,6 +568,7 @@ export default function DashboardLayout() {
 
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)}/>}
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)}/>
+      <AssistantChat />
     </div>
   );
 }
