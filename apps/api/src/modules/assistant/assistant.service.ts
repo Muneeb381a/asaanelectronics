@@ -1,3 +1,6 @@
+import { and, eq, inArray, isNull, sum } from 'drizzle-orm';
+import { db } from '../../db/index.js';
+import { installments } from '../../db/schema.js';
 import { StatsService } from '../stats/stats.service.js';
 import { ReportsService } from '../reports/reports.service.js';
 import { InstallmentsService } from '../installments/installments.service.js';
@@ -28,10 +31,22 @@ const MONTH_RE     = /mahin|mahee|month/;                            // mahina/m
 const MONEY_IN_RE  = /collection|wasool|vasool|payment|paisa|wasuli/; // collection/wasooli/payment/paisa
 const BUSINESS_KEYWORDS_RE = /collection|wasool|vasool|payment|paisa|profit|faida|fayda|munafa|nuksan|loss|overdue|baqaya|udhar|stock|installment|qist|customer|grahak/;
 
+// "Muneeb ki pending amount" — a balance keyword PLUS a leftover word (the name)
+// after stripping the generic connector/keyword words below.
+const BALANCE_RE = /pending|baqaya|remaining|kitn[ai]?\s*(?:dena|lena)|due amount/;
+const BALANCE_STOPWORDS_RE = /\b(ki|ka|ke|pending|amount|baqaya|remaining|kitna|kitni|hai|hain|dena|lena|due|installment|qist|balance|customer|grahak|kitne|paas)\b/gi;
+
+function extractName(raw: string): string {
+  return raw.replace(BALANCE_STOPWORDS_RE, ' ').replace(/\s+/g, ' ').trim();
+}
+
 const INTENTS: Intent[] = [
   { id: 'greeting',        test: (m) => /^(hi|hello|salam|assalam|asalam|hey)\b/.test(m) },
   { id: 'help',            test: (m) => /help|madad|kya poochh|kya pooch|what can you/.test(m) },
   { id: 'cnic_lookup',     test: (m) => CNIC_RE.test(m) },
+  // Checked before the shop-wide "overdue"/"profit" intents, since "X ki baqaya"
+  // (a name + balance keyword) should look up that one customer, not the whole shop.
+  { id: 'customer_balance', test: (m) => BALANCE_RE.test(m) && extractName(m).length >= 2 },
   { id: 'today_collection', test: (m) => TODAY_RE.test(m) && MONEY_IN_RE.test(m) },
   { id: 'month_collection', test: (m) => MONTH_RE.test(m) && MONEY_IN_RE.test(m) },
   { id: 'profit',          test: (m) => /profit|faida|fayda|munafa|nuksan|loss|p ?& ?l|p and l/.test(m) },
@@ -82,6 +97,23 @@ export class AssistantService {
 
       case 'help':
         return { reply: HELP_TEXT };
+
+      case 'customer_balance': {
+        const term = extractName(rawMessage);
+        const result = await customersSvc.list(ctx.sellerId, 1, 5, term, undefined, undefined, ctx.staffUserId);
+        const items = (result as { data: { id: string; name: string }[] }).data ?? [];
+        if (!items.length) return { reply: `"${term}" naam se koi customer nahi mila.` };
+
+        const ids = items.map((c) => c.id);
+        const balRows = await db.select({ customerId: installments.customerId, total: sum(installments.remaining) })
+          .from(installments)
+          .where(and(inArray(installments.customerId, ids), eq(installments.status, 'ACTIVE'), isNull(installments.deletedAt)))
+          .groupBy(installments.customerId);
+        const byId = new Map(balRows.map((r) => [r.customerId, Number(r.total ?? 0)]));
+
+        const list = items.map((c) => `${c.name} — ${fmtPkr(byId.get(c.id) ?? 0)} pending`).join('\n');
+        return { reply: list };
+      }
 
       case 'today_collection': {
         const s = await statsSvc.getStats(ctx.sellerId, ctx.staffUserId);
