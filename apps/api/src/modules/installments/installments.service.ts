@@ -880,10 +880,10 @@ export class InstallmentsService {
       INNER JOIN customers c ON i.customer_id = c.id
       INNER JOIN products  p ON i.product_id  = p.id
       LEFT JOIN LATERAL (
-        SELECT amount, paid_on
-        FROM payments
-        WHERE installment_id = i.id AND deleted_at IS NULL
-        ORDER BY paid_on DESC, created_at DESC
+        SELECT pay.amount, pay.paid_on
+        FROM payments pay
+        WHERE pay.installment_id = i.id AND pay.deleted_at IS NULL
+        ORDER BY pay.paid_on DESC
         LIMIT 1
       ) lp ON true
       WHERE c.seller_id = ${sellerId} AND ${staffScopeOrTrue(staffUserId, 'c')}

@@ -7,9 +7,9 @@ interface ChatMsg { role: 'user' | 'bot'; text: string }
 
 const STARTERS = [
   'Aaj ki collection kitni hai?',
+  'Aaj kiski qist due hai?',
   'Overdue customers kitne hain?',
   'Is mahine ka profit kitna hai?',
-  'Stock kam hai kis product ka?',
 ];
 
 // Rule-based, not AI — every reply comes from the same seller-scoped service
