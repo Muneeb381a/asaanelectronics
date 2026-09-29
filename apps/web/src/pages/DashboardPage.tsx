@@ -6,7 +6,7 @@ import { getErrorMessage } from '../utils/error.ts';
 import {
   X, Send, CheckCircle, Wallet, Clock, ChevronRight, Plus, Gift, Package, Bell, Users,
   ArrowUpRight, CheckSquare, TrendingUp, AlertTriangle, BadgeCheck, MessageCircle, Receipt,
-  CalendarDays, Target, Activity,
+  CalendarDays, Target, Activity, ClipboardList,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
@@ -20,7 +20,9 @@ import { customersApi } from '../api/customers.api.ts';
 import { handoversApi, type StaffBalance } from '../api/handovers.api.ts';
 import { agentPortfolioApi } from '../api/agentPortfolio.api.ts';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
-import { fmtDate } from '../utils/dateFormat.ts';
+import { fmtDate, fmtDateShort } from '../utils/dateFormat.ts';
+import RecoveryLogModal from '../components/RecoveryLogModal.tsx';
+import { getStage, CollectionStageBadge, ACTION_META } from '../utils/collectionStage.tsx';
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
 const pkr   = (v: number) => 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
@@ -252,6 +254,7 @@ export default function DashboardPage() {
   const [handoverAmt,   setHandoverAmt]   = useState('');
   const [handoverNote,  setHandoverNote]  = useState('');
   const [receiveTarget, setReceiveTarget] = useState<StaffBalance | null>(null);
+  const [logTarget,     setLogTarget]     = useState<string | null>(null);
 
   /* ── queries ── */
   const { data: myBal } = useQuery<StaffBalance | null>({
@@ -412,26 +415,61 @@ export default function DashboardPage() {
           <Card className="overflow-hidden">
             <CardHead icon={Users} tone="violet" title="Mere assigned customers" subtitle={`Owner ne ${myAssignments.length} customer aap ko diye hain`} action={<LinkBtn onClick={() => navigate('/customers')}>Customers</LinkBtn>} />
             <div className="divide-y divide-gray-50">
-              {myAssignments.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 px-5 py-3">
-                  <Avatar name={a.customer_name} tone="violet" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{a.customer_name}</p>
-                    <p className="text-[11px] text-gray-500 truncate">
-                      {a.customer_phone ?? 'phone nahi'}
-                      {a.installment_amount && ` · ${pkrSh(Number(a.installment_amount))}/qist`}
-                      {a.notes && ` · ${a.notes}`}
-                    </p>
+              {myAssignments.map((a) => {
+                const stage = a.installment_id
+                  ? getStage({ last_action_type: a.last_action_type, days_overdue: a.days_overdue ?? 0, last_promise_date: a.last_promise_date })
+                  : null;
+                const ActionIcon = a.last_action_type ? ACTION_META[a.last_action_type as keyof typeof ACTION_META]?.icon : null;
+                const canLog = isOwner || perms?.canManageRecovery || perms?.canRecordPayment;
+                return (
+                  <div key={a.id} className="flex items-start gap-3 px-5 py-3">
+                    <Avatar name={a.customer_name} tone="violet" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{a.customer_name}</p>
+                        {stage && <CollectionStageBadge stage={stage} />}
+                      </div>
+                      <p className="text-[11px] text-gray-500 truncate">
+                        {a.customer_phone ?? 'phone nahi'}
+                        {a.installment_amount && ` · ${pkrSh(Number(a.installment_amount))}/qist`}
+                        {a.notes && ` · ${a.notes}`}
+                      </p>
+                      {a.installment_id && (
+                        <p className="text-[11px] mt-0.5">
+                          {a.last_action_type ? (
+                            <span className="text-gray-500 inline-flex items-center gap-1">
+                              {ActionIcon && <ActionIcon size={10} />}
+                              {ACTION_META[a.last_action_type as keyof typeof ACTION_META]?.label ?? a.last_action_type} ({fmtDateShort(a.last_action_date)})
+                              {a.last_action_type === 'PROMISE_TO_PAY' && a.last_promise_date && ` · waada ${fmtDateShort(a.last_promise_date)}`}
+                            </span>
+                          ) : (
+                            <span className="text-red-400 font-medium">Abhi tak contact nahi kiya</span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      {a.installment_status && (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${a.installment_status === 'ACTIVE' ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'}`}>{a.installment_status}</span>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        {canLog && a.installment_id && (
+                          <button onClick={() => setLogTarget(a.installment_id)}
+                            title="Log Activity"
+                            className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition">
+                            <ClipboardList size={11} /> Log
+                          </button>
+                        )}
+                        {a.customer_phone && <WaButton phone={a.customer_phone} msg={`Assalam-o-Alaikum ${a.customer_name}! Main ${shop?.shopName ?? 'Assaan Electronics'} se baat kar raha hoon.`} />}
+                      </div>
+                    </div>
                   </div>
-                  {a.installment_status && (
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${a.installment_status === 'ACTIVE' ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'}`}>{a.installment_status}</span>
-                  )}
-                  {a.customer_phone && <WaButton phone={a.customer_phone} msg={`Assalam-o-Alaikum ${a.customer_name}! Main ${shop?.shopName ?? 'Assaan Electronics'} se baat kar raha hoon.`} />}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         )}
+        {logTarget && <RecoveryLogModal installmentId={logTarget} onClose={() => setLogTarget(null)} />}
 
         {/* ── Staff cash card ────────────────────────────────────────────── */}
         {!isOwner && myBal && myPending > 0 && (

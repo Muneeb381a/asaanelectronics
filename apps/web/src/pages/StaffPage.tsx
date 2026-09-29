@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark, Briefcase, UserCheck, UserMinus, Calculator, MinusCircle } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark, Briefcase, UserCheck, UserMinus, Calculator, MinusCircle, ClipboardList } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions, type CollectionEntry, type StaffBriefingRow } from '../api/staff.api.ts';
 import { agentPortfolioApi, type PortfolioRow } from '../api/agentPortfolio.api.ts';
@@ -11,6 +11,9 @@ import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { CardSkeleton, EmptyState, RowSkeleton } from '../components/ui/Skeleton.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
+import RecoveryLogModal from '../components/RecoveryLogModal.tsx';
+import { getStage, CollectionStageBadge, ACTION_META } from '../utils/collectionStage.tsx';
+import { fmtDateShort } from '../utils/dateFormat.ts';
 
 type StaffType = 'ACCOUNT' | 'AVO' | 'MANAGER' | 'CASHIER' | 'CUSTOM';
 
@@ -2268,6 +2271,7 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
   const [filterAgent, setFilterAgent] = useState('');
   const [showAssign, setShowAssign] = useState(false);
   const [deductionTarget, setDeductionTarget] = useState<{ id: string; name: string } | null>(null);
+  const [logTarget, setLogTarget] = useState<string | null>(null);
 
   const { data: portfolio = [], isLoading: loadingPortfolio } = useQuery({
     queryKey: ['agent-portfolio', filterAgent],
@@ -2368,30 +2372,76 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
                     </div>
                   </div>
                   <div className="divide-y divide-gray-50">
-                    {agent.rows.map((row) => (
-                      <div key={row.id} className="flex items-center gap-3 px-5 py-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800">{row.customer_name}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {row.customer_phone ?? '—'}
-                            {row.installment_amount && (
-                              <span className="ml-2 text-indigo-600 font-semibold">
-                                {pkr(Number(row.installment_amount))}/mo
-                              </span>
+                    {agent.rows.map((row) => {
+                      const stage = row.installment_id
+                        ? getStage({
+                            last_action_type: row.last_action_type,
+                            days_overdue: row.days_overdue ?? 0,
+                            last_promise_date: row.last_promise_date,
+                          })
+                        : null;
+                      const ActionIcon = row.last_action_type ? ACTION_META[row.last_action_type as keyof typeof ACTION_META]?.icon : null;
+                      return (
+                        <div key={row.id} className="flex items-start gap-3 px-5 py-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold text-gray-800">{row.customer_name}</p>
+                              {stage && <CollectionStageBadge stage={stage} />}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {row.customer_phone ?? '—'}
+                              {row.installment_amount && (
+                                <span className="ml-2 text-indigo-600 font-semibold">
+                                  {pkr(Number(row.installment_amount))}/mo
+                                </span>
+                              )}
+                              {row.installment_remaining && (
+                                <span className="ml-2 text-gray-500">{pkr(Number(row.installment_remaining))} baqi</span>
+                              )}
+                            </p>
+                            {!row.installment_id ? (
+                              <p className="text-[11px] text-gray-400 mt-1">Koi active installment nahi</p>
+                            ) : (
+                              <div className="mt-1.5 space-y-0.5">
+                                <p className="text-[11px] text-gray-500">
+                                  {row.last_payment_date
+                                    ? <>Aakhri payment: <span className="font-semibold text-emerald-600">{pkr(Number(row.last_payment_amount))}</span> ({fmtDateShort(row.last_payment_date)})</>
+                                    : <span className="text-amber-500 font-medium">Kabhi payment nahi hui</span>}
+                                </p>
+                                <p className="text-[11px] text-gray-500 flex items-center gap-1">
+                                  {row.last_action_type ? (
+                                    <>
+                                      {ActionIcon && <ActionIcon size={10} />}
+                                      Aakhri contact: {ACTION_META[row.last_action_type as keyof typeof ACTION_META]?.label ?? row.last_action_type} ({fmtDateShort(row.last_action_date)})
+                                      {row.last_action_type === 'PROMISE_TO_PAY' && row.last_promise_date && (
+                                        <span className="ml-1 font-medium">· waada: {fmtDateShort(row.last_promise_date)}</span>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-red-400 font-medium">Agent ne abhi tak koi contact nahi kiya</span>
+                                  )}
+                                </p>
+                              </div>
                             )}
-                            {row.installment_status && row.installment_status !== 'ACTIVE' && (
-                              <span className="ml-2 text-amber-500">{row.installment_status}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {row.installment_id && (
+                              <button
+                                onClick={() => setLogTarget(row.installment_id)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition">
+                                <ClipboardList size={12} /> Log Activity
+                              </button>
                             )}
-                          </p>
+                            <button
+                              onClick={() => unassignMut.mutate(row.id)}
+                              disabled={unassignMut.isPending}
+                              className="text-gray-300 hover:text-red-400 transition disabled:opacity-50">
+                              <UserMinus size={14} />
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => unassignMut.mutate(row.id)}
-                          disabled={unassignMut.isPending}
-                          className="text-gray-300 hover:text-red-400 transition disabled:opacity-50">
-                          <UserMinus size={14} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -2484,6 +2534,7 @@ function PortfolioSection({ staff }: { staff: StaffMember[] }) {
           onClose={() => setDeductionTarget(null)}
         />
       )}
+      {logTarget && <RecoveryLogModal installmentId={logTarget} onClose={() => setLogTarget(null)} />}
     </div>
   );
 }

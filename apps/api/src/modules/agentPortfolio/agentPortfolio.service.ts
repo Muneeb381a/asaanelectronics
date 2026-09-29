@@ -5,15 +5,24 @@ import {
   payments, sellers,
 } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
+import { daysOverdueSql } from '../../utils/dueDate.js';
 
 // ── Assignments ──────────────────────────────────────────────────────────────
 
+// Reports per assigned customer whether the responsible agent has actually
+// done anything: last payment received, last recovery action logged (call/
+// visit/promise/refusal), and how overdue they currently are — so an
+// assignment shows real collection status, not just a name on a roster.
 export async function listAgentPortfolio(sellerId: string, agentId?: string) {
   const rows = await db.execute<{
     id: string; agent_id: string; agent_name: string;
     customer_id: string; customer_name: string; customer_phone: string | null;
     assigned_at: string; notes: string | null;
-    installment_id: string | null; installment_amount: string | null; installment_status: string | null;
+    installment_id: string | null; installment_amount: string | null;
+    installment_remaining: string | null; installment_status: string | null;
+    days_overdue: number | null;
+    last_payment_amount: string | null; last_payment_date: string | null;
+    last_action_type: string | null; last_action_date: string | null; last_promise_date: string | null;
   }>(sql`
     SELECT
       ca.id,
@@ -26,12 +35,20 @@ export async function listAgentPortfolio(sellerId: string, agentId?: string) {
       ca.notes,
       i.id             AS installment_id,
       i.monthly        AS installment_amount,
-      i.status         AS installment_status
+      i.remaining      AS installment_remaining,
+      i.status         AS installment_status,
+      CASE WHEN i.id IS NULL THEN NULL ELSE ${daysOverdueSql('i')} END AS days_overdue,
+      lp.amount        AS last_payment_amount,
+      lp.paid_on       AS last_payment_date,
+      la.type          AS last_action_type,
+      la.created_at    AS last_action_date,
+      la.promise_date  AS last_promise_date
     FROM customer_assignments ca
     JOIN users u     ON u.id  = ca.agent_id
     JOIN customers c ON c.id  = ca.customer_id
     LEFT JOIN LATERAL (
-      SELECT id, monthly, status
+      SELECT id, monthly, remaining, status, total_amount, down_payment,
+             start_date, payment_frequency, payment_due_day
       FROM installments
       WHERE customer_id = ca.customer_id
         AND deleted_at IS NULL
@@ -39,10 +56,24 @@ export async function listAgentPortfolio(sellerId: string, agentId?: string) {
       ORDER BY created_at DESC
       LIMIT 1
     ) i ON true
+    LEFT JOIN LATERAL (
+      SELECT pay.amount, pay.paid_on
+      FROM payments pay
+      WHERE pay.installment_id = i.id AND pay.deleted_at IS NULL
+      ORDER BY pay.paid_on DESC
+      LIMIT 1
+    ) lp ON i.id IS NOT NULL
+    LEFT JOIN LATERAL (
+      SELECT type, created_at, promise_date
+      FROM recovery_actions
+      WHERE installment_id = i.id
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) la ON i.id IS NOT NULL
     WHERE ca.seller_id   = ${sellerId}
       AND ca.unassigned_at IS NULL
       ${agentId ? sql`AND ca.agent_id = ${agentId}` : sql``}
-    ORDER BY u.name, c.name
+    ORDER BY u.name, days_overdue DESC NULLS LAST, c.name
   `);
   return rows;
 }

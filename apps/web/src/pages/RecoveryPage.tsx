@@ -2,16 +2,17 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-  PhoneCall, MapPin, HandCoins, XCircle, AlertOctagon,
-  Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Clock, LayoutList, Map as MapIcon,
+  XCircle, Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Clock, LayoutList, Map as MapIcon,
   CalendarClock, AlertTriangle, CalendarCheck,
 } from 'lucide-react';
 import { installmentsApi, type Installment, type OverdueWithStageItem } from '../api/installments.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
-import { recoveryApi, type RecoveryActionType, type RecoveryAction, type PromiseDue } from '../api/recovery.api.ts';
+import { recoveryApi, type RecoveryAction, type PromiseDue } from '../api/recovery.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
+import RecoveryLogModal from '../components/RecoveryLogModal.tsx';
+import { ACTION_META, type CollectionStage, STAGE_META, getStage, CollectionStageBadge } from '../utils/collectionStage.tsx';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -27,162 +28,6 @@ function calcLateFee(daysOverdue: number, lateFeePerDay: number, graceDays: numb
 }
 
 export type LateFeeConfig = { perDay: number; graceDays: number };
-
-// ── Action meta ────────────────────────────────────────────────────────────────
-
-type ActionMeta = { label: string; icon: React.ElementType; color: string; bg: string };
-const ACTION_META: Record<RecoveryActionType, ActionMeta> = {
-  CALLED:          { label: 'Called',          icon: PhoneCall,     color: 'text-blue-600',   bg: 'bg-blue-50'   },
-  VISITED:         { label: 'Visited',         icon: MapPin,        color: 'text-violet-600', bg: 'bg-violet-50' },
-  PROMISE_TO_PAY:  { label: 'Promise to Pay',  icon: HandCoins,     color: 'text-emerald-600',bg: 'bg-emerald-50'},
-  REFUSED:         { label: 'Refused',         icon: XCircle,       color: 'text-red-600',    bg: 'bg-red-50'    },
-  LEGAL_WARNING:   { label: 'Legal Warning',   icon: AlertOctagon,  color: 'text-orange-600', bg: 'bg-orange-50' },
-};
-const ACTION_TYPES = Object.keys(ACTION_META) as RecoveryActionType[];
-
-// ── Collection Stage ───────────────────────────────────────────────────────────
-
-type CollectionStage =
-  | 'soft_overdue' | 'overdue' | 'critical'
-  | 'called' | 'visited' | 'promised' | 'broken_promise' | 'refused' | 'legal';
-
-const STAGE_META: Record<CollectionStage, { label: string; color: string; bg: string; dot: string }> = {
-  soft_overdue:   { label: '1–7d',           color: 'text-yellow-700', bg: 'bg-yellow-50',  dot: 'bg-yellow-400' },
-  overdue:        { label: '8–30d',          color: 'text-orange-700', bg: 'bg-orange-50',  dot: 'bg-orange-500' },
-  critical:       { label: '30d+',           color: 'text-red-700',    bg: 'bg-red-100',    dot: 'bg-red-600'    },
-  called:         { label: 'Called',         color: 'text-blue-700',   bg: 'bg-blue-50',    dot: 'bg-blue-400'   },
-  visited:        { label: 'Visited',        color: 'text-violet-700', bg: 'bg-violet-50',  dot: 'bg-violet-400' },
-  promised:       { label: 'Promised',       color: 'text-emerald-700',bg: 'bg-emerald-50', dot: 'bg-emerald-400'},
-  broken_promise: { label: 'Broken Promise', color: 'text-rose-700',   bg: 'bg-rose-50',    dot: 'bg-rose-600'   },
-  refused:        { label: 'Refused',        color: 'text-red-700',    bg: 'bg-red-50',     dot: 'bg-red-400'    },
-  legal:          { label: 'Legal Warning',  color: 'text-gray-700',   bg: 'bg-gray-100',   dot: 'bg-gray-500'   },
-};
-
-function getStage(item: OverdueWithStageItem): CollectionStage {
-  const { last_action_type, days_overdue, last_promise_date } = item;
-  if (last_action_type === 'LEGAL_WARNING') return 'legal';
-  if (last_action_type === 'REFUSED')       return 'refused';
-  if (last_action_type === 'VISITED')       return 'visited';
-  if (last_action_type === 'CALLED')        return 'called';
-  if (last_action_type === 'PROMISE_TO_PAY') {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const pDate = last_promise_date ? new Date(last_promise_date) : null;
-    return (pDate && pDate < today) ? 'broken_promise' : 'promised';
-  }
-  if (days_overdue <= 7)  return 'soft_overdue';
-  if (days_overdue <= 30) return 'overdue';
-  return 'critical';
-}
-
-function CollectionStageBadge({ stage }: { stage: CollectionStage }) {
-  const m = STAGE_META[stage];
-  return (
-    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${m.bg} ${m.color}`}>
-      {m.label}
-    </span>
-  );
-}
-
-// ── Log Action Modal ───────────────────────────────────────────────────────────
-
-function LogModal({ installmentId, onClose }: { installmentId: string; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [type, setType]           = useState<RecoveryActionType>('CALLED');
-  const [note, setNote]           = useState('');
-  const [promiseDate, setPromise] = useState('');
-
-  const { mutate, isPending } = useMutation({
-    mutationFn: () => recoveryApi.create({
-      installmentId,
-      type,
-      note: note.trim() || undefined,
-      promiseDate: (type === 'PROMISE_TO_PAY' && promiseDate) ? promiseDate : undefined,
-    }),
-    onSuccess: () => {
-      toast.success('Action logged');
-      qc.invalidateQueries({ queryKey: ['recovery', installmentId] });
-      qc.invalidateQueries({ queryKey: ['promises-all'] });
-      qc.invalidateQueries({ queryKey: ['promises-due'] });
-      qc.invalidateQueries({ queryKey: ['overdue-stage'] });
-      qc.invalidateQueries({ queryKey: ['installments-recovery'] });
-      onClose();
-    },
-    onError: (e) => toast.error(getErrorMessage(e, 'Failed to log action')),
-  });
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Log Recovery Action</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XCircle size={18} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Action Type</label>
-            <div className="grid grid-cols-2 gap-2">
-              {ACTION_TYPES.map((t) => {
-                const m = ACTION_META[t];
-                const Icon = m.icon;
-                return (
-                  <button key={t} onClick={() => setType(t)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition ${
-                      type === t
-                        ? `${m.bg} ${m.color} border-transparent`
-                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}>
-                    <Icon size={14} />
-                    {m.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {type === 'PROMISE_TO_PAY' && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Promise Date</label>
-              <input
-                type="date"
-                value={promiseDate}
-                onChange={(e) => setPromise(e.target.value)}
-                min={new Date().toISOString().slice(0, 10)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Note (optional)</label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-              autoFocus
-              placeholder="Any additional details…"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-1">
-            <button onClick={onClose}
-              className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
-              Cancel
-            </button>
-            <button onClick={() => mutate()} disabled={isPending}
-              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2">
-              {isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-              Log Action
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Recovery Panel ─────────────────────────────────────────────────────────────
 
@@ -288,7 +133,7 @@ function RecoveryPanel({ inst, stageData, lateFeeConfig }: { inst: Installment; 
         )}
       </div>
 
-      {showModal && <LogModal installmentId={inst.id} onClose={() => setShowModal(false)} />}
+      {showModal && <RecoveryLogModal installmentId={inst.id} onClose={() => setShowModal(false)} />}
 
       <ConfirmDialog
         open={removeConfirm.open}

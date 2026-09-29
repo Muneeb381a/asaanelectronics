@@ -11,7 +11,14 @@ export interface PortfolioRow {
   notes: string | null;
   installment_id: string | null;
   installment_amount: string | null;
+  installment_remaining: string | null;
   installment_status: string | null;
+  days_overdue: number | null;
+  last_payment_amount: string | null;
+  last_payment_date: string | null;
+  last_action_type: string | null;
+  last_action_date: string | null;
+  last_promise_date: string | null;
 }
 
 export interface DeductionRow {
