@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-  XCircle, Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Clock, LayoutList, Map as MapIcon,
+  PhoneCall, MapPin, Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Clock, LayoutList, Map as MapIcon,
   CalendarClock, AlertTriangle, CalendarCheck,
 } from 'lucide-react';
 import { installmentsApi, type Installment, type OverdueWithStageItem } from '../api/installments.api.ts';
@@ -12,7 +12,7 @@ import { sellersApi } from '../api/sellers.api.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import { fmtDate } from '../utils/dateFormat.ts';
 import RecoveryLogModal from '../components/RecoveryLogModal.tsx';
-import { ACTION_META, type CollectionStage, STAGE_META, getStage, CollectionStageBadge } from '../utils/collectionStage.tsx';
+import { ACTION_META, STAGE_META, getStage, CollectionStageBadge } from '../utils/collectionStage.tsx';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
