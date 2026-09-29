@@ -37,6 +37,17 @@ export interface StaffBalance {
   pendingHandover: PendingHandoverRef | null;
 }
 
+export interface HandoverItem {
+  id: string;
+  kind: 'PAYMENT' | 'CASH_SALE';
+  amount: string;
+  date: string;
+  customer_name: string | null;
+  customer_phone: string | null;
+  product_name: string | null;
+  note: string | null;
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const handoversApi = {
@@ -68,4 +79,7 @@ export const handoversApi = {
 
   directReceive: (data: { staffId: string; amount: number; note?: string }): Promise<Handover> =>
     api.post('/handovers/direct-receive', data).then(unwrap<Handover>),
+
+  items: (id: string): Promise<HandoverItem[]> =>
+    api.get(`/handovers/${id}/items`).then(unwrap<HandoverItem[]>),
 };

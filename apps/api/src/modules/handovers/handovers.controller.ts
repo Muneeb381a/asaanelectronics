@@ -14,6 +14,13 @@ export async function listHandovers(req: AuthRequest, res: Response) {
   success(res, await svc.list(req.user!.sellerId!, effectiveStaffId, date));
 }
 
+// GET /handovers/:id/items — itemized breakdown (which payments/cash-sales
+// this handover covers). Staff can only fetch their own handover's items.
+export async function getHandoverItems(req: AuthRequest, res: Response) {
+  const staffId = req.user!.role === 'SELLER_STAFF' ? req.user!.userId : undefined;
+  success(res, await svc.getItems(req.params['id']!, req.user!.sellerId!, staffId));
+}
+
 export async function getCollectedToday(req: AuthRequest, res: Response) {
   const staffId = req.user!.role === 'SELLER_STAFF' ? req.user!.userId : (req.query['staffId'] as string);
   if (!staffId) return success(res, { collected: 0 });

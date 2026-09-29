@@ -714,6 +714,26 @@ export const staffHandovers = pgTable('staff_handovers', {
   index('idx_handovers_status').on(t.status),
 ]);
 
+// Itemized breakdown of a handover: exactly which payment/cash-sale rows it
+// covers, so the owner can see who a handover's cash actually came from
+// instead of just a lump total. Selected greedily (oldest-first) at handover
+// creation from that staff member's not-yet-claimed CASH rows — see
+// handovers.service.ts. Not a unique/FK-enforced 1:1 with payments/cash_sales
+// on purpose: if a handover is disputed its items stay for the audit trail,
+// and the underlying payment becomes selectable again by a later handover.
+export const handoverItems = pgTable('handover_items', {
+  id:         text('id').primaryKey().$defaultFn(() => randomUUID()),
+  handoverId: text('handover_id').notNull().references(() => staffHandovers.id, { onDelete: 'cascade' }),
+  paymentId:  text('payment_id').references(() => payments.id, { onDelete: 'cascade' }),
+  cashSaleId: text('cash_sale_id').references(() => cashSales.id, { onDelete: 'cascade' }),
+  amount:     decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_handover_items_handover').on(t.handoverId),
+  index('idx_handover_items_payment').on(t.paymentId),
+  index('idx_handover_items_cash_sale').on(t.cashSaleId),
+]);
+
 export const whatsappTemplates = pgTable('whatsapp_templates', {
   id:        text('id').primaryKey().$defaultFn(() => randomUUID()),
   sellerId:  text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),

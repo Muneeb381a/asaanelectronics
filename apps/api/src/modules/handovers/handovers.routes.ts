@@ -5,7 +5,7 @@ import { authenticate, requireSeller, requireOwner } from '../../middleware/auth
 import {
   listHandovers, getCollectedToday, createHandover,
   confirmHandover, disputeHandover, reopenHandover,
-  getPendingBalances, getMyBalance,
+  getPendingBalances, getMyBalance, getHandoverItems,
   directReceiveHandover,
 } from './handovers.controller.js';
 
@@ -17,6 +17,7 @@ router.get('/',                    listHandovers);
 router.get('/collected-today',     getCollectedToday);
 router.get('/pending-balances',    requireOwner, getPendingBalances);  // all staff balances
 router.get('/my-balance',          getMyBalance);                       // own balance (staff or owner)
+router.get('/:id/items',           getHandoverItems);                   // itemized breakdown
 
 // ── Staff actions ─────────────────────────────────────────────────────────────
 router.post('/',                   validate(createHandoverSchema), createHandover);                    // staff submits handover

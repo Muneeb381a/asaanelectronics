@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { staffHandovers, users } from '../../db/schema.js';
+import { staffHandovers, handoverItems, users } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 
 export interface StaffBalanceRow {
@@ -18,7 +18,102 @@ export interface StaffBalanceRow {
   } | null;
 }
 
+export interface HandoverItemRow {
+  id: string;
+  kind: 'PAYMENT' | 'CASH_SALE';
+  amount: string;
+  date: string;
+  customer_name: string | null;
+  customer_phone: string | null;
+  product_name: string | null;
+  note: string | null;
+}
+
 export class HandoversService {
+  // Called only when a handover is CONFIRMED (create()/PENDING never links —
+  // a handover isn't "settled" until the owner confirms it, so there's never
+  // anything to un-link on dispute). Greedily claims that staff member's
+  // oldest not-yet-claimed CASH payments/cash-sales, oldest first, until
+  // their sum reaches targetAmount — so the itemized breakdown always shows
+  // real, specific payments rather than a typed total.
+  private async linkCoveredRows(sellerId: string, staffId: string, handoverId: string, targetAmount: number) {
+    if (targetAmount <= 0) return;
+
+    const rows = await db.execute<{ kind: 'PAYMENT' | 'CASH_SALE'; id: string; amount: string; date: string }>(sql`
+      (
+        SELECT 'PAYMENT' AS kind, p.id, p.amount, p.paid_on AS date
+        FROM payments p
+        JOIN installments i ON i.id = p.installment_id
+        JOIN customers c ON c.id = i.customer_id
+        WHERE p.collected_by = ${staffId}
+          AND c.seller_id = ${sellerId}
+          AND p.deleted_at IS NULL
+          AND p.method = 'CASH'
+          AND NOT EXISTS (SELECT 1 FROM handover_items hi WHERE hi.payment_id = p.id)
+      )
+      UNION ALL
+      (
+        SELECT 'CASH_SALE' AS kind, cs.id, cs.amount, cs.created_at AS date
+        FROM cash_sales cs
+        WHERE cs.sold_by_user_id = ${staffId}
+          AND cs.seller_id = ${sellerId}
+          AND cs.method = 'CASH'
+          AND NOT EXISTS (SELECT 1 FROM handover_items hi WHERE hi.cash_sale_id = cs.id)
+      )
+      ORDER BY date ASC
+    `);
+
+    const toInsert: Array<{ handoverId: string; paymentId?: string; cashSaleId?: string; amount: string }> = [];
+    let remaining = targetAmount;
+    for (const r of rows) {
+      if (remaining <= 0) break;
+      toInsert.push({
+        handoverId,
+        paymentId:  r.kind === 'PAYMENT'   ? r.id : undefined,
+        cashSaleId: r.kind === 'CASH_SALE' ? r.id : undefined,
+        amount:     r.amount,
+      });
+      remaining -= Number(r.amount);
+    }
+
+    if (toInsert.length) await db.insert(handoverItems).values(toInsert);
+  }
+
+  // Itemized breakdown of what a (confirmed) handover covers — which
+  // customers/cash-sales the cash actually came from, instead of a lump sum.
+  async getItems(handoverId: string, sellerId: string, staffId?: string): Promise<HandoverItemRow[]> {
+    const handover = await db.query.staffHandovers.findFirst({
+      where: and(
+        eq(staffHandovers.id, handoverId),
+        eq(staffHandovers.sellerId, sellerId),
+        ...(staffId ? [eq(staffHandovers.staffId, staffId)] : []),
+      ),
+      columns: { id: true },
+    });
+    if (!handover) throw new AppError('Handover not found', 404);
+
+    const rows = await db.execute<Record<string, unknown>>(sql`
+      SELECT
+        hi.id, hi.amount,
+        CASE WHEN hi.payment_id IS NOT NULL THEN 'PAYMENT' ELSE 'CASH_SALE' END AS kind,
+        COALESCE(p.paid_on, cs.created_at)   AS date,
+        COALESCE(c.name, cs.customer_name)   AS customer_name,
+        COALESCE(c.phone, cs.customer_phone) AS customer_phone,
+        COALESCE(pr.name, pr2.name)          AS product_name,
+        COALESCE(p.note, cs.note)            AS note
+      FROM handover_items hi
+      LEFT JOIN payments p       ON p.id = hi.payment_id
+      LEFT JOIN installments i   ON i.id = p.installment_id
+      LEFT JOIN customers c      ON c.id = i.customer_id
+      LEFT JOIN products pr      ON pr.id = i.product_id
+      LEFT JOIN cash_sales cs    ON cs.id = hi.cash_sale_id
+      LEFT JOIN products pr2     ON pr2.id = cs.product_id
+      WHERE hi.handover_id = ${handoverId}
+      ORDER BY date ASC
+    `);
+    return rows as unknown as HandoverItemRow[];
+  }
+
   async list(sellerId: string, staffId?: string, date?: string) {
     type Row = {
       id: string; sellerId: string; staffId: string;
@@ -225,6 +320,7 @@ export class HandoversService {
       })
       .where(eq(staffHandovers.id, id))
       .returning();
+    await this.linkCoveredRows(sellerId, existing.staffId, id, body.confirmedAmount);
     return row!;
   }
 
@@ -282,6 +378,7 @@ export class HandoversService {
         })
         .where(eq(staffHandovers.id, pending.id))
         .returning();
+      await this.linkCoveredRows(sellerId, body.staffId, pending.id, body.amount);
       return row!;
     }
 
@@ -299,6 +396,7 @@ export class HandoversService {
         handoverDate:    new Date(),
       })
       .returning();
+    await this.linkCoveredRows(sellerId, body.staffId, row!.id, body.amount);
     return row!;
   }
 

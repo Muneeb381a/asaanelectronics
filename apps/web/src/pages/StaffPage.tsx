@@ -6,7 +6,7 @@ import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermiss
 import { agentPortfolioApi, type PortfolioRow } from '../api/agentPortfolio.api.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { attendanceApi } from '../api/attendance.api.ts';
-import { handoversApi, type Handover, type StaffBalance } from '../api/handovers.api.ts';
+import { handoversApi, type Handover, type StaffBalance, type HandoverItem } from '../api/handovers.api.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { CardSkeleton, EmptyState, RowSkeleton } from '../components/ui/Skeleton.tsx';
@@ -1079,6 +1079,124 @@ function ConfirmHandoverModal({ handover, onClose }: { handover: Handover; onClo
 }
 
 // ── Handovers section (both staff + owner views) ──────────────────────────────
+// One row of the "who paid what" breakdown inside an expanded handover — only
+// CONFIRMED handovers have items (see handovers.service.ts#linkCoveredRows,
+// which links the covered payments/cash-sales at confirm time).
+function HandoverItemRow({ item }: { item: HandoverItem }) {
+  const isPayment = item.kind === 'PAYMENT';
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isPayment ? 'bg-blue-50' : 'bg-amber-50'}`}>
+        {isPayment ? <CreditCard size={13} className="text-blue-500" /> : <ShoppingCart size={13} className="text-amber-500" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-gray-800 truncate">{item.customer_name ?? 'Walk-in'}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          {item.customer_phone ?? (isPayment ? '—' : 'Cash Sale')}
+          {item.product_name ? ` · ${item.product_name}` : ''}
+          {item.note ? ` · ${item.note}` : ''}
+        </p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-xs font-bold text-gray-900">{pkr(Number(item.amount))}</p>
+        <p className="text-[9px] text-gray-400 mt-0.5">{fmtDateShort(item.date)}</p>
+      </div>
+    </div>
+  );
+}
+
+function HandoverRow({ h, isOwner, onReview, onReopen, reopenPending }: {
+  h: Handover; isOwner: boolean; onReview: () => void; onReopen: () => void; reopenPending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const badge    = STATUS_BADGE[h.status] ?? STATUS_BADGE.PENDING;
+  const shortfall = h.confirmedAmount != null
+    ? Number(h.confirmedAmount) - Number(h.handedAmount)
+    : null;
+
+  const { data: items = [], isLoading: loadingItems } = useQuery({
+    queryKey: ['handover-items', h.id],
+    queryFn: () => handoversApi.items(h.id),
+    enabled: open && h.status === 'CONFIRMED',
+    staleTime: 5 * 60_000,
+  });
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"
+      style={{ borderLeft: `4px solid ${h.status === 'DISPUTED' ? '#EF4444' : h.status === 'PENDING' ? '#E4920C' : '#16A85F'}` }}>
+      <div className="flex items-start gap-3 p-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+            {isOwner && <p className="text-sm font-bold text-gray-900">{h.staffName}</p>}
+            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
+              {badge.icon} {badge.label}
+            </span>
+            <p className="text-[10px] text-gray-400">
+              {new Date(h.handoverDate).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
+            </p>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-base font-bold text-gray-900">
+              {pkr(Number(h.handedAmount))}
+            </span>
+            {h.confirmedAmount && (
+              <span className={`text-xs font-semibold ${shortfall != null && shortfall < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                → {pkr(Number(h.confirmedAmount))}
+                {shortfall != null && Math.abs(shortfall) >= 1 && (
+                  <span className="ml-1 text-[10px]">({shortfall < 0 ? '-' : '+'}{pkr(Math.abs(shortfall))})</span>
+                )}
+              </span>
+            )}
+          </div>
+          {h.note && <p className="text-[11px] text-gray-400 mt-1 italic truncate">"{h.note}"</p>}
+          {h.ownerNote && <p className="text-[11px] text-red-500 mt-0.5 italic truncate">Owner: "{h.ownerNote}"</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5 shrink-0">
+          {isOwner && h.status === 'PENDING' && (
+            <button
+              onClick={onReview}
+              className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">
+              Review
+            </button>
+          )}
+          {isOwner && h.status === 'DISPUTED' && (
+            <button
+              onClick={onReopen}
+              disabled={reopenPending}
+              title="Reopen as Pending"
+              className="px-3 py-1.5 text-xs font-bold text-amber-700 border border-amber-200 rounded-xl hover:bg-amber-50 transition flex items-center gap-1.5 disabled:opacity-50">
+              <RotateCcw size={10} /> Reopen
+            </button>
+          )}
+        </div>
+      </div>
+
+      {h.status === 'CONFIRMED' && (
+        <>
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 py-2 border-t border-gray-50 text-[11px] font-semibold text-gray-500 hover:bg-gray-50 transition">
+            <span>{open ? 'Chhupao' : 'Kis kis se payment aayi — dikhao'}</span>
+            {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+          {open && (
+            <div className="px-4 pb-3">
+              {loadingItems ? (
+                <RowSkeleton rows={2} />
+              ) : items.length === 0 ? (
+                <p className="text-[11px] text-gray-400 py-2">Iske liye koi itemized breakdown nahi mila (purana handover ho sakta hai).</p>
+              ) : (
+                items.map((it) => <HandoverItemRow key={it.id} item={it} />)
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function HandoversSection() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
@@ -1202,66 +1320,16 @@ function HandoversSection() {
       ) : (
         <>
           <div className="space-y-2">
-            {displayed.map((h) => {
-              const badge    = STATUS_BADGE[h.status] ?? STATUS_BADGE.PENDING;
-              const shortfall = h.confirmedAmount != null
-                ? Number(h.confirmedAmount) - Number(h.handedAmount)
-                : null;
-              return (
-                <div key={h.id}
-                  className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"
-                  style={{ borderLeft: `4px solid ${h.status === 'DISPUTED' ? '#EF4444' : h.status === 'PENDING' ? '#E4920C' : '#16A85F'}` }}>
-                  <div className="flex items-start gap-3 p-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                        {isOwner && <p className="text-sm font-bold text-gray-900">{h.staffName}</p>}
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
-                          {badge.icon} {badge.label}
-                        </span>
-                        <p className="text-[10px] text-gray-400">
-                          {new Date(h.handoverDate).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
-                        </p>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-base font-bold text-gray-900"
-                         >
-                          {pkr(Number(h.handedAmount))}
-                        </span>
-                        {h.confirmedAmount && (
-                          <span className={`text-xs font-semibold ${shortfall != null && shortfall < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                            → {pkr(Number(h.confirmedAmount))}
-                            {shortfall != null && Math.abs(shortfall) >= 1 && (
-                              <span className="ml-1 text-[10px]">({shortfall < 0 ? '-' : '+'}{pkr(Math.abs(shortfall))})</span>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                      {h.note && <p className="text-[11px] text-gray-400 mt-1 italic truncate">"{h.note}"</p>}
-                      {h.ownerNote && <p className="text-[11px] text-red-500 mt-0.5 italic truncate">Owner: "{h.ownerNote}"</p>}
-                    </div>
-
-                    <div className="flex flex-col gap-1.5 shrink-0">
-                      {isOwner && h.status === 'PENDING' && (
-                        <button
-                          onClick={() => setConfirmTarget(h)}
-                          className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">
-                          Review
-                        </button>
-                      )}
-                      {isOwner && h.status === 'DISPUTED' && (
-                        <button
-                          onClick={() => reopenMutation.mutate(h.id)}
-                          disabled={reopenMutation.isPending}
-                          title="Reopen as Pending"
-                          className="px-3 py-1.5 text-xs font-bold text-amber-700 border border-amber-200 rounded-xl hover:bg-amber-50 transition flex items-center gap-1.5 disabled:opacity-50">
-                          <RotateCcw size={10} /> Reopen
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {displayed.map((h) => (
+              <HandoverRow
+                key={h.id}
+                h={h}
+                isOwner={isOwner}
+                onReview={() => setConfirmTarget(h)}
+                onReopen={() => reopenMutation.mutate(h.id)}
+                reopenPending={reopenMutation.isPending}
+              />
+            ))}
           </div>
           {handovers.length > 8 && (
             <button
