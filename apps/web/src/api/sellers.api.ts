@@ -23,6 +23,7 @@ export interface Seller {
   shopName: string;
   phone: string;
   address: string | null;
+  logoUrl: string | null;
   plan: string;
   trialEndsAt: string | null;
   createdAt: string;
@@ -68,4 +69,13 @@ export const sellersApi = {
 
   removePaymentAccount: (id: string) =>
     api.delete(`/sellers/me/payment-accounts/${id}`),
+
+  uploadLogo: (file: Blob) => {
+    const fd = new FormData();
+    fd.append('file', file, 'logo.png');
+    return api.post<{ data: Seller }>('/sellers/me/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(unwrap<Seller>);
+  },
+
+  removeLogo: () =>
+    api.delete<{ data: Seller }>('/sellers/me/logo').then(unwrap<Seller>),
 };

@@ -63,6 +63,18 @@ export class SellersService {
     return updated;
   }
 
+  async setLogo(sellerId: string, logoUrl: string) {
+    const [updated] = await db.update(sellers).set({ logoUrl }).where(eq(sellers.id, sellerId)).returning();
+    if (!updated) throw new AppError('Shop not found', 404);
+    return updated;
+  }
+
+  async removeLogo(sellerId: string) {
+    const [updated] = await db.update(sellers).set({ logoUrl: null }).where(eq(sellers.id, sellerId)).returning();
+    if (!updated) throw new AppError('Shop not found', 404);
+    return updated;
+  }
+
   async getMe(sellerId: string) {
     const seller = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId) });
     if (!seller) throw new AppError('Shop not found', 404);

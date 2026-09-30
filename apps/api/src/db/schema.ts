@@ -69,6 +69,7 @@ export const sellers = pgTable('sellers', {
   shopName:      text('shop_name').notNull(),
   phone:         text('phone').notNull(),
   address:       text('address'),
+  logoUrl:       text('logo_url'),
   plan:          planEnum('plan').default('TRIAL').notNull(),
   trialEndsAt:   timestamp('trial_ends_at'),
   planExpiresAt: timestamp('plan_expires_at'),

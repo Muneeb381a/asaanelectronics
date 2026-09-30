@@ -274,6 +274,87 @@ function PreferencesCard({ shop }: { shop: Seller | undefined }) {
    PreferencesCard's timezone toggle above.
 ──────────────────────────────────────────────────────────────────────────── */
 
+// Resize a logo in-browser before upload, keeping transparency (unlike the
+// CNIC/document compressor in CustomerForm.tsx, which flattens onto white —
+// fine for scans, wrong for a logo that should sit on a colored header).
+async function compressLogo(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = document.createElement('img') as HTMLImageElement;
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX_DIM = 480;
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        if (w > h) { h = Math.round((h * MAX_DIM) / w); w = MAX_DIM; }
+        else        { w = Math.round((w * MAX_DIM) / h); h = MAX_DIM; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Compression failed')), 'image/png');
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not load image')); };
+    img.src = url;
+  });
+}
+
+function LogoCard({ shop }: { shop: Seller | undefined }) {
+  const qc = useQueryClient();
+  const [uploading, setUploading] = useState(false);
+
+  const removeMutation = useMutation({
+    mutationFn: () => sellersApi.removeLogo(),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['shop-me'] }); toast.success('Logo hata diya gaya'); },
+    onError: (e) => toast.error(getErrorMessage(e, 'Hataya nahi ja saka')),
+  });
+
+  async function handleFile(file: File) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Sirf JPG, PNG, ya WEBP allowed hai');
+      return;
+    }
+    setUploading(true);
+    try {
+      const compressed = await compressLogo(file);
+      await sellersApi.uploadLogo(compressed);
+      void qc.invalidateQueries({ queryKey: ['shop-me'] });
+      toast.success('Logo upload ho gaya');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Upload nahi hua'));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (!shop) return null;
+  return (
+    <Card>
+      <CardHeader icon={Store} tone="slate" title="Shop Logo" subtitle="Receipts, bills, aur agreements par yehi logo print hota hai" />
+      <div className="p-5 sm:p-6 flex items-center gap-4">
+        <div className="w-20 h-20 rounded-2xl ring-1 ring-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+          {shop.logoUrl ? <img src={shop.logoUrl} alt="Shop logo" className="w-full h-full object-contain" /> : <Store size={24} className="text-slate-300" />}
+        </div>
+        <div className="flex items-center gap-2">
+          <label className={`${btnGhost} cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={uploading}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }} />
+            {uploading ? 'Upload ho raha…' : shop.logoUrl ? 'Badlen' : 'Upload karein'}
+          </label>
+          {shop.logoUrl && (
+            <button onClick={() => removeMutation.mutate()} disabled={removeMutation.isPending}
+              className="text-xs font-semibold text-red-500 hover:text-red-600 px-2 disabled:opacity-50">
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function AppearanceTab({ shop }: { shop: Seller | undefined }) {
   const qc = useQueryClient();
   const currentTheme = shop?.settings?.theme ?? 'cobalt';
@@ -294,6 +375,7 @@ function AppearanceTab({ shop }: { shop: Seller | undefined }) {
   if (!shop) return null;
   return (
     <div className="space-y-5">
+      <LogoCard shop={shop} />
       <Card>
         <CardHeader icon={Palette} tone="violet" title="Color Theme" subtitle="Sab staff members ko yehi color scheme dikhega — foran apply hota hai" />
         <div className="p-5 sm:p-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
