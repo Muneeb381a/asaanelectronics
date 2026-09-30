@@ -31,6 +31,7 @@ const schema = z.object({
   VERCEL_PREVIEW_SCOPE:   z.string().max(100).optional(),
   REQUEST_SIGNING_SECRET: z.string().min(16).optional(),
   TURNSTILE_SECRET_KEY:  z.string().optional(),
+  SENTRY_DSN:            z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
 });

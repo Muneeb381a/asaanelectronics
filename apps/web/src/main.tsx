@@ -7,6 +7,9 @@ import { friendlyErrorMap, applyFriendlyZodMessages } from '@assaan/shared';
 import App from './App.tsx';
 import './index.css';
 import { initAppearance } from './utils/themes.ts';
+import { initSentry } from './utils/sentry.ts';
+
+initSentry();
 
 // Readable validation messages for both local form schemas and shared schemas.
 z.setErrorMap(friendlyErrorMap);

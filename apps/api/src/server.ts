@@ -1,3 +1,4 @@
+import { captureError } from './config/sentry.js'; // must import first — see file comment
 import { env } from './config/env.js';
 import app from './app.js';
 
@@ -19,9 +20,11 @@ process.on('SIGINT',  () => shutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection]', reason);
+  captureError(reason);
 });
 
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
+  captureError(err);
   process.exit(1);
 });

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { isAllowedOrigin } from '../config/cors.js';
+import { captureError } from '../config/sentry.js';
 
 export class AppError extends Error {
   constructor(
@@ -48,6 +49,7 @@ export function errorMiddleware(
     const pg = pgErrorMessage(err.code);
     if (pg) {
       console.error(`[DB error ${err.code}]`, err.message);
+      if (pg.status >= 500) captureError(err);
       return res.status(pg.status).json({ success: false, data: null, error: pg.message });
     }
   }
@@ -67,5 +69,6 @@ export function errorMiddleware(
   }
 
   console.error('[Unhandled error]', { message: err.message, code: (err as Error & { code?: string }).code, stack: err.stack });
+  captureError(err);
   res.status(500).json({ success: false, data: null, error: 'Internal server error' });
 }

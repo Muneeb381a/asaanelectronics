@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { captureError } from '../utils/sentry.ts';
 
 type State = { error: Error | null };
 
@@ -12,6 +13,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[UI crash]', error, info.componentStack);
+    captureError(error, { componentStack: info.componentStack ?? undefined });
   }
 
   override render() {

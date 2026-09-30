@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/auth.store.ts';
 import { usePortalStore } from '../store/portal.store.ts';
 import DashboardLayout from '../layouts/DashboardLayout.tsx';
 import OwnerLayout from '../layouts/OwnerLayout.tsx';
+import ErrorBoundary from '../components/ErrorBoundary.tsx';
 
 // ── Lazy page imports ─────────────────────────────────────────────────────────
 // Each page becomes its own JS chunk, loaded only when first navigated to.
@@ -56,8 +57,11 @@ function PageLoader() {
   );
 }
 
+// Each route gets its own error boundary so a crash on one page doesn't blank
+// the whole app (nav, sidebar, everything) — only App.tsx's outer boundary
+// used to exist, catching layout-level crashes too but nothing finer-grained.
 function S({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+  return <ErrorBoundary><Suspense fallback={<PageLoader />}>{children}</Suspense></ErrorBoundary>;
 }
 
 // ── Route guards ──────────────────────────────────────────────────────────────

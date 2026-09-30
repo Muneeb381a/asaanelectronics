@@ -9,6 +9,8 @@ export class ExportsService {
       installmentsData,
       productsData,
       expensesData,
+      paymentsData,
+      cashSalesData,
     ] = await Promise.all([
       db.select({
         id: customers.id, name: customers.name, phone: customers.phone,
@@ -43,6 +45,23 @@ export class ExportsService {
         description: expenses.description, date: expenses.date, createdAt: expenses.createdAt,
       }).from(expenses)
         .where(eq(expenses.sellerId, sellerId)),
+
+      db.select({
+        id: payments.id, installmentId: payments.installmentId, amount: payments.amount,
+        paidOn: payments.paidOn, method: payments.method, note: payments.note,
+        isDownPayment: payments.isDownPayment, receiptNumber: payments.receiptNumber,
+      }).from(payments)
+        .innerJoin(installments, eq(payments.installmentId, installments.id))
+        .innerJoin(customers, eq(installments.customerId, customers.id))
+        .where(and(eq(customers.sellerId, sellerId), isNull(payments.deletedAt))),
+
+      db.select({
+        id: cashSales.id, productId: cashSales.productId, quantity: cashSales.quantity,
+        amount: cashSales.amount, method: cashSales.method, customerName: cashSales.customerName,
+        customerPhone: cashSales.customerPhone, imeiNumber: cashSales.imeiNumber,
+        note: cashSales.note, createdAt: cashSales.createdAt,
+      }).from(cashSales)
+        .where(eq(cashSales.sellerId, sellerId)),
     ]);
 
     return {
@@ -52,6 +71,8 @@ export class ExportsService {
       installments: installmentsData,
       products:     productsData,
       expenses:     expensesData,
+      payments:     paymentsData,
+      cashSales:    cashSalesData,
     };
   }
 }
