@@ -6,6 +6,10 @@ export interface AttendanceStatus {
   clockIn:  string | null;
   clockOut: string | null;
   notes:    string | null;
+  clockInLat:  number | null;
+  clockInLng:  number | null;
+  clockOutLat: number | null;
+  clockOutLng: number | null;
 }
 
 export interface AttendanceRecord {
@@ -16,6 +20,10 @@ export interface AttendanceRecord {
   clockIn:  string;
   clockOut: string | null;
   notes:    string | null;
+  clockInLat:  number | null;
+  clockInLng:  number | null;
+  clockOutLat: number | null;
+  clockOutLng: number | null;
   durationMin: number | null;
 }
 
@@ -31,8 +39,10 @@ export interface AttendanceSummary {
 }
 
 export const attendanceApi = {
-  clockIn:   () => api.post('/attendance/clock-in').then((r) => r.data.data as AttendanceRecord),
-  clockOut:  (notes?: string) => api.post('/attendance/clock-out', { notes }).then((r) => r.data.data as AttendanceRecord),
+  clockIn:   (coords?: { lat: number; lng: number }) =>
+    api.post('/attendance/clock-in', coords ?? {}).then((r) => r.data.data as AttendanceRecord),
+  clockOut:  (notes?: string, coords?: { lat: number; lng: number }) =>
+    api.post('/attendance/clock-out', { notes, ...coords }).then((r) => r.data.data as AttendanceRecord),
   getStatus: () => api.get('/attendance/status').then((r) => r.data.data as AttendanceStatus),
   getByMonth: (year: number, month: number) =>
     api.get<{ data: AttendanceRecord[] }>(`/attendance/monthly?year=${year}&month=${month}`).then((r) => r.data.data),

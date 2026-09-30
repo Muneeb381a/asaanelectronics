@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark, Briefcase, UserCheck, UserMinus, Calculator, MinusCircle, ClipboardList, Receipt } from 'lucide-react';
 import { expenseClaimsApi, type ExpenseClaim } from '../api/expenseClaims.api.ts';
+import { useGps, GpsBadge } from '../hooks/useGps.tsx';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions, type CollectionEntry, type StaffBriefingRow } from '../api/staff.api.ts';
 import { agentPortfolioApi, type PortfolioRow } from '../api/agentPortfolio.api.ts';
@@ -1598,6 +1599,7 @@ function formatDuration(min: number) {
 
 function AttendanceSection({ isOwner }: { isOwner: boolean }) {
   const qc = useQueryClient();
+  const gps = useGps();
   const now = new Date();
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -1624,7 +1626,7 @@ function AttendanceSection({ isOwner }: { isOwner: boolean }) {
   });
 
   const clockInMut = useMutation({
-    mutationFn: attendanceApi.clockIn,
+    mutationFn: () => attendanceApi.clockIn(gps.status === 'acquired' ? { lat: gps.lat, lng: gps.lng } : undefined),
     onSuccess: () => {
       toast.success('Clocked in!');
       void refetchStatus();
@@ -1635,7 +1637,7 @@ function AttendanceSection({ isOwner }: { isOwner: boolean }) {
   });
 
   const clockOutMut = useMutation({
-    mutationFn: () => attendanceApi.clockOut(),
+    mutationFn: () => attendanceApi.clockOut(undefined, gps.status === 'acquired' ? { lat: gps.lat, lng: gps.lng } : undefined),
     onSuccess: () => {
       toast.success('Clocked out!');
       void refetchStatus();
@@ -1683,6 +1685,10 @@ function AttendanceSection({ isOwner }: { isOwner: boolean }) {
                 <p className="text-xs text-gray-400 mt-1">
                   In: {formatTime(status.clockIn)}
                   {status.clockOut && ` · Out: ${formatTime(status.clockOut)}`}
+                  {status.clockInLat != null && status.clockInLng != null && (
+                    <a href={`https://maps.google.com/?q=${status.clockInLat},${status.clockInLng}`} target="_blank" rel="noreferrer"
+                      className="text-blue-500 underline ml-1.5">location</a>
+                  )}
                 </p>
               )}
             </div>
@@ -1710,6 +1716,7 @@ function AttendanceSection({ isOwner }: { isOwner: boolean }) {
               )}
             </div>
           </div>
+          {!status?.clockOut && <div className="mt-3"><GpsBadge gps={gps} /></div>}
         </div>
 
         {/* Owner: monthly summary + records */}

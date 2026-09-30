@@ -3,13 +3,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ClipboardCheck, Phone, MapPin, Briefcase, CheckCircle2, XCircle,
-  ImageIcon, X, Navigation, AlertCircle, Loader2, WifiOff, RefreshCw, Clock,
+  ImageIcon, X, Loader2, WifiOff, RefreshCw, Clock,
 } from 'lucide-react';
 import { verificationsApi, type QueueCustomer } from '../api/verifications.api.ts';
 import { api } from '../api/client.ts';
 import { avoDb } from '../lib/avoOfflineDb.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { useOfflineSync } from '../hooks/useOfflineSync.ts';
+import { useGps, GpsBadge } from '../hooks/useGps.tsx';
 import toast from 'react-hot-toast';
 
 const VSTATUS = {
@@ -19,57 +20,12 @@ const VSTATUS = {
   REJECTED:     { label: 'Rejected',  cls: 'bg-red-100 text-red-700'      },
 };
 
-type GpsState =
-  | { status: 'acquiring' }
-  | { status: 'acquired'; lat: number; lng: number; accuracy: number }
-  | { status: 'denied'; reason: string };
-
 type ChecklistState = {
   addressVerified: boolean;
   employerVerified: boolean;
   guarantor1Reachable: boolean;
   guarantor2Reachable: boolean;
 };
-
-function useGps() {
-  const [gps, setGps] = useState<GpsState>({ status: 'acquiring' });
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setGps({ status: 'denied', reason: 'GPS not supported on this device' });
-      return;
-    }
-    const id = navigator.geolocation.watchPosition(
-      (pos) => setGps({ status: 'acquired', lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      (err) => setGps({ status: 'denied', reason: err.message }),
-      { enableHighAccuracy: true, timeout: 15000 },
-    );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
-  return gps;
-}
-
-function GpsBadge({ gps }: { gps: GpsState }) {
-  if (gps.status === 'acquiring') return (
-    <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 rounded-xl px-3 py-2">
-      <Loader2 size={13} className="animate-spin" />
-      <span className="text-xs font-medium">Acquiring GPS…</span>
-    </div>
-  );
-  if (gps.status === 'denied') return (
-    <div className="flex items-center gap-1.5 text-red-600 bg-red-50 rounded-xl px-3 py-2">
-      <AlertCircle size={13} />
-      <span className="text-xs font-medium">GPS denied — {gps.reason}</span>
-    </div>
-  );
-  return (
-    <div className="flex items-center gap-1.5 text-green-700 bg-green-50 rounded-xl px-3 py-2">
-      <Navigation size={13} className="fill-green-600" />
-      <span className="text-xs font-medium">GPS locked · ±{Math.round(gps.accuracy)}m</span>
-      <a href={`https://maps.google.com/?q=${gps.lat},${gps.lng}`} target="_blank" rel="noreferrer"
-        className="text-[10px] text-green-600 underline ml-1">View</a>
-    </div>
-  );
-}
 
 interface PhotoResult { previewUrl: string; file: File | null; serverUrl: string | null }
 

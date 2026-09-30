@@ -969,6 +969,10 @@ export const attendance = pgTable('attendance', {
   date:     date('date').notNull(),
   clockIn:  timestamp('clock_in', { withTimezone: true }).notNull().defaultNow(),
   clockOut: timestamp('clock_out', { withTimezone: true }),
+  clockInLat:  decimal('clock_in_lat',  { precision: 10, scale: 7 }),
+  clockInLng:  decimal('clock_in_lng',  { precision: 10, scale: 7 }),
+  clockOutLat: decimal('clock_out_lat', { precision: 10, scale: 7 }),
+  clockOutLng: decimal('clock_out_lng', { precision: 10, scale: 7 }),
   notes:    text('notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (t) => [

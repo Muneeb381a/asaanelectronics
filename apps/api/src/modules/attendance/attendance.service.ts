@@ -8,7 +8,7 @@ function todayDate() {
 }
 
 export class AttendanceService {
-  async clockIn(sellerId: string, userId: string) {
+  async clockIn(sellerId: string, userId: string, coords?: { lat: number; lng: number }) {
     const today = todayDate();
 
     const existing = await db.query.attendance.findFirst({
@@ -21,13 +21,16 @@ export class AttendanceService {
 
     const [record] = await db
       .insert(attendance)
-      .values({ userId, sellerId, date: today })
+      .values({
+        userId, sellerId, date: today,
+        ...(coords && { clockInLat: String(coords.lat), clockInLng: String(coords.lng) }),
+      })
       .returning();
 
     return record;
   }
 
-  async clockOut(sellerId: string, userId: string, notes?: string) {
+  async clockOut(sellerId: string, userId: string, notes?: string, coords?: { lat: number; lng: number }) {
     const today = todayDate();
 
     const record = await db.query.attendance.findFirst({
@@ -44,7 +47,11 @@ export class AttendanceService {
 
     const [updated] = await db
       .update(attendance)
-      .set({ clockOut: new Date(), ...(notes !== undefined && { notes }) })
+      .set({
+        clockOut: new Date(),
+        ...(notes !== undefined && { notes }),
+        ...(coords && { clockOutLat: String(coords.lat), clockOutLng: String(coords.lng) }),
+      })
       .where(eq(attendance.id, record.id))
       .returning();
 
@@ -65,9 +72,13 @@ export class AttendanceService {
     return {
       date: today,
       isClockedIn: !!record && !record.clockOut,
-      clockIn:  record?.clockIn  ?? null,
-      clockOut: record?.clockOut ?? null,
-      notes:    record?.notes    ?? null,
+      clockIn:     record?.clockIn     ?? null,
+      clockOut:    record?.clockOut    ?? null,
+      notes:       record?.notes       ?? null,
+      clockInLat:  record?.clockInLat  ? Number(record.clockInLat)  : null,
+      clockInLng:  record?.clockInLng  ? Number(record.clockInLng)  : null,
+      clockOutLat: record?.clockOutLat ? Number(record.clockOutLat) : null,
+      clockOutLng: record?.clockOutLng ? Number(record.clockOutLng) : null,
     };
   }
 
@@ -78,10 +89,13 @@ export class AttendanceService {
     const rows = await db.execute<{
       id: string; userId: string; userName: string;
       date: string; clock_in: string; clock_out: string | null; notes: string | null;
+      clock_in_lat: string | null; clock_in_lng: string | null;
+      clock_out_lat: string | null; clock_out_lng: string | null;
     }>(sql`
       SELECT
         a.id, a.user_id AS "userId", u.name AS "userName",
-        a.date::text, a.clock_in, a.clock_out, a.notes
+        a.date::text, a.clock_in, a.clock_out, a.notes,
+        a.clock_in_lat, a.clock_in_lng, a.clock_out_lat, a.clock_out_lng
       FROM attendance a
       JOIN users u ON u.id = a.user_id
       WHERE a.seller_id = ${sellerId}
@@ -99,6 +113,10 @@ export class AttendanceService {
       clockIn:  r.clock_in,
       clockOut: r.clock_out,
       notes:    r.notes,
+      clockInLat:  r.clock_in_lat  ? Number(r.clock_in_lat)  : null,
+      clockInLng:  r.clock_in_lng  ? Number(r.clock_in_lng)  : null,
+      clockOutLat: r.clock_out_lat ? Number(r.clock_out_lat) : null,
+      clockOutLng: r.clock_out_lng ? Number(r.clock_out_lng) : null,
       durationMin: r.clock_out
         ? Math.round((new Date(r.clock_out).getTime() - new Date(r.clock_in).getTime()) / 60_000)
         : null,
