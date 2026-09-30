@@ -185,7 +185,7 @@ export default function CashSalesPage() {
       }
       setLastSale(result);
       void openCashSaleBill({
-        shop:     { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
+        shop:     { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address, logoUrl: seller?.logoUrl ?? null, theme: seller?.settings?.theme ?? null },
         customer: { name: result.customerName, phone: result.customerPhone },
         product: result.productName, quantity: result.quantity, amount: result.amount,
         method: result.method, imeiNumber: result.imeiNumber,
@@ -389,7 +389,7 @@ export default function CashSalesPage() {
                     <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition">
                       <button title="Print"
                         onClick={() => void openCashSaleBill({
-                          shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
+                          shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address, logoUrl: seller?.logoUrl ?? null, theme: seller?.settings?.theme ?? null },
                           customer: { name: s.customerName, phone: s.customerPhone },
                           product: s.productName, quantity: s.quantity, amount: s.amount,
                           method: s.method, imeiNumber: s.imeiNumber, note: s.note,
@@ -475,7 +475,7 @@ export default function CashSalesPage() {
                 </div>
                 <div className="flex gap-3 w-full">
                   <button onClick={() => void openCashSaleBill({
-                      shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address },
+                      shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address, logoUrl: seller?.logoUrl ?? null, theme: seller?.settings?.theme ?? null },
                       customer: { name: lastSale.customerName, phone: lastSale.customerPhone },
                       product: lastSale.productName, quantity: lastSale.quantity, amount: lastSale.amount,
                       method: lastSale.method, imeiNumber: lastSale.imeiNumber, note: lastSale.note,

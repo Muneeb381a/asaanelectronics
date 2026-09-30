@@ -282,6 +282,8 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       const receiptPayload: InstallmentReceiptData = {
         shopName:          seller?.shopName ?? 'Receipt',
         shopPhone:         seller?.phone,
+        shopLogoUrl:       seller?.logoUrl ?? null,
+        shopTheme:         seller?.settings?.theme ?? null,
         customerName:      freshInst.customerName,
         customerPhone:     freshInst.customerPhone,
         productName:       freshInst.productName,
@@ -306,6 +308,8 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       const sp: SinglePaymentReceiptData = {
         shopName:          seller?.shopName ?? '',
         shopPhone:         seller?.phone,
+        shopLogoUrl:       seller?.logoUrl ?? null,
+        shopTheme:         seller?.settings?.theme ?? null,
         customerName:      freshInst.customerName,
         customerPhone:     freshInst.customerPhone,
         customerPhotoUrl:  freshInst.customerPhotoUrl,
@@ -928,6 +932,8 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                             onClick={() => void openSinglePaymentReceipt({
                               shopName:          seller?.shopName ?? 'Receipt',
                               shopPhone:         seller?.phone,
+                              shopLogoUrl:       seller?.logoUrl ?? null,
+                              shopTheme:         seller?.settings?.theme ?? null,
                               customerName:      freshInst.customerName,
                               customerPhone:     freshInst.customerPhone,
                               customerPhotoUrl:  freshInst.customerPhotoUrl,

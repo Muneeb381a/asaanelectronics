@@ -1,9 +1,12 @@
 import QRCode from 'qrcode';
 import { fmtDate, fmtDateTime } from './dateFormat.ts';
+import { getPrintPalette, type PrintPalette } from './printTheme.ts';
 
 export interface InstallmentReceiptData {
   shopName: string;
   shopPhone?: string | null;
+  shopLogoUrl?: string | null;
+  shopTheme?: string | null;
   customerName: string;
   customerPhone?: string | null;
   productName: string;
@@ -29,6 +32,8 @@ export interface InstallmentReceiptData {
 export interface CashSaleReceiptData {
   shopName: string;
   shopPhone?: string | null;
+  shopLogoUrl?: string | null;
+  shopTheme?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
   productName: string;
@@ -51,17 +56,17 @@ function pkr(n: number) {
 }
 
 // Bill-style CSS matching bill.ts visual design
-const BILL_CSS = `
+function billCss(palette: PrintPalette) { return `
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;display:flex;justify-content:center}
 .inv{background:#fff;width:560px;padding:13px 16px;font-size:10.5px;color:#374151;border:1px solid #e2e8f0}
-.hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:4px 4px 0 0;margin:-13px -16px 9px}
+.hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:linear-gradient(135deg,${palette.navy900},${palette.navy800});border-radius:4px 4px 0 0;margin:-13px -16px 9px}
 .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;overflow:hidden}
 .il{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:1px}
 .iv{display:block;font-size:10.5px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .is{display:block;font-size:9px;color:#64748b}
 .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;text-align:center}
-.ac.hl{background:#1d4ed8;border-color:#1d4ed8}
+.ac.hl{background:${palette.blue600};border-color:${palette.blue600}}
 .ac.rm{background:#fffbeb;border-color:#fcd34d}
 .al{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8;margin-bottom:1px}
 .av{display:block;font-size:11.5px;font-weight:800;color:#0f172a}
@@ -74,7 +79,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;dis
   body{background:#fff;padding:0}
   .inv{border:none;width:100%}
 }
-`;
+`; }
 
 // Thermal-style CSS for cash sale (small receipt)
 const THERMAL_CSS = `
@@ -105,6 +110,7 @@ function openPrint(content: string, width = 380, height = 700) {
 }
 
 export function printInstallmentReceipt(d: InstallmentReceiptData) {
+  const palette = getPrintPalette(d.shopTheme);
   const isDaily = d.paymentFrequency === 'daily';
   const freq = isDaily ? 'Daily' : 'Monthly';
   const periodLabel = isDaily ? 'days' : 'months';
@@ -128,9 +134,9 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
       ? `<div style="font-size:6.5px;color:#7c3aed;font-weight:700">📌 ${d.daysAdvance}d advance</div>`
       : `<div style="font-size:6.5px;color:#059669;font-weight:600">✓ on time</div>`;
   const periodDueInfo = d.periodDueDate
-    ? `<div style="font-size:${isMultiPeriod ? '6' : '7'}px;color:#3b82f6;font-weight:600">Qist: ${periodRangeLabel}</div>` +
+    ? `<div style="font-size:${isMultiPeriod ? '6' : '7'}px;color:${palette.blue600};font-weight:600">Qist: ${periodRangeLabel}</div>` +
       statusBadge
-    : `<div style="font-size:7.5px;color:#3b82f6">installment</div>`;
+    : `<div style="font-size:7.5px;color:${palette.blue600}">installment</div>`;
 
   const progressSection = hasProg ? `
     <div style="border:1px solid #e2e8f0;border-radius:5px;padding:8px 10px;margin-bottom:6px">
@@ -148,9 +154,9 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
           <div style="font-size:18px;font-weight:800;color:#92400e;line-height:1.2">${pendingInst}</div>
           <div style="font-size:7.5px;color:#b45309">${periodLabel} left</div>
         </div>
-        <div style="text-align:center;background:#dbeafe;border:1px solid #93c5fd;border-radius:5px;padding:5px 3px">
-          <div style="font-size:7px;color:#1e40af;font-weight:700;letter-spacing:.3px">${isDaily ? 'DAY' : 'MONTH'} #</div>
-          <div style="font-size:18px;font-weight:800;color:#1e40af;line-height:1.2">${curMonth}</div>
+        <div style="text-align:center;background:${palette.skyPale};border:1px solid ${palette.skyBorder};border-radius:5px;padding:5px 3px">
+          <div style="font-size:7px;color:${palette.skyText};font-weight:700;letter-spacing:.3px">${isDaily ? 'DAY' : 'MONTH'} #</div>
+          <div style="font-size:18px;font-weight:800;color:${palette.blue600};line-height:1.2">${curMonth}</div>
           ${periodDueInfo}
         </div>
       </div>
@@ -163,9 +169,9 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
       </div>
       ${d.periodDueDate ? `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px;border-top:1px dashed #e2e8f0;padding-top:6px">
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:4px 6px">
-          <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#1e40af;margin-bottom:1px">📅 Qist ki tarikh</div>
-          <div style="font-size:${isMultiPeriod ? '8' : '9'}px;font-weight:700;color:#1e3a8a">${periodRangeLabel}</div>
+        <div style="background:${palette.skyPale};border:1px solid ${palette.skyBorder};border-radius:4px;padding:4px 6px">
+          <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:${palette.skyText};margin-bottom:1px">📅 Qist ki tarikh</div>
+          <div style="font-size:${isMultiPeriod ? '8' : '9'}px;font-weight:700;color:${palette.navy800}">${periodRangeLabel}</div>
           ${(d.daysLate ?? 0) > 0
             ? `<div style="font-size:7px;color:#dc2626;font-weight:700">⚠️ ${d.daysLate} din late</div>`
             : (d.daysAdvance ?? 0) > 0
@@ -194,18 +200,21 @@ export function printInstallmentReceipt(d: InstallmentReceiptData) {
 <head>
 <meta charset="UTF-8"/>
 <title>Payment Receipt</title>
-<style>${BILL_CSS}</style>
+<style>${billCss(palette)}</style>
 </head>
 <body>
 <div class="inv">
   <!-- HEADER -->
   <div class="hdr">
-    <div style="flex:1;min-width:0">
-      <div style="font-size:14px;font-weight:900;color:#fff;line-height:1">${d.shopName}</div>
-      ${d.shopPhone ? `<div style="font-size:9.5px;color:#93c5fd;margin-top:2px">${d.shopPhone}</div>` : ''}
+    <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
+      ${d.shopLogoUrl ? `<img src="${d.shopLogoUrl}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;background:#fff;padding:2px;flex-shrink:0" alt="logo"/>` : ''}
+      <div style="min-width:0">
+        <div style="font-size:14px;font-weight:900;color:#fff;line-height:1">${d.shopName}</div>
+        ${d.shopPhone ? `<div style="font-size:9.5px;color:${palette.blue300};margin-top:2px">${d.shopPhone}</div>` : ''}
+      </div>
     </div>
     <div style="text-align:right;flex-shrink:0">
-      <div style="font-size:12px;font-weight:900;color:#60a5fa;letter-spacing:.3px">PAYMENT RECEIPT</div>
+      <div style="font-size:12px;font-weight:900;color:${palette.blue400};letter-spacing:.3px">PAYMENT RECEIPT</div>
       ${invoiceNo ? `<div style="font-size:11px;font-weight:700;color:#fff;margin-top:1px">${invoiceNo}</div>` : ''}
       <div style="font-size:9px;color:#94a3b8;margin-top:2px">${printDate}</div>
     </div>
@@ -343,6 +352,8 @@ export function installmentWhatsappUrl(d: InstallmentReceiptData): string {
 export interface SinglePaymentReceiptData {
   shopName: string;
   shopPhone?: string | null;
+  shopLogoUrl?: string | null;
+  shopTheme?: string | null;
   customerName: string;
   customerPhone?: string | null;
   customerPhotoUrl?: string | null;
@@ -366,6 +377,7 @@ export interface SinglePaymentReceiptData {
 }
 
 export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
+  const palette    = getPrintPalette(d.shopTheme);
   const isDaily    = d.paymentFrequency === 'daily';
   const freq       = isDaily ? 'Day' : 'Month';
   const paidOnDate = new Date(d.paidOn);
@@ -435,11 +447,11 @@ export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
   <div style="padding:8px 14px 10px;border-top:1px solid #F3F4F6">
     <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#9CA3AF;margin-bottom:6px">${isDaily ? 'Daily' : 'Monthly'} Installment Progress</div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
-      <span style="font-size:10.5px;font-weight:700;color:#0F1F3D">${freq} ${paidInst} <span style="font-size:9px;font-weight:400;color:#9CA3AF">of ${totalInst}</span></span>
+      <span style="font-size:10.5px;font-weight:700;color:${palette.navy900}">${freq} ${paidInst} <span style="font-size:9px;font-weight:400;color:#9CA3AF">of ${totalInst}</span></span>
       <span style="font-size:9px;font-weight:600;color:#6B7280">${pct}% · ${pendingInst} remaining</span>
     </div>
     <div style="background:#E5E7EB;border-radius:4px;height:5px;overflow:hidden;margin-bottom:6px">
-      <div style="width:${pct}%;height:100%;background:#0F1F3D;border-radius:4px"></div>
+      <div style="width:${pct}%;height:100%;background:${palette.navy900};border-radius:4px"></div>
     </div>
     <div style="display:flex;justify-content:space-between">
       <span style="font-size:8.5px;color:#6B7280">Balance: <strong style="color:${isFullyPaid ? '#16A34A' : '#C47008'}">PKR ${numFmt(d.remaining ?? 0)}</strong></span>
@@ -467,10 +479,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:
 <div class="rc">
 
   <!-- HEADER: dark navy bar -->
-  <div style="background:#0F1F3D;padding:9px 16px;display:flex;justify-content:space-between;align-items:center">
-    <div>
-      <div style="font-size:14px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-.2px">${d.shopName}</div>
-      ${d.shopPhone ? `<div style="font-size:8.5px;color:rgba(255,255,255,.42);margin-top:2px">${d.shopPhone}</div>` : ''}
+  <div style="background:${palette.navy900};padding:9px 16px;display:flex;justify-content:space-between;align-items:center">
+    <div style="display:flex;align-items:center;gap:8px">
+      ${d.shopLogoUrl ? `<img src="${d.shopLogoUrl}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;background:#fff;padding:2px;flex-shrink:0" alt="logo"/>` : ''}
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-.2px">${d.shopName}</div>
+        ${d.shopPhone ? `<div style="font-size:8.5px;color:rgba(255,255,255,.42);margin-top:2px">${d.shopPhone}</div>` : ''}
+      </div>
     </div>
     <div style="text-align:right">
       <div style="font-size:7px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.32)">PAYMENT RECEIPT</div>
@@ -491,14 +506,14 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:
   </div>
 
   <!-- AMOUNT HERO: light blue tinted block -->
-  <div style="padding:11px 16px;background:#F0F5FF;border-bottom:1px solid #DBEAFE">
+  <div style="padding:11px 16px;background:${palette.skyPale};border-bottom:1px solid ${palette.skyBorder}">
     <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#6B7280;margin-bottom:4px;text-align:center">Amount Paid</div>
     <div style="text-align:center;line-height:1;margin-bottom:9px">
       <span style="font-size:11px;font-weight:600;color:#6B7280;vertical-align:top;margin-top:4px;display:inline-block;margin-right:2px">PKR</span>
-      <span style="font-size:30px;font-weight:900;color:#0F1F3D;letter-spacing:-1.5px;font-variant-numeric:tabular-nums">${numFmt(d.amountPaid)}</span>
+      <span style="font-size:30px;font-weight:900;color:${palette.navy900};letter-spacing:-1.5px;font-variant-numeric:tabular-nums">${numFmt(d.amountPaid)}</span>
     </div>
     <div style="display:flex;justify-content:center;gap:6px;align-items:center;flex-wrap:wrap">
-      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;background:#0F1F3D;color:#fff;font-size:9px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;background:${palette.navy900};color:#fff;font-size:9px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
       ${(d.periodDueDate !== undefined || isLate) ? timeBadge : ''}
       ${isFullyPaid ? `<span style="padding:4px 12px;border-radius:20px;background:#DCFCE7;border:1px solid #86EFAC;color:#166534;font-size:9px;font-weight:700">✓ Fully Paid</span>` : ''}
     </div>
@@ -535,15 +550,16 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:
 }
 
 // A4 CSS for full-page reports
-const A4_CSS = `
+function a4Css(palette: PrintPalette) { return `
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a202c;padding:24px}
 .page{max-width:860px;margin:0 auto}
-.hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:12px;border-bottom:3px solid #1e3a5f;margin-bottom:16px}
-.shop-name{font-size:22px;font-weight:900;color:#1e3a5f;line-height:1}
+.hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:12px;border-bottom:3px solid ${palette.navy800};margin-bottom:16px}
+.shop-logo{width:36px;height:36px;object-fit:contain;border-radius:6px;margin-right:10px}
+.shop-name{font-size:22px;font-weight:900;color:${palette.navy800};line-height:1}
 .shop-sub{font-size:10px;color:#64748b;margin-top:3px}
 .rpt-title{text-align:right}
-.rpt-title h1{font-size:15px;font-weight:700;color:#1e3a5f}
+.rpt-title h1{font-size:15px;font-weight:700;color:${palette.navy800}}
 .rpt-title p{font-size:9px;color:#94a3b8;margin-top:3px}
 .sec-title{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:7px;padding-bottom:3px;border-bottom:1px solid #e2e8f0}
 .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
@@ -552,17 +568,17 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a202c;paddin
 .info-val{font-size:10px;font-weight:600;color:#1a202c;word-break:break-word}
 .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
 .sc{border-radius:7px;padding:9px 11px;text-align:center;border:1px solid #e2e8f0;background:#f8fafc}
-.sc.blue{background:#dbeafe;border-color:#93c5fd}
+.sc.blue{background:${palette.skyPale};border-color:${palette.skyBorder}}
 .sc.green{background:#d1fae5;border-color:#6ee7b7}
 .sc.amber{background:#fef3c7;border-color:#fcd34d}
 .sc.red{background:#fee2e2;border-color:#fca5a5}
 .sl{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:3px}
-.sc.blue .sl{color:#1e40af}.sc.green .sl{color:#065f46}.sc.amber .sl{color:#92400e}.sc.red .sl{color:#991b1b}
-.sv{font-size:17px;font-weight:900;color:#1e3a5f}
-.sc.blue .sv{color:#1d4ed8}.sc.green .sv{color:#059669}.sc.amber .sv{color:#b45309}.sc.red .sv{color:#dc2626}
+.sc.blue .sl{color:${palette.skyText}}.sc.green .sl{color:#065f46}.sc.amber .sl{color:#92400e}.sc.red .sl{color:#991b1b}
+.sv{font-size:17px;font-weight:900;color:${palette.navy800}}
+.sc.blue .sv{color:${palette.blue600}}.sc.green .sv{color:#059669}.sc.amber .sv{color:#b45309}.sc.red .sv{color:#dc2626}
 .ss{font-size:8.5px;color:#94a3b8;margin-top:1px}
 table{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:16px}
-thead{background:#1e3a5f}
+thead{background:${palette.navy800}}
 thead th{color:#fff;padding:5px 8px;text-align:left;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 thead th.r{text-align:right}
 tbody tr{border-bottom:1px solid #f1f5f9}
@@ -581,11 +597,13 @@ td.r{text-align:right}
   @page{size:A4 portrait;margin:10mm 12mm}
   body{padding:0}
 }
-`;
+`; }
 
 export interface CustomerHistoryReportData {
   shopName: string;
   shopPhone?: string | null;
+  shopLogoUrl?: string | null;
+  shopTheme?: string | null;
   customer: {
     name: string;
     phone: string;
@@ -618,6 +636,7 @@ export interface CustomerHistoryReportData {
 }
 
 export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
+  const palette = getPrintPalette(d.shopTheme);
   const insts = d.installments;
   const totalBusiness = insts.reduce((s, i) => s + Number(i.totalAmount), 0);
   const totalPaid     = insts.reduce((s, i) => s + (Number(i.totalAmount) - Number(i.downPayment) - Number(i.remaining)), 0);
@@ -665,14 +684,17 @@ export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
 
   const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"/><title>Customer History — ${d.customer.name}</title><style>${A4_CSS}</style></head>
+<head><meta charset="UTF-8"/><title>Customer History — ${d.customer.name}</title><style>${a4Css(palette)}</style></head>
 <body>
 <div class="page">
   <!-- HEADER -->
   <div class="hdr">
-    <div>
-      <div class="shop-name">${d.shopName}</div>
-      ${d.shopPhone ? `<div class="shop-sub">${d.shopPhone}</div>` : ''}
+    <div style="display:flex;align-items:center">
+      ${d.shopLogoUrl ? `<img src="${d.shopLogoUrl}" class="shop-logo" alt="logo"/>` : ''}
+      <div>
+        <div class="shop-name">${d.shopName}</div>
+        ${d.shopPhone ? `<div class="shop-sub">${d.shopPhone}</div>` : ''}
+      </div>
     </div>
     <div class="rpt-title">
       <h1>Customer Full History Report</h1>

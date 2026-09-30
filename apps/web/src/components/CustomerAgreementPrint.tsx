@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
 import type { Customer } from '../api/customers.api.ts';
 import { fmtDate, fmtDateTime } from '../utils/dateFormat.ts';
+import { getPrintPalette } from '../utils/printTheme.ts';
 
 interface Props {
   customer: Customer;
   shopName: string;
   shopAddress: string | null;
   shopPhone: string;
+  shopLogoUrl?: string | null;
+  shopTheme?: string | null;
   onClose: () => void;
 }
 
@@ -81,7 +84,8 @@ function DocImage({ src, label, wide }: { src: string; label: string; wide?: boo
 
 /* ── main ──────────────────────────────────────────────────── */
 
-export default function CustomerAgreementPrint({ customer, shopName, shopAddress, shopPhone, onClose }: Props) {
+export default function CustomerAgreementPrint({ customer, shopName, shopAddress, shopPhone, shopLogoUrl, shopTheme, onClose }: Props) {
+  const palette = getPrintPalette(shopTheme);
   useEffect(() => {
     const style = document.createElement('style');
     style.id = 'agreement-print-override';
@@ -138,7 +142,7 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
               <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'white', fontSize: 13, cursor: 'pointer' }}>
                 Close
               </button>
-              <button onClick={() => window.print()} style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.4)' }}>
+              <button onClick={() => window.print()} style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: palette.blue600, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.4)' }}>
                 🖨 Print / Save PDF
               </button>
             </div>
@@ -148,19 +152,24 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
           <div id="agreement-print-root" style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.35)' }}>
 
             {/* ══ HEADER ══ */}
-            <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)', padding: '20px 32px 0', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ background: `linear-gradient(135deg, ${palette.navy900} 0%, ${palette.navy800} 100%)`, padding: '20px 32px 0', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: 'white', letterSpacing: 0.5, lineHeight: 1 }}>{shopName}</div>
-                  {shopAddress && <div style={{ fontSize: 9.5, color: '#93c5fd', marginTop: 4 }}>{shopAddress}</div>}
-                  <div style={{ fontSize: 9.5, color: '#93c5fd', marginTop: 2 }}>Tel: {shopPhone}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {shopLogoUrl && (
+                    <img src={shopLogoUrl} alt="logo" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 8, background: '#fff', padding: 3, flexShrink: 0 }} />
+                  )}
+                  <div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: 'white', letterSpacing: 0.5, lineHeight: 1 }}>{shopName}</div>
+                    {shopAddress && <div style={{ fontSize: 9.5, color: palette.blue300, marginTop: 4 }}>{shopAddress}</div>}
+                    <div style={{ fontSize: 9.5, color: palette.blue300, marginTop: 2 }}>Tel: {shopPhone}</div>
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'inline-block', background: '#2563eb', color: 'white', fontSize: 9.5, fontWeight: 800, padding: '4px 14px', borderRadius: 20, letterSpacing: 1, textTransform: 'uppercase' }}>
+                  <div style={{ display: 'inline-block', background: palette.blue600, color: 'white', fontSize: 9.5, fontWeight: 800, padding: '4px 14px', borderRadius: 20, letterSpacing: 1, textTransform: 'uppercase' }}>
                     Installment Agreement · اقساط نامہ
                   </div>
-                  <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 6 }}>Ref No: <span style={{ color: '#93c5fd', fontWeight: 600 }}>{REF}</span></div>
+                  <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 6 }}>Ref No: <span style={{ color: palette.blue300, fontWeight: 600 }}>{REF}</span></div>
                   {customer.fileNumber && (
                     <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>File No: <span style={{ color: '#fbbf24', fontWeight: 700, fontFamily: 'monospace' }}>#{customer.fileNumber}</span></div>
                   )}
@@ -175,7 +184,7 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
 
               {/* ── Customer Info ── */}
               <div style={{ marginBottom: 16 }}>
-                <SectionHeader accent="#2563eb">Customer Information · گاہک کی معلومات</SectionHeader>
+                <SectionHeader accent={palette.blue600}>Customer Information · گاہک کی معلومات</SectionHeader>
                 <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                   {customer.photoUrl && (
                     <div className="agr-no-print" style={{ flexShrink: 0, textAlign: 'center' }}>
@@ -310,11 +319,11 @@ export default function CustomerAgreementPrint({ customer, shopName, shopAddress
               {/* ── Footer ── */}
               <div style={{ borderTop: '2px solid #f1f5f9', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 6, background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: 11, height: 11, borderRadius: 3, border: '2px solid #3b82f6' }} />
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: palette.navy900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 11, height: 11, borderRadius: 3, border: `2px solid ${palette.blue500}` }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 8.5, fontWeight: 700, color: '#0f172a' }}>{shopName}</div>
+                    <div style={{ fontSize: 8.5, fontWeight: 700, color: palette.navy800 }}>{shopName}</div>
                     <div style={{ fontSize: 7.5, color: '#94a3b8' }}>Official Installment Agreement</div>
                   </div>
                 </div>

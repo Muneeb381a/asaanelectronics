@@ -1892,7 +1892,7 @@ export default function InstallmentsPage() {
                       )}
                       <button
                         onClick={() => shopData && void openBill({
-                          shop: shopData,
+                          shop: { ...shopData, theme: shopData.settings?.theme },
                           customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
                           product: inst.productName,
                           totalAmount: inst.totalAmount, downPayment: inst.downPayment,
@@ -2037,7 +2037,7 @@ export default function InstallmentsPage() {
                         )}
                         <button
                           onClick={() => shopData && void openBill({
-                            shop: shopData,
+                            shop: { ...shopData, theme: shopData.settings?.theme },
                             customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
                             product: inst.productName,
                             totalAmount: inst.totalAmount, downPayment: inst.downPayment,
@@ -2241,7 +2241,7 @@ export default function InstallmentsPage() {
                     close();
                     if (!shopData) return;
                     openLegalNotice({
-                      shop: { shopName: shopData.shopName, phone: shopData.phone, address: shopData.address },
+                      shop: { shopName: shopData.shopName, phone: shopData.phone, address: shopData.address, logoUrl: shopData.logoUrl, theme: shopData.settings?.theme },
                       customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
                       product: inst.productName,
                       imeiNumber: inst.imeiNumber,

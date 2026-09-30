@@ -2,12 +2,15 @@ import { useEffect } from 'react';
 import type { Customer } from '../api/customers.api.ts';
 import type { Installment } from '../api/installments.api.ts';
 import { fmtDate, fmtDateTime } from '../utils/dateFormat.ts';
+import { getPrintPalette } from '../utils/printTheme.ts';
 
 interface Props {
   customer: Customer;
   installments: Installment[];
   shopName: string;
   shopPhone: string;
+  shopLogoUrl?: string | null;
+  shopTheme?: string | null;
   onClose: () => void;
 }
 
@@ -15,7 +18,8 @@ function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
-export default function CustomerStatementPrint({ customer, installments, shopName, shopPhone, onClose }: Props) {
+export default function CustomerStatementPrint({ customer, installments, shopName, shopPhone, shopLogoUrl, shopTheme, onClose }: Props) {
+  const palette = getPrintPalette(shopTheme);
   useEffect(() => {
     const style = document.createElement('style');
     style.id = 'statement-print-override';
@@ -52,7 +56,7 @@ export default function CustomerStatementPrint({ customer, installments, shopNam
             <div style={{ color: 'white', fontWeight: 700 }}>Customer Statement</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'white', fontSize: 13, cursor: 'pointer' }}>Close</button>
-              <button onClick={() => window.print()} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>🖨 Print / Save PDF</button>
+              <button onClick={() => window.print()} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: palette.blue600, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>🖨 Print / Save PDF</button>
             </div>
           </div>
 
@@ -61,14 +65,19 @@ export default function CustomerStatementPrint({ customer, installments, shopNam
             <div style={s}>
 
               {/* Header */}
-              <div style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a5f)', margin: '-28px -36px 24px', padding: '24px 36px 0' }}>
+              <div style={{ background: `linear-gradient(135deg,${palette.navy900},${palette.navy800})`, margin: '-28px -36px 24px', padding: '24px 36px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: 'white' }}>{shopName}</div>
-                    <div style={{ fontSize: 11, color: '#93c5fd', marginTop: 4 }}>Tel: {shopPhone}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {shopLogoUrl && (
+                      <img src={shopLogoUrl} alt="logo" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 8, background: '#fff', padding: 3, flexShrink: 0 }} />
+                    )}
+                    <div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: 'white' }}>{shopName}</div>
+                      <div style={{ fontSize: 11, color: palette.blue300, marginTop: 4 }}>Tel: {shopPhone}</div>
+                    </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-block', background: '#2563eb', color: 'white', fontSize: 10, fontWeight: 800, padding: '3px 12px', borderRadius: 20, letterSpacing: 1 }}>ACCOUNT STATEMENT</div>
+                    <div style={{ display: 'inline-block', background: palette.blue600, color: 'white', fontSize: 10, fontWeight: 800, padding: '3px 12px', borderRadius: 20, letterSpacing: 1 }}>ACCOUNT STATEMENT</div>
                     <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6 }}>Date: {fmtDate(new Date())}</div>
                   </div>
                 </div>
@@ -93,7 +102,7 @@ export default function CustomerStatementPrint({ customer, installments, shopNam
               {/* Summary boxes */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 24 }}>
                 {[
-                  { label: 'Total Business', value: pkr(totalBusiness), color: '#0f172a' },
+                  { label: 'Total Business', value: pkr(totalBusiness), color: palette.navy900 },
                   { label: 'Total Paid',     value: pkr(totalPaid),     color: '#059669' },
                   { label: 'Outstanding',    value: pkr(totalRemaining), color: totalRemaining > 0 ? '#ea580c' : '#059669' },
                 ].map((c) => (

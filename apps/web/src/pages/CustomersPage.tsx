@@ -877,6 +877,8 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               onClick={() => openCustomerHistoryReport({
                 shopName: shopData?.shopName ?? 'Our Shop',
                 shopPhone: shopData?.phone,
+                shopLogoUrl: shopData?.logoUrl ?? null,
+                shopTheme: shopData?.settings?.theme ?? null,
                 customer: {
                   name: customer.name,
                   phone: customer.phone,
@@ -1287,6 +1289,8 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
         installments={installments}
         shopName={shopData.shopName}
         shopPhone={shopData.phone}
+        shopLogoUrl={shopData.logoUrl}
+        shopTheme={shopData.settings?.theme}
         onClose={() => setShowStatement(false)}
       />
     )}
@@ -1296,6 +1300,8 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
         shopName={shopData.shopName}
         shopAddress={shopData.address}
         shopPhone={shopData.phone}
+        shopLogoUrl={shopData.logoUrl}
+        shopTheme={shopData.settings?.theme}
         onClose={() => setShowPrint(false)}
       />
     )}
