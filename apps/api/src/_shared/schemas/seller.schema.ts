@@ -24,6 +24,8 @@ export const updateSellerSchema = z.object({
     lateFeeGraceDays: z.number().int().min(0).optional(),
     staffTargets:     z.record(z.string(), z.object({ daily: z.number().min(0).optional(), monthly: z.number().min(0).optional() })).optional(),
     timezone:         z.string().max(64).optional(),
+    theme:            z.enum(['cobalt', 'violet', 'teal', 'navy', 'berry', 'graphite']).optional(),
+    font:             z.enum(['poppins', 'inter', 'nunito', 'worksans', 'notosans']).optional(),
   }).optional(),
 }).strict();
 

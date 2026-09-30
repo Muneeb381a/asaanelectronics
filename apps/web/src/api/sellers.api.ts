@@ -14,6 +14,8 @@ export interface SellerSettings {
   lateFeeGraceDays?: number;
   staffTargets?: Record<string, { daily?: number; monthly?: number }>;
   timezone?: string;
+  theme?: 'cobalt' | 'violet' | 'teal' | 'navy' | 'berry' | 'graphite';
+  font?: 'poppins' | 'inter' | 'nunito' | 'worksans' | 'notosans';
 }
 
 export interface Seller {

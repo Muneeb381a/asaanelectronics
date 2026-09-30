@@ -6,10 +6,16 @@ import { z } from 'zod';
 import { friendlyErrorMap, applyFriendlyZodMessages } from '@assaan/shared';
 import App from './App.tsx';
 import './index.css';
+import { initAppearance } from './utils/themes.ts';
 
 // Readable validation messages for both local form schemas and shared schemas.
 z.setErrorMap(friendlyErrorMap);
 applyFriendlyZodMessages();
+
+// Apply the last-known shop theme/font immediately (before the authenticated
+// shop-me query resolves) so returning users don't see a flash of the
+// default look. DashboardLayout re-applies the authoritative server value.
+initAppearance();
 
 // Auto-reload when a lazy chunk is missing after a new deployment
 window.addEventListener('vite:preloadError', () => window.location.reload());

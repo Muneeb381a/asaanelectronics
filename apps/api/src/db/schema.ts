@@ -99,6 +99,8 @@ export const sellers = pgTable('sellers', {
     lateFeeGraceDays?: number;
     staffTargets?: Record<string, { daily?: number; monthly?: number }>;
     timezone?: string;
+    theme?: 'cobalt' | 'violet' | 'teal' | 'navy' | 'berry' | 'graphite';
+    font?: 'poppins' | 'inter' | 'nunito' | 'worksans' | 'notosans';
   }>(),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
 });

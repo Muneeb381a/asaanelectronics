@@ -37,6 +37,8 @@ export declare const updateSellerSchema: z.ZodObject<{
             monthly?: number | undefined;
         }>>>;
         timezone: z.ZodOptional<z.ZodString>;
+        theme: z.ZodOptional<z.ZodEnum<["cobalt", "violet", "teal", "navy", "berry", "graphite"]>>;
+        font: z.ZodOptional<z.ZodEnum<["poppins", "inter", "nunito", "worksans", "notosans"]>>;
     }, "strip", z.ZodTypeAny, {
         dailyTarget?: number | undefined;
         weeklyTarget?: number | undefined;
@@ -50,6 +52,8 @@ export declare const updateSellerSchema: z.ZodObject<{
             monthly?: number | undefined;
         }> | undefined;
         timezone?: string | undefined;
+        theme?: "cobalt" | "violet" | "teal" | "navy" | "berry" | "graphite" | undefined;
+        font?: "poppins" | "inter" | "nunito" | "worksans" | "notosans" | undefined;
     }, {
         dailyTarget?: number | undefined;
         weeklyTarget?: number | undefined;
@@ -63,6 +67,8 @@ export declare const updateSellerSchema: z.ZodObject<{
             monthly?: number | undefined;
         }> | undefined;
         timezone?: string | undefined;
+        theme?: "cobalt" | "violet" | "teal" | "navy" | "berry" | "graphite" | undefined;
+        font?: "poppins" | "inter" | "nunito" | "worksans" | "notosans" | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     shopName?: string | undefined;
@@ -82,6 +88,8 @@ export declare const updateSellerSchema: z.ZodObject<{
             monthly?: number | undefined;
         }> | undefined;
         timezone?: string | undefined;
+        theme?: "cobalt" | "violet" | "teal" | "navy" | "berry" | "graphite" | undefined;
+        font?: "poppins" | "inter" | "nunito" | "worksans" | "notosans" | undefined;
     } | undefined;
 }, {
     shopName?: string | undefined;
@@ -101,6 +109,8 @@ export declare const updateSellerSchema: z.ZodObject<{
             monthly?: number | undefined;
         }> | undefined;
         timezone?: string | undefined;
+        theme?: "cobalt" | "violet" | "teal" | "navy" | "berry" | "graphite" | undefined;
+        font?: "poppins" | "inter" | "nunito" | "worksans" | "notosans" | undefined;
     } | undefined;
 }>;
 export type UpdateSellerInput = z.infer<typeof updateSellerSchema>;

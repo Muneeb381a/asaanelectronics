@@ -74,7 +74,7 @@
 
 /* iOS safe area — bottom padding for home indicator */
 body {
-  font-family: 'Poppins', system-ui, sans-serif;
+  font-family: var(--font-sans);
   padding-bottom: env(safe-area-inset-bottom);
 }
 

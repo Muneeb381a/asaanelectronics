@@ -13,6 +13,7 @@ import { authApi } from '../api/auth.api.ts';
 import { statsApi } from '../api/stats.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { setTimezone } from '../utils/dateFormat.ts';
+import { applyTheme, applyFont } from '../utils/themes.ts';
 import { profileApi } from '../api/profile.api.ts';
 import { billingApi } from '../api/billing.api.ts';
 import { broadcastsApi, type Broadcast } from '../api/broadcasts.api.ts';
@@ -134,6 +135,10 @@ export default function DashboardLayout() {
   useEffect(() => {
     setTimezone(shopMe?.settings?.timezone ?? 'Asia/Karachi');
   }, [shopMe?.settings?.timezone]);
+  useEffect(() => {
+    applyTheme(shopMe?.settings?.theme);
+    applyFont(shopMe?.settings?.font);
+  }, [shopMe?.settings?.theme, shopMe?.settings?.font]);
 
   const getDismissed = useCallback(() => {
     try { return JSON.parse(localStorage.getItem('dismissed_broadcasts') ?? '[]') as string[]; }

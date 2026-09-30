@@ -8,9 +8,10 @@ import {
   Users, TrendingUp, BookOpen, Plus, CreditCard, KeyRound, Eye, EyeOff, Target,
   MessageSquare, Pencil, Check, X, Settings, Store, Wallet, Lock, ChevronRight,
   BadgeCheck, Zap, Package, Globe, Save, RotateCcw, Percent, CalendarClock, Sparkles,
-  Database, Download, History,
+  Database, Download, History, Palette, Type,
 } from 'lucide-react';
 import { setTimezone as applyTimezone } from '../utils/dateFormat.ts';
+import { THEME_PRESETS, FONT_PRESETS, applyTheme, applyFont } from '../utils/themes.ts';
 import { sellersApi, type PaymentAccount, type PaymentAccountType, type Seller, type SellerSettings } from '../api/sellers.api.ts';
 import { whatsappTemplatesApi, type WhatsappTemplate, TEMPLATE_VARS } from '../api/whatsappTemplates.api.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -264,6 +265,77 @@ function PreferencesCard({ shop }: { shop: Seller | undefined }) {
         </div>
       </div>
     </Card>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Appearance tab — shop-wide color theme + font, applies instantly for every
+   user of this shop (staff included), same "no save button" pattern as
+   PreferencesCard's timezone toggle above.
+──────────────────────────────────────────────────────────────────────────── */
+
+function AppearanceTab({ shop }: { shop: Seller | undefined }) {
+  const qc = useQueryClient();
+  const currentTheme = shop?.settings?.theme ?? 'cobalt';
+  const currentFont  = shop?.settings?.font  ?? 'poppins';
+
+  const themeMutation = useMutation({
+    mutationFn: (theme: SellerSettings['theme']) => sellersApi.update({ settings: mergeSettings(shop, { theme }) }),
+    onSuccess: (_r, theme) => { applyTheme(theme); void qc.invalidateQueries({ queryKey: ['shop-me'] }); toast.success('Theme update ho gaya'); },
+    onError: (e) => toast.error(getErrorMessage(e, 'Update nahi hua')),
+  });
+
+  const fontMutation = useMutation({
+    mutationFn: (font: SellerSettings['font']) => sellersApi.update({ settings: mergeSettings(shop, { font }) }),
+    onSuccess: (_r, font) => { applyFont(font); void qc.invalidateQueries({ queryKey: ['shop-me'] }); toast.success('Font update ho gaya'); },
+    onError: (e) => toast.error(getErrorMessage(e, 'Update nahi hua')),
+  });
+
+  if (!shop) return null;
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardHeader icon={Palette} tone="violet" title="Color Theme" subtitle="Sab staff members ko yehi color scheme dikhega — foran apply hota hai" />
+        <div className="p-5 sm:p-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {THEME_PRESETS.map((t) => {
+            const active = currentTheme === t.id;
+            return (
+              <button key={t.id} disabled={themeMutation.isPending} onClick={() => themeMutation.mutate(t.id as SellerSettings['theme'])}
+                className={`flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition ${
+                  active ? 'border-blue-500 bg-blue-50/50' : 'border-slate-100 hover:border-slate-200'
+                } disabled:opacity-50`}>
+                <div className="flex -space-x-2">
+                  <div className="w-9 h-9 rounded-full ring-2 ring-white" style={{ background: t.blue['600'] }} />
+                  <div className="w-9 h-9 rounded-full ring-2 ring-white" style={{ background: t.indigo['600'] }} />
+                </div>
+                <p className={`text-xs font-semibold ${active ? 'text-blue-700' : 'text-slate-600'}`}>{t.name}</p>
+                {active && <span className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5"><Check size={10} /> Active</span>}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader icon={Type} tone="blue" title="Font" subtitle="Poora app isi font mein dikhega — foran apply hota hai" />
+        <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {FONT_PRESETS.map((f) => {
+            const active = currentFont === f.id;
+            return (
+              <button key={f.id} disabled={fontMutation.isPending} onClick={() => fontMutation.mutate(f.id as SellerSettings['font'])}
+                className={`flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl border-2 transition ${
+                  active ? 'border-blue-500 bg-blue-50/50' : 'border-slate-100 hover:border-slate-200'
+                } disabled:opacity-50`}>
+                <span className={`text-lg ${active ? 'text-blue-700' : 'text-slate-700'}`} style={{ fontFamily: f.family }}>
+                  {f.name} — Aa Bb 123
+                </span>
+                {active && <Check size={16} className="text-blue-600 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -944,16 +1016,17 @@ function BackupsTab({ isOwner }: { isOwner: boolean }) {
    Page shell
 ──────────────────────────────────────────────────────────────────────────── */
 
-type TabKey = 'shop' | 'plan' | 'targets' | 'payments' | 'templates' | 'security' | 'backups';
+type TabKey = 'shop' | 'plan' | 'appearance' | 'targets' | 'payments' | 'templates' | 'security' | 'backups';
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; ownerOnly?: boolean; permKey?: string }[] = [
-  { key: 'shop',      label: 'Shop',             icon: Store                          },
-  { key: 'plan',      label: 'Plan & Usage',     icon: BadgeCheck                     },
-  { key: 'targets',   label: 'Targets & Rules',  icon: Target,        ownerOnly: true },
-  { key: 'payments',  label: 'Payment Accounts', icon: CreditCard                     },
-  { key: 'templates', label: 'WhatsApp',         icon: MessageSquare, ownerOnly: true },
-  { key: 'security',  label: 'Security',         icon: Lock                           },
-  { key: 'backups',   label: 'Backups',          icon: Database,      permKey: 'canExportData' },
+  { key: 'shop',       label: 'Shop',             icon: Store                          },
+  { key: 'plan',       label: 'Plan & Usage',     icon: BadgeCheck                     },
+  { key: 'appearance', label: 'Appearance',       icon: Palette,       ownerOnly: true },
+  { key: 'targets',    label: 'Targets & Rules',  icon: Target,        ownerOnly: true },
+  { key: 'payments',   label: 'Payment Accounts', icon: CreditCard                     },
+  { key: 'templates',  label: 'WhatsApp',         icon: MessageSquare, ownerOnly: true },
+  { key: 'security',   label: 'Security',         icon: Lock                           },
+  { key: 'backups',    label: 'Backups',          icon: Database,      permKey: 'canExportData' },
 ];
 
 export default function SettingsPage() {
@@ -1024,6 +1097,7 @@ export default function SettingsPage() {
           {isOwner && <QuickLinks />}
         </div>
         <div hidden={active !== 'plan'}><PlanCard usage={usage} /></div>
+        {isOwner && <div hidden={active !== 'appearance'}><AppearanceTab shop={shop} /></div>}
         {isOwner && <div hidden={active !== 'targets'}><TargetsTab shop={shop} onDirty={markDirty.targets} /></div>}
         <div hidden={active !== 'payments'}><PaymentsTab isOwner={isOwner} /></div>
         {isOwner && <div hidden={active !== 'templates'}><TemplatesTab /></div>}
