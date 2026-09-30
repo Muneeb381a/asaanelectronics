@@ -27,6 +27,7 @@ export const installmentStatusEnum = pgEnum('installment_status', [
   'DEFAULTED',
   'CANCELLED',
   'CLOSED',
+  'WRITTEN_OFF',
 ]);
 export const paymentMethodEnum = pgEnum('payment_method', [
   'CASH',

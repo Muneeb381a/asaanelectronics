@@ -1,15 +1,16 @@
 import { AppError } from '../middleware/error.js';
 
-type InstallmentStatus   = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED';
+type InstallmentStatus   = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED' | 'WRITTEN_OFF';
 type VerificationStatus  = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 
 const INSTALLMENT: Record<InstallmentStatus, InstallmentStatus[]> = {
-  PENDING:   ['ACTIVE', 'CANCELLED'],
-  ACTIVE:    ['COMPLETED', 'DEFAULTED', 'CANCELLED', 'CLOSED'],
-  COMPLETED: ['CLOSED'],
-  DEFAULTED: ['ACTIVE', 'CLOSED'],
-  CANCELLED: [],
-  CLOSED:    [],
+  PENDING:     ['ACTIVE', 'CANCELLED'],
+  ACTIVE:      ['COMPLETED', 'DEFAULTED', 'CANCELLED', 'CLOSED'],
+  COMPLETED:   ['CLOSED'],
+  DEFAULTED:   ['ACTIVE', 'CLOSED', 'WRITTEN_OFF'],
+  CANCELLED:   [],
+  CLOSED:      [],
+  WRITTEN_OFF: [],
 };
 
 const VERIFICATION: Record<VerificationStatus, VerificationStatus[]> = {

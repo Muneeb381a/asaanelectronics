@@ -67,12 +67,13 @@ function buildCSV(rows: Installment[]) {
 }
 
 const STATUS_STYLES: Record<InstallmentStatus, string> = {
-  PENDING:   'bg-amber-100 text-amber-700',
-  ACTIVE:    'bg-green-100 text-green-700',
-  COMPLETED: 'bg-blue-100 text-blue-700',
-  DEFAULTED: 'bg-red-100 text-red-700',
-  CANCELLED: 'bg-gray-100 text-gray-500',
-  CLOSED:    'bg-slate-100 text-slate-500',
+  PENDING:     'bg-amber-100 text-amber-700',
+  ACTIVE:      'bg-green-100 text-green-700',
+  COMPLETED:   'bg-blue-100 text-blue-700',
+  DEFAULTED:   'bg-red-100 text-red-700',
+  CANCELLED:   'bg-gray-100 text-gray-500',
+  CLOSED:      'bg-slate-100 text-slate-500',
+  WRITTEN_OFF: 'bg-gray-200 text-gray-600',
 };
 
 const STATUS_FILTERS = [
@@ -83,6 +84,7 @@ const STATUS_FILTERS = [
   { label: 'Defaulted', value: 'DEFAULTED' },
   { label: 'Cancelled', value: 'CANCELLED' },
   { label: 'Closed',    value: 'CLOSED' },
+  { label: 'Written Off', value: 'WRITTEN_OFF' },
 ];
 
 function pkr(v: string | number) {
@@ -93,7 +95,7 @@ function Badge({ status, paused }: { status: InstallmentStatus; paused?: boolean
   return (
     <span className="inline-flex items-center gap-1">
       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[status]}`}>
-        {status.charAt(0) + status.slice(1).toLowerCase()}
+        {status === 'WRITTEN_OFF' ? 'Written Off' : status.charAt(0) + status.slice(1).toLowerCase()}
       </span>
       {paused && (
         <span className="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-600">
@@ -935,10 +937,11 @@ function WaiverModal({ inst, onClose }: { inst: Installment; onClose: () => void
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
 
-  const remaining = Number(inst.remaining);
-  const parsed    = Number(amount);
-  const isValid   = parsed > 0 && parsed <= remaining;
-  const willClear = isValid && parsed >= remaining;
+  const remaining   = Number(inst.remaining);
+  const parsed      = Number(amount);
+  const isValid     = parsed > 0 && parsed <= remaining;
+  const willClear   = isValid && parsed >= remaining;
+  const isWriteOff  = inst.status === 'DEFAULTED' && willClear;
 
   const mutation = useMutation({
     mutationFn: () => installmentsApi.waiver(inst.id, { amount: parsed, reason: reason.trim() || undefined }),
@@ -954,7 +957,7 @@ function WaiverModal({ inst, onClose }: { inst: Installment; onClose: () => void
         };
       });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
-      toast.success(willClear ? 'Balance cleared — installment completed' : `PKR ${parsed.toLocaleString()} waived`);
+      toast.success(isWriteOff ? 'Balance written off as bad debt' : willClear ? 'Balance cleared — installment completed' : `PKR ${parsed.toLocaleString()} waived`);
       onClose();
     },
     onError: (e) => toast.error(getErrorMessage(e)),
@@ -966,7 +969,7 @@ function WaiverModal({ inst, onClose }: { inst: Installment; onClose: () => void
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Balance Waiver</h2>
+            <h2 className="text-base font-semibold text-gray-900">{isWriteOff ? 'Write Off Balance' : 'Balance Waiver'}</h2>
             <p className="text-xs text-gray-400">{inst.customerName} · {inst.productName}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
@@ -991,7 +994,9 @@ function WaiverModal({ inst, onClose }: { inst: Installment; onClose: () => void
           {parsed > remaining && (
             <p className="text-xs text-red-500 mt-1">Cannot exceed remaining balance</p>
           )}
-          {willClear && (
+          {isWriteOff ? (
+            <p className="text-xs text-gray-600 font-medium mt-1">Ye account "Written Off" ho jaega (bad debt) — completed nahi ginega.</p>
+          ) : willClear && (
             <p className="text-xs text-emerald-600 font-medium mt-1">This will fully clear the balance and complete the installment.</p>
           )}
         </div>
@@ -2209,7 +2214,7 @@ export default function InstallmentsPage() {
             {(inst.status === 'ACTIVE' || inst.status === 'DEFAULTED') && isOwner && (
               <button onClick={() => { close(); setWaiverInst(inst); }}
                 className="w-full text-left px-3 py-2 text-xs text-amber-600 hover:bg-amber-50 transition">
-                Balance Waiver
+                {inst.status === 'DEFAULTED' ? 'Write Off / Waiver' : 'Balance Waiver'}
               </button>
             )}
             {inst.status === 'ACTIVE' && isOwner && (

@@ -553,13 +553,18 @@ export class InstallmentsService {
 
     const newRemaining = Number((currentRemaining - body.amount).toFixed(2));
     const isFullyCleared = newRemaining <= 0;
+    // A DEFAULTED account that gets fully waived is a loss being formally
+    // closed, not a successful payoff — WRITTEN_OFF keeps it out of
+    // "completed installments" counts (which imply the customer paid).
+    // An ACTIVE installment forgiven as a goodwill gesture still counts as COMPLETED.
+    const clearedStatus = row.status === 'DEFAULTED' ? 'WRITTEN_OFF' : 'COMPLETED';
 
     const result = await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(installments)
         .set({
           remaining: String(newRemaining),
-          ...(isFullyCleared ? { status: 'COMPLETED', completedAt: new Date() } : {}),
+          ...(isFullyCleared ? { status: clearedStatus, completedAt: new Date() } : {}),
         })
         .where(eq(installments.id, id))
         .returning();

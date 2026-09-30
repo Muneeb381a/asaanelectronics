@@ -185,12 +185,13 @@ function LifecycleFunnel({ counts, active, onSelect }: {
 type Modal = { mode: 'add'; prefillCnic?: string } | { mode: 'edit'; customer: Customer } | null;
 
 const STATUS_STYLES: Record<InstallmentStatus, string> = {
-  PENDING:   'bg-amber-100 text-amber-700',
-  ACTIVE:    'bg-green-100 text-green-700',
-  COMPLETED: 'bg-blue-100 text-blue-700',
-  DEFAULTED: 'bg-red-100 text-red-700',
-  CANCELLED: 'bg-gray-100 text-gray-500',
-  CLOSED:    'bg-slate-100 text-slate-500',
+  PENDING:     'bg-amber-100 text-amber-700',
+  ACTIVE:      'bg-green-100 text-green-700',
+  COMPLETED:   'bg-blue-100 text-blue-700',
+  DEFAULTED:   'bg-red-100 text-red-700',
+  CANCELLED:   'bg-gray-100 text-gray-500',
+  CLOSED:      'bg-slate-100 text-slate-500',
+  WRITTEN_OFF: 'bg-gray-200 text-gray-600',
 };
 
 function pkr(v: string | number) {
@@ -1290,7 +1291,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                         </p>
                       </div>
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${STATUS_STYLES[inst.status]}`}>
-                        {inst.status.charAt(0) + inst.status.slice(1).toLowerCase()}
+                        {inst.status === 'WRITTEN_OFF' ? 'Written Off' : inst.status.charAt(0) + inst.status.slice(1).toLowerCase()}
                       </span>
                     </div>
 

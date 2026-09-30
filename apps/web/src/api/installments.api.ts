@@ -1,7 +1,7 @@
 import type { CreateInstallmentInput } from '@assaan/shared';
 import { api } from './client.ts';
 
-export type InstallmentStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED';
+export type InstallmentStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED' | 'CLOSED' | 'WRITTEN_OFF';
 
 export interface Installment {
   id: string;
