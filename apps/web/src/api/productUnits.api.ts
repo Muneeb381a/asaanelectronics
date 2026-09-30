@@ -101,4 +101,26 @@ export const productUnitsApi = {
     api.get<{ data: { status: 'OK' | 'UNAVAILABLE'; registered?: boolean; statusMessage?: string; message?: string } }>(
       `/units/pta-check/${imei}`
     ).then((r) => r.data.data),
+
+  listPhotos: (unitId: string) =>
+    api.get<{ data: UnitPhoto[] }>(`/units/${unitId}/photos`).then((r) => r.data.data),
+
+  addPhoto: (unitId: string, file: Blob, label?: string) => {
+    const fd = new FormData();
+    fd.append('file', file, 'unit-photo.jpg');
+    if (label) fd.append('label', label);
+    return api.post<{ data: UnitPhoto }>(`/units/${unitId}/photos`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data.data);
+  },
+
+  removePhoto: (unitId: string, photoId: string) =>
+    api.delete(`/units/${unitId}/photos/${photoId}`).then((r) => r.data),
 };
+
+export interface UnitPhoto {
+  id: string;
+  unitId: string;
+  url: string;
+  label: string | null;
+  uploadedById: string | null;
+  createdAt: string;
+}

@@ -4,13 +4,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Search, Plus, Upload, Package, CheckCircle2,
-  AlertTriangle, X, ChevronDown, RotateCcw, Wrench, ShieldCheck,
+  AlertTriangle, X, ChevronDown, RotateCcw, Wrench, ShieldCheck, Camera, Loader2, Trash2,
 } from 'lucide-react';
-import { productUnitsApi, type ProductUnit, type UnitStatus, type PtaStatus, type SerialType } from '../api/productUnits.api.ts';
+import { productUnitsApi, type ProductUnit, type UnitStatus, type PtaStatus, type SerialType, type UnitPhoto } from '../api/productUnits.api.ts';
 import { productsApi } from '../api/products.api.ts';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 import { getErrorMessage } from '../utils/error.ts';
+import { compressImage } from '../utils/imageCompress.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
 // ── Luhn validator (client-side) ─────────────────────────────────────────────
@@ -419,8 +420,108 @@ function PtaCheckModal({ unit, onClose }: { unit: ProductUnit; onClose: () => vo
   );
 }
 
+// ── Condition-proof photo gallery ─────────────────────────────────────────────
+const MAX_UNIT_PHOTOS = 8;
+
+function UnitPhotosModal({ unit, onClose }: { unit: ProductUnit; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [uploading, setUploading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<UnitPhoto | null>(null);
+
+  const { data: photos = [], isLoading } = useQuery({
+    queryKey: ['unit-photos', unit.id],
+    queryFn: () => productUnitsApi.listPhotos(unit.id),
+  });
+
+  async function handleFile(file: File) {
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(file.type)) {
+      toast.error('Sirf JPG, PNG, ya WEBP allowed hai');
+      return;
+    }
+    setUploading(true);
+    try {
+      const compressed = await compressImage(file, { maxDim: 1400, whiteBackground: true });
+      await productUnitsApi.addPhoto(unit.id, compressed);
+      void qc.invalidateQueries({ queryKey: ['unit-photos', unit.id] });
+      toast.success('Photo add ho gayi');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Upload nahi hui'));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const removeMutation = useMutation({
+    mutationFn: (photoId: string) => productUnitsApi.removePhoto(unit.id, photoId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['unit-photos', unit.id] });
+      toast.success('Photo hata di gayi');
+      setDeleteTarget(null);
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Hataya nahi ja saka')),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div>
+            <h2 className="font-semibold text-gray-900">Condition Photos</h2>
+            <p className="text-xs text-gray-400 font-mono mt-0.5">{serialLabel(unit)}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"><X size={16} /></button>
+        </div>
+
+        <div className="px-5 py-5">
+          {isLoading ? (
+            <div className="grid grid-cols-3 gap-2">{[1, 2, 3].map((i) => <div key={i} className="aspect-square bg-gray-100 rounded-xl animate-pulse" />)}</div>
+          ) : photos.length === 0 ? (
+            <div className="text-center py-6">
+              <Camera size={28} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-sm text-gray-400">Abhi koi photo nahi</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {photos.map((p) => (
+                <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden ring-1 ring-gray-200 group">
+                  <img src={p.url} alt={p.label ?? 'unit photo'} className="w-full h-full object-cover" />
+                  <button onClick={() => setDeleteTarget(p)}
+                    className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-lg opacity-0 group-hover:opacity-100 transition">
+                    <Trash2 size={12} />
+                  </button>
+                  {p.label && <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[9px] text-center py-0.5">{p.label}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {photos.length < MAX_UNIT_PHOTOS && (
+            <label className={`mt-4 flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600 cursor-pointer transition ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden" disabled={uploading}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }} />
+              {uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+              {uploading ? 'Upload ho raha…' : 'Photo add karein'}
+            </label>
+          )}
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Photo delete karein?"
+        description="Ye photo hamesha k liye hat jaegi."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        isPending={removeMutation.isPending}
+        onConfirm={() => deleteTarget && removeMutation.mutate(deleteTarget.id)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+}
+
 // ── Row actions dropdown ──────────────────────────────────────────────────────
-function UnitActions({ unit, onDone, onPtaCheck }: { unit: ProductUnit; onDone: () => void; onPtaCheck: () => void }) {
+function UnitActions({ unit, onDone, onPtaCheck, onPhotos }: { unit: ProductUnit; onDone: () => void; onPtaCheck: () => void; onPhotos: () => void }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -444,6 +545,7 @@ function UnitActions({ unit, onDone, onPtaCheck }: { unit: ProductUnit; onDone: 
     unit.status !== 'available' && { label: 'Mark Available', icon: CheckCircle2, cls: 'text-emerald-600', fn: () => mutation.mutate({ status: 'available' }) },
     unit.status !== 'defective' && { label: 'Mark Defective', icon: Wrench,       cls: 'text-red-600',     fn: () => mutation.mutate({ status: 'defective' }) },
     unit.status !== 'returned'  && { label: 'Mark Returned',  icon: RotateCcw,    cls: 'text-amber-600',   fn: () => mutation.mutate({ status: 'returned' }) },
+    { label: 'Photos', icon: Camera, cls: 'text-gray-600', fn: () => { setOpen(false); onPhotos(); } },
     isPhone && { label: 'Check PTA DIRBS', icon: ShieldCheck, cls: 'text-blue-600', fn: () => { setOpen(false); onPtaCheck(); } },
     isPhone && unit.ptaStatus !== 'approved' && { label: 'Mark PTA Approved', icon: CheckCircle2,  cls: 'text-emerald-600', fn: () => mutation.mutate({ ptaStatus: 'approved' }) },
     isPhone && unit.ptaStatus !== 'non_pta'  && { label: 'Mark Non-PTA',      icon: AlertTriangle, cls: 'text-red-600',    fn: () => mutation.mutate({ ptaStatus: 'non_pta' }) },
@@ -490,6 +592,7 @@ export default function ImeiPage() {
   const [showBulk,  setShowBulk]  = useState(false);
   const [lookupVal, setLookupVal] = useState('');
   const [ptaUnit,   setPtaUnit]   = useState<ProductUnit | null>(null);
+  const [photosUnit, setPhotosUnit] = useState<ProductUnit | null>(null);
 
   const debouncedSearch = useDebounce(search, 350);
   const debouncedLookup = useDebounce(lookupVal.replace(/\D/g, ''), 400);
@@ -689,7 +792,7 @@ export default function ImeiPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{fmtDate(unit.createdAt)}</td>
                   <td className="px-4 py-3">
-                    <UnitActions unit={unit} onDone={() => void qc.invalidateQueries({ queryKey: ['units'] })} onPtaCheck={() => setPtaUnit(unit)} />
+                    <UnitActions unit={unit} onDone={() => void qc.invalidateQueries({ queryKey: ['units'] })} onPtaCheck={() => setPtaUnit(unit)} onPhotos={() => setPhotosUnit(unit)} />
                   </td>
                 </tr>
               ))
@@ -739,7 +842,7 @@ export default function ImeiPage() {
                     </p>
                   )}
                 </div>
-                <UnitActions unit={unit} onDone={() => void qc.invalidateQueries({ queryKey: ['units'] })} onPtaCheck={() => setPtaUnit(unit)} />
+                <UnitActions unit={unit} onDone={() => void qc.invalidateQueries({ queryKey: ['units'] })} onPtaCheck={() => setPtaUnit(unit)} onPhotos={() => setPhotosUnit(unit)} />
               </div>
             </div>
           ))
@@ -755,6 +858,7 @@ export default function ImeiPage() {
       {showAdd  && <AddUnitModal  onClose={() => setShowAdd(false)}  onAdded={() => setShowAdd(false)} />}
       {showBulk && <BulkAddModal  onClose={() => setShowBulk(false)} onAdded={() => setShowBulk(false)} />}
       {ptaUnit  && <PtaCheckModal unit={ptaUnit} onClose={() => setPtaUnit(null)} />}
+      {photosUnit && <UnitPhotosModal unit={photosUnit} onClose={() => setPhotosUnit(null)} />}
     </div>
   );
 }

@@ -746,6 +746,22 @@ export const productUnits = pgTable('product_units', {
   index('idx_product_units_product').on(t.productId),
 ]);
 
+// Condition-proof photo gallery per unit (IMEI/chassis-specific) — the shop
+// already grades condition as text (productUnits.condition) but had no
+// visual proof, which matters a lot for used-phone/vehicle resale disputes.
+export const productUnitPhotos = pgTable('product_unit_photos', {
+  id:           text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:     text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  unitId:       text('unit_id').notNull().references(() => productUnits.id, { onDelete: 'cascade' }),
+  url:          text('url').notNull(),
+  label:        text('label'),
+  uploadedById: text('uploaded_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_unit_photos_unit').on(t.unitId),
+  index('idx_unit_photos_seller').on(t.sellerId),
+]);
+
 // ── Cash Handover tracking ────────────────────────────────────────────────────
 export const handoverStatusEnum = pgEnum('handover_status', ['PENDING', 'CONFIRMED', 'DISPUTED']);
 
