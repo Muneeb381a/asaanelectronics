@@ -94,15 +94,15 @@ export declare const jazzCashLinkSchema: z.ZodObject<{
     customerPhone: z.ZodDefault<z.ZodOptional<z.ZodString>>;
     description: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    customerName: string;
     installmentId: string;
     amount: number;
+    customerName: string;
     customerPhone: string;
     description?: string | undefined;
 }, {
-    customerName: string;
     installmentId: string;
     amount: number;
+    customerName: string;
     customerPhone?: string | undefined;
     description?: string | undefined;
 }>;

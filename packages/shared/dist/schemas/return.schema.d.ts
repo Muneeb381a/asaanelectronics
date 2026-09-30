@@ -13,16 +13,16 @@ export declare const createReturnSchema: z.ZodObject<{
     customerId: string;
     productId: string;
     condition: "GOOD" | "DAMAGED" | "UNUSABLE";
-    notes?: string | undefined;
     installmentId?: string | undefined;
+    notes?: string | undefined;
 }, {
     type: "RETURN" | "EXCHANGE" | "WARRANTY_REPLACEMENT";
     reason: "OTHER" | "DEFECTIVE" | "DAMAGED_IN_USE" | "WRONG_ITEM" | "CUSTOMER_REQUEST" | "WARRANTY_CLAIM";
     customerId: string;
     productId: string;
     condition: "GOOD" | "DAMAGED" | "UNUSABLE";
-    notes?: string | undefined;
     installmentId?: string | undefined;
+    notes?: string | undefined;
 }>;
 export declare const resolveReturnSchema: z.ZodObject<{
     status: z.ZodEnum<["APPROVED", "REJECTED"]>;

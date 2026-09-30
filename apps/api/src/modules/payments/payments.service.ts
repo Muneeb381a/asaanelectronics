@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { customers, installments, ledgerEntries, payments, products, users } from '../../db/schema.js';
+import { customers, installments, ledgerEntries, payments, products, users, customerCredits } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { staffScopeOrTrue } from '../../utils/staffScope.js';
@@ -95,7 +95,7 @@ export class PaymentsService {
   async record(sellerId: string, body: CreateBody) {
     return db.transaction(async (tx) => {
       const [inst] = await tx
-        .select({ id: installments.id, remaining: installments.remaining, status: installments.status })
+        .select({ id: installments.id, remaining: installments.remaining, status: installments.status, customerId: installments.customerId })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .where(and(eq(installments.id, body.installmentId), eq(customers.sellerId, sellerId)));
@@ -106,11 +106,13 @@ export class PaymentsService {
       // Use integer arithmetic (paisas) to avoid floating-point errors
       const remainingPaisas = Math.round(Number(inst.remaining) * 100);
       const amountPaisas    = Math.round(body.amount * 100);
-      if (amountPaisas > remainingPaisas) {
-        throw new AppError(`Amount exceeds remaining balance of PKR ${(remainingPaisas / 100).toFixed(2)}`, 400);
-      }
+      // An overpayment doesn't error out — the installment clears at exactly
+      // its remaining balance and the excess is banked as store credit
+      // (customer_credits) rather than rejecting real cash already collected.
+      const appliedPaisas = Math.min(amountPaisas, remainingPaisas);
+      const overpaidPaisas = amountPaisas - appliedPaisas;
 
-      const newRemaining = (remainingPaisas - amountPaisas) / 100;
+      const newRemaining = (remainingPaisas - appliedPaisas) / 100;
       const isCleared    = newRemaining === 0;
 
       const [instDetail] = await tx
@@ -162,7 +164,21 @@ export class PaymentsService {
 
       await accountingSvc.postPaymentEntry(sellerId, { paymentId: payment.id, amount: body.amount, userId: body.collectedBy ?? undefined }, tx);
 
-      return { payment, remaining: newRemaining, completed: isCleared };
+      let creditCreated = 0;
+      if (overpaidPaisas > 0) {
+        creditCreated = overpaidPaisas / 100;
+        await tx.insert(customerCredits).values({
+          sellerId,
+          customerId:      inst.customerId,
+          amount:          String(creditCreated),
+          type:            'OVERPAYMENT',
+          sourcePaymentId: payment.id,
+          note:            `Overpayment on ${instDetail?.productName ?? 'installment'} — banked as store credit`,
+          createdById:     body.collectedBy ?? null,
+        });
+      }
+
+      return { payment, remaining: newRemaining, completed: isCleared, creditCreated };
     }).then((r) => {
       clearSellerStatsCache(sellerId);
       return r;

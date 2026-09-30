@@ -304,6 +304,16 @@ export declare const assignAvoSchema: z.ZodObject<{
 }, {
     avoId: string;
 }>;
+export declare const applyCreditSchema: z.ZodObject<{
+    installmentId: z.ZodString;
+    amount: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    installmentId: string;
+    amount: number;
+}, {
+    installmentId: string;
+    amount: number;
+}>;
 export declare const createCustomerDocumentSchema: z.ZodObject<{
     docType: z.ZodString;
     label: z.ZodString;

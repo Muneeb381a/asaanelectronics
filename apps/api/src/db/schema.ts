@@ -509,6 +509,29 @@ export const payments = pgTable('payments', {
   index('idx_payments_inst_date').on(t.installmentId, t.paidOn),
 ]);
 
+// Store-credit ledger: an overpayment banks the excess here instead of
+// erroring out; a later installment can draw it down. Kept as an append-only
+// ledger (like handover_items) rather than a single mutable balance column
+// on customers so the balance always has a provable trail — sum(amount) is
+// the balance, never written to directly.
+export const customerCreditTypeEnum = pgEnum('customer_credit_type', ['OVERPAYMENT', 'APPLIED', 'REFUND']);
+
+export const customerCredits = pgTable('customer_credits', {
+  id:                     text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:               text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  customerId:             text('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  amount:                 decimal('amount', { precision: 12, scale: 2 }).notNull(), // positive = credit gained, negative = credit consumed
+  type:                   customerCreditTypeEnum('type').notNull(),
+  sourcePaymentId:        text('source_payment_id').references(() => payments.id, { onDelete: 'set null' }),
+  appliedToInstallmentId: text('applied_to_installment_id').references(() => installments.id, { onDelete: 'set null' }),
+  note:                   text('note'),
+  createdById:            text('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:              timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_customer_credits_customer').on(t.customerId),
+  index('idx_customer_credits_seller').on(t.sellerId),
+]);
+
 export const cashSales = pgTable('cash_sales', {
   id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
   sellerId:      text('seller_id').notNull().references(() => sellers.id),

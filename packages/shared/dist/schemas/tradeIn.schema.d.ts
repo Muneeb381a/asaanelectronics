@@ -16,9 +16,9 @@ export declare const createTradeInSchema: z.ZodObject<{
     condition: "good" | "fair" | "poor";
     deviceName: string;
     assessedValue: number;
+    installmentId?: string | undefined;
     notes?: string | undefined;
     customerId?: string | undefined;
-    installmentId?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
     color?: string | undefined;
@@ -29,9 +29,9 @@ export declare const createTradeInSchema: z.ZodObject<{
     condition: "good" | "fair" | "poor";
     deviceName: string;
     assessedValue: number;
+    installmentId?: string | undefined;
     notes?: string | undefined;
     customerId?: string | undefined;
-    installmentId?: string | undefined;
     brand?: string | undefined;
     model?: string | undefined;
     color?: string | undefined;

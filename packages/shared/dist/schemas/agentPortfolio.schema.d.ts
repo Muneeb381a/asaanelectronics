@@ -26,16 +26,16 @@ export declare const addDeductionSchema: z.ZodObject<{
     description: string;
     staffId: string;
     month: string;
-    customerId?: string | undefined;
     installmentId?: string | undefined;
+    customerId?: string | undefined;
 }, {
     type: "OTHER" | "UNCOLLECTED" | "ADVANCE" | "DAMAGE";
     amount: number;
     description: string;
     staffId: string;
     month: string;
-    customerId?: string | undefined;
     installmentId?: string | undefined;
+    customerId?: string | undefined;
 }>;
 export declare const calculateDeductionsSchema: z.ZodObject<{
     month: z.ZodString;

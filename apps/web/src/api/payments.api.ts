@@ -29,6 +29,7 @@ interface RecordResult {
   payment: Payment;
   remaining: number;
   completed: boolean;
+  creditCreated: number;
 }
 
 export interface SellerPayment {

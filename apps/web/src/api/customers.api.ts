@@ -141,6 +141,21 @@ export interface CustomerDoc {
   createdAt: string;
 }
 
+export interface CustomerCreditEntry {
+  id: string;
+  amount: string;
+  type: 'OVERPAYMENT' | 'APPLIED' | 'REFUND';
+  note: string | null;
+  createdAt: string;
+  productName: string | null;
+  createdByName: string | null;
+}
+
+export interface CustomerCredit {
+  balance: number;
+  history: CustomerCreditEntry[];
+}
+
 const unwrap = <T>(res: { data: { data: T } }) => res.data.data;
 
 export const customersApi = {
@@ -208,4 +223,11 @@ export const customersApi = {
 
   removeDoc: (customerId: string, docId: string) =>
     api.delete(`/customers/${customerId}/documents/${docId}`),
+
+  getCredit: (customerId: string) =>
+    api.get<{ data: CustomerCredit }>(`/customers/${customerId}/credit`).then(unwrap<CustomerCredit>),
+
+  applyCredit: (customerId: string, body: { installmentId: string; amount: number }) =>
+    api.post<{ data: { remaining: number; completed: boolean } }>(`/customers/${customerId}/credit/apply`, body)
+      .then(unwrap<{ remaining: number; completed: boolean }>),
 };

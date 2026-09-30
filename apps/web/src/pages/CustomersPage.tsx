@@ -5,8 +5,8 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
-import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon, UserPlus, UserCog } from 'lucide-react';
-import { customersApi, type Customer, type CustomerDoc, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
+import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon, UserPlus, UserCog, Wallet } from 'lucide-react';
+import { customersApi, type Customer, type CustomerDoc, type CustomerCreditEntry, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import type { CreateCustomerInput } from '@assaan/shared';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
 import { staffApi, type StaffMember } from '../api/staff.api.ts';
@@ -350,6 +350,113 @@ function RiskBreakdownPanel({ customerId, riskScore, riskLabel }: {
               </div>
             ))
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Overpayments bank as store credit instead of erroring out (see payments.service.ts
+// record()) — this card shows the balance and lets it be drawn down against any
+// active installment for the same customer.
+function CustomerCreditCard({ customerId, activeInstallments }: { customerId: string; activeInstallments: Installment[] }) {
+  const qc = useQueryClient();
+  const [showApply, setShowApply] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [targetId, setTargetId] = useState('');
+  const [amount, setAmount] = useState('');
+
+  const { data } = useQuery({
+    queryKey: ['customer-credit', customerId],
+    queryFn: () => customersApi.getCredit(customerId),
+    staleTime: 30_000,
+  });
+
+  const target = activeInstallments.find((i) => i.id === targetId);
+
+  const applyMutation = useMutation({
+    mutationFn: () => customersApi.applyCredit(customerId, { installmentId: targetId, amount: Number(amount) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customer-credit', customerId] });
+      qc.invalidateQueries({ queryKey: ['customer-installments', customerId] });
+      qc.invalidateQueries({ queryKey: ['installments'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      setShowApply(false);
+      setAmount('');
+      toast.success('Credit apply ho gaya');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Credit apply nahi hui')),
+  });
+
+  const balance = data?.balance ?? 0;
+  const history = data?.history ?? [];
+  if (balance <= 0 && history.length === 0) return null;
+
+  return (
+    <div className="px-6 py-3 border-b border-gray-50 shrink-0">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><Wallet size={14} /></div>
+          <div>
+            <p className="text-xs text-gray-400">Store Credit</p>
+            <p className="text-sm font-bold text-emerald-600">{pkr(balance)}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {history.length > 0 && (
+            <button onClick={() => setShowHistory((v) => !v)} className="text-xs text-gray-400 hover:text-gray-600 transition">
+              {showHistory ? 'Chhupao' : 'History'}
+            </button>
+          )}
+          {balance > 0 && activeInstallments.length > 0 && (
+            <button onClick={() => { setShowApply((v) => !v); setTargetId(activeInstallments[0]!.id); }}
+              className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition">
+              Apply karein
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showApply && (
+        <div className="mt-3 bg-emerald-50/50 rounded-xl p-3 space-y-2">
+          {activeInstallments.length > 1 && (
+            <select value={targetId} onChange={(e) => setTargetId(e.target.value)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-400">
+              {activeInstallments.map((i) => (
+                <option key={i.id} value={i.id}>{i.productName} — {pkr(i.remaining)} remaining</option>
+              ))}
+            </select>
+          )}
+          <div className="flex items-center gap-2">
+            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount" max={target ? Math.min(balance, Number(target.remaining)) : balance}
+              className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-400" />
+            <button
+              onClick={() => setAmount(String(target ? Math.min(balance, Number(target.remaining)) : balance))}
+              className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 shrink-0">Max</button>
+            <button
+              onClick={() => applyMutation.mutate()}
+              disabled={applyMutation.isPending || !amount || Number(amount) <= 0 || !targetId}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition shrink-0">
+              {applyMutation.isPending ? '...' : 'Apply'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showHistory && (
+        <div className="mt-3 space-y-1.5">
+          {history.map((h: CustomerCreditEntry) => (
+            <div key={h.id} className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">
+                {h.type === 'OVERPAYMENT' ? 'Overpayment' : h.type === 'APPLIED' ? `Applied${h.productName ? ` — ${h.productName}` : ''}` : 'Refund'}
+                <span className="text-gray-300 ml-1.5">{fmtDate(h.createdAt)}</span>
+              </span>
+              <span className={`font-semibold ${Number(h.amount) >= 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
+                {Number(h.amount) >= 0 ? '+' : ''}{pkr(h.amount)}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1049,6 +1156,8 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
             </div>
           ))}
         </div>
+
+        <CustomerCreditCard customerId={customer.id} activeInstallments={installments.filter((i) => i.status === 'ACTIVE')} />
 
         {/* Tags */}
         <div className="px-6 py-3 border-b border-gray-50 shrink-0">

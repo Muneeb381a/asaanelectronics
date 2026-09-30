@@ -64,6 +64,7 @@ export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 export const blacklistCustomerSchema = z.object({ reason: z.string().max(500).optional() });
 export const customerNoteSchema      = z.object({ note: z.string().min(1).max(2000) });
 export const assignAvoSchema         = z.object({ avoId: z.string().min(1) });
+export const applyCreditSchema       = z.object({ installmentId: z.string().min(1), amount: z.number().positive() });
 
 const docStatus = z.enum(['PENDING', 'RECEIVED', 'VERIFIED']);
 export const createCustomerDocumentSchema = z.object({

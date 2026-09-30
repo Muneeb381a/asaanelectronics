@@ -225,7 +225,11 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       void qc.invalidateQueries({ queryKey: ['handover-my-balance'] });
       void qc.invalidateQueries({ queryKey: ['handover-pending-balances'] });
       for (const key of extraInvalidate) void qc.invalidateQueries({ queryKey: key });
+      void qc.invalidateQueries({ queryKey: ['customer-credit', freshInst.customerId] });
       toast.success(data.completed ? 'Installment fully paid!' : 'Payment recorded');
+      if (data.creditCreated > 0) {
+        toast.success(`Extra ${pkr(data.creditCreated)} customer ke store credit mein add ho gaya`, { duration: 5000 });
+      }
 
       // Use pre-mutation remaining so receipt calculation is accurate
       const oldRemaining = context?.oldRemaining ?? Number(inst.remaining);

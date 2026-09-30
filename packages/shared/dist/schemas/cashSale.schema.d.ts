@@ -9,8 +9,8 @@ export declare const createCashSaleSchema: z.ZodObject<{
     imeiNumber: z.ZodOptional<z.ZodString>;
     note: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    productId: string;
     amount: number;
+    productId: string;
     method: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER";
     quantity: number;
     note?: string | undefined;
@@ -18,8 +18,8 @@ export declare const createCashSaleSchema: z.ZodObject<{
     customerName?: string | undefined;
     customerPhone?: string | undefined;
 }, {
-    productId: string;
     amount: number;
+    productId: string;
     method: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER";
     quantity: number;
     note?: string | undefined;
@@ -37,16 +37,16 @@ export declare const updateCashSaleSchema: z.ZodObject<{
     note: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     note?: string | null | undefined;
+    amount?: number | undefined;
     imeiNumber?: string | null | undefined;
     customerName?: string | null | undefined;
-    amount?: number | undefined;
     method?: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER" | undefined;
     customerPhone?: string | null | undefined;
 }, {
     note?: string | null | undefined;
+    amount?: number | undefined;
     imeiNumber?: string | null | undefined;
     customerName?: string | null | undefined;
-    amount?: number | undefined;
     method?: "CASH" | "BANK" | "JAZZCASH" | "EASYPAISA" | "OTHER" | undefined;
     customerPhone?: string | null | undefined;
 }>;

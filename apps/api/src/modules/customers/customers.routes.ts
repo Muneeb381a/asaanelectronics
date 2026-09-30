@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
-import { createCustomerSchema, updateCustomerSchema, assignAvoSchema, blacklistCustomerSchema, customerNoteSchema, createCustomerDocumentSchema, updateCustomerDocumentSchema } from '@assaan/shared';
+import { createCustomerSchema, updateCustomerSchema, assignAvoSchema, blacklistCustomerSchema, customerNoteSchema, createCustomerDocumentSchema, updateCustomerDocumentSchema, applyCreditSchema } from '@assaan/shared';
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer, assignAvo,
   getLifecycleCounts, getRiskBreakdown, lookupByCnic, checkCnicExists, getUpcomingBirthdays, getReferralLeaderboard,
@@ -11,6 +11,7 @@ import {
 import { listGuarantors } from './guarantors.controller.js';
 import { listNotes, addNote, deleteNote } from './customer-notes.controller.js';
 import { listCustomerDocs, addCustomerDoc, updateCustomerDoc, deleteCustomerDoc } from './customer-documents.controller.js';
+import { getCredit, applyCredit } from './customer-credits.controller.js';
 
 const router = Router();
 
@@ -48,5 +49,8 @@ router.get('/:customerId/documents',              canAccessCustomers, listCustom
 router.post('/:customerId/documents',             requirePermission('canEditCustomer'), validate(createCustomerDocumentSchema), addCustomerDoc);
 router.patch('/:customerId/documents/:docId',     requirePermission('canEditCustomer'), validate(updateCustomerDocumentSchema), updateCustomerDoc);
 router.delete('/:customerId/documents/:docId',    requireOwner, deleteCustomerDoc);
+
+router.get('/:customerId/credit',       canAccessCustomers, getCredit);
+router.post('/:customerId/credit/apply', requirePermission('canRecordPayment'), validate(applyCreditSchema), applyCredit);
 
 export default router;
