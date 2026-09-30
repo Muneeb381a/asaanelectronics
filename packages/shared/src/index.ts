@@ -5,6 +5,7 @@ export * from './schemas/installment.schema.js';
 export * from './schemas/payment.schema.js';
 export * from './schemas/product.schema.js';
 export * from './schemas/expense.schema.js';
+export * from './schemas/expenseClaim.schema.js';
 export * from './schemas/recovery.schema.js';
 export * from './schemas/staff.schema.js';
 export * from './schemas/verification.schema.js';

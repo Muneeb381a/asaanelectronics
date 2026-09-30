@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark, Briefcase, UserCheck, UserMinus, Calculator, MinusCircle, ClipboardList } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Eye, EyeOff, Snowflake, LockOpen, Check, X as XIcon, TrendingUp, Wallet, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, LogIn, LogOut, CalendarCheck, RotateCcw, Banknote, Percent, DollarSign, Pencil, BadgeCheck, BarChart2, CreditCard, ShoppingCart, ArrowDownCircle, Landmark, Briefcase, UserCheck, UserMinus, Calculator, MinusCircle, ClipboardList, Receipt } from 'lucide-react';
+import { expenseClaimsApi, type ExpenseClaim } from '../api/expenseClaims.api.ts';
 import toast from 'react-hot-toast';
 import { staffApi, PERM_LABELS, PERM_GROUPS, type StaffMember, type StaffPermissions, type CollectionEntry, type StaffBriefingRow } from '../api/staff.api.ts';
 import { agentPortfolioApi, type PortfolioRow } from '../api/agentPortfolio.api.ts';
@@ -1347,6 +1348,239 @@ function HandoversSection() {
       {directReceiveTarget && (
         <DirectReceiveModal target={directReceiveTarget} onClose={() => setDirectReceiveTarget(null)} />
       )}
+    </div>
+  );
+}
+
+// ── Expense Claims (petrol/travel reimbursement) ─────────────────────────────
+
+const CLAIM_CATEGORIES: { value: ExpenseClaim['category']; label: string }[] = [
+  { value: 'TRANSPORT',   label: 'Transport / Petrol' },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
+  { value: 'OTHER',       label: 'Other' },
+];
+
+const CLAIM_STATUS_BADGE: Record<ExpenseClaim['status'], { label: string; cls: string; icon: React.ReactNode }> = {
+  PENDING:  { label: 'Pending',  cls: 'bg-amber-100 text-amber-700', icon: <Clock size={10} /> },
+  APPROVED: { label: 'Approved', cls: 'bg-green-100 text-green-700', icon: <CheckCircle size={10} /> },
+  REJECTED: { label: 'Rejected', cls: 'bg-red-100 text-red-700',     icon: <XIcon size={10} /> },
+};
+
+function SubmitClaimModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [category, setCategory]       = useState<ExpenseClaim['category']>('TRANSPORT');
+  const [amount, setAmount]           = useState('');
+  const [description, setDescription] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => expenseClaimsApi.create({ category, amount: Number(amount), description: description.trim() || undefined }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['expense-claims'] });
+      toast.success('Claim submit ho gaya');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Submit nahi hua')),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+        <div className="flex items-start justify-between mb-4">
+          <h2 className="text-base font-semibold text-gray-900">Expense Claim Submit Karein</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+        </div>
+
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">Category</label>
+          <div className="flex gap-2">
+            {CLAIM_CATEGORIES.map((c) => (
+              <button key={c.value} onClick={() => setCategory(c.value)}
+                className={`flex-1 px-2 py-2 rounded-lg text-xs font-semibold border transition ${
+                  category === c.value ? 'bg-blue-50 border-blue-400 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">Amount (PKR)</label>
+          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 350" min={1}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">Details (optional)</label>
+          <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. bike petrol for recovery visits"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button onClick={() => mutation.mutate()} disabled={!amount || Number(amount) <= 0 || mutation.isPending}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50">
+            {mutation.isPending ? 'Saving…' : 'Submit Karein'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewClaimModal({ claim, onClose }: { claim: ExpenseClaim; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [approvedAmount, setApprovedAmount] = useState(claim.amount);
+  const [ownerNote, setOwnerNote]           = useState('');
+
+  const approveMutation = useMutation({
+    mutationFn: () => expenseClaimsApi.approve(claim.id, { approvedAmount: Number(approvedAmount), ownerNote: ownerNote.trim() || undefined }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['expense-claims'] });
+      void qc.invalidateQueries({ queryKey: ['expenses'] });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success('Claim approve ho gaya — expense mein add ho gaya');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Approve nahi hua')),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: () => expenseClaimsApi.reject(claim.id, ownerNote.trim() || undefined),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['expense-claims'] });
+      toast.success('Claim reject ho gaya');
+      onClose();
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Reject nahi hua')),
+  });
+
+  const pending = approveMutation.isPending || rejectMutation.isPending;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Claim Review Karein</h2>
+            <p className="text-xs text-gray-400">{claim.staffName} · {CLAIM_CATEGORIES.find((c) => c.value === claim.category)?.label ?? claim.category}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+        </div>
+
+        {claim.description && <p className="text-xs text-gray-500 mb-3 italic">"{claim.description}"</p>}
+
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">Approve Amount (PKR)</label>
+          <input type="number" value={approvedAmount} onChange={(e) => setApprovedAmount(e.target.value)} min={1}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <p className="text-[11px] text-gray-400 mt-1">Claim kiya gaya tha: PKR {Number(claim.amount).toLocaleString()}</p>
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">Note (optional)</label>
+          <input type="text" value={ownerNote} onChange={(e) => setOwnerNote(e.target.value)} placeholder="e.g. receipt dekh li"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={() => rejectMutation.mutate()} disabled={pending}
+            className="flex-1 px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition disabled:opacity-50">
+            Reject
+          </button>
+          <button onClick={() => approveMutation.mutate()} disabled={pending || !approvedAmount || Number(approvedAmount) <= 0}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition disabled:opacity-50">
+            {approveMutation.isPending ? 'Saving…' : 'Approve'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpenseClaimsSection({ isOwner, staff }: { isOwner: boolean; staff: StaffMember[] }) {
+  const [showSubmit, setShowSubmit] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<ExpenseClaim | null>(null);
+  const [filterStaffId, setFilterStaffId] = useState('');
+
+  const { data: claims = [], isLoading } = useQuery({
+    queryKey: ['expense-claims', filterStaffId],
+    queryFn: () => expenseClaimsApi.list(filterStaffId || undefined),
+    staleTime: 30_000,
+  });
+
+  return (
+    <div className="py-1">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Expense Claims</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Petrol, travel waghera k liye reimbursement</p>
+        </div>
+        <button onClick={() => setShowSubmit(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition">
+          <Receipt size={13} /> Claim Karein
+        </button>
+      </div>
+
+      {isOwner && (
+        <div className="mb-4">
+          <select value={filterStaffId} onChange={(e) => setFilterStaffId(e.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:border-blue-400">
+            <option value="">Sab staff</option>
+            {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+      ) : claims.length === 0 ? (
+        <div className="text-center py-12">
+          <Receipt size={32} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-sm font-semibold text-gray-500">Koi claim nahi abhi tak</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {claims.map((c) => {
+            const badge = CLAIM_STATUS_BADGE[c.status];
+            return (
+              <div key={c.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    {isOwner && <p className="text-sm font-bold text-gray-900">{c.staffName}</p>}
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                      {badge.icon} {badge.label}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{CLAIM_CATEGORIES.find((cc) => cc.value === c.category)?.label ?? c.category}</span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-base font-bold text-gray-900">PKR {Number(c.amount).toLocaleString()}</span>
+                    {c.approvedAmount && Number(c.approvedAmount) !== Number(c.amount) && (
+                      <span className="text-xs font-semibold text-emerald-600">→ PKR {Number(c.approvedAmount).toLocaleString()}</span>
+                    )}
+                  </div>
+                  {c.description && <p className="text-[11px] text-gray-400 mt-1 italic truncate">"{c.description}"</p>}
+                  {c.ownerNote && <p className="text-[11px] text-gray-500 mt-0.5 italic truncate">Owner: "{c.ownerNote}"</p>}
+                </div>
+                {isOwner && c.status === 'PENDING' && (
+                  <button onClick={() => setReviewTarget(c)}
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shrink-0">
+                    Review
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showSubmit && <SubmitClaimModal onClose={() => setShowSubmit(false)} />}
+      {reviewTarget && <ReviewClaimModal claim={reviewTarget} onClose={() => setReviewTarget(null)} />}
     </div>
   );
 }
@@ -2838,7 +3072,7 @@ function BriefingSection({ staff }: { staff: StaffMember[] }) {
   );
 }
 
-type PageTab = 'team' | 'agent' | 'haazri' | 'finance' | 'collections' | 'portfolio' | 'briefing';
+type PageTab = 'team' | 'agent' | 'expenses' | 'haazri' | 'finance' | 'collections' | 'portfolio' | 'briefing';
 
 export default function StaffPage() {
   const { user } = useAuthStore();
@@ -2864,6 +3098,7 @@ export default function StaffPage() {
   const tabs: { key: PageTab; label: string; icon: React.ReactNode; ownerOnly?: boolean }[] = [
     { key: 'team',        label: 'Team',       icon: <Shield size={14} /> },
     { key: 'agent',       label: 'Agent',      icon: <Wallet size={14} /> },
+    { key: 'expenses',    label: 'Expenses',   icon: <Receipt size={14} /> },
     { key: 'haazri',      label: 'Haazri',     icon: <CalendarCheck size={14} /> },
     ...(isOwner ? [
       { key: 'briefing' as PageTab,    label: 'Briefing',   icon: <TrendingUp size={14} />, ownerOnly: true },
@@ -2945,6 +3180,9 @@ export default function StaffPage() {
 
         {/* AGENT — Cash Handover */}
         {activeTab === 'agent' && <HandoversSection />}
+
+        {/* EXPENSES — staff expense claims */}
+        {activeTab === 'expenses' && <ExpenseClaimsSection isOwner={isOwner} staff={staff} />}
 
         {/* HAAZRI */}
         {activeTab === 'haazri' && <AttendanceSection isOwner={isOwner} />}

@@ -424,6 +424,34 @@ export const expenses = pgTable('expenses', {
   index('idx_expenses_recurring').on(t.sellerId, t.isRecurring),
 ]);
 
+// Field staff submit petrol/travel/etc claims for reimbursement; owner
+// approves (creating a real expenses row so it hits P&L like any other
+// expense) or rejects. Mirrors the staff_handovers submit/confirm/dispute
+// shape already used for cash chain-of-custody.
+export const expenseClaimStatusEnum = pgEnum('expense_claim_status', ['PENDING', 'APPROVED', 'REJECTED']);
+
+export const staffExpenseClaims = pgTable('staff_expense_claims', {
+  id:              text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:        text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  staffId:         text('staff_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  category:        expenseCategoryEnum('category').notNull(),
+  amount:          decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  description:     text('description'),
+  claimDate:       timestamp('claim_date').notNull(),
+  receiptImageUrl: text('receipt_image_url'),
+  status:          expenseClaimStatusEnum('status').default('PENDING').notNull(),
+  approvedAmount:  decimal('approved_amount', { precision: 12, scale: 2 }),
+  ownerNote:       text('owner_note'),
+  expenseId:       text('expense_id').references(() => expenses.id, { onDelete: 'set null' }),
+  approvedById:    text('approved_by_id').references(() => users.id, { onDelete: 'set null' }),
+  approvedAt:      timestamp('approved_at'),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_expense_claims_seller').on(t.sellerId),
+  index('idx_expense_claims_staff').on(t.staffId),
+  index('idx_expense_claims_status').on(t.status),
+]);
+
 export const ledgerEntries = pgTable('ledger_entries', {
   id:          text('id').primaryKey().$defaultFn(() => randomUUID()),
   sellerId:    text('seller_id').notNull().references(() => sellers.id),
