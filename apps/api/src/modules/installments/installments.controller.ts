@@ -45,7 +45,7 @@ export async function getCollectionSchedule(req: AuthRequest, res: Response) {
 }
 
 export async function createInstallment(req: AuthRequest, res: Response) {
-  const result = await svc.create(req.user!.sellerId!, req.body);
+  const result = await svc.create(req.user!.sellerId!, req.body, req.user!.userId);
   success(res, result, 201);
   // customerName and productName come directly from create() — no extra DB call needed
   void audit.log({

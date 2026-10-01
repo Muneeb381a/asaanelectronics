@@ -245,7 +245,7 @@ export class InstallmentsService {
     return row;
   }
 
-  async create(sellerId: string, body: CreateBody) {
+  async create(sellerId: string, body: CreateBody, collectedById?: string) {
     if (body.downPayment >= body.totalAmount) {
       throw new AppError('Down payment must be less than total amount', 400);
     }
@@ -382,6 +382,7 @@ export class InstallmentsService {
           method: 'CASH',
           note: 'Down payment',
           isDownPayment: true,
+          collectedBy: collectedById ?? null,
         }).returning();
 
         await tx.insert(ledgerEntries).values({
