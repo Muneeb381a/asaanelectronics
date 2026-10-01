@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { customers, installments, ledgerEntries, payments, products, users, customerCredits } from '../../db/schema.js';
+import { customers, installments, ledgerEntries, payments, products, users, customerCredits, handoverItems, staffHandovers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { staffScopeOrTrue } from '../../utils/staffScope.js';
@@ -279,6 +279,19 @@ export class PaymentsService {
       .where(and(eq(payments.id, id), eq(customers.sellerId, sellerId), isNull(payments.deletedAt)));
 
     if (!pmt) throw new AppError('Payment not found', 404);
+
+    // Cash already physically handed over and confirmed by the owner can't be
+    // un-collected digitally — doing so would silently shrink the staff's
+    // live "collected" total while their already-confirmed handover total
+    // stays fixed, permanently (and invisibly) understating their cash balance.
+    const [linkedConfirmed] = await db
+      .select({ handoverId: staffHandovers.id })
+      .from(handoverItems)
+      .innerJoin(staffHandovers, eq(staffHandovers.id, handoverItems.handoverId))
+      .where(and(eq(handoverItems.paymentId, id), eq(staffHandovers.status, 'CONFIRMED')))
+      .limit(1);
+    if (linkedConfirmed)
+      throw new AppError('This payment\'s cash was already handed over and confirmed — it cannot be reversed. Dispute or adjust the related handover instead.', 400);
 
     const restoredRemaining = Number(pmt.instRemaining) + Number(pmt.amount);
     const statusRevert = pmt.instStatus === 'COMPLETED' && restoredRemaining > 0
