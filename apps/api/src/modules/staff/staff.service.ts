@@ -206,7 +206,7 @@ export class StaffService {
         AND p.paid_on <  ${to.toISOString()}
         AND p.collected_by IS NOT NULL
       GROUP BY p.collected_by, u.name, u.commission_rate
-      ORDER BY total::numeric DESC
+      ORDER BY SUM(p.amount::numeric) DESC
     `);
 
     // Fetch which staff already had commission paid this month
