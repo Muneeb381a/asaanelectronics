@@ -373,7 +373,7 @@ export class OwnerService {
 
     // Revenue this month
     const [revMonthRes] = await db.execute<{ total: string }>(
-      sql`SELECT COALESCE(SUM(amount), 0) AS total FROM admin_payment_logs WHERE created_at >= ${monthStart}`
+      sql`SELECT COALESCE(SUM(amount), 0) AS total FROM admin_payment_logs WHERE created_at >= ${monthStart.toISOString()}`
     );
     const revenueThisMonth = Number(revMonthRes?.total ?? 0);
 
@@ -426,7 +426,7 @@ export class OwnerService {
         SELECT COUNT(*)::text AS total FROM payments p
         JOIN installments i ON i.id = p.installment_id
         JOIN customers c ON c.id = i.customer_id
-        WHERE c.seller_id = ${sellerId} AND p.paid_on >= ${monthStart} AND p.deleted_at IS NULL
+        WHERE c.seller_id = ${sellerId} AND p.paid_on >= ${monthStart.toISOString()} AND p.deleted_at IS NULL
       `),
       db.execute<{ total: string }>(sql`
         SELECT COALESCE(SUM(p.amount), 0)::text AS total FROM payments p
@@ -726,7 +726,7 @@ export class OwnerService {
         SELECT
           c.seller_id,
           MAX(p.paid_on) AS last_payment_date,
-          COUNT(CASE WHEN p.paid_on >= ${monthStart} THEN 1 END) AS this_month
+          COUNT(CASE WHEN p.paid_on >= ${monthStart.toISOString()} THEN 1 END) AS this_month
         FROM payments p
         JOIN installments i ON i.id = p.installment_id
         JOIN customers  c ON c.id = i.customer_id

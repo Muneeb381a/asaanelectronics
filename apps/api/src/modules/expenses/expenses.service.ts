@@ -39,14 +39,14 @@ export class ExpensesService {
       FROM expenses r
       WHERE r.seller_id = ${sellerId}
         AND r.is_recurring = true
-        AND r.date < ${monthStart}
+        AND r.date < ${monthStart.toISOString()}
         AND NOT EXISTS (
           SELECT 1 FROM expenses e2
           WHERE e2.seller_id = ${sellerId}
             AND e2.category  = r.category
             AND (e2.description IS NOT DISTINCT FROM r.description)
-            AND e2.date >= ${monthStart}
-            AND e2.date <  ${monthEnd}
+            AND e2.date >= ${monthStart.toISOString()}
+            AND e2.date <  ${monthEnd.toISOString()}
         )
       ORDER BY r.recurrence_day ASC, r.date DESC
     `);

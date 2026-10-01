@@ -131,7 +131,7 @@ export class HandoversService {
       const d = new Date(date);
       const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const end   = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-      whereClause = sql`${whereClause} AND h.handover_date >= ${start} AND h.handover_date < ${end}`;
+      whereClause = sql`${whereClause} AND h.handover_date >= ${start.toISOString()} AND h.handover_date < ${end.toISOString()}`;
     }
 
     return db.execute<Row>(sql`
