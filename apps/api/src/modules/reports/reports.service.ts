@@ -489,7 +489,7 @@ export class ReportsService {
       LEFT JOIN payments p     ON p.installment_id = i.id AND p.deleted_at IS NULL
       WHERE c.seller_id = ${sellerId} AND c.deleted_at IS NULL
       GROUP BY COALESCE(NULLIF(c.area, ''), 'No Area')
-      ORDER BY "totalCollected"::numeric DESC
+      ORDER BY SUM(p.amount::numeric) DESC
     `);
     return rows;
   }
