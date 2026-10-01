@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql, inArray } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lt, sql, inArray } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import {
   customerAssignments, salaryDeductions, users, customers, installments,
@@ -275,16 +275,16 @@ export async function calculateUncollectedDeductions(sellerId: string, createdBy
 
   // 2. Find which customers actually paid in this month
   const customerIds = [...new Set(assignments.map((a) => a.customer_id))];
-  const paidRows = await db.execute<{ customer_id: string }>(sql`
-    SELECT DISTINCT i.customer_id
-    FROM payments p
-    JOIN installments i ON i.id = p.installment_id
-    WHERE i.customer_id = ANY(${customerIds})
-      AND p.paid_on >= ${fromDate.toISOString()}
-      AND p.paid_on <  ${toDate.toISOString()}
-      AND p.deleted_at IS NULL
-  `);
-  const paidCustomerIds = new Set(paidRows.map((r) => r.customer_id));
+  const paidRows = await db.selectDistinct({ customerId: installments.customerId })
+    .from(payments)
+    .innerJoin(installments, eq(installments.id, payments.installmentId))
+    .where(and(
+      inArray(installments.customerId, customerIds),
+      gte(payments.paidOn, fromDate),
+      lt(payments.paidOn, toDate),
+      isNull(payments.deletedAt),
+    ));
+  const paidCustomerIds = new Set(paidRows.map((r) => r.customerId));
 
   // 3. Check which deductions already exist (to avoid duplicates)
   const agentIds = [...new Set(assignments.map((a) => a.agent_id))];
@@ -347,26 +347,33 @@ export async function salarySummary(sellerId: string, month: string) {
   const staffIds = staffList.map((s) => s.id);
 
   // Total deductions per staff for this month
-  const dedRows = await db.execute<{ staff_id: string; total: string; count: string }>(sql`
-    SELECT staff_id, SUM(amount)::text AS total, COUNT(*)::text AS count
-    FROM salary_deductions
-    WHERE seller_id = ${sellerId}
-      AND month     = ${month}
-      AND staff_id  = ANY(${staffIds})
-    GROUP BY staff_id
-  `);
-  const dedMap = new Map(dedRows.map((r) => [r.staff_id, { total: Number(r.total), count: Number(r.count) }]));
+  const dedRows = await db.select({
+    staffId: salaryDeductions.staffId,
+    total:   sql<string>`SUM(${salaryDeductions.amount})::text`,
+    count:   sql<string>`COUNT(*)::text`,
+  })
+    .from(salaryDeductions)
+    .where(and(
+      eq(salaryDeductions.sellerId, sellerId),
+      eq(salaryDeductions.month, month),
+      inArray(salaryDeductions.staffId, staffIds),
+    ))
+    .groupBy(salaryDeductions.staffId);
+  const dedMap = new Map(dedRows.map((r) => [r.staffId, { total: Number(r.total), count: Number(r.count) }]));
 
   // Portfolio size per agent
-  const portfolioRows = await db.execute<{ agent_id: string; count: string }>(sql`
-    SELECT agent_id, COUNT(*)::text AS count
-    FROM customer_assignments
-    WHERE seller_id     = ${sellerId}
-      AND unassigned_at IS NULL
-      AND agent_id      = ANY(${staffIds})
-    GROUP BY agent_id
-  `);
-  const portfolioMap = new Map(portfolioRows.map((r) => [r.agent_id, Number(r.count)]));
+  const portfolioRows = await db.select({
+    agentId: customerAssignments.agentId,
+    count:   sql<string>`COUNT(*)::text`,
+  })
+    .from(customerAssignments)
+    .where(and(
+      eq(customerAssignments.sellerId, sellerId),
+      isNull(customerAssignments.unassignedAt),
+      inArray(customerAssignments.agentId, staffIds),
+    ))
+    .groupBy(customerAssignments.agentId);
+  const portfolioMap = new Map(portfolioRows.map((r) => [r.agentId, Number(r.count)]));
 
   return {
     month,
