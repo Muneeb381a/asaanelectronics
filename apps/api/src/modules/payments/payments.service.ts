@@ -6,6 +6,9 @@ import { AppError } from '../../middleware/error.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { staffScopeOrTrue } from '../../utils/staffScope.js';
 import { accountingSvc } from '../accounting/accounting.service.js';
+import { FinancialPeriodsService } from '../expenses/financial-periods.service.js';
+
+const periodsSvc = new FinancialPeriodsService();
 
 type CreateBody = {
   installmentId: string;
@@ -193,6 +196,7 @@ export class PaymentsService {
           amount:        payments.amount,
           method:        payments.method,
           installmentId: payments.installmentId,
+          paidOn:        payments.paidOn,
           instRemaining: installments.remaining,
           instStatus:    installments.status,
         })
@@ -202,6 +206,9 @@ export class PaymentsService {
         .where(and(eq(payments.id, id), eq(customers.sellerId, sellerId), isNull(payments.deletedAt)));
 
       if (!pmt) throw new AppError('Payment not found', 404);
+
+      if (await periodsSvc.isLocked(sellerId, pmt.paidOn))
+        throw new AppError('This payment is in a locked financial period and cannot be edited. Unlock the period first.', 400);
 
       const oldAmount    = Number(pmt.amount);
       const newAmount    = body.amount ?? oldAmount;
@@ -267,6 +274,7 @@ export class PaymentsService {
         method:        payments.method,
         installmentId: payments.installmentId,
         receiptNumber: payments.receiptNumber,
+        paidOn:        payments.paidOn,
         instRemaining: installments.remaining,
         instStatus:    installments.status,
         customerName:  customers.name,
@@ -279,6 +287,11 @@ export class PaymentsService {
       .where(and(eq(payments.id, id), eq(customers.sellerId, sellerId), isNull(payments.deletedAt)));
 
     if (!pmt) throw new AppError('Payment not found', 404);
+
+    // A reversal rewrites that month's already-locked totals just as surely
+    // as a backdated entry would — block it the same way expenses do.
+    if (await periodsSvc.isLocked(sellerId, pmt.paidOn))
+      throw new AppError('This payment is in a locked financial period and cannot be reversed. Unlock the period first.', 400);
 
     // Cash already physically handed over and confirmed by the owner can't be
     // un-collected digitally — doing so would silently shrink the staff's

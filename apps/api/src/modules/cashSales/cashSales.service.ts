@@ -4,6 +4,9 @@ import { cashSales, ledgerEntries, products } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { markUnitSoldInTx, markUnitAvailableInTx, productHasUnits } from '../productUnits/productUnits.service.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
+import { FinancialPeriodsService } from '../expenses/financial-periods.service.js';
+
+const periodsSvc = new FinancialPeriodsService();
 
 type CreateBody = {
   productId:     string;
@@ -141,11 +144,13 @@ export class CashSalesService {
 
   async update(id: string, sellerId: string, body: UpdateBody) {
     const [existing] = await db
-      .select({ id: cashSales.id, productId: cashSales.productId, amount: cashSales.amount, customerName: cashSales.customerName })
+      .select({ id: cashSales.id, productId: cashSales.productId, amount: cashSales.amount, customerName: cashSales.customerName, createdAt: cashSales.createdAt })
       .from(cashSales)
       .where(and(eq(cashSales.id, id), eq(cashSales.sellerId, sellerId)));
 
     if (!existing) throw new AppError('Cash sale not found', 404);
+    if (await periodsSvc.isLocked(sellerId, existing.createdAt))
+      throw new AppError('This cash sale is in a locked financial period and cannot be edited. Unlock the period first.', 400);
 
     const newAmount = body.amount != null ? String(body.amount) : undefined;
 
@@ -173,11 +178,13 @@ export class CashSalesService {
 
   async remove(id: string, sellerId: string) {
     const [existing] = await db
-      .select({ id: cashSales.id, productId: cashSales.productId, quantity: cashSales.quantity, amount: cashSales.amount, imeiNumber: cashSales.imeiNumber })
+      .select({ id: cashSales.id, productId: cashSales.productId, quantity: cashSales.quantity, amount: cashSales.amount, imeiNumber: cashSales.imeiNumber, createdAt: cashSales.createdAt })
       .from(cashSales)
       .where(and(eq(cashSales.id, id), eq(cashSales.sellerId, sellerId)));
 
     if (!existing) throw new AppError('Cash sale not found', 404);
+    if (await periodsSvc.isLocked(sellerId, existing.createdAt))
+      throw new AppError('This cash sale is in a locked financial period and cannot be reversed. Unlock the period first.', 400);
 
     await db.transaction(async (tx) => {
       await tx.delete(cashSales).where(eq(cashSales.id, id));
