@@ -33,6 +33,7 @@ const BillingPage           = lazy(() => import('../pages/BillingPage.tsx'));
 const RecoveryPage          = lazy(() => import('../pages/RecoveryPage.tsx'));
 const RecoveryAgentsPage    = lazy(() => import('../pages/RecoveryAgentsPage.tsx'));
 const CashSalesPage         = lazy(() => import('../pages/CashSalesPage.tsx'));
+const RepairJobsPage        = lazy(() => import('../pages/RepairJobsPage.tsx'));
 const ExportsPage           = lazy(() => import('../pages/ExportsPage.tsx'));
 const ShopsPage             = lazy(() => import('../pages/owner/ShopsPage.tsx'));
 const PortalLoginPage       = lazy(() => import('../pages/portal/PortalLoginPage.tsx'));
@@ -179,6 +180,7 @@ export const router = createBrowserRouter([
       { path: '/customers',        element: <PermGuard perm={['canAddCustomer', 'canAddInstallment', 'canRecordPayment']}><S><CustomersPage /></S></PermGuard> },
       { path: '/installments',     element: <PermGuard perm={['canAddInstallment', 'canRecordPayment']}><S><InstallmentsPage /></S></PermGuard> },
       { path: '/cash-sales',       element: <PermGuard perm="canMakeCashSales"><S><CashSalesPage /></S></PermGuard> },
+      { path: '/repair-jobs',      element: <PermGuard perm="canMakeCashSales"><S><RepairJobsPage /></S></PermGuard> },
       { path: '/returns',          element: <PermGuard perm="canManageReturns"><S><ReturnsPage /></S></PermGuard> },
       { path: '/expenses',         element: <PermGuard perm="canRecordExpense"><S><ExpensesPage /></S></PermGuard> },
       { path: '/ledger',           element: <SellerOwnerGuard><S><LedgerPage /></S></SellerOwnerGuard> },

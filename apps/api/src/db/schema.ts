@@ -590,6 +590,39 @@ export const cashSales = pgTable('cash_sales', {
   index('idx_cash_sales_sold_by_date').on(t.soldByUserId, t.createdAt),
 ]);
 
+// ── Repair / Service Jobs ──────────────────────────────────────────────────────
+export const repairJobStatusEnum = pgEnum('repair_job_status', [
+  'RECEIVED', 'DIAGNOSING', 'AWAITING_PARTS', 'REPAIRING', 'REPAIRED', 'UNREPAIRABLE', 'RETURNED',
+]);
+
+export const repairJobs = pgTable('repair_jobs', {
+  id:                text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:          text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  jobNumber:         text('job_number').notNull(),
+  customerName:      text('customer_name').notNull(),
+  customerPhone:     text('customer_phone').notNull(),
+  deviceName:        text('device_name').notNull(),
+  imeiNumber:        text('imei_number'),
+  issueDescription:  text('issue_description').notNull(),
+  status:            repairJobStatusEnum('status').default('RECEIVED').notNull(),
+  estimatedCost:     decimal('estimated_cost', { precision: 12, scale: 2 }),
+  actualCost:        decimal('actual_cost', { precision: 12, scale: 2 }),
+  paymentMethod:     paymentMethodEnum('payment_method'),
+  partsUsed:         text('parts_used'),
+  receivedById:      text('received_by_id').references(() => users.id, { onDelete: 'set null' }),
+  assignedToId:      text('assigned_to_id').references(() => users.id, { onDelete: 'set null' }),
+  promisedAt:        timestamp('promised_at'),
+  completedAt:       timestamp('completed_at'),
+  returnedAt:        timestamp('returned_at'),
+  notes:             text('notes'),
+  createdAt:         timestamp('created_at').defaultNow().notNull(),
+  updatedAt:         timestamp('updated_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_repair_jobs_seller').on(t.sellerId),
+  index('idx_repair_jobs_seller_status').on(t.sellerId, t.status),
+  uniqueIndex('uidx_repair_jobs_seller_job_number').on(t.sellerId, t.jobNumber),
+]);
+
 // ── Double-entry accounting ───────────────────────────────────────────────────
 
 export const accountTypeEnum = pgEnum('account_type', ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']);

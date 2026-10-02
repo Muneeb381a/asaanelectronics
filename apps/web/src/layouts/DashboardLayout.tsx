@@ -6,7 +6,7 @@ import {
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck,
   RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart,
   FileDown, Building2, ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays,
-  ClipboardList, ChevronDown, UserCircle, PanelLeftClose, PanelLeftOpen,
+  ClipboardList, ChevronDown, UserCircle, PanelLeftClose, PanelLeftOpen, Wrench,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -47,6 +47,7 @@ const ALL_NAV: NavItemDef[] = [
   { to: '/customers',        label: 'Customers',        icon: Users,                      perm: ['canAddCustomer','canAddInstallment','canRecordPayment'], group: 'customers'  },
   { to: '/installments',     label: 'Installments',     icon: CreditCard,                 perm: ['canAddInstallment','canRecordPayment'],                  group: 'customers'  },
   { to: '/cash-sales',       label: 'Cash Sales',       icon: ShoppingCart,               perm: 'canMakeCashSales',                                       group: 'customers'  },
+  { to: '/repair-jobs',      label: 'Repair Jobs',      icon: Wrench,                     perm: 'canMakeCashSales',                                       group: 'customers'  },
   { to: '/guarantors',       label: 'Guarantors',       icon: Shield,                     perm: '__owner__',                                              group: 'customers'  },
   { to: '/recovery',         label: 'Recovery',         icon: PhoneCall,                  perm: 'canManageRecovery',                                              group: 'operations' },
   { to: '/recovery-agents',  label: 'Agents',           icon: TrendingUp,                 perm: '__owner__',                                              group: 'operations' },
