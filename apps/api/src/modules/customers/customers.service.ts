@@ -71,6 +71,8 @@ type CreateBody = {
   guarantorCnic?: string;
   guarantorAddress?: string;
   guarantorRelation?: string;
+  guarantorLat?: number;
+  guarantorLng?: number;
   guarantorCnicFrontUrl?: string;
   guarantorCnicBackUrl?: string;
   guarantor2Name?: string;
@@ -78,6 +80,8 @@ type CreateBody = {
   guarantor2Cnic?: string;
   guarantor2Address?: string;
   guarantor2Relation?: string;
+  guarantor2Lat?: number;
+  guarantor2Lng?: number;
   guarantor2CnicFrontUrl?: string;
   guarantor2CnicBackUrl?: string;
   photoUrl?: string;
@@ -172,11 +176,15 @@ export class CustomersService {
         guarantorCnic: customers.guarantorCnic,
         guarantorAddress: customers.guarantorAddress,
         guarantorRelation: customers.guarantorRelation,
+        guarantorLat: customers.guarantorLat,
+        guarantorLng: customers.guarantorLng,
         guarantor2Name: customers.guarantor2Name,
         guarantor2Phone: customers.guarantor2Phone,
         guarantor2Cnic: customers.guarantor2Cnic,
         guarantor2Address: customers.guarantor2Address,
         guarantor2Relation: customers.guarantor2Relation,
+        guarantor2Lat: customers.guarantor2Lat,
+        guarantor2Lng: customers.guarantor2Lng,
         fatherName: customers.fatherName,
         cnicExpiry: customers.cnicExpiry,
         officeAddress: customers.officeAddress,
@@ -595,6 +603,8 @@ export class CustomersService {
           guarantorCnic: body.guarantorCnic,
           guarantorAddress: body.guarantorAddress,
           guarantorRelation: body.guarantorRelation,
+          guarantorLat: body.guarantorLat != null ? String(body.guarantorLat) : undefined,
+          guarantorLng: body.guarantorLng != null ? String(body.guarantorLng) : undefined,
           guarantorCnicFrontUrl: body.guarantorCnicFrontUrl,
           guarantorCnicBackUrl: body.guarantorCnicBackUrl,
           guarantor2Name: body.guarantor2Name,
@@ -602,6 +612,8 @@ export class CustomersService {
           guarantor2Cnic: body.guarantor2Cnic,
           guarantor2Address: body.guarantor2Address,
           guarantor2Relation: body.guarantor2Relation,
+          guarantor2Lat: body.guarantor2Lat != null ? String(body.guarantor2Lat) : undefined,
+          guarantor2Lng: body.guarantor2Lng != null ? String(body.guarantor2Lng) : undefined,
           guarantor2CnicFrontUrl: body.guarantor2CnicFrontUrl,
           guarantor2CnicBackUrl: body.guarantor2CnicBackUrl,
           photoUrl: body.photoUrl,
@@ -658,6 +670,8 @@ export class CustomersService {
         ...(body.guarantorCnic !== undefined && { guarantorCnic: body.guarantorCnic }),
         ...(body.guarantorAddress !== undefined && { guarantorAddress: body.guarantorAddress }),
         ...(body.guarantorRelation !== undefined && { guarantorRelation: body.guarantorRelation }),
+        ...(body.guarantorLat !== undefined && { guarantorLat: String(body.guarantorLat) }),
+        ...(body.guarantorLng !== undefined && { guarantorLng: String(body.guarantorLng) }),
         ...(body.guarantorCnicFrontUrl !== undefined && { guarantorCnicFrontUrl: body.guarantorCnicFrontUrl }),
         ...(body.guarantorCnicBackUrl !== undefined && { guarantorCnicBackUrl: body.guarantorCnicBackUrl }),
         ...(body.guarantor2Name !== undefined && { guarantor2Name: body.guarantor2Name }),
@@ -665,6 +679,8 @@ export class CustomersService {
         ...(body.guarantor2Cnic !== undefined && { guarantor2Cnic: body.guarantor2Cnic }),
         ...(body.guarantor2Address !== undefined && { guarantor2Address: body.guarantor2Address }),
         ...(body.guarantor2Relation !== undefined && { guarantor2Relation: body.guarantor2Relation }),
+        ...(body.guarantor2Lat !== undefined && { guarantor2Lat: String(body.guarantor2Lat) }),
+        ...(body.guarantor2Lng !== undefined && { guarantor2Lng: String(body.guarantor2Lng) }),
         ...(body.guarantor2CnicFrontUrl !== undefined && { guarantor2CnicFrontUrl: body.guarantor2CnicFrontUrl }),
         ...(body.guarantor2CnicBackUrl !== undefined && { guarantor2CnicBackUrl: body.guarantor2CnicBackUrl }),
         ...(body.photoUrl !== undefined && { photoUrl: body.photoUrl }),

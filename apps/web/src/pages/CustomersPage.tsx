@@ -730,6 +730,31 @@ function DocsTab({ customer, canEdit, isOwner }: { customer: Customer; canEdit: 
         </div>
       </div>
 
+      {/* Guarantor locations */}
+      {(customer.guarantorLat || customer.guarantor2Lat) && (
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Guarantor Locations</p>
+          <div className="space-y-1.5">
+            {customer.guarantorLat && customer.guarantorLng && (
+              <a href={`https://maps.google.com/?q=${customer.guarantorLat},${customer.guarantorLng}`} target="_blank" rel="noreferrer"
+                className="flex items-center gap-3 px-3 py-2.5 bg-white border border-gray-100 rounded-xl hover:border-blue-200 transition">
+                <MapPin size={14} className="text-blue-500 shrink-0" />
+                <span className="flex-1 text-sm text-gray-700">{customer.guarantorName || 'Guarantor 1'}</span>
+                <span className="text-xs text-blue-500 shrink-0">Open map</span>
+              </a>
+            )}
+            {customer.guarantor2Lat && customer.guarantor2Lng && (
+              <a href={`https://maps.google.com/?q=${customer.guarantor2Lat},${customer.guarantor2Lng}`} target="_blank" rel="noreferrer"
+                className="flex items-center gap-3 px-3 py-2.5 bg-white border border-gray-100 rounded-xl hover:border-blue-200 transition">
+                <MapPin size={14} className="text-blue-500 shrink-0" />
+                <span className="flex-1 text-sm text-gray-700">{customer.guarantor2Name || 'Guarantor 2'}</span>
+                <span className="text-xs text-blue-500 shrink-0">Open map</span>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Physical docs */}
       <div>
         <div className="flex items-center justify-between mb-2">

@@ -23,6 +23,8 @@ export interface Customer {
   guarantorCnic: string | null;
   guarantorAddress: string | null;
   guarantorRelation: string | null;
+  guarantorLat: string | null;
+  guarantorLng: string | null;
   guarantorCnicFrontUrl: string | null;
   guarantorCnicBackUrl: string | null;
   guarantor2Name: string | null;
@@ -30,6 +32,8 @@ export interface Customer {
   guarantor2Cnic: string | null;
   guarantor2Address: string | null;
   guarantor2Relation: string | null;
+  guarantor2Lat: string | null;
+  guarantor2Lng: string | null;
   guarantor2CnicFrontUrl: string | null;
   guarantor2CnicBackUrl: string | null;
   photoUrl: string | null;

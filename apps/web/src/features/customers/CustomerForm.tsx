@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createCustomerSchema } from '@assaan/shared';
-import { User, Shield, Image, ChevronRight, ChevronLeft, Check, ImageIcon, X, AlertTriangle } from 'lucide-react';
+import { User, Shield, Image, ChevronRight, ChevronLeft, Check, ImageIcon, X, AlertTriangle, MapPin, Loader2 } from 'lucide-react';
 import { api } from '../../api/client.ts';
 import { customersApi, type Customer } from '../../api/customers.api.ts';
 import LocationPicker from '../../components/LocationPicker.tsx';
@@ -299,11 +299,14 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
   );
 }
 
-function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, cnicBack, setCnicBack, isShopOwner }: {
+function GuarantorStep({ n, prefix, register, errors, setValue, initialLat, initialLng, cnicFront, setCnicFront, cnicBack, setCnicBack, isShopOwner }: {
   n: 1 | 2;
   prefix: 'guarantor' | 'guarantor2';
   register: ReturnType<typeof useForm<FormData>>['register'];
   errors: ReturnType<typeof useForm<FormData>>['formState']['errors'];
+  setValue: ReturnType<typeof useForm<FormData>>['setValue'];
+  initialLat?: number | null;
+  initialLng?: number | null;
   cnicFront: string | null; setCnicFront: (v: string | null) => void;
   cnicBack: string | null;  setCnicBack: (v: string | null) => void;
   isShopOwner?: boolean;
@@ -313,8 +316,32 @@ function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, c
   const cnicKey     = prefix === 'guarantor' ? 'guarantorCnic'        : 'guarantor2Cnic';
   const addrKey     = prefix === 'guarantor' ? 'guarantorAddress'     : 'guarantor2Address';
   const relKey      = prefix === 'guarantor' ? 'guarantorRelation'    : 'guarantor2Relation';
+  const latKey      = prefix === 'guarantor' ? 'guarantorLat'         : 'guarantor2Lat';
+  const lngKey      = prefix === 'guarantor' ? 'guarantorLng'         : 'guarantor2Lng';
   const shopNameKey = prefix === 'guarantor' ? 'guarantorShopName'    : 'guarantor2ShopName';
   const shopAddrKey = prefix === 'guarantor' ? 'guarantorShopAddress' : 'guarantor2ShopAddress';
+
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    initialLat != null && initialLng != null ? { lat: initialLat, lng: initialLng } : null,
+  );
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'denied'>('idle');
+
+  function captureLocation() {
+    if (!navigator.geolocation) { setGpsStatus('denied'); return; }
+    setGpsStatus('locating');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(7));
+        const lng = Number(pos.coords.longitude.toFixed(7));
+        setCoords({ lat, lng });
+        setValue(latKey, lat, { shouldDirty: true });
+        setValue(lngKey, lng, { shouldDirty: true });
+        setGpsStatus('idle');
+      },
+      () => setGpsStatus('denied'),
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -350,6 +377,18 @@ function GuarantorStep({ n, prefix, register, errors, cnicFront, setCnicFront, c
       <Field label="Address" optional>
         <input {...register(addrKey)} placeholder="Full address" className={inp} />
       </Field>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={captureLocation} disabled={gpsStatus === 'locating'}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-50">
+          {gpsStatus === 'locating' ? <Loader2 size={12} className="animate-spin" /> : <MapPin size={12} />}
+          {coords ? 'Re-capture GPS Location' : 'Capture GPS Location'}
+        </button>
+        {coords && (
+          <a href={`https://maps.google.com/?q=${coords.lat},${coords.lng}`} target="_blank" rel="noreferrer"
+            className="text-xs text-blue-500 hover:underline">View on map</a>
+        )}
+        {gpsStatus === 'denied' && <span className="text-xs text-red-500">GPS unavailable</span>}
+      </div>
       {isShopOwner && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Shop Name" optional>
@@ -690,7 +729,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
 
         {/* ── Step 1: Guarantor 1 ── */}
         {step === 1 && (
-          <GuarantorStep n={1} prefix="guarantor" register={register} errors={errors}
+          <GuarantorStep n={1} prefix="guarantor" register={register} errors={errors} setValue={setValue}
+            initialLat={customer?.guarantorLat != null ? Number(customer.guarantorLat) : null}
+            initialLng={customer?.guarantorLng != null ? Number(customer.guarantorLng) : null}
             cnicFront={gCnicFront} setCnicFront={setGCnicFront}
             cnicBack={gCnicBack}   setCnicBack={setGCnicBack}
             isShopOwner={isDukaanDar} />
@@ -698,7 +739,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
 
         {/* ── Step 2: Guarantor 2 ── */}
         {step === 2 && (
-          <GuarantorStep n={2} prefix="guarantor2" register={register} errors={errors}
+          <GuarantorStep n={2} prefix="guarantor2" register={register} errors={errors} setValue={setValue}
+            initialLat={customer?.guarantor2Lat != null ? Number(customer.guarantor2Lat) : null}
+            initialLng={customer?.guarantor2Lng != null ? Number(customer.guarantor2Lng) : null}
             cnicFront={g2CnicFront} setCnicFront={setG2CnicFront}
             cnicBack={g2CnicBack}   setCnicBack={setG2CnicBack}
             isShopOwner={isDukaanDar} />

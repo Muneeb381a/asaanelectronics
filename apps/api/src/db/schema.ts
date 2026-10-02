@@ -228,11 +228,18 @@ export const customers = pgTable(
     guarantorCnic: text('guarantor_cnic'),
     guarantorAddress: text('guarantor_address'),
     guarantorRelation: text('guarantor_relation'),
+    // Captured once, at the moment a staff member is physically at the
+    // guarantor's address verifying them — not re-derived later, since the
+    // point is proof of an in-person visit, not a live tracker.
+    guarantorLat: decimal('guarantor_lat', { precision: 10, scale: 7 }),
+    guarantorLng: decimal('guarantor_lng', { precision: 10, scale: 7 }),
     guarantor2Name: text('guarantor2_name'),
     guarantor2Phone: text('guarantor2_phone'),
     guarantor2Cnic: text('guarantor2_cnic'),
     guarantor2Address: text('guarantor2_address'),
     guarantor2Relation: text('guarantor2_relation'),
+    guarantor2Lat: decimal('guarantor2_lat', { precision: 10, scale: 7 }),
+    guarantor2Lng: decimal('guarantor2_lng', { precision: 10, scale: 7 }),
     officeAddress: text('office_address'),
     salary: decimal('salary', { precision: 12, scale: 2 }),
     blankChequeUrl: text('blank_cheque_url'),
