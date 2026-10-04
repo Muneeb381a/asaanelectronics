@@ -20,6 +20,7 @@ import {
   type SinglePaymentReceiptData,
 } from '../../utils/receipt.ts';
 import TransferModal from './TransferModal.tsx';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus.ts';
 
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
 
@@ -158,6 +159,8 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
       setUploading(false);
     }
   }
+
+  const isOnline = useOnlineStatus();
 
   const mutation = useMutation({
     mutationFn: () => paymentsApi.record({
@@ -825,9 +828,10 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                 </button>
                 <button
                   onClick={() => mutation.mutate()}
-                  disabled={amountInvalid || mutation.isPending || uploading}
+                  disabled={amountInvalid || mutation.isPending || uploading || !isOnline}
+                  title={!isOnline ? 'Internet nahi hai — payment record nahi ho sakti' : undefined}
                   className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition disabled:opacity-50">
-                  {mutation.isPending ? 'Recording…' : 'Record Payment'}
+                  {!isOnline ? 'Offline — save nahi hoga' : mutation.isPending ? 'Recording…' : 'Record Payment'}
                 </button>
               </div>
             </div>

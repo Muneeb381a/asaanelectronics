@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { avoDb } from '../lib/avoOfflineDb.ts';
 import { api } from '../api/client.ts';
 import { verificationsApi } from '../api/verifications.api.ts';
+import { useOnlineStatus } from './useOnlineStatus.ts';
 import toast from 'react-hot-toast';
 
 export function useOfflineSync(onSyncComplete?: () => void) {
-  const [isOnline, setIsOnline]     = useState(navigator.onLine);
+  const isOnline = useOnlineStatus();
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing]       = useState(false);
   const syncing$ = useRef(false);
@@ -68,22 +69,14 @@ export function useOfflineSync(onSyncComplete?: () => void) {
     }
   }, [onSyncComplete, refreshCount]);
 
+  useEffect(() => { refreshCount(); }, [refreshCount]);
+
+  // Auto-sync whatever queued up the moment connectivity comes back.
   useEffect(() => {
-    refreshCount();
-
-    const goOnline = () => {
-      setIsOnline(true);
-      avoDb.countPending().then((n) => { if (n > 0) sync(); }).catch(() => {});
-    };
-    const goOffline = () => setIsOnline(false);
-
-    window.addEventListener('online',  goOnline);
-    window.addEventListener('offline', goOffline);
-    return () => {
-      window.removeEventListener('online',  goOnline);
-      window.removeEventListener('offline', goOffline);
-    };
-  }, [refreshCount, sync]);
+    if (!isOnline) return;
+    avoDb.countPending().then((n) => { if (n > 0) sync(); }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
 
   return { isOnline, pendingCount, syncing, refreshCount, sync };
 }

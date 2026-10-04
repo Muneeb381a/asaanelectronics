@@ -20,6 +20,7 @@ import { broadcastsApi, type Broadcast } from '../api/broadcasts.api.ts';
 import ProfileModal from '../components/ProfileModal.tsx';
 import GlobalSearch from '../components/GlobalSearch.tsx';
 import AssistantChat from '../components/AssistantChat.tsx';
+import OfflineBanner from '../components/OfflineBanner.tsx';
 
 // ── Nav item definitions ───────────────────────────────────────────────────────
 
@@ -504,6 +505,7 @@ export default function DashboardLayout() {
         </header>
 
         <main className="flex-1 overflow-auto flex flex-col">
+          <OfflineBanner />
           {/* Broadcasts */}
           {visibleBroadcasts.map((b: Broadcast) => {
             const styles: Record<string, string> = {
