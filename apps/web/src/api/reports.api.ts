@@ -102,6 +102,10 @@ export type PnL = {
   grossProfit: number;
   grossMarginPct: number;
   totalExpenses: number;
+  duplicateStockExpense: number;
+  duplicateStockCount: number;
+  unverifiedStockExpense: number;
+  unverifiedStockCount: number;
   netProfit: number;
   netMarginPct: number;
   supplierPurchases: number;

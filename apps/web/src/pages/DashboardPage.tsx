@@ -694,6 +694,11 @@ export default function DashboardPage() {
                           {pnl.missingCostCount} sale{pnl.missingCostCount !== 1 ? 's' : ''} ({pkrSh(pnl.missingCostRevenue)}) ka cost price missing — asal munafa kam ho sakta hai. Products mein purchase price add karein.
                         </p>
                       )}
+                      {pnl.unverifiedStockExpense > 0 && (
+                        <p className="text-[11px] text-orange-700">
+                          {pnl.unverifiedStockCount} "PURCHASE" expense ({pkrSh(pnl.unverifiedStockExpense)}) ho sakta hai product cost se duplicate ho — Reports mein details dekhein.
+                        </p>
+                      )}
                     </div>
                   )}
                 </Card>

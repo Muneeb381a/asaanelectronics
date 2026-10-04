@@ -378,7 +378,7 @@ export class ReportsService {
     const from = month ? new Date(year, month - 1, 1) : new Date(year, 0, 1);
     const to   = month ? new Date(year, month,     1) : new Date(year + 1, 0, 1);
 
-    const [payRow, cashRow, expRow, instCogs, cashCogs, suppRow] = await Promise.all([
+    const [payRow, cashRow, expRow, dupExpRow, purchaseCatRow, instCogs, cashCogs, suppRow] = await Promise.all([
       // Revenue: installment payments collected
       db.select({ total: sum(payments.amount) })
         .from(payments)
@@ -402,6 +402,43 @@ export class ReportsService {
       db.select({ total: sum(expenses.amount) })
         .from(expenses)
         .where(and(eq(expenses.sellerId, sellerId), gte(expenses.date, from), lt(expenses.date, to))),
+
+      // Expenses that are a duplicate of a product's cost already counted via COGS:
+      // a PURCHASE-category entry whose amount exactly matches a product's
+      // purchase_price AND whose description plausibly names that product (e.g.
+      // "OPPO A6K" PKR 65,000 logged as an expense, when products.purchase_price
+      // for OPPO A6K is also 65,000) — the owner recorded the same stock cost
+      // twice. Narrow on purpose: a generic "PURCHASE" entry with no matching
+      // product (e.g. buying a shop AC/fan) is a real operating cost, not a
+      // COGS duplicate, and must stay counted.
+      db.execute<{ total: string; cnt: string }>(sql`
+        SELECT COALESCE(SUM(e.amount::numeric), 0)::text AS total, COUNT(*)::text AS cnt
+        FROM expenses e
+        WHERE e.seller_id = ${sellerId}
+          AND e.category::text = 'PURCHASE'
+          AND e.date >= ${ymd(from)} AND e.date < ${ymd(to)}
+          AND e.description IS NOT NULL AND length(e.description) >= 3
+          AND EXISTS (
+            SELECT 1 FROM products pr
+            WHERE pr.seller_id = e.seller_id
+              AND pr.purchase_price IS NOT NULL
+              AND pr.purchase_price::numeric = e.amount::numeric
+              AND length(pr.name) >= 3
+              AND (pr.name ILIKE '%' || e.description || '%' OR e.description ILIKE '%' || pr.name || '%')
+          )
+      `),
+
+      // Full PURCHASE-category total, shown separately so an owner can spot
+      // check the rest even when it can't be safely auto-matched above (e.g.
+      // a stock purchase logged with no description, or a description that
+      // doesn't name an existing product) — these may ALSO be duplicates of
+      // a product's cost, just not provable from the data alone.
+      db.execute<{ total: string; cnt: string }>(sql`
+        SELECT COALESCE(SUM(amount::numeric), 0)::text AS total, COUNT(*)::text AS cnt
+        FROM expenses
+        WHERE seller_id = ${sellerId} AND category::text = 'PURCHASE'
+          AND date >= ${ymd(from)} AND date < ${ymd(to)}
+      `),
 
       // COGS: installments — recognized in proportion to how much of each sale's
       // total price was actually collected this period (matches revenue above,
@@ -469,7 +506,17 @@ export class ReportsService {
     const installmentRevenue = Number(payRow[0]?.total ?? 0);
     const cashRevenue        = Number(cashRow[0]?.total ?? 0);
     const totalRevenue       = installmentRevenue + cashRevenue;
-    const totalExpenses      = Number(expRow[0]?.total ?? 0);
+    const duplicateStockExpense = Number(dupExpRow[0]?.total ?? 0);
+    const duplicateStockCount   = Number(dupExpRow[0]?.cnt   ?? 0);
+    const purchaseCategoryTotal = Number(purchaseCatRow[0]?.total ?? 0);
+    const purchaseCategoryCount = Number(purchaseCatRow[0]?.cnt   ?? 0);
+    // What's left in "PURCHASE" after the provable duplicates are already
+    // excluded — needs the owner's own judgment, not auto-excluded.
+    const unverifiedStockExpense = purchaseCategoryTotal - duplicateStockExpense;
+    const unverifiedStockCount   = purchaseCategoryCount - duplicateStockCount;
+    // Excludes entries that are a proven duplicate of a cost already counted via
+    // COGS below — otherwise that stock's cost is subtracted twice.
+    const totalExpenses      = Number(expRow[0]?.total ?? 0) - duplicateStockExpense;
     const cogsSales          = Number(instCogs[0]?.cogs ?? 0) + Number(cashCogs[0]?.cogs ?? 0);
     const missingCostRevenue = Number(instCogs[0]?.missing_revenue ?? 0) + Number(cashCogs[0]?.missing_revenue ?? 0);
     const missingCostCount   = Number(instCogs[0]?.missing_count ?? 0) + Number(cashCogs[0]?.missing_count ?? 0);
@@ -491,6 +538,10 @@ export class ReportsService {
       grossProfit,
       grossMarginPct: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0,
       totalExpenses,
+      duplicateStockExpense,
+      duplicateStockCount,
+      unverifiedStockExpense,
+      unverifiedStockCount,
       netProfit,
       netMarginPct: totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0,
       supplierPurchases,

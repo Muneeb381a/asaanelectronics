@@ -246,6 +246,26 @@ function ProfitSection() {
               </p>
             </div>
           )}
+          {pnl.duplicateStockExpense > 0 && (
+            <div className="mt-2.5 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5">
+              <CheckCircle size={14} className="text-blue-600 shrink-0 mt-0.5"/>
+              <p className="text-xs text-blue-800">
+                <span className="font-semibold">{pnl.duplicateStockCount} expense entr{pnl.duplicateStockCount !== 1 ? 'ies' : 'y'} ({pkrSh(pnl.duplicateStockExpense)})</span> ko
+                "Kharche" se hata diya gaya — ye kisi product ki purchase price se match kar rahe thay, matlab wo cost pehle hi munafa calculation mein (Maal ki cost) shamil thi.
+                Dobara count nahi hui.
+              </p>
+            </div>
+          )}
+          {pnl.unverifiedStockExpense > 0 && (
+            <div className="mt-2.5 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5">
+              <AlertTriangle size={14} className="text-orange-600 shrink-0 mt-0.5"/>
+              <p className="text-xs text-orange-800">
+                <span className="font-semibold">{pnl.unverifiedStockCount} "PURCHASE" category expense{pnl.unverifiedStockCount !== 1 ? 's' : ''} ({pkrSh(pnl.unverifiedStockExpense)})</span> abhi
+                bhi "Kharche" mein shamil hain — agar ye maal/stock kharidne ka kharcha hai jiski cost product par bhi likh di gai thi, to ye dobara count ho sakta hai aur munafa asal se kam dikh raha ho sakta hai.
+                Expenses page par jaa kar in entries ko verify karein.
+              </p>
+            </div>
+          )}
         </div>
       ) : null}
 
