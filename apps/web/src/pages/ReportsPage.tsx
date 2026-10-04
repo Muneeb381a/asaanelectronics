@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/auth.store.ts';
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, MessageCircle,
   BarChart3, Send, UserCheck, MapPin, Activity, Gift, CalendarDays,
-  ChevronLeft, ChevronRight, FileText, Printer,
+  ChevronLeft, ChevronRight, FileText, Printer, Wallet, PackageSearch,
 } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
@@ -166,6 +166,133 @@ function ForecastSection({ months }: { months: ForecastMonth[] }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── Profit & Margin ─────────────────────────────────────────────────────────
+
+function pkrSh(v: number) {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 10_00_000) return `${sign}${(abs / 10_00_000).toFixed(1)}M`;
+  if (abs >= 1_000)     return `${sign}${(abs / 1_000).toFixed(abs % 1_000 === 0 ? 0 : 1)}K`;
+  return `${sign}${abs}`;
+}
+
+function ProfitSection() {
+  const now = new Date();
+  const { data: pnl, isLoading: pnlLoading } = useQuery({
+    queryKey: ['reports-pnl', now.getFullYear(), now.getMonth() + 1],
+    queryFn: () => reportsApi.getPnL(now.getFullYear(), now.getMonth() + 1),
+    staleTime: 5 * 60_000,
+  });
+  const { data: products, isLoading: productsLoading } = useQuery({
+    queryKey: ['product-profitability'],
+    queryFn: () => reportsApi.getProductProfitability(),
+    staleTime: 5 * 60_000,
+  });
+
+  const [showAll, setShowAll] = useState(false);
+  const ranked = products ?? [];
+  const visible = showAll ? ranked : ranked.slice(0, 6);
+  const totalMissingCost = ranked.reduce((a, p) => a + p.missingCostCount, 0);
+
+  return (
+    <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5">
+        <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
+          <Wallet size={15} className="text-emerald-600"/>
+        </div>
+        <div>
+          <p className="text-sm font-bold text-slate-900">Profit &amp; Margin</p>
+          <p className="text-xs text-slate-400">Is mahine ka munafa + product-wise margin</p>
+        </div>
+      </div>
+
+      {pnlLoading ? (
+        <div className="p-6"><Skeleton className="h-28 w-full"/></div>
+      ) : pnl ? (
+        <div className="p-6 border-b border-slate-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Sales</p>
+              <p className="text-lg font-bold text-slate-900 tabular-nums">{pkrSh(pnl.totalRevenue)}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Maal ki cost</p>
+              <p className="text-lg font-bold text-slate-700 tabular-nums">{pkrSh(pnl.cogsSales)}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Gross profit</p>
+              <p className={`text-lg font-bold tabular-nums ${pnl.grossProfit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
+                {pkrSh(pnl.grossProfit)} <span className="text-xs font-medium text-slate-400">({pnl.grossMarginPct}%)</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Net munafa</p>
+              <p className={`text-lg font-bold tabular-nums ${pnl.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {pkrSh(pnl.netProfit)} <span className="text-xs font-medium opacity-70">({pnl.netMarginPct}%)</span>
+              </p>
+            </div>
+          </div>
+          {pnl.missingCostRevenue > 0 && (
+            <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5"/>
+              <p className="text-xs text-amber-800">
+                <span className="font-semibold">{pnl.missingCostCount} sale{pnl.missingCostCount !== 1 ? 's' : ''} ({pkrSh(pnl.missingCostRevenue)})</span> ka
+                cost price missing hai — in par asal profit calculate nahi ho saka, is liye uper ke figures se zyada ho sakta hai asal munafa kam.
+                Products mein purchase price add karein taake sahi number dikhe.
+              </p>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {productsLoading ? (
+        <div className="p-6 space-y-2">
+          <Skeleton className="h-10 w-full"/><Skeleton className="h-10 w-full"/><Skeleton className="h-10 w-full"/>
+        </div>
+      ) : ranked.length === 0 ? (
+        <div className="py-10 flex flex-col items-center gap-2 text-center">
+          <PackageSearch size={20} className="text-slate-300"/>
+          <p className="text-xs text-slate-400">Abhi koi sale nahi — product-wise profit yahan dikhega</p>
+        </div>
+      ) : (
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Product-wise Munafa (overall)</p>
+            {totalMissingCost > 0 && (
+              <span className="text-[10px] text-amber-600 font-semibold">{totalMissingCost} product{totalMissingCost !== 1 ? 's' : ''} missing cost</span>
+            )}
+          </div>
+          <div className="space-y-1">
+            {visible.map((p) => (
+              <div key={p.productId} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 transition">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{p.name}</p>
+                    {p.missingCostCount > 0 && (
+                      <span title="Kuch units ka cost price missing hai" className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">~</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400">{p.unitsSold} sold{p.category ? ` · ${p.category}` : ''}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`text-sm font-bold tabular-nums ${p.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{pkrSh(p.profit)}</p>
+                  <p className="text-[11px] text-slate-400 tabular-nums">{p.marginPct}% margin</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {ranked.length > 6 && (
+            <button onClick={() => setShowAll((v) => !v)}
+              className="mt-2 text-xs font-semibold text-blue-600 hover:underline px-3">
+              {showAll ? 'Kam dikhayein' : `Sab ${ranked.length} products dekhein`}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -435,6 +562,9 @@ export default function ReportsPage() {
 
       {/* ── Page content ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+
+        {/* Profit & margin */}
+        {isOwner && <ProfitSection />}
 
         {/* Forecast */}
         {forecastMonths.length > 0 && <ForecastSection months={forecastMonths}/>}

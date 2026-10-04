@@ -31,6 +31,12 @@ export async function getPnL(req: AuthRequest, res: Response) {
   success(res, await svc.getPnL(sellerId, year, month));
 }
 
+export async function getProductProfitability(req: AuthRequest, res: Response) {
+  const from = req.query['from'] as string | undefined;
+  const to   = req.query['to']   as string | undefined;
+  success(res, await svc.getProductProfitability(req.user!.sellerId!, from, to));
+}
+
 export async function getCollectionsHeatmap(req: AuthRequest, res: Response) {
   const sellerId = req.user!.sellerId!;
   const now   = new Date();

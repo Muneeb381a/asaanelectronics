@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireSeller } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/checkPermission.js';
-import { getMonthlyReport, getMonthlyCustomers, getAreaReport, getAgingReport, getCollectionsHeatmap, getPnL, getForecastReport, getCustomerBalances, getCashflowCalendar, getCashflowDay, getCohortAnalysis } from './reports.controller.js';
+import { getMonthlyReport, getMonthlyCustomers, getAreaReport, getAgingReport, getCollectionsHeatmap, getPnL, getProductProfitability, getForecastReport, getCustomerBalances, getCashflowCalendar, getCashflowDay, getCohortAnalysis } from './reports.controller.js';
 
 const router = Router();
 
@@ -14,6 +14,7 @@ router.get('/areas',                getAreaReport);
 router.get('/aging',                getAgingReport);
 router.get('/collections-heatmap',  getCollectionsHeatmap);
 router.get('/pnl',                  getPnL);
+router.get('/product-profitability', getProductProfitability);
 router.get('/forecast',             getForecastReport);
 router.get('/customer-balances',    getCustomerBalances);
 router.get('/cashflow-calendar',    getCashflowCalendar);

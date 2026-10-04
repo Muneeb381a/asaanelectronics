@@ -403,28 +403,57 @@ export class ReportsService {
         .from(expenses)
         .where(and(eq(expenses.sellerId, sellerId), gte(expenses.date, from), lt(expenses.date, to))),
 
-      // COGS: purchase price of products sold via installments
-      db.execute<{ cogs: string }>(sql`
-        SELECT COALESCE(SUM(p.purchase_price::numeric), 0)::text AS cogs
-        FROM installments i
-        JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
-        JOIN products p  ON p.id = i.product_id
+      // COGS: installments — recognized in proportion to how much of each sale's
+      // total price was actually collected this period (matches revenue above,
+      // which is cash-collected). Recognizing the full item cost the month the
+      // installment was CREATED (the old behaviour) front-loaded all cost into
+      // month 1 and showed pure profit every month after, even on unpaid balance.
+      // Prefers the specific unit's purchase price (IMEI/serial match) over the
+      // product's default, falling back to the product default when no unit match.
+      db.execute<{ cogs: string; missing_revenue: string; missing_count: string }>(sql`
+        SELECT
+          COALESCE(SUM(p.amount::numeric * cost.unit_cost / NULLIF(i.total_amount::numeric, 0))
+            FILTER (WHERE cost.unit_cost IS NOT NULL), 0)::text AS cogs,
+          COALESCE(SUM(p.amount::numeric) FILTER (WHERE cost.unit_cost IS NULL), 0)::text AS missing_revenue,
+          COUNT(DISTINCT i.id) FILTER (WHERE cost.unit_cost IS NULL) AS missing_count
+        FROM payments p
+        JOIN installments i ON i.id = p.installment_id
+        JOIN customers c    ON c.id = i.customer_id AND c.deleted_at IS NULL
+        JOIN products pr    ON pr.id = i.product_id
+        LEFT JOIN LATERAL (
+          SELECT COALESCE(
+            (SELECT pu.purchase_price FROM product_units pu
+             WHERE pu.seller_id = c.seller_id AND pu.purchase_price IS NOT NULL
+               AND (pu.imei = i.imei_number OR pu.imei2 = i.imei_number OR pu.serial_number = i.imei_number)
+             LIMIT 1),
+            pr.purchase_price
+          )::numeric AS unit_cost
+        ) cost ON true
         WHERE c.seller_id = ${sellerId}
-          AND i.deleted_at IS NULL
-          AND i.created_at >= ${from.toISOString()}
-          AND i.created_at <  ${to.toISOString()}
-          AND p.purchase_price IS NOT NULL
+          AND p.deleted_at IS NULL AND i.deleted_at IS NULL
+          AND p.paid_on >= ${from.toISOString()} AND p.paid_on < ${to.toISOString()}
       `),
 
-      // COGS: purchase price of products sold via cash sales
-      db.execute<{ cogs: string }>(sql`
-        SELECT COALESCE(SUM(p.purchase_price::numeric * cs.quantity), 0)::text AS cogs
+      // COGS: cash sales — point-of-sale basis (no collection-timing gap, the
+      // sale and the "payment" happen in the same instant), same unit-cost preference.
+      db.execute<{ cogs: string; missing_revenue: string; missing_count: string }>(sql`
+        SELECT
+          COALESCE(SUM(cost.unit_cost * cs.quantity) FILTER (WHERE cost.unit_cost IS NOT NULL), 0)::text AS cogs,
+          COALESCE(SUM(cs.amount::numeric) FILTER (WHERE cost.unit_cost IS NULL), 0)::text AS missing_revenue,
+          COUNT(*) FILTER (WHERE cost.unit_cost IS NULL) AS missing_count
         FROM cash_sales cs
-        JOIN products p ON p.id = cs.product_id
+        JOIN products pr ON pr.id = cs.product_id
+        LEFT JOIN LATERAL (
+          SELECT COALESCE(
+            (SELECT pu.purchase_price FROM product_units pu
+             WHERE pu.seller_id = cs.seller_id AND pu.purchase_price IS NOT NULL
+               AND (pu.imei = cs.imei_number OR pu.imei2 = cs.imei_number OR pu.serial_number = cs.imei_number)
+             LIMIT 1),
+            pr.purchase_price
+          )::numeric AS unit_cost
+        ) cost ON true
         WHERE cs.seller_id = ${sellerId}
-          AND cs.created_at >= ${from.toISOString()}
-          AND cs.created_at <  ${to.toISOString()}
-          AND p.purchase_price IS NOT NULL
+          AND cs.created_at >= ${from.toISOString()} AND cs.created_at < ${to.toISOString()}
       `),
 
       // Supplier invoices issued in period (alternative COGS view)
@@ -442,6 +471,8 @@ export class ReportsService {
     const totalRevenue       = installmentRevenue + cashRevenue;
     const totalExpenses      = Number(expRow[0]?.total ?? 0);
     const cogsSales          = Number(instCogs[0]?.cogs ?? 0) + Number(cashCogs[0]?.cogs ?? 0);
+    const missingCostRevenue = Number(instCogs[0]?.missing_revenue ?? 0) + Number(cashCogs[0]?.missing_revenue ?? 0);
+    const missingCostCount   = Number(instCogs[0]?.missing_count ?? 0) + Number(cashCogs[0]?.missing_count ?? 0);
     const supplierPurchases  = Number(suppRow[0]?.total ?? 0);
     const supplierPaid       = Number(suppRow[0]?.paid  ?? 0);
     const grossProfit        = totalRevenue - cogsSales;
@@ -455,6 +486,8 @@ export class ReportsService {
       cashRevenue,
       totalRevenue,
       cogsSales,
+      missingCostRevenue,
+      missingCostCount,
       grossProfit,
       grossMarginPct: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0,
       totalExpenses,
@@ -464,6 +497,73 @@ export class ReportsService {
       supplierPaid,
       supplierOutstanding: supplierPurchases - supplierPaid,
     };
+  }
+
+  // Per-product margin, sale-recognition basis (full sale price vs cost at the
+  // moment of sale) — answers "which products are actually worth selling",
+  // which is a different question from the period cash-flow P&L above and
+  // doesn't need collection-timing proration.
+  async getProductProfitability(sellerId: string, from?: string, to?: string) {
+    let dateFilter = sql``;
+    if (from) dateFilter = sql`${dateFilter} AND s.sale_date >= ${from}`;
+    if (to)   dateFilter = sql`${dateFilter} AND s.sale_date <  ${to}`;
+
+    const rows = await db.execute<{
+      product_id: string; name: string; category: string | null;
+      units_sold: number; revenue: string; cost: string; missing_cost_count: number;
+    }>(sql`
+      WITH sales AS (
+        SELECT i.product_id, i.created_at AS sale_date, i.total_amount::numeric AS amount, i.imei_number
+        FROM installments i
+        JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
+        WHERE c.seller_id = ${sellerId} AND i.deleted_at IS NULL
+        UNION ALL
+        SELECT cs.product_id, cs.created_at AS sale_date, cs.amount::numeric AS amount, cs.imei_number
+        FROM cash_sales cs
+        WHERE cs.seller_id = ${sellerId}
+      ),
+      costed AS (
+        SELECT
+          s.product_id, s.amount,
+          pr.name, pr.category,
+          COALESCE(
+            (SELECT pu.purchase_price FROM product_units pu
+             WHERE pu.seller_id = ${sellerId} AND pu.purchase_price IS NOT NULL
+               AND (pu.imei = s.imei_number OR pu.imei2 = s.imei_number OR pu.serial_number = s.imei_number)
+             LIMIT 1),
+            pr.purchase_price
+          )::numeric AS unit_cost
+        FROM sales s
+        JOIN products pr ON pr.id = s.product_id
+        WHERE true ${dateFilter}
+      )
+      SELECT
+        product_id, name, category,
+        COUNT(*)::int AS units_sold,
+        SUM(amount)::text AS revenue,
+        SUM(COALESCE(unit_cost, 0))::text AS cost,
+        COUNT(*) FILTER (WHERE unit_cost IS NULL)::int AS missing_cost_count
+      FROM costed
+      GROUP BY product_id, name, category
+      ORDER BY (SUM(amount) - SUM(COALESCE(unit_cost, 0))) DESC
+    `);
+
+    return rows.map((r) => {
+      const revenue = Number(r.revenue);
+      const cost    = Number(r.cost);
+      const profit  = revenue - cost;
+      return {
+        productId:        r.product_id,
+        name:             r.name,
+        category:         r.category,
+        unitsSold:        r.units_sold,
+        revenue,
+        cost,
+        profit,
+        marginPct:        revenue > 0 ? Math.round((profit / revenue) * 100) : 0,
+        missingCostCount: r.missing_cost_count,
+      };
+    });
   }
 
   async getAreaReport(sellerId: string) {

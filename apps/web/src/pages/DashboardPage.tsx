@@ -689,7 +689,11 @@ export default function DashboardPage() {
                         <span className={`font-bold tabular-nums ${pnl.netProfit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{pnl.netProfit < 0 ? '-' : ''}{pkrSh(Math.abs(pnl.netProfit))} <span className="text-[11px] font-medium opacity-70">({pnl.netMarginPct}%)</span></span>
                       </div>
                       {pnl.supplierOutstanding > 0 && <p className="text-[11px] text-amber-700">Suppliers ko {pkrSh(pnl.supplierOutstanding)} dena baaki hai</p>}
-                      {pnl.cogsSales === 0 && pnl.totalRevenue > 0 && <p className="text-[11px] text-gray-400">Products par purchase price likhein to asal munafa dikhega</p>}
+                      {pnl.missingCostRevenue > 0 && (
+                        <p className="text-[11px] text-amber-700">
+                          {pnl.missingCostCount} sale{pnl.missingCostCount !== 1 ? 's' : ''} ({pkrSh(pnl.missingCostRevenue)}) ka cost price missing — asal munafa kam ho sakta hai. Products mein purchase price add karein.
+                        </p>
+                      )}
                     </div>
                   )}
                 </Card>

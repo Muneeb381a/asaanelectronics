@@ -97,6 +97,8 @@ export type PnL = {
   cashRevenue: number;
   totalRevenue: number;
   cogsSales: number;
+  missingCostRevenue: number;
+  missingCostCount: number;
   grossProfit: number;
   grossMarginPct: number;
   totalExpenses: number;
@@ -105,6 +107,18 @@ export type PnL = {
   supplierPurchases: number;
   supplierPaid: number;
   supplierOutstanding: number;
+};
+
+export type ProductProfitability = {
+  productId: string;
+  name: string;
+  category: string | null;
+  unitsSold: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  marginPct: number;
+  missingCostCount: number;
 };
 
 export type CashflowCalendarDay = {
@@ -177,4 +191,7 @@ export const reportsApi = {
 
   getPnL: (year: number, month?: number): Promise<PnL> =>
     api.get(`/reports/pnl?year=${year}${month ? `&month=${month}` : ''}`).then((res) => res.data.data),
+
+  getProductProfitability: (params?: { from?: string; to?: string }): Promise<ProductProfitability[]> =>
+    api.get('/reports/product-profitability', { params }).then((res) => res.data.data),
 };
