@@ -1,5 +1,5 @@
 import { and, asc, count, eq, gte, inArray, isNull, lt, lte, sql, sum } from 'drizzle-orm';
-import { nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
+import { nextDueDateSql, overdueAmountSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments, products, supplierInvoices } from '../../db/schema.js';
 
@@ -618,6 +618,12 @@ export class ReportsService {
   }
 
   async getAreaReport(sellerId: string) {
+    // Pre-aggregate installments and payments to one row per customer BEFORE
+    // joining to customers — joining customers -> installments -> payments
+    // directly fans out to one row per PAYMENT, so every installment-level
+    // value (remaining, overdueAmount) got summed once per payment it has
+    // instead of once per installment, inflating both by the payment count
+    // (a customer with 15 payments had their remaining balance counted 15x).
     const rows = await db.execute<{
       area: string;
       customers: number;
@@ -627,20 +633,40 @@ export class ReportsService {
       totalCollected: string;
       remaining: string;
     }>(sql`
+      WITH inst_agg AS (
+        SELECT
+          i.customer_id,
+          COUNT(*) FILTER (WHERE i.status = 'ACTIVE')::int AS active_count,
+          COUNT(*) FILTER (WHERE i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql})::int AS overdue_count,
+          COALESCE(SUM(${overdueAmountSql('i')}), 0) AS overdue_amount,
+          COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' THEN i.remaining::numeric ELSE 0 END), 0) AS remaining
+        FROM installments i
+        WHERE i.deleted_at IS NULL
+          AND i.customer_id IN (SELECT id FROM customers WHERE seller_id = ${sellerId} AND deleted_at IS NULL)
+        GROUP BY i.customer_id
+      ),
+      pay_agg AS (
+        SELECT i.customer_id, COALESCE(SUM(p.amount::numeric), 0) AS total_collected
+        FROM payments p
+        JOIN installments i ON i.id = p.installment_id AND i.deleted_at IS NULL
+        WHERE p.deleted_at IS NULL
+          AND i.customer_id IN (SELECT id FROM customers WHERE seller_id = ${sellerId} AND deleted_at IS NULL)
+        GROUP BY i.customer_id
+      )
       SELECT
         COALESCE(NULLIF(c.area, ''), 'No Area') AS area,
-        COUNT(DISTINCT c.id)::int                AS customers,
-        COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE'    THEN i.id END)::int AS active,
-        COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql} THEN i.id END)::int       AS overdue,
-        COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql} THEN i.remaining::numeric ELSE 0 END), 0)::text AS "overdueAmount",
-        COALESCE(SUM(p.amount::numeric), 0)::text AS "totalCollected",
-        COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' THEN i.remaining::numeric ELSE 0 END), 0)::text AS remaining
+        COUNT(DISTINCT c.id)::int AS customers,
+        COALESCE(SUM(ia.active_count), 0)::int AS active,
+        COALESCE(SUM(ia.overdue_count), 0)::int AS overdue,
+        COALESCE(SUM(ia.overdue_amount), 0)::text AS "overdueAmount",
+        COALESCE(SUM(pa.total_collected), 0)::text AS "totalCollected",
+        COALESCE(SUM(ia.remaining), 0)::text AS remaining
       FROM customers c
-      LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
-      LEFT JOIN payments p     ON p.installment_id = i.id AND p.deleted_at IS NULL
+      LEFT JOIN inst_agg ia ON ia.customer_id = c.id
+      LEFT JOIN pay_agg pa  ON pa.customer_id = c.id
       WHERE c.seller_id = ${sellerId} AND c.deleted_at IS NULL
       GROUP BY COALESCE(NULLIF(c.area, ''), 'No Area')
-      ORDER BY SUM(p.amount::numeric) DESC
+      ORDER BY SUM(pa.total_collected) DESC
     `);
     return rows;
   }

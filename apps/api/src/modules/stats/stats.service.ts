@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, gte, inArray, isNull, lt, sql, sum } from 'drizzle-orm';
-import { isOverdueSql, nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
+import { isOverdueSql, nextDueDateSql, overdueAmountSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { cashSales, customers, expenses, installments, payments, products, recoveryActions, sellers, users } from '../../db/schema.js';
 import type { SQL } from 'drizzle-orm';
@@ -278,7 +278,7 @@ export class StatsService {
         .where(and(eq(customers.sellerId, sellerId), inArray(installments.status, ['ACTIVE', 'PENDING']), isNull(installments.deletedAt), isNull(customers.deletedAt))),
 
       db
-        .select({ total: count(), amount: sum(installments.remaining) })
+        .select({ total: count(), amount: sql<string>`COALESCE(SUM(${overdueAmountSql('installments')}), 0)::text` })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .where(and(
