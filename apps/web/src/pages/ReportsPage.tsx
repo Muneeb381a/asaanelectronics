@@ -1245,7 +1245,9 @@ export default function ReportsPage() {
                             <td className="px-4 py-3 text-right">
                               {r.paidAmount > 0
                                 ? <span className="font-bold text-emerald-600 text-xs">{pkr(r.paidAmount)}</span>
-                                : <span className="text-xs text-slate-300">—</span>
+                                : r.status === 'Paid'
+                                  ? <span className="text-[10px] text-emerald-500 font-medium" title="Pichle payments se is mahine ka hisaab pehle hi poora ho chuka hai">Ahead</span>
+                                  : <span className="text-xs text-slate-300">—</span>
                               }
                             </td>
                             <td className="px-4 py-3 text-right font-bold text-orange-600 text-xs">{pkr(r.remaining)}</td>

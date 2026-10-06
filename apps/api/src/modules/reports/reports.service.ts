@@ -186,6 +186,8 @@ export class ReportsService {
       remaining:        installments.remaining,
       paymentFrequency: installments.paymentFrequency,
       instStatus:       installments.status,
+      startDate:        installments.startDate,
+      paymentDueDay:    installments.paymentDueDay,
     };
 
     // 1. All PENDING + ACTIVE + DEFAULTED installments that started on or before this month.
@@ -224,8 +226,47 @@ export class ReportsService {
       ))
       .groupBy(payments.installmentId);
 
+    // 2b. Cumulative payments per installment from the very start through this
+    //     month's end — used for status, so a customer who always pays a
+    //     clean round number (e.g. 18,000) against a monthly figure that
+    //     didn't divide evenly (e.g. 18,433) isn't marked "Pending" forever:
+    //     the shortfall rolls into the next period instead, same as the
+    //     due-date math elsewhere in the app (utils/dueDate.ts) already does.
+    const cumPayRows = await db
+      .select({
+        installmentId: payments.installmentId,
+        total:         sum(payments.amount),
+      })
+      .from(payments)
+      .innerJoin(installments, eq(payments.installmentId, installments.id))
+      .innerJoin(customers,    eq(installments.customerId, customers.id))
+      .where(and(
+        eq(customers.sellerId,       sellerId),
+        isNull(payments.deletedAt),
+        isNull(installments.deletedAt),
+        isNull(customers.deletedAt),
+        eq(payments.isDownPayment, false),
+        lte(payments.paidOn, monthEnd),
+      ))
+      .groupBy(payments.installmentId);
+
     const payMap    = new Map(payRows.map((p) => [p.installmentId, Number(p.total ?? 0)]));
+    const cumPayMap = new Map(cumPayRows.map((p) => [p.installmentId, Number(p.total ?? 0)]));
     const activeIds = new Set(activeRows.map((r) => r.id));
+
+    // Periods that should have been paid by the END of the reporting month —
+    // mirrors overdueAmountRaw's "periodsElapsed" but evaluated at monthEnd
+    // instead of today, so past-month reports stay accurate regardless of
+    // when they're viewed.
+    const periodsElapsedByMonthEnd = (startDate: Date, dueDay: number, freq: string | null): number => {
+      if (freq === 'daily') {
+        return Math.max(0, Math.floor((monthEnd.getTime() - startDate.getTime()) / 86_400_000));
+      }
+      const monthsDiff = (monthEnd.getUTCFullYear() - startDate.getUTCFullYear()) * 12
+        + (monthEnd.getUTCMonth() - startDate.getUTCMonth());
+      const dayAdjust = monthEnd.getUTCDate() < (dueDay || 10) ? 1 : 0;
+      return Math.max(0, monthsDiff - dayAdjust);
+    };
 
     // 3. Fetch installments completed this month (final payment made during this period)
     const extraIds = [...payMap.keys()].filter((id) => !activeIds.has(id));
@@ -246,22 +287,31 @@ export class ReportsService {
     // Determine final status for each row:
     // - DEFAULTED installments → always 'Defaulted' (even if they paid before being defaulted)
     // - extraRows (COMPLETED this month) → always 'Paid' if any payment exists
-    // - ACTIVE/others → 'Paid' only if paid >= full monthly amount; partial = 'Pending'
+    // - ACTIVE/others → 'Paid' if cumulative payments cover every period due
+    //   by this month's end (pace-based, same model as overdue tracking) —
+    //   NOT "did this specific calendar month's payment hit the exact
+    //   monthly figure", which wrongly marked consistently-paying customers
+    //   as 'Pending' forever whenever monthly didn't divide evenly (e.g. a
+    //   customer paying a clean 18,000/month against a stored monthly of
+    //   18,433 would never once hit that exact threshold).
     const getRowStatus = (r: {
       id: string;
       monthly: string | null;
       paymentFrequency: string | null;
       instStatus: string | null;
+      startDate: Date;
+      paymentDueDay: number | null;
     }): 'Paid' | 'Pending' | 'Defaulted' => {
       if (r.instStatus === 'DEFAULTED') return 'Defaulted';
       if (r.instStatus === 'PENDING')   return 'Pending';
       const paid = payMap.get(r.id) ?? 0;
       if (!activeIds.has(r.id)) return paid > 0 ? 'Paid' : 'Pending'; // extraRows = completed this month
-      const monthly     = Number(r.monthly ?? 0);
-      const expectedAmt = (r.paymentFrequency ?? 'monthly') === 'daily'
-        ? monthly * daysInMonth
-        : monthly;
-      return paid >= expectedAmt ? 'Paid' : 'Pending';
+      const monthly = Number(r.monthly ?? 0);
+      if (monthly <= 0) return paid > 0 ? 'Paid' : 'Pending';
+      const cumPaid         = cumPayMap.get(r.id) ?? 0;
+      const paidPeriods     = Math.floor(cumPaid / monthly);
+      const periodsElapsed  = periodsElapsedByMonthEnd(r.startDate, r.paymentDueDay ?? 10, r.paymentFrequency);
+      return paidPeriods >= periodsElapsed ? 'Paid' : 'Pending';
     };
 
     // Sort: Paid first, then Pending, then Defaulted — alphabetical within each group
