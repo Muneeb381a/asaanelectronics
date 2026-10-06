@@ -146,6 +146,7 @@ export type CashflowDayInstallment = {
   paymentFrequency: string;
   paidToday:        number;
   paymentCount:     number;
+  carriedShortfall: number;
 };
 
 export type CohortRow = {

@@ -906,6 +906,7 @@ export class ReportsService {
       payment_frequency: string;
       paid_today:       number;
       payment_count:    number;
+      carried_shortfall: string;
     }>(sql`
       SELECT
         i.id,
@@ -919,7 +920,8 @@ export class ReportsService {
         i.status,
         i.payment_frequency,
         COALESCE(dp.total_paid, 0)::float   AS paid_today,
-        COALESCE(dp.payment_count, 0)::int  AS payment_count
+        COALESCE(dp.payment_count, 0)::int  AS payment_count,
+        ${overdueAmountSql('i')}::text AS carried_shortfall
       FROM installments i
       JOIN customers c  ON c.id  = i.customer_id AND c.seller_id = ${sellerId} AND c.deleted_at IS NULL
       JOIN products  pr ON pr.id = i.product_id
@@ -959,6 +961,7 @@ export class ReportsService {
       paymentFrequency: r.payment_frequency,
       paidToday:        Number(r.paid_today),
       paymentCount:     Number(r.payment_count),
+      carriedShortfall: Number(r.carried_shortfall),
     }));
   }
 

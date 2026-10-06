@@ -119,11 +119,19 @@ function TemplatePickerModal({ inst, shopName, onClose }: {
   });
   const [selected, setSelected] = useState<string | null>(null);
 
+  // Quote what's actually due — this period's installment plus whatever
+  // shortfall carried forward from earlier periods — not just the flat
+  // monthly figure, which under-asks a customer who's fallen behind.
+  const totalDueNow = Math.min(
+    Number(inst.monthly) + Number(inst.carriedShortfall ?? 0),
+    Number(inst.remaining),
+  );
+
   const vars = {
     customer_name:     inst.customerName,
     shop_name:         shopName,
     product_name:      inst.productName,
-    amount_due:        inst.monthly,
+    amount_due:        String(totalDueNow),
     remaining_balance: inst.remaining,
     phone:             inst.customerPhone,
   };
@@ -131,7 +139,7 @@ function TemplatePickerModal({ inst, shopName, onClose }: {
   function sendDefault() {
     openWhatsApp(inst.customerPhone, reminderMessage({
       shopName, customerName: inst.customerName,
-      productName: inst.productName, monthly: inst.monthly,
+      productName: inst.productName, monthly: totalDueNow,
       remaining: inst.remaining, paymentFrequency: inst.paymentFrequency,
     }));
     onClose();
@@ -182,7 +190,7 @@ function TemplatePickerModal({ inst, shopName, onClose }: {
                 <p className="text-xs text-gray-500 line-clamp-2">
                   {reminderMessage({
                     shopName, customerName: inst.customerName,
-                    productName: inst.productName, monthly: inst.monthly,
+                    productName: inst.productName, monthly: totalDueNow,
                     remaining: inst.remaining, paymentFrequency: inst.paymentFrequency,
                   })}
                 </p>
@@ -243,11 +251,15 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
 
   function send(inst: Installment, daysOverdue?: number) {
     if (!shopData) return;
+    const totalDueNow = Math.min(
+      Number(inst.monthly) + Number(inst.carriedShortfall ?? 0),
+      Number(inst.remaining),
+    );
     openWhatsApp(inst.customerPhone, reminderMessage({
       shopName: shopData.shopName,
       customerName: inst.customerName,
       productName: inst.productName,
-      monthly: inst.monthly,
+      monthly: totalDueNow,
       remaining: inst.remaining,
       paymentFrequency: inst.paymentFrequency,
       daysOverdue,
@@ -1167,7 +1179,7 @@ function BatchReminderModal({ shopName, onClose }: { shopName: string; onClose: 
       shopName,
       customerName: row.customerName,
       productName: row.productName,
-      monthly: row.monthly,
+      monthly: row.totalDueNow,
       remaining: row.remaining,
       daysOverdue: row.daysOverdue,
     }));
