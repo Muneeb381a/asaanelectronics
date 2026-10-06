@@ -26,7 +26,7 @@ export default function DueSheetPage() {
 
   const today = fmtDate(new Date());
   const groups = groupByArea(data);
-  const total = data.reduce((s, d) => s + d.monthly, 0);
+  const total = data.reduce((s, d) => s + d.totalDueNow, 0);
 
   useEffect(() => {
     if (!isLoading && data.length > 0) {
@@ -80,7 +80,7 @@ export default function DueSheetPage() {
               {/* Area heading */}
               <div className="bg-gray-100 px-3 py-1 rounded text-xs font-bold uppercase tracking-widest text-gray-700 mb-2 flex justify-between">
                 <span>{area}</span>
-                <span>{items.length} customers · {pkr(items.reduce((s, i) => s + i.monthly, 0))}</span>
+                <span>{items.length} customers · {pkr(items.reduce((s, i) => s + i.totalDueNow, 0))}</span>
               </div>
 
               {/* Table */}
@@ -91,7 +91,7 @@ export default function DueSheetPage() {
                     <th className="text-left py-1 pr-2 font-semibold text-gray-600">Customer</th>
                     <th className="text-left py-1 pr-2 font-semibold text-gray-600">Phone</th>
                     <th className="text-left py-1 pr-2 font-semibold text-gray-600">Product</th>
-                    <th className="text-right py-1 pr-2 font-semibold text-gray-600">Installment</th>
+                    <th className="text-right py-1 pr-2 font-semibold text-gray-600">Collect</th>
                     <th className="text-right py-1 pr-2 font-semibold text-gray-600">Balance</th>
                     <th className="text-center py-1 font-semibold text-gray-600 w-16">Status</th>
                     <th className="text-center py-1 font-semibold text-gray-600 w-20">Collected</th>
@@ -109,7 +109,12 @@ export default function DueSheetPage() {
                       </td>
                       <td className="py-1.5 pr-2 text-gray-600">{item.customerPhone}</td>
                       <td className="py-1.5 pr-2 text-gray-700 truncate max-w-32">{item.productName}</td>
-                      <td className="py-1.5 pr-2 text-right font-semibold">{pkr(item.monthly)}</td>
+                      <td className="py-1.5 pr-2 text-right font-semibold">
+                        {pkr(item.totalDueNow)}
+                        {item.carriedShortfall > 0 && (
+                          <div className="text-[9px] text-orange-600 font-normal">+{pkr(item.carriedShortfall)} baqaya</div>
+                        )}
+                      </td>
                       <td className="py-1.5 pr-2 text-right text-gray-600">{pkr(item.remaining)}</td>
                       <td className="py-1.5 text-center">
                         {item.daysOverdue === 0 ? (

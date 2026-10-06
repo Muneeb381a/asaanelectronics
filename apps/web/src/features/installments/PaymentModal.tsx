@@ -89,7 +89,12 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isOwner = user?.role === 'SELLER_OWNER';
-  const [amount, setAmount] = useState(String(Number(inst.monthly)));
+  const [amount, setAmount] = useState(() => {
+    const monthly   = Number(inst.monthly);
+    const shortfall = Number(inst.carriedShortfall ?? 0);
+    const cap       = Number(inst.remaining);
+    return String(Math.min(monthly + shortfall, cap));
+  });
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [note, setNote] = useState('');
   const [collectedBy, setCollectedBy] = useState('');
@@ -411,6 +416,10 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const accumulatedLateFee = lateFeePerDay > 0 && daysOverdue > lateFeeGraceDays
     ? Math.max(0, daysOverdue - lateFeeGraceDays) * lateFeePerDay
     : 0;
+  // Sum of every elapsed-but-unpaid period so far — a customer who paid
+  // 18,000 against an 18,500 monthly is 500 short; that 500 doesn't vanish,
+  // it's still owed on top of whatever they bring next.
+  const carriedShortfall = Number(freshInst.carriedShortfall ?? 0);
 
   const historyWithPeriods = useMemo(() => {
     if (!history) return [];
@@ -603,6 +612,29 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                 </div>
               )}
 
+              {carriedShortfall > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold text-orange-800 flex items-center gap-1">
+                        <AlertTriangle size={12} className="text-orange-500" />
+                        Pichla Baqaya (Carried Shortfall)
+                      </p>
+                      <p className="text-[11px] text-orange-700 mt-0.5">
+                        Pichli qist{carriedShortfall > Number(freshInst.monthly) ? 'ein' : ''} poori nahi hui thi — <span className="font-bold">{pkr(carriedShortfall)}</span> ab bhi baqi hai, is mahine ki qist ke upar.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAmount(String(Math.min(Number(freshInst.monthly) + carriedShortfall, remaining)))}
+                      className="shrink-0 text-[11px] px-2.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition"
+                    >
+                      +Baqaya Include
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {accumulatedLateFee > 0 && isOwner && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -638,7 +670,8 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
                   className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  {freshInst.paymentFrequency === 'daily' ? 'Daily' : 'Monthly'}: {pkr(freshInst.monthly)} · Max: {pkr(remaining)}
+                  {freshInst.paymentFrequency === 'daily' ? 'Daily' : 'Monthly'}: {pkr(freshInst.monthly)}
+                  {carriedShortfall > 0 && <> + Baqaya: {pkr(carriedShortfall)}</>} · Max: {pkr(remaining)}
                 </p>
               </div>
 

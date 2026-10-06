@@ -60,7 +60,7 @@ export default function CollectionSheetPage() {
 
   // Totals
   const totalCustomers = items.length;
-  const totalAmount    = items.reduce((s, i) => s + i.monthly, 0);
+  const totalAmount    = items.reduce((s, i) => s + i.totalDueNow, 0);
   const overdueCount   = items.filter((i) => i.urgency === 'overdue').length;
   const todayCount     = items.filter((i) => i.urgency === 'today').length;
 
@@ -211,7 +211,7 @@ export default function CollectionSheetPage() {
 
           {/* ── Area groups ─────────────────────────────────────────── */}
           {sortedAreas.map(([area, areaItems], areaIdx) => {
-            const areaTotal   = areaItems.reduce((s, i) => s + i.monthly, 0);
+            const areaTotal   = areaItems.reduce((s, i) => s + i.totalDueNow, 0);
             const areaOverdue = areaItems.filter((i) => i.urgency === 'overdue').length;
             const isCollapsed = collapsed.has(area);
 
@@ -269,7 +269,10 @@ export default function CollectionSheetPage() {
                               )}
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-bold text-gray-900">{pkr(item.monthly)}</p>
+                              <p className="text-sm font-bold text-gray-900">{pkr(item.totalDueNow)}</p>
+                              {item.carriedShortfall > 0 && (
+                                <p className="text-[10px] text-orange-600 font-semibold">+{pkr(item.carriedShortfall)} baqaya</p>
+                              )}
                               <p className="text-xs text-gray-400">Baqi: {pkr(item.remaining)}</p>
                               {item.lastPaymentDate && (
                                 <p className="text-[11px] text-gray-400 mt-0.5">
@@ -297,7 +300,7 @@ export default function CollectionSheetPage() {
                                       shopName:         shop.shopName,
                                       customerName:     item.customerName,
                                       productName:      item.productName,
-                                      monthly:          item.monthly,
+                                      monthly:          item.totalDueNow,
                                       remaining:        item.remaining,
                                       paymentFrequency: item.paymentFrequency,
                                       daysOverdue:      item.urgency === 'overdue' ? Math.abs(item.daysUntilDue) : undefined,
@@ -328,7 +331,7 @@ export default function CollectionSheetPage() {
                         <th style={{ width: '19%' }}>Customer</th>
                         <th style={{ width: '13%' }}>Phone</th>
                         <th style={{ width: '18%' }}>Product</th>
-                        <th style={{ width: '10%' }}>Monthly</th>
+                        <th style={{ width: '10%' }}>Collect</th>
                         <th style={{ width: '11%' }}>Remaining</th>
                         <th style={{ width: '9%' }}>Last Paid</th>
                         <th style={{ width: '6%' }}>Status</th>
@@ -342,7 +345,7 @@ export default function CollectionSheetPage() {
                           <td style={{ fontWeight: 600 }}>{item.customerName}</td>
                           <td>{item.customerPhone}</td>
                           <td>{item.productName}</td>
-                          <td style={{ fontWeight: 600 }}>{pkr(item.monthly)}</td>
+                          <td style={{ fontWeight: 600 }}>{pkr(item.totalDueNow)}</td>
                           <td>{pkr(item.remaining)}</td>
                           <td>
                             {item.lastPaymentDate ? shortDate(item.lastPaymentDate) : '—'}

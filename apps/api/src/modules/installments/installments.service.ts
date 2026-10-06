@@ -9,9 +9,31 @@ import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { accountingSvc } from '../accounting/accounting.service.js';
 import { fsm } from '../../utils/fsm.js';
 import { staffScopeSql, staffScopeOrTrue } from '../../utils/staffScope.js';
-import { isOverdueSql, nextDueDateSql } from '../../utils/dueDate.js';
+import { isOverdueSql, nextDueDateSql, overdueAmountSql } from '../../utils/dueDate.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
+
+// Elapsed-but-unpaid periods, in rupees, as of `asOf` — the JS-side twin of
+// utils/dueDate.ts's overdueAmountRaw (SQL), for dueSheet()/collectionSchedule()
+// which compute their due-date math in JS rather than through a raw query.
+// This is what a customer needs to bring to fully catch up, BEFORE the
+// current/next period's own installment is added on top of it.
+function carriedShortfall(opts: {
+  startDate: Date; paymentDueDay: number; paymentFrequency: string;
+  monthly: number; remaining: number; paidPeriods: number; asOf: Date;
+}): number {
+  const { startDate, paymentDueDay, paymentFrequency, monthly, remaining, paidPeriods, asOf } = opts;
+  let periodsElapsed: number;
+  if (paymentFrequency === 'daily') {
+    periodsElapsed = Math.max(0, Math.floor((asOf.getTime() - startDate.getTime()) / 86_400_000));
+  } else {
+    const monthsDiff = (asOf.getFullYear() - startDate.getFullYear()) * 12 + (asOf.getMonth() - startDate.getMonth());
+    const dayAdjust = asOf.getDate() < (paymentDueDay || 10) ? 1 : 0;
+    periodsElapsed = Math.max(0, monthsDiff - dayAdjust);
+  }
+  const periodsShort = Math.max(0, periodsElapsed - paidPeriods);
+  return Math.min(periodsShort * monthly, remaining);
+}
 
 // Normalise Pakistani phone numbers to 11-digit local format (03xxxxxxxxx)
 function normalizePhone(raw: string): string {
@@ -163,6 +185,7 @@ export class InstallmentsService {
               END
             ) < now()
           )`,
+          carriedShortfall: sql<string>`${overdueAmountSql('installments')}::text`,
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -219,6 +242,10 @@ export class InstallmentsService {
         biometricDoneAt:     installments.biometricDoneAt,
         vehicleFileLocation: products.vehicleFileLocation,
         isOverdue: sql<boolean>`${isOverdueSql('installments')}`,
+        // Sum of every elapsed-but-unpaid period so far, in rupees — what
+        // the customer needs to bring just to get back on schedule, before
+        // this period's own installment is even added on top.
+        carriedShortfall: sql<string>`${overdueAmountSql('installments')}::text`,
         daysOverdue: sql<number>`
           CASE WHEN ${installments.status} != 'ACTIVE' THEN 0
           ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - (
@@ -812,6 +839,7 @@ export class InstallmentsService {
       id: string; customerName: string; customerPhone: string; customerAddress: string;
       productName: string; monthly: number; remaining: number;
       nextDueDate: string; daysOverdue: number; area: string;
+      carriedShortfall: number; totalDueNow: number;
     }> = [];
 
     for (const inst of rows) {
@@ -847,6 +875,12 @@ export class InstallmentsService {
           ? inst.customer_address.split(',').pop()?.trim() || 'Unknown'
           : 'Unknown';
 
+        const shortfall = carriedShortfall({
+          startDate, paymentDueDay: Number(inst.payment_due_day) || 10,
+          paymentFrequency: inst.payment_frequency, monthly,
+          remaining: Number(inst.remaining), paidPeriods, asOf: now,
+        });
+
         dueItems.push({
           id:              inst.id,
           customerName:    inst.customer_name,
@@ -858,6 +892,8 @@ export class InstallmentsService {
           nextDueDate:     nextDateStr,
           daysOverdue,
           area,
+          carriedShortfall: shortfall,
+          totalDueNow:      Math.min(monthly + shortfall, Number(inst.remaining)),
         });
       }
     }
@@ -910,6 +946,7 @@ export class InstallmentsService {
       nextDueDate: string; daysUntilDue: number; area: string;
       lastPaymentDate: string | null; lastPaymentAmount: number | null;
       urgency: 'overdue' | 'today' | 'upcoming';
+      carriedShortfall: number; totalDueNow: number;
     };
 
     const items: ScheduleItem[] = [];
@@ -950,6 +987,12 @@ export class InstallmentsService {
         || (inst.customer_address ? inst.customer_address.split(',').pop()?.trim() : null)
         || 'Unknown';
 
+      const shortfall = carriedShortfall({
+        startDate, paymentDueDay: Number(inst.payment_due_day) || 10,
+        paymentFrequency: inst.payment_frequency, monthly,
+        remaining: Number(inst.remaining), paidPeriods, asOf: todayMidnight,
+      });
+
       items.push({
         id:                  inst.id,
         customerName:        inst.customer_name,
@@ -965,6 +1008,8 @@ export class InstallmentsService {
         lastPaymentDate:     inst.last_payment_date ?? null,
         lastPaymentAmount:   inst.last_payment_amount != null ? Number(inst.last_payment_amount) : null,
         urgency:             diffDays < 0 ? 'overdue' : diffDays === 0 ? 'today' : 'upcoming',
+        carriedShortfall:    shortfall,
+        totalDueNow:         Math.min(monthly + shortfall, Number(inst.remaining)),
       });
     }
 
@@ -982,7 +1027,7 @@ export class InstallmentsService {
       overdue:  items.filter((i) => i.urgency === 'overdue').length,
       today:    items.filter((i) => i.urgency === 'today').length,
       upcoming: items.filter((i) => i.urgency === 'upcoming').length,
-      totalDue: items.reduce((s, i) => s + i.monthly, 0),
+      totalDue: items.reduce((s, i) => s + i.totalDueNow, 0),
     };
 
     return { items, summary };

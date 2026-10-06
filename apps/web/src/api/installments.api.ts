@@ -40,6 +40,10 @@ export interface Installment {
   biometricDoneAt:     string | null;
   vehicleFileLocation: 'WITH_SHOP' | 'WITH_CUSTOMER' | 'WITH_RTO' | 'WITH_NADRA' | 'IN_TRANSFER' | 'WITH_COURT' | 'WITH_POLICE' | null;
   daysOverdue?:       number;
+  /** Sum of every elapsed-but-unpaid period so far, in rupees — what the
+   *  customer needs to bring just to catch up, before this period's own
+   *  installment is even added on top. 0 when fully on schedule. */
+  carriedShortfall?:  string;
 }
 
 interface ListResponse {
@@ -60,6 +64,8 @@ export interface DueSheetItem {
   nextDueDate: string;
   daysOverdue: number;
   area: string;
+  carriedShortfall: number;
+  totalDueNow: number;
 }
 
 export interface CollectionScheduleItem {
@@ -77,6 +83,8 @@ export interface CollectionScheduleItem {
   lastPaymentDate: string | null;
   lastPaymentAmount: number | null;
   urgency: 'overdue' | 'today' | 'upcoming';
+  carriedShortfall: number;
+  totalDueNow: number;
 }
 
 export interface CollectionSchedule {
