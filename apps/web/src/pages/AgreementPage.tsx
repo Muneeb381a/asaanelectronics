@@ -355,44 +355,57 @@ export default function AgreementPage() {
           </div>
         </div>
 
-        {/* Payments Received — real transactions, so every recorded payment
-            (including odd/partial ones that don't complete a full scheduled
-            period above) is visible somewhere concrete. */}
-        {payments.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-2">
-              Payments Received / وصول شدہ ادائیگیاں
-            </p>
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-gray-700 w-12">#</th>
-                  <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-gray-700">Date Paid</th>
-                  <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-gray-700">Type</th>
-                  <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-gray-700 w-20">Method</th>
-                  <th className="border border-gray-300 px-2 py-1 text-right font-semibold text-gray-700 w-28">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...payments]
-                  .sort((a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime())
-                  .map((p, i) => (
-                    <tr key={p.id}>
-                      <td className="border border-gray-200 px-2 py-1 text-center text-gray-600">{i + 1}</td>
-                      <td className="border border-gray-200 px-2 py-1 text-gray-800">
+        {/* Payments Received — a separate sheet from the schedule above.
+            Deliberately themed differently (blue vs the schedule's plain
+            gray/green) and forced onto its own printed page, so the two
+            are never confused: the schedule above is the agreed PLAN,
+            this one is the real transaction record — every payment that
+            was actually collected, including odd/partial ones that don't
+            complete a full scheduled period above. */}
+        {payments.length > 0 && (() => {
+          const totalReceived = payments.reduce((s, p) => s + Number(p.amount), 0);
+          const sorted = [...payments].sort((a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime());
+          return (
+            <div className="mb-4" style={{ breakBefore: 'page' }}>
+              <div className="bg-blue-600 text-white rounded-t-lg px-3 py-2">
+                <p className="text-xs font-bold tracking-wide">ACTUAL PAYMENTS RECEIVED</p>
+                <p className="text-[10px] text-blue-100">وصول شدہ ادائیگیاں — یہ اصل ریکارڈ ہے، اوپر دیا گیا شیڈول صرف منصوبہ تھا</p>
+              </div>
+              <table className="w-full text-xs border-collapse border border-blue-300">
+                <thead>
+                  <tr className="bg-blue-50">
+                    <th className="border border-blue-200 px-2 py-1 text-left font-semibold text-blue-900 w-12">#</th>
+                    <th className="border border-blue-200 px-2 py-1 text-left font-semibold text-blue-900">Date Paid</th>
+                    <th className="border border-blue-200 px-2 py-1 text-left font-semibold text-blue-900">Type</th>
+                    <th className="border border-blue-200 px-2 py-1 text-left font-semibold text-blue-900 w-20">Method</th>
+                    <th className="border border-blue-200 px-2 py-1 text-right font-semibold text-blue-900 w-28">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((p, i) => (
+                    <tr key={p.id} className={i % 2 === 1 ? 'bg-blue-50/40' : ''}>
+                      <td className="border border-blue-100 px-2 py-1 text-center text-gray-600">{i + 1}</td>
+                      <td className="border border-blue-100 px-2 py-1 text-gray-800">
                         {new Date(p.paidOn).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className="border border-gray-200 px-2 py-1 text-gray-600">
+                      <td className="border border-blue-100 px-2 py-1 text-gray-600">
                         {p.isDownPayment ? 'Down Payment' : (isDaily ? 'Daily Installment' : 'Monthly Installment')}
                       </td>
-                      <td className="border border-gray-200 px-2 py-1 text-gray-600">{p.method}</td>
-                      <td className="border border-gray-200 px-2 py-1 text-right font-semibold text-gray-800">{pkr(p.amount)}</td>
+                      <td className="border border-blue-100 px-2 py-1 text-gray-600">{p.method}</td>
+                      <td className="border border-blue-100 px-2 py-1 text-right font-semibold text-gray-800">{pkr(p.amount)}</td>
                     </tr>
                   ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-blue-100">
+                    <td colSpan={4} className="border border-blue-200 px-2 py-1.5 text-right font-bold text-blue-900">Total Received</td>
+                    <td className="border border-blue-200 px-2 py-1.5 text-right font-extrabold text-blue-900">{pkr(totalReceived)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          );
+        })()}
 
         {/* Terms */}
         <div className="border border-gray-200 rounded-lg p-3 mb-5 bg-gray-50">
