@@ -593,36 +593,28 @@ function ScheduleModal({ inst, shop, onClose }: { inst: Installment; shop?: Sell
   const totalPaid    = totalMinusDP - remaining;
   const periodsPaid  = Math.floor(totalPaid / monthly + 0.001);
   const periodsLeft  = inst.months - periodsPaid;
-  const now          = new Date();
 
-  const rows = Array.from({ length: inst.months }, (_, i) => {
-    const base    = new Date(inst.startDate);
-    let dueDate: Date;
-    if (isDaily) {
-      base.setDate(base.getDate() + i + 1);
-      dueDate = base;
-    } else {
-      const dueDay  = inst.paymentDueDay ?? 10;
-      const year    = base.getFullYear();
-      const month   = base.getMonth() + i + 1;
-      const lastDay = new Date(year, month + 1, 0).getDate();
-      dueDate = new Date(year, month, Math.min(dueDay, lastDay));
-    }
+  const unit = isDaily ? 'Din' : 'Month';
 
-    const isPaid    = i < periodsPaid;
-    const isCurrent = i === periodsPaid;
-    const isOverdue = isCurrent && dueDate < now;
-
-    let amount = monthly;
-    if (!isPaid && i === inst.months - 1) {
-      amount = remaining - monthly * (periodsLeft - 1);
-      if (amount <= 0) amount = monthly;
-    }
-
-    return { period: i + 1, dueDate, isPaid, isCurrent, isOverdue, amount };
-  });
-
-  const unit = isDaily ? 'Day' : 'Month';
+  // Real transactions only — whatever date and amount the customer actually
+  // paid (never a fixed/projected monthly figure), since customers often
+  // pay more or less than the scheduled installment.
+  const paymentRows = useMemo(() => {
+    const sorted = [...payments].sort(
+      (a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime(),
+    );
+    let cumulative = 0;
+    const enriched = sorted.map((p) => {
+      const amt = Number(p.amount);
+      const periodNum = !p.isDownPayment && monthly > 0
+        ? Math.max(1, Math.floor(cumulative / monthly + 0.001) + 1)
+        : undefined;
+      if (!p.isDownPayment) cumulative += amt;
+      const diff = !p.isDownPayment && monthly > 0 ? amt - monthly : 0;
+      return { ...p, periodNum, diff };
+    });
+    return enriched.reverse();
+  }, [payments, monthly]);
 
   // What actually gets printed/sent to the customer — real payments only,
   // never a projected future period (see openPaymentHistoryReceipt).
@@ -694,36 +686,39 @@ function ScheduleModal({ inst, shop, onClose }: { inst: Installment; shop?: Sell
         </div>
 
         <div className="flex-1 overflow-y-auto divide-y divide-gray-100 rounded-xl border border-gray-100">
-          {rows.map((row) => (
-            <div
-              key={row.period}
-              className={`flex items-center justify-between px-4 py-2.5 text-sm ${
-                row.isPaid ? 'bg-white' : row.isOverdue ? 'bg-red-50' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className={`w-6 h-6 shrink-0 flex items-center justify-center rounded-full text-xs font-bold ${
-                  row.isPaid    ? 'bg-green-100 text-green-700' :
-                  row.isOverdue ? 'bg-red-100 text-red-700'     :
-                  row.isCurrent ? 'bg-blue-100 text-blue-700'   :
-                                  'bg-gray-100 text-gray-500'
-                }`}>
-                  {row.isPaid ? '✓' : row.period}
-                </span>
-                <div>
-                  <p className={`${row.isPaid ? 'text-gray-400' : row.isOverdue ? 'text-red-700 font-medium' : 'text-gray-900'}`}>
-                    {fmtDate(row.dueDate)}
-                    {row.isOverdue  && <span className="ml-1.5 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">Overdue</span>}
-                    {row.isCurrent && !row.isOverdue && <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">Due now</span>}
-                  </p>
-                  <p className="text-[11px] text-gray-400">{unit} {row.period}</p>
+          {paymentRows.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">Koi payment abhi record nahi hui.</p>
+          ) : (
+            paymentRows.map((p) => (
+              <div key={p.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                <div className="flex items-center gap-3">
+                  <span className="w-6 h-6 shrink-0 flex items-center justify-center rounded-full text-xs font-bold bg-green-100 text-green-700">
+                    ✓
+                  </span>
+                  <div>
+                    <p className="text-gray-900">
+                      {fmtDate(p.paidOn)}
+                      {p.isDownPayment ? (
+                        <span className="ml-1.5 text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">Down Payment</span>
+                      ) : p.periodNum !== undefined && (
+                        <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">{unit} {p.periodNum}</span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      {p.method}
+                      {!p.isDownPayment && p.diff > 0.5 && (
+                        <span className="text-blue-500"> · +{pkr(p.diff)} zyada</span>
+                      )}
+                      {!p.isDownPayment && p.diff < -0.5 && (
+                        <span className="text-orange-500"> · {pkr(Math.abs(p.diff))} kam</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
+                <p className="font-medium text-sm text-green-700">{pkr(p.amount)}</p>
               </div>
-              <p className={`font-medium text-sm ${row.isPaid ? 'text-green-600 line-through decoration-green-300' : 'text-gray-900'}`}>
-                {pkr(row.amount)}
-              </p>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <button onClick={onClose}
