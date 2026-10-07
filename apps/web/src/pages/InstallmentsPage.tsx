@@ -2201,6 +2201,41 @@ export default function InstallmentsPage() {
             >
               <FileText size={11} className="shrink-0" /> Agreement (Iqrarnama)
             </button>
+            <button
+              onClick={async () => {
+                close();
+                const pays = await paymentsApi.list(inst.id);
+                openPaymentHistoryReceipt({
+                  shopName: shopData?.shopName ?? 'Receipt',
+                  shopPhone: shopData?.phone,
+                  shopLogoUrl: shopData?.logoUrl,
+                  shopTheme: shopData?.settings?.theme,
+                  customerName: inst.customerName,
+                  customerPhone: inst.customerPhone,
+                  productName: inst.productName,
+                  invoiceNumber: inst.invoiceNumber,
+                  imeiNumber: inst.imeiNumber,
+                  totalAmount: Number(inst.totalAmount),
+                  downPayment: Number(inst.downPayment),
+                  monthly: Number(inst.monthly),
+                  remaining: Number(inst.remaining),
+                  months: inst.months,
+                  paymentFrequency: inst.paymentFrequency,
+                  startDate: inst.startDate,
+                  status: inst.status,
+                  payments: pays.map((p) => ({
+                    amount: Number(p.amount),
+                    paidOn: p.paidOn,
+                    method: p.method,
+                    isDownPayment: p.isDownPayment,
+                    receiptNumber: p.receiptNumber,
+                  })),
+                });
+              }}
+              className="w-full text-left px-3 py-2 text-xs text-blue-700 hover:bg-blue-50 transition font-medium flex items-center gap-1.5"
+            >
+              <Printer size={11} className="shrink-0" /> Payments Received
+            </button>
             {inst.status !== 'ACTIVE' && inst.status !== 'PENDING' && (
               <button onClick={() => { close(); setPayInstTab('history'); setPayInst(inst); }}
                 className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
