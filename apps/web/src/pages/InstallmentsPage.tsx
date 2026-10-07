@@ -1488,6 +1488,7 @@ export default function InstallmentsPage() {
   }
 
   const [payInst, setPayInst] = useState<Installment | null>(null);
+  const [payInstTab, setPayInstTab] = useState<'pay' | 'history' | 'settle'>('pay');
   const [rescheduleInst, setRescheduleInst] = useState<Installment | null>(null);
   const [waiverInst, setWaiverInst] = useState<Installment | null>(null);
   const [pauseInst, setPauseInst] = useState<Installment | null>(null);
@@ -1893,7 +1894,7 @@ export default function InstallmentsPage() {
                       )}
                       {inst.status === 'ACTIVE' && canPay && (
                         <button
-                          onClick={() => setPayInst(inst)}
+                          onClick={() => { setPayInstTab('pay'); setPayInst(inst); }}
                           className="flex-1 py-2 bg-blue-600 text-white text-xs rounded-xl font-medium hover:bg-blue-700 transition">
                           Record Payment
                         </button>
@@ -2042,7 +2043,7 @@ export default function InstallmentsPage() {
                         )}
                         {inst.status === 'ACTIVE' && canPay && (
                           <button
-                            onClick={() => setPayInst(inst)}
+                            onClick={() => { setPayInstTab('pay'); setPayInst(inst); }}
                             className="px-2.5 py-1 bg-blue-600 text-white text-xs rounded-lg font-medium hover:bg-blue-700 transition">
                             Pay
                           </button>
@@ -2201,7 +2202,7 @@ export default function InstallmentsPage() {
               <FileText size={11} className="shrink-0" /> Agreement (Iqrarnama)
             </button>
             {inst.status !== 'ACTIVE' && inst.status !== 'PENDING' && (
-              <button onClick={() => { close(); setPayInst(inst); }}
+              <button onClick={() => { close(); setPayInstTab('history'); setPayInst(inst); }}
                 className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
                 History
               </button>
@@ -2347,7 +2348,7 @@ export default function InstallmentsPage() {
       )}
 
       {/* Payment modal */}
-      {payInst && <PaymentModal inst={payInst} onClose={() => setPayInst(null)} />}
+      {payInst && <PaymentModal inst={payInst} initialTab={payInstTab} onClose={() => setPayInst(null)} />}
 
       {/* Early Settlement modal */}
       {settlementInst && <EarlySettlementModal inst={settlementInst} onClose={() => setSettlementInst(null)} />}

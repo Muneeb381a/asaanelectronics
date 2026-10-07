@@ -83,9 +83,11 @@ interface Props {
   onClose: () => void;
   /** Extra query keys to invalidate on success (e.g. customer-installments) */
   extraInvalidate?: string[][];
+  /** Which tab to open on — e.g. 'history' when opened from a "History" action */
+  initialTab?: 'pay' | 'history' | 'settle';
 }
 
-export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Props) {
+export default function PaymentModal({ inst, onClose, extraInvalidate = [], initialTab = 'pay' }: Props) {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isOwner = user?.role === 'SELLER_OWNER';
@@ -100,7 +102,7 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [] }: Pr
   const [collectedBy, setCollectedBy] = useState('');
   const [proofImageUrl, setProofImageUrl] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [tab, setTab] = useState<'pay' | 'history' | 'settle'>('pay');
+  const [tab, setTab] = useState<'pay' | 'history' | 'settle'>(initialTab);
   const [showTransfer, setShowTransfer] = useState(false);
   const [receiptData, setReceiptData] = useState<InstallmentReceiptData | null>(null);
   const [singlePayload, setSinglePayload] = useState<SinglePaymentReceiptData | null>(null);
