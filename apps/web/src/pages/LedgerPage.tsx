@@ -33,7 +33,7 @@ const TABS: { id: Tab; label: string; icon: typeof Wallet }[] = [
   { id: 'balance',   label: 'Wallet',    icon: Wallet },
   { id: 'cashbook',  label: 'Cash Book', icon: BookOpen },
   { id: 'daily',     label: 'Daily',     icon: Calendar },
-  { id: 'pl',        label: 'P & L',     icon: BarChart3 },
+  { id: 'pl',        label: 'Cash Flow', icon: BarChart3 },
   { id: 'expenses',  label: 'Expenses',  icon: TrendingDown },
   { id: 'journal',   label: 'Journal',   icon: TrendingUp },
   { id: 'accounts',  label: 'Accounts',  icon: BarChart3 },
@@ -286,7 +286,9 @@ function DailyTab() {
   );
 }
 
-/* ── Profit & Loss ── */
+/* ── Cash Flow (NOT accrual profit — this is raw cash in/out from the
+   ledger, with no cost-of-goods matching. For the real, COGS-aware net
+   profit figure, see the Reports page's P&L section.) ── */
 function PLTab() {
   const now = new Date();
   const [from, setFrom] = useState(`${now.getFullYear()}-01-01`);
@@ -302,13 +304,18 @@ function PLTab() {
     <div>
       <DateRow from={from} to={to} onFrom={setFrom} onTo={setTo}/>
 
+      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-800">
+        <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-500" />
+        <p>Yeh sirf cash in/out hai (maal ki cost shamil nahi) — asal munafa (profit) <strong>Reports</strong> page ke P&amp;L section mein dekhein.</p>
+      </div>
+
       {isLoading ? <RowSkeleton rows={4}/> : isError ? <LedgerError/> : !data ? null : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiTile label="Revenue"    value={fmtSh(data.revenue)}  cls="text-emerald-600"                                      border="border-emerald-500"/>
-            <KpiTile label="Expenses"   value={fmtSh(data.expenses)} cls="text-red-500"                                          border="border-red-500"/>
-            <KpiTile label="Net Profit" value={fmtSh(data.profit)}   cls={data.profit >= 0 ? 'text-blue-700' : 'text-red-600'}   border={data.profit >= 0 ? 'border-blue-500' : 'border-red-500'}/>
-            <KpiTile label="Margin"     value={`${data.margin}%`}    cls={data.margin >= 0 ? 'text-violet-700' : 'text-red-600'} border="border-violet-400"/>
+            <KpiTile label="Cash In"        value={fmtSh(data.revenue)}  cls="text-emerald-600"                                      border="border-emerald-500"/>
+            <KpiTile label="Cash Out"       value={fmtSh(data.expenses)} cls="text-red-500"                                          border="border-red-500"/>
+            <KpiTile label="Net Cash Flow"  value={fmtSh(data.profit)}   cls={data.profit >= 0 ? 'text-blue-700' : 'text-red-600'}   border={data.profit >= 0 ? 'border-blue-500' : 'border-red-500'}/>
+            <KpiTile label="Cash Margin"    value={`${data.margin}%`}    cls={data.margin >= 0 ? 'text-violet-700' : 'text-red-600'} border="border-violet-400"/>
           </div>
 
           {data.monthly.length > 0 && (
@@ -322,9 +329,9 @@ function PLTab() {
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
                       <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Month</th>
-                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Revenue</th>
-                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expenses</th>
-                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Profit</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cash In</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cash Out</th>
+                      <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Net Cash Flow</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -644,11 +651,15 @@ function AccountsTab() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800">
+        <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-500" />
+        <p>Ye double-entry trial balance sirf installment sales/payments cover karta hai (cash sales, trade-ins, repairs shamil nahi) aur maal ki cost bhi nahi — asal munafa <strong>Reports</strong> page ke P&amp;L section mein dekhein.</p>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiTile label="Cash"        value={fmtSh(data.cash)}        cls="text-blue-700"                                       border="border-blue-500"/>
         <KpiTile label="Receivables" value={fmtSh(data.receivables)} cls="text-emerald-600"                                   border="border-emerald-500"/>
         <KpiTile label="Revenue"     value={fmtSh(data.revenue)}     cls="text-emerald-600"                                   border="border-violet-400"/>
-        <KpiTile label="Net P&L"     value={fmtSh(data.netPL)}       cls={data.netPL >= 0 ? 'text-blue-700' : 'text-red-600'} border={data.netPL >= 0 ? 'border-blue-500' : 'border-red-500'}/>
+        <KpiTile label="Net P&L (Installments)" value={fmtSh(data.netPL)} cls={data.netPL >= 0 ? 'text-blue-700' : 'text-red-600'} border={data.netPL >= 0 ? 'border-blue-500' : 'border-red-500'}/>
       </div>
 
       {typeOrder.filter(t => groups[t]?.length).map(type => (
@@ -859,7 +870,7 @@ export default function LedgerPage() {
     <div className="bg-canvas">
 
       <div className={`${shell.wide} !pb-0`}>
-        <PageHeader title="Accounting" subtitle="Ledger · Cash Book · P&L · Expenses" icon={BookOpen}
+        <PageHeader title="Accounting" subtitle="Ledger · Cash Book · Cash Flow · Expenses" icon={BookOpen}
           actions={
             <div className="text-right">
               <p className="text-[11px] text-gray-500 uppercase tracking-wide">Wallet balance</p>

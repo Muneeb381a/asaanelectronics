@@ -677,7 +677,7 @@ export default function DashboardPage() {
 
                 {/* Is mahine ka munafa */}
                 <Card>
-                  <CardHead icon={TrendingUp} tone={(pnl?.netProfit ?? 0) >= 0 ? 'emerald' : 'red'} title="Is mahine ka munafa" subtitle="Sales − maal ki cost − kharche" action={<LinkBtn onClick={() => navigate('/ledger')}>P&amp;L</LinkBtn>} />
+                  <CardHead icon={TrendingUp} tone={(pnl?.netProfit ?? 0) >= 0 ? 'emerald' : 'red'} title="Is mahine ka munafa" subtitle="Sales − maal ki cost − kharche" action={<LinkBtn onClick={() => navigate('/reports')}>P&amp;L</LinkBtn>} />
                   {!pnl ? <div className="p-5"><RowSkeleton rows={3} /></div> : (
                     <div className="px-5 py-4 space-y-2 text-sm">
                       <div className="flex justify-between"><span className="text-gray-500">Sales (qist + cash)</span><span className="font-semibold text-gray-900 tabular-nums">{pkrSh(pnl.totalRevenue)}</span></div>
