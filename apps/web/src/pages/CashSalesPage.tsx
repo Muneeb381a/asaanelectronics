@@ -567,7 +567,16 @@ export default function CashSalesPage() {
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-1.5">Quantity</label>
                         <input type="number" min={1} max={selectedProd.stock} value={form.quantity}
-                          onChange={e => setForm(f => ({ ...f, quantity: Math.max(1, Number(e.target.value)) }))}
+                          onChange={e => {
+                            const qty = Math.max(1, Number(e.target.value));
+                            // Re-price for the new quantity — the Amount field was
+                            // only ever auto-filled for qty=1 on product select, so
+                            // raising the quantity here silently left Amount pinned
+                            // at the single-unit price unless staff remembered to
+                            // retype it by hand (confirmed in production: several
+                            // cash sales recorded qty 12/82 units at the 1-unit price).
+                            setForm(f => ({ ...f, quantity: qty, amount: String((Number(selectedProd.price) * qty).toFixed(0)) }));
+                          }}
                           className={inputCls} required/>
                       </div>
                       <div>
@@ -575,6 +584,11 @@ export default function CashSalesPage() {
                         <input type="number" min={1} value={form.amount}
                           onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                           className={`${inputCls} font-bold tabular-nums`} required/>
+                        {form.quantity > 1 && Number(form.amount) !== Number(selectedProd.price) * form.quantity && (
+                          <p className="text-[10px] text-amber-600 mt-1">
+                            {form.quantity} × PKR {Number(selectedProd.price).toLocaleString()} = PKR {(Number(selectedProd.price) * form.quantity).toLocaleString()} expected — check kar lein
+                          </p>
+                        )}
                       </div>
                     </div>
 
