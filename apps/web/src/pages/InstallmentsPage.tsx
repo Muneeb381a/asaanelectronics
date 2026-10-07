@@ -1,5 +1,5 @@
 import { shell } from '../components/ui/Page';
-﻿import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -1502,7 +1502,23 @@ export default function InstallmentsPage() {
   const [repoInst, setRepoInst] = useState<Installment | null>(null);
   const [settlementInst, setSettlementInst] = useState<Installment | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+
+  // Flip the dropdown above the trigger when there isn't room below — on a
+  // small screen, near the bottom of the list, the old top-anchored menu
+  // (with ~10 items now) ran off the bottom of the viewport with no way
+  // to reach the rest of it.
+  const openRowMenu = (e: ReactMouseEvent, instId: string) => {
+    if (openMenu === instId) { setOpenMenu(null); setMenuPos(null); return; }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const estMenuHeight = 460;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUpward = spaceBelow < estMenuHeight && spaceAbove > spaceBelow;
+    const right = Math.max(8, window.innerWidth - rect.right);
+    setMenuPos(openUpward ? { bottom: window.innerHeight - rect.top + 4, right } : { top: rect.bottom + 4, right });
+    setOpenMenu(instId);
+  };
   const [approveConfirm, setApproveConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [defaultConfirm, setDefaultConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [closeConfirm,   setCloseConfirm]   = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -1823,12 +1839,7 @@ export default function InstallmentsPage() {
                       </div>
                       <button
                         data-menu
-                        onClick={(e) => {
-                          if (openMenu === inst.id) { setOpenMenu(null); setMenuPos(null); return; }
-                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                          setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-                          setOpenMenu(inst.id);
-                        }}
+                        onClick={(e) => openRowMenu(e, inst.id)}
                         className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition shrink-0">
                         <MoreVertical size={16} />
                       </button>
@@ -2085,12 +2096,7 @@ export default function InstallmentsPage() {
                         )}
                         <button
                           data-menu
-                          onClick={(e) => {
-                            if (openMenu === inst.id) { setOpenMenu(null); setMenuPos(null); return; }
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-                            setOpenMenu(inst.id);
-                          }}
+                          onClick={(e) => openRowMenu(e, inst.id)}
                           className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 transition">
                           <MoreVertical size={15} />
                         </button>
@@ -2186,7 +2192,15 @@ export default function InstallmentsPage() {
         return createPortal(
           <div
             data-menu
-            style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+              right: menuPos.right,
+              maxHeight: '70vh',
+              overflowY: 'auto',
+              zIndex: 9999,
+            }}
             className="bg-white border border-gray-100 rounded-xl shadow-xl w-44 py-1 overflow-hidden"
           >
             {inst.status !== 'CANCELLED' && inst.status !== 'CLOSED' && (
