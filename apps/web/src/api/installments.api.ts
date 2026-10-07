@@ -44,6 +44,11 @@ export interface Installment {
    *  customer needs to bring just to catch up, before this period's own
    *  installment is even added on top. 0 when fully on schedule. */
   carriedShortfall?:  string;
+  /** The sold unit's purchase price (IMEI/serial match) or the product's
+   *  default — used to derive a real profit figure when the sale wasn't
+   *  made through Murabaha mode (cashPrice/profitMarkup left blank), which
+   *  is most sales. Null only when no cost data exists anywhere. */
+  productPurchasePrice?: string | null;
 }
 
 interface ListResponse {

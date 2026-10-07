@@ -186,6 +186,19 @@ export class InstallmentsService {
             ) < now()
           )`,
           carriedShortfall: sql<string>`${overdueAmountSql('installments')}::text`,
+          // Prefers the specific sold unit's purchase price (IMEI/serial
+          // match) over the product's default — lets the UI show a real
+          // profit figure even when the sale never went through Murabaha
+          // mode (cashPrice/profitMarkup left blank), which is most sales.
+          productPurchasePrice: sql<string | null>`(
+            COALESCE(
+              (SELECT pu.purchase_price FROM product_units pu
+               WHERE pu.seller_id = ${sellerId} AND pu.purchase_price IS NOT NULL
+                 AND (pu.imei = ${installments.imeiNumber} OR pu.imei2 = ${installments.imeiNumber} OR pu.serial_number = ${installments.imeiNumber})
+               LIMIT 1),
+              ${products.purchasePrice}
+            )
+          )::text`,
         })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
@@ -225,6 +238,15 @@ export class InstallmentsService {
         imeiNumber:        installments.imeiNumber,
         cashPrice:         installments.cashPrice,
         profitMarkup:      installments.profitMarkup,
+        productPurchasePrice: sql<string | null>`(
+          COALESCE(
+            (SELECT pu.purchase_price FROM product_units pu
+             WHERE pu.seller_id = ${sellerId} AND pu.purchase_price IS NOT NULL
+               AND (pu.imei = ${installments.imeiNumber} OR pu.imei2 = ${installments.imeiNumber} OR pu.serial_number = ${installments.imeiNumber})
+             LIMIT 1),
+            ${products.purchasePrice}
+          )
+        )::text`,
         paymentFrequency:  installments.paymentFrequency,
         paymentDueDay:     installments.paymentDueDay,
         customerArea:       customers.area,

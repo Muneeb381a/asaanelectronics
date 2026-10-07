@@ -91,6 +91,24 @@ function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
 
+// Prefers the owner's explicitly-declared Murabaha markup (cashPrice +
+// profitMarkup, disclosed at sale time); most sales never go through that
+// mode, so this falls back to totalAmount minus the sold unit/product's
+// purchase price — the same cost source the Reports page's profit figures
+// already use — rather than showing nothing just because profitMarkup was
+// left blank.
+function effectiveProfit(inst: Installment): { amount: number; costBasis: number } | null {
+  const markup = Number(inst.profitMarkup ?? 0);
+  if (markup > 0) {
+    return { amount: markup, costBasis: Number(inst.cashPrice ?? 0) };
+  }
+  if (inst.productPurchasePrice != null) {
+    const cost = Number(inst.productPurchasePrice);
+    return { amount: Number(inst.totalAmount) - cost, costBasis: cost };
+  }
+  return null;
+}
+
 function Badge({ status, paused }: { status: InstallmentStatus; paused?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1">
@@ -1854,14 +1872,18 @@ export default function InstallmentsPage() {
                           <span className="text-gray-400 font-mono"> · IMEI: {inst.imeiNumber}</span>
                         )}
                       </p>
-                      {isOwner && Number(inst.profitMarkup ?? 0) > 0 && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
-                          Faida {pkr(inst.profitMarkup!)}
-                          {inst.cashPrice && Number(inst.cashPrice) > 0 && (
-                            <> · {((Number(inst.profitMarkup) / Number(inst.cashPrice)) * 100).toFixed(0)}%</>
-                          )}
-                        </span>
-                      )}
+                      {isOwner && (() => {
+                        const profit = effectiveProfit(inst);
+                        if (!profit || profit.amount <= 0) return null;
+                        return (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
+                            Faida {pkr(profit.amount)}
+                            {profit.costBasis > 0 && (
+                              <> · {((profit.amount / profit.costBasis) * 100).toFixed(0)}%</>
+                            )}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     {/* Row 3: amount chips */}
@@ -1995,14 +2017,18 @@ export default function InstallmentsPage() {
                       {inst.imeiNumber && (
                         <p className="text-[11px] text-gray-400 font-mono mt-0.5">IMEI: {inst.imeiNumber}</p>
                       )}
-                      {isOwner && Number(inst.profitMarkup ?? 0) > 0 && (
-                        <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 mt-0.5">
-                          Faida {pkr(inst.profitMarkup!)}
-                          {inst.cashPrice && Number(inst.cashPrice) > 0 && (
-                            <> · {((Number(inst.profitMarkup) / Number(inst.cashPrice)) * 100).toFixed(0)}%</>
-                          )}
-                        </span>
-                      )}
+                      {isOwner && (() => {
+                        const profit = effectiveProfit(inst);
+                        if (!profit || profit.amount <= 0) return null;
+                        return (
+                          <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 mt-0.5">
+                            Faida {pkr(profit.amount)}
+                            {profit.costBasis > 0 && (
+                              <> · {((profit.amount / profit.costBasis) * 100).toFixed(0)}%</>
+                            )}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-900">{pkr(inst.totalAmount)}</td>
                     <td className="px-4 py-3 text-right">
