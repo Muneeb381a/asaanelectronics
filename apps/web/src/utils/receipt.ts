@@ -765,6 +765,149 @@ export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
   openPrint(html, 1000, 900);
 }
 
+export interface PaymentHistoryReceiptData {
+  shopName: string;
+  shopPhone?: string | null;
+  shopLogoUrl?: string | null;
+  shopTheme?: string | null;
+  customerName: string;
+  customerPhone?: string | null;
+  productName: string;
+  invoiceNumber?: string | null;
+  imeiNumber?: string | null;
+  totalAmount: number;
+  downPayment: number;
+  monthly: number;
+  remaining: number;
+  months: number;
+  paymentFrequency?: string | null;
+  startDate: string;
+  status: string;
+  /** Actual recorded payments only — never a projected/future period. A row
+   *  that hasn't been collected yet simply has no payment record, so there's
+   *  nothing to filter: the data itself can't contain an "unpaid" row. */
+  payments: Array<{
+    amount: number;
+    paidOn: string;
+    method: string;
+    isDownPayment?: boolean;
+    receiptNumber?: string | null;
+  }>;
+}
+
+// Printable/shareable record of what a customer has ACTUALLY paid on one
+// installment, in shop-branded design matching openCustomerHistoryReport /
+// openSinglePaymentReceipt — deliberately excludes any period that hasn't
+// been collected yet, so there's nothing in it to confuse a customer into
+// thinking they already owe less (or more) than they do.
+export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
+  const palette  = getPrintPalette(d.shopTheme);
+  const isDaily  = d.paymentFrequency === 'daily';
+  const freqWord = isDaily ? 'Daily' : 'Monthly';
+
+  const sorted = [...d.payments].sort((a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime());
+  const totalPaid = sorted.reduce((s, p) => s + p.amount, 0);
+  const paidCount = sorted.filter((p) => !p.isDownPayment).length;
+  const pct = d.totalAmount > 0 ? Math.round((totalPaid / d.totalAmount) * 100) : 0;
+  const printedDate = new Date().toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const rows = sorted.length === 0
+    ? `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">Abhi tak koi payment record nahi.</td></tr>`
+    : sorted.map((p, idx) => `
+      <tr>
+        <td style="color:#94a3b8;text-align:center">${idx + 1}</td>
+        <td>${fmtDate(p.paidOn)}<br><span style="font-size:8px;color:#9ca3af">${new Date(p.paidOn).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></td>
+        <td>${p.isDownPayment ? '<span class="badge" style="background:#ede9fe;color:#5b21b6">Down Payment</span>' : `${freqWord} Installment`}</td>
+        <td>${mLabel(p.method)}</td>
+        <td class="r" style="font-weight:700;color:#059669">${pkr(p.amount)}</td>
+      </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><title>Payment History — ${d.customerName}</title><style>${a4Css(palette)}</style></head>
+<body>
+<div class="page">
+  <!-- HEADER -->
+  <div class="hdr">
+    <div style="display:flex;align-items:center">
+      ${d.shopLogoUrl ? `<img src="${d.shopLogoUrl}" class="shop-logo" alt="logo"/>` : ''}
+      <div>
+        <div class="shop-name">${d.shopName}</div>
+        ${d.shopPhone ? `<div class="shop-sub">${d.shopPhone}</div>` : ''}
+      </div>
+    </div>
+    <div class="rpt-title">
+      <h1>Payment History · ادا شدہ رقوم</h1>
+      <p>${d.invoiceNumber ? `Invoice: ${d.invoiceNumber} · ` : ''}Printed: ${printedDate}</p>
+    </div>
+  </div>
+
+  <!-- CUSTOMER / PRODUCT -->
+  <div class="profile-grid" style="margin-bottom:16px">
+    <div>
+      <div class="info-row"><span class="info-lbl">Customer</span><span class="info-val">${d.customerName}</span></div>
+      ${d.customerPhone ? `<div class="info-row"><span class="info-lbl">Phone</span><span class="info-val">${d.customerPhone}</span></div>` : ''}
+      <div class="info-row"><span class="info-lbl">Product</span><span class="info-val">${d.productName}</span></div>
+      ${d.imeiNumber ? `<div class="info-row"><span class="info-lbl">IMEI</span><span class="info-val" style="font-family:monospace;font-size:9px">${d.imeiNumber}</span></div>` : ''}
+    </div>
+    <div>
+      <div class="info-row"><span class="info-lbl">Plan</span><span class="info-val">${freqWord} · ${pkr(d.monthly)}/${isDaily ? 'day' : 'mo'} · ${d.months} ${isDaily ? 'days' : 'months'}</span></div>
+      <div class="info-row"><span class="info-lbl">Started</span><span class="info-val">${fmtDate(d.startDate)}</span></div>
+      <div class="info-row"><span class="info-lbl">Status</span><span class="info-val"><span class="badge st-${d.status}">${d.status}</span></span></div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="sec-title">Account Summary · حساب کتاب</div>
+  <div class="stats-bar" style="margin-bottom:16px">
+    <div class="sc blue">
+      <div class="sl">Total Amount</div>
+      <div class="sv">${pkr(d.totalAmount)}</div>
+      <div class="ss">${d.months} ${isDaily ? 'days' : 'installments'}</div>
+    </div>
+    <div class="sc green">
+      <div class="sl">Total Paid</div>
+      <div class="sv">${pkr(totalPaid)}</div>
+      <div class="ss">${paidCount} payment${paidCount !== 1 ? 's' : ''}${d.downPayment > 0 ? ' + down payment' : ''}</div>
+    </div>
+    <div class="sc ${d.remaining > 0 ? 'amber' : 'green'}">
+      <div class="sl">Remaining</div>
+      <div class="sv">${pkr(d.remaining)}</div>
+      <div class="ss">${pct}% paid off</div>
+    </div>
+  </div>
+  <div style="background:#f1f5f9;border-radius:20px;height:7px;overflow:hidden;margin:-8px 0 16px">
+    <div style="background:linear-gradient(90deg,#10b981,#059669);height:100%;width:${Math.min(pct, 100)}%;border-radius:20px"></div>
+  </div>
+
+  <!-- PAYMENTS TABLE — paid only, never a future/unpaid row -->
+  <div class="sec-title">Payment History · ادا شدہ رقوم کی تفصیل</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:28px">#</th>
+        <th>Date Paid</th>
+        <th>Type</th>
+        <th>Method</th>
+        <th class="r">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <!-- FOOTER -->
+  <div class="foot">
+    <span>${d.shopName}${d.shopPhone ? ` · ${d.shopPhone}` : ''}</span>
+    <span>Confidential · ${printedDate}</span>
+  </div>
+</div>
+<script>window.onload = () => window.print();</script>
+</body>
+</html>`;
+
+  openPrint(html, 1000, 900);
+}
+
 export function cashSaleWhatsappUrl(d: CashSaleReceiptData): string {
   const lines = [
     `*Cash Sale — ${d.shopName}*`,

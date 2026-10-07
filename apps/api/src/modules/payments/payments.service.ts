@@ -46,6 +46,7 @@ export class PaymentsService {
           collectedBy:   payments.collectedBy,
           proofImageUrl: payments.proofImageUrl,
           collectorName: users.name,
+          isDownPayment: payments.isDownPayment,
         })
         .from(payments)
         .leftJoin(users, eq(payments.collectedBy, users.id))

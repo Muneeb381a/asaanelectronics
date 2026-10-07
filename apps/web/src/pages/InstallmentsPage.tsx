@@ -16,13 +16,14 @@ import CnicInstallmentFlow from '../features/installments/CnicInstallmentFlow.ts
 import RecoveryDrawer from '../features/installments/RecoveryDrawer.tsx';
 import PaymentModal from '../features/installments/PaymentModal.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
-import { sellersApi, type PaymentAccount } from '../api/sellers.api.ts';
+import { sellersApi, type PaymentAccount, type Seller } from '../api/sellers.api.ts';
 import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
 import { repossessionsApi } from '../api/repossessions.api.ts';
 import { openBill, openLegalNotice } from '../utils/bill.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
+import { openPaymentHistoryReceipt } from '../utils/receipt.ts';
 import { whatsappTemplatesApi, applyTemplate } from '../api/whatsappTemplates.api.ts';
 
 function calcNextDueDate(inst: Installment): Date | null {
@@ -580,7 +581,11 @@ function RepossessModal({ inst, onClose }: { inst: Installment; onClose: () => v
   );
 }
 
-function ScheduleModal({ inst, shopName, onClose }: { inst: Installment; shopName?: string; onClose: () => void }) {
+function ScheduleModal({ inst, shop, onClose }: { inst: Installment; shop?: Seller; onClose: () => void }) {
+  const { data: payments = [] } = useQuery({
+    queryKey: ['payments', inst.id],
+    queryFn: () => paymentsApi.list(inst.id),
+  });
   const isDaily      = inst.paymentFrequency === 'daily';
   const monthly      = Number(inst.monthly);
   const remaining    = Number(inst.remaining);
@@ -619,66 +624,35 @@ function ScheduleModal({ inst, shopName, onClose }: { inst: Installment; shopNam
 
   const unit = isDaily ? 'Day' : 'Month';
 
+  // What actually gets printed/sent to the customer — real payments only,
+  // never a projected future period (see openPaymentHistoryReceipt).
   const printSchedule = () => {
-    const fmt = (d: Date) => d.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-    const rowsHtml = rows.map(r => {
-      const status = r.isPaid ? '✓ Paid' : r.isOverdue ? '⚠ Overdue' : r.isCurrent ? '→ Due Now' : 'Pending';
-      const color  = r.isPaid ? '#15803d' : r.isOverdue ? '#D42828' : r.isCurrent ? '#1d4ed8' : '#374151';
-      const bg     = r.isPaid ? '#f0fdf4' : r.isOverdue ? '#fef2f2' : r.isCurrent ? '#eff6ff' : '#fff';
-      return `<tr style="background:${bg}">
-        <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0;color:${color};font-weight:600">${r.period}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0">${fmt(r.dueDate)}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600">PKR ${r.amount.toLocaleString('en-PK',{maximumFractionDigits:0})}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid #f0f0f0;color:${color};font-weight:600">${status}</td>
-      </tr>`;
-    }).join('');
-    const win = window.open('', '_blank', 'width=750,height=900');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>Payment Schedule</title>
-      <style>
-        body{font-family:system-ui,sans-serif;margin:0;padding:28px;color:#111;font-size:13px}
-        .no-print{margin-bottom:16px;display:flex;gap:8px}
-        @media print{.no-print{display:none!important}}
-        h1{margin:0 0 2px;font-size:18px;font-weight:700}
-        .sub{color:#6b7280;font-size:12px;margin-bottom:16px}
-        .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px}
-        .meta-box{background:#f9fafb;border-radius:8px;padding:10px 14px;border:1px solid #e5e7eb}
-        .meta-box .label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em}
-        .meta-box .val{font-size:15px;font-weight:700;margin-top:2px}
-        table{width:100%;border-collapse:collapse}
-        th{text-align:left;padding:8px 12px;background:#f9fafb;border-bottom:2px solid #e5e7eb;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280}
-        th:nth-child(3){text-align:right}
-        .footer{margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:11px;display:flex;justify-content:space-between}
-      </style></head><body>
-      <div class="no-print">
-        <button onclick="window.print()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🖨 Print / Save PDF</button>
-        <button onclick="window.close()" style="padding:8px 18px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:13px;cursor:pointer">Close</button>
-      </div>
-      ${shopName ? `<h1>${shopName}</h1>` : '<h1>Payment Schedule</h1>'}
-      <div class="sub">${inst.customerName} · ${inst.customerPhone} · ${inst.productName}${inst.invoiceNumber ? ` · Invoice #${inst.invoiceNumber}` : ''}</div>
-      <div class="meta">
-        <div class="meta-box"><div class="label">Total Amount</div><div class="val">PKR ${Number(inst.totalAmount).toLocaleString('en-PK',{maximumFractionDigits:0})}</div></div>
-        <div class="meta-box"><div class="label">Down Payment</div><div class="val">PKR ${Number(inst.downPayment).toLocaleString('en-PK',{maximumFractionDigits:0})}</div></div>
-        <div class="meta-box" style="background:${remaining>0?'#fffbeb':'#f0fdf4'};border-color:${remaining>0?'#fde68a':'#bbf7d0'}">
-          <div class="label">Remaining</div>
-          <div class="val" style="color:${remaining>0?'#92400e':'#15803d'}">PKR ${remaining.toLocaleString('en-PK',{maximumFractionDigits:0})}</div>
-        </div>
-      </div>
-      <div class="meta" style="margin-top:-8px">
-        <div class="meta-box"><div class="label">Per ${unit}</div><div class="val">PKR ${monthly.toLocaleString('en-PK',{maximumFractionDigits:0})}</div></div>
-        <div class="meta-box" style="background:#f0fdf4;border-color:#bbf7d0"><div class="label">Periods Paid</div><div class="val" style="color:#15803d">${periodsPaid} / ${inst.months}</div></div>
-        <div class="meta-box" style="background:#eff6ff;border-color:#bfdbfe"><div class="label">Start Date</div><div class="val" style="color:#1d4ed8;font-size:13px">${new Date(inst.startDate).toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'})}</div></div>
-      </div>
-      <table>
-        <thead><tr><th>#</th><th>Due Date</th><th>Amount</th><th>Status</th></tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-      <div class="footer">
-        <span>Generated ${new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'})}</span>
-        <span>Payments: ${periodsPaid} paid · ${periodsLeft} remaining</span>
-      </div>
-    </body></html>`);
-    win.document.close();
+    openPaymentHistoryReceipt({
+      shopName: shop?.shopName ?? 'Receipt',
+      shopPhone: shop?.phone,
+      shopLogoUrl: shop?.logoUrl,
+      shopTheme: shop?.settings?.theme,
+      customerName: inst.customerName,
+      customerPhone: inst.customerPhone,
+      productName: inst.productName,
+      invoiceNumber: inst.invoiceNumber,
+      imeiNumber: inst.imeiNumber,
+      totalAmount: Number(inst.totalAmount),
+      downPayment: Number(inst.downPayment),
+      monthly,
+      remaining,
+      months: inst.months,
+      paymentFrequency: inst.paymentFrequency,
+      startDate: inst.startDate,
+      status: inst.status,
+      payments: payments.map((p) => ({
+        amount: Number(p.amount),
+        paidOn: p.paidOn,
+        method: p.method,
+        isDownPayment: p.isDownPayment,
+        receiptNumber: p.receiptNumber,
+      })),
+    });
   };
 
   return (
@@ -2403,7 +2377,7 @@ export default function InstallmentsPage() {
       {repoInst && <RepossessModal inst={repoInst} onClose={() => setRepoInst(null)} />}
 
       {/* Schedule modal */}
-      {scheduleInst && <ScheduleModal inst={scheduleInst} shopName={shopData?.shopName} onClose={() => setScheduleInst(null)} />}
+      {scheduleInst && <ScheduleModal inst={scheduleInst} shop={shopData} onClose={() => setScheduleInst(null)} />}
 
       {/* Bulk reminder modal */}
       {showReminders && <BulkReminderModal onClose={() => setShowReminders(false)} />}

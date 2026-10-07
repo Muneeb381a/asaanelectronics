@@ -14,6 +14,7 @@ export interface Payment {
   collectedBy: string | null;
   collectorName: string | null;
   proofImageUrl: string | null;
+  isDownPayment: boolean;
 }
 
 export interface RecordPaymentInput {
