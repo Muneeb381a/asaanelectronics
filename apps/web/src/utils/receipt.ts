@@ -811,16 +811,31 @@ export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
   const pct = d.totalAmount > 0 ? Math.round((totalPaid / d.totalAmount) * 100) : 0;
   const printedDate = new Date().toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 
+  // Running outstanding balance and a per-payment short/extra note vs the
+  // scheduled amount — so a partial payment (e.g. 1,000 against a 14,175
+  // installment) visibly leaves the rest owing instead of just vanishing,
+  // and an overpayment is just as visible.
+  let balance = d.totalAmount;
   const rows = sorted.length === 0
-    ? `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">Abhi tak koi payment record nahi.</td></tr>`
-    : sorted.map((p, idx) => `
+    ? `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Abhi tak koi payment record nahi.</td></tr>`
+    : sorted.map((p, idx) => {
+        balance = Math.max(0, balance - p.amount);
+        const diff = !p.isDownPayment && d.monthly > 0 ? p.amount - d.monthly : 0;
+        const diffNote = diff > 0.5
+          ? `<div style="font-size:8px;color:#2563eb;font-weight:600">+${pkr(diff)} zyada</div>`
+          : diff < -0.5
+            ? `<div style="font-size:8px;color:#d97706;font-weight:600">${pkr(Math.abs(diff))} kam — baaqi agle mein</div>`
+            : '';
+        return `
       <tr>
         <td style="color:#94a3b8;text-align:center">${idx + 1}</td>
         <td>${fmtDate(p.paidOn)}<br><span style="font-size:8px;color:#9ca3af">${new Date(p.paidOn).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></td>
         <td>${p.isDownPayment ? '<span class="badge" style="background:#ede9fe;color:#5b21b6">Down Payment</span>' : `${freqWord} Installment`}</td>
         <td>${mLabel(p.method)}</td>
-        <td class="r" style="font-weight:700;color:#059669">${pkr(p.amount)}</td>
-      </tr>`).join('');
+        <td class="r" style="font-weight:700;color:#059669">${pkr(p.amount)}${diffNote}</td>
+        <td class="r" style="color:#475569">${pkr(balance)}</td>
+      </tr>`;
+      }).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -890,10 +905,15 @@ export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
         <th>Type</th>
         <th>Method</th>
         <th class="r">Amount</th>
+        <th class="r">Balance After</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>
+  ${d.remaining > 0 ? `
+  <div style="margin-top:8px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:9px;color:#92400e">
+    <strong>Note:</strong> Jab payment scheduled amount se kam hoti hai, baaqi raqam khatam nahi hoti — agli qist ke sath jama ho jaati hai. Abhi total baaqi: <strong>${pkr(d.remaining)}</strong>.
+  </div>` : ''}
 
   <!-- FOOTER -->
   <div class="foot">

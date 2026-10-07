@@ -365,6 +365,14 @@ export default function AgreementPage() {
         {payments.length > 0 && (() => {
           const totalReceived = payments.reduce((s, p) => s + Number(p.amount), 0);
           const sorted = [...payments].sort((a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime());
+          const monthlyAmt = Number(inst.monthly);
+          let running = Number(inst.totalAmount);
+          const withBalance = sorted.map((p) => {
+            const amt = Number(p.amount);
+            running = Math.max(0, running - amt);
+            const diff = !p.isDownPayment && monthlyAmt > 0 ? amt - monthlyAmt : 0;
+            return { ...p, balance: running, diff };
+          });
           return (
             <div className="mb-4" style={{ breakBefore: 'page' }}>
               <div className="bg-blue-600 text-white rounded-t-lg px-3 py-2">
@@ -379,10 +387,11 @@ export default function AgreementPage() {
                     <th className="border border-blue-200 px-2 py-1 text-left font-semibold text-blue-900">Type</th>
                     <th className="border border-blue-200 px-2 py-1 text-left font-semibold text-blue-900 w-20">Method</th>
                     <th className="border border-blue-200 px-2 py-1 text-right font-semibold text-blue-900 w-28">Amount</th>
+                    <th className="border border-blue-200 px-2 py-1 text-right font-semibold text-blue-900 w-28">Balance After</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.map((p, i) => (
+                  {withBalance.map((p, i) => (
                     <tr key={p.id} className={i % 2 === 1 ? 'bg-blue-50/40' : ''}>
                       <td className="border border-blue-100 px-2 py-1 text-center text-gray-600">{i + 1}</td>
                       <td className="border border-blue-100 px-2 py-1 text-gray-800">
@@ -392,17 +401,27 @@ export default function AgreementPage() {
                         {p.isDownPayment ? 'Down Payment' : (isDaily ? 'Daily Installment' : 'Monthly Installment')}
                       </td>
                       <td className="border border-blue-100 px-2 py-1 text-gray-600">{p.method}</td>
-                      <td className="border border-blue-100 px-2 py-1 text-right font-semibold text-gray-800">{pkr(p.amount)}</td>
+                      <td className="border border-blue-100 px-2 py-1 text-right font-semibold text-gray-800">
+                        {pkr(p.amount)}
+                        {p.diff > 0.5 && <div className="text-[8px] font-semibold text-blue-600">+{pkr(p.diff)} zyada</div>}
+                        {p.diff < -0.5 && <div className="text-[8px] font-semibold text-amber-600">{pkr(Math.abs(p.diff))} kam</div>}
+                      </td>
+                      <td className="border border-blue-100 px-2 py-1 text-right text-gray-600">{pkr(p.balance)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-blue-100">
                     <td colSpan={4} className="border border-blue-200 px-2 py-1.5 text-right font-bold text-blue-900">Total Received</td>
-                    <td className="border border-blue-200 px-2 py-1.5 text-right font-extrabold text-blue-900">{pkr(totalReceived)}</td>
+                    <td colSpan={2} className="border border-blue-200 px-2 py-1.5 text-right font-extrabold text-blue-900">{pkr(totalReceived)}</td>
                   </tr>
                 </tfoot>
               </table>
+              {Number(inst.remaining) > 0 && (
+                <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-[9px] text-amber-800">
+                  <strong>Note:</strong> Jab payment scheduled amount se kam hoti hai, baaqi raqam khatam nahi hoti — agli qist ke sath jama ho jaati hai. Abhi total baaqi: <strong>{pkr(inst.remaining)}</strong>.
+                </div>
+              )}
             </div>
           );
         })()}
