@@ -266,6 +266,16 @@ function ProfitSection() {
               </p>
             </div>
           )}
+          {(pnl.returnsRefund > 0 || pnl.tradeInPurchases > 0) && (
+            <div className="mt-2.5 flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+              <CheckCircle size={14} className="text-slate-500 shrink-0 mt-0.5"/>
+              <p className="text-xs text-slate-700">
+                {pnl.returnsRefund > 0 && <>Return refunds <span className="font-semibold">({pkrSh(pnl.returnsRefund)})</span>{pnl.tradeInPurchases > 0 ? ' aur ' : ' '}</>}
+                {pnl.tradeInPurchases > 0 && <>Trade-in purchases <span className="font-semibold">({pkrSh(pnl.tradeInPurchases)})</span> </>}
+                upar ke "Net munafa" mein kharche ki tarah shamil hain.
+              </p>
+            </div>
+          )}
         </div>
       ) : null}
 

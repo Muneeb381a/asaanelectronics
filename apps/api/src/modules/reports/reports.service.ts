@@ -1,7 +1,7 @@
 import { and, asc, count, eq, gte, inArray, isNull, lt, lte, sql, sum } from 'drizzle-orm';
 import { nextDueDateSql, overdueAmountSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
-import { cashSales, customers, expenses, installments, payments, products, supplierInvoices } from '../../db/schema.js';
+import { cashSales, customers, expenses, installments, payments, products, supplierInvoices, returns, tradeIns } from '../../db/schema.js';
 
 const _cache = new Map<string, { at: number; data: unknown }>();
 function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
@@ -428,7 +428,7 @@ export class ReportsService {
     const from = month ? new Date(year, month - 1, 1) : new Date(year, 0, 1);
     const to   = month ? new Date(year, month,     1) : new Date(year + 1, 0, 1);
 
-    const [payRow, cashRow, expRow, dupExpRow, purchaseCatRow, instCogs, cashCogs, suppRow] = await Promise.all([
+    const [payRow, cashRow, expRow, dupExpRow, purchaseCatRow, instCogs, cashCogs, suppRow, returnsRow, tradeInBuyRow, tradeInSoldRow] = await Promise.all([
       // Revenue: installment payments collected
       db.select({ total: sum(payments.amount) })
         .from(payments)
@@ -551,11 +551,46 @@ export class ReportsService {
           gte(supplierInvoices.invoiceDate, ymd(from)),
           lt(supplierInvoices.invoiceDate,  ymd(to)),
         )),
+
+      // Return refunds — real cash paid back out. returns.service.ts posts
+      // this to the ledger cash-book only, never to the expenses table this
+      // P&L reads, so it was silently never subtracted from net profit.
+      db.select({ total: sum(returns.refundAmount) })
+        .from(returns)
+        .where(and(
+          eq(returns.sellerId, sellerId),
+          gte(returns.resolvedAt, from),
+          lt(returns.resolvedAt, to),
+        )),
+
+      // Trade-in purchases — cash paid out to take in a device, at intake
+      // time, independent of whether/when it's later resold.
+      db.select({ total: sum(tradeIns.assessedValue) })
+        .from(tradeIns)
+        .where(and(
+          eq(tradeIns.sellerId, sellerId),
+          gte(tradeIns.createdAt, from),
+          lt(tradeIns.createdAt, to),
+        )),
+
+      // Trade-ins resold this period — revenue and its matching cost (the
+      // assessed value paid at intake) recognized together at resale, same
+      // as any other sale.
+      db.select({ revenue: sum(tradeIns.soldPrice), cost: sum(tradeIns.assessedValue) })
+        .from(tradeIns)
+        .where(and(
+          eq(tradeIns.sellerId, sellerId),
+          eq(tradeIns.status, 'sold'),
+          gte(tradeIns.soldAt, from),
+          lt(tradeIns.soldAt, to),
+        )),
     ]);
 
-    const installmentRevenue = Number(payRow[0]?.total ?? 0);
-    const cashRevenue        = Number(cashRow[0]?.total ?? 0);
-    const totalRevenue       = installmentRevenue + cashRevenue;
+    const installmentRevenue   = Number(payRow[0]?.total ?? 0);
+    const cashRevenue          = Number(cashRow[0]?.total ?? 0);
+    const tradeInResaleRevenue = Number(tradeInSoldRow[0]?.revenue ?? 0);
+    const tradeInResaleCost    = Number(tradeInSoldRow[0]?.cost    ?? 0);
+    const totalRevenue       = installmentRevenue + cashRevenue + tradeInResaleRevenue;
     const duplicateStockExpense = Number(dupExpRow[0]?.total ?? 0);
     const duplicateStockCount   = Number(dupExpRow[0]?.cnt   ?? 0);
     const purchaseCategoryTotal = Number(purchaseCatRow[0]?.total ?? 0);
@@ -564,10 +599,14 @@ export class ReportsService {
     // excluded — needs the owner's own judgment, not auto-excluded.
     const unverifiedStockExpense = purchaseCategoryTotal - duplicateStockExpense;
     const unverifiedStockCount   = purchaseCategoryCount - duplicateStockCount;
+    const returnsRefund      = Number(returnsRow[0]?.total ?? 0);
+    const tradeInPurchases   = Number(tradeInBuyRow[0]?.total ?? 0);
     // Excludes entries that are a proven duplicate of a cost already counted via
-    // COGS below — otherwise that stock's cost is subtracted twice.
-    const totalExpenses      = Number(expRow[0]?.total ?? 0) - duplicateStockExpense;
-    const cogsSales          = Number(instCogs[0]?.cogs ?? 0) + Number(cashCogs[0]?.cogs ?? 0);
+    // COGS below — otherwise that stock's cost is subtracted twice. Adds back
+    // real cash outflows that were never in the expenses table to begin with:
+    // return refunds and trade-in intake payouts.
+    const totalExpenses      = Number(expRow[0]?.total ?? 0) - duplicateStockExpense + returnsRefund + tradeInPurchases;
+    const cogsSales          = Number(instCogs[0]?.cogs ?? 0) + Number(cashCogs[0]?.cogs ?? 0) + tradeInResaleCost;
     const missingCostRevenue = Number(instCogs[0]?.missing_revenue ?? 0) + Number(cashCogs[0]?.missing_revenue ?? 0);
     const missingCostCount   = Number(instCogs[0]?.missing_count ?? 0) + Number(cashCogs[0]?.missing_count ?? 0);
     const supplierPurchases  = Number(suppRow[0]?.total ?? 0);
@@ -581,6 +620,7 @@ export class ReportsService {
         : String(year),
       installmentRevenue,
       cashRevenue,
+      tradeInResaleRevenue,
       totalRevenue,
       cogsSales,
       missingCostRevenue,
@@ -592,6 +632,8 @@ export class ReportsService {
       duplicateStockCount,
       unverifiedStockExpense,
       unverifiedStockCount,
+      returnsRefund,
+      tradeInPurchases,
       netProfit,
       netMarginPct: totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0,
       supplierPurchases,
