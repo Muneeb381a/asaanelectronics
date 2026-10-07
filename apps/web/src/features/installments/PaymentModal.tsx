@@ -92,9 +92,15 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
   const user = useAuthStore((s) => s.user);
   const isOwner = user?.role === 'SELLER_OWNER';
   const [amount, setAmount] = useState(() => {
-    const monthly   = Number(inst.monthly);
-    const shortfall = Number(inst.carriedShortfall ?? 0);
-    const cap       = Number(inst.remaining);
+    const monthly = Number(inst.monthly);
+    const cap     = Number(inst.remaining);
+    // Daily plans naturally get paid every few days rather than literally
+    // every calendar day, so the day-by-day shortfall tally grows fast and
+    // can reach the full remaining balance even for a customer who's paying
+    // reasonably — auto-suggesting that as "today's amount" is misleading.
+    // Default to just the daily figure; the banner below still offers the
+    // full carried balance as an explicit, opt-in top-up.
+    const shortfall = inst.paymentFrequency === 'daily' ? 0 : Number(inst.carriedShortfall ?? 0);
     return String(Math.min(monthly + shortfall, cap));
   });
   const [method, setMethod] = useState<PaymentMethod>('CASH');
@@ -623,7 +629,9 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
                         Pichla Baqaya (Carried Shortfall)
                       </p>
                       <p className="text-[11px] text-orange-700 mt-0.5">
-                        Pichli qist{carriedShortfall > Number(freshInst.monthly) ? 'ein' : ''} poori nahi hui thi — <span className="font-bold">{pkr(carriedShortfall)}</span> ab bhi baqi hai, is mahine ki qist ke upar.
+                        {freshInst.paymentFrequency === 'daily'
+                          ? <>Pichle din poori qist nahi hui thi — <span className="font-bold">{pkr(carriedShortfall)}</span> ab bhi baqi hai. Chahein to neeche "Baqaya Include" se saath shamil kar lein, warna sirf aaj ki qist bhi chalegi.</>
+                          : <>Pichli qist{carriedShortfall > Number(freshInst.monthly) ? 'ein' : ''} poori nahi hui thi — <span className="font-bold">{pkr(carriedShortfall)}</span> ab bhi baqi hai, is mahine ki qist ke upar.</>}
                       </p>
                     </div>
                     <button
