@@ -4,6 +4,7 @@ import { Printer, ArrowLeft, Loader2 } from 'lucide-react';
 import { installmentsApi } from '../api/installments.api.ts';
 import { customersApi } from '../api/customers.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
+import { paymentsApi } from '../api/payments.api.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -87,6 +88,12 @@ export default function AgreementPage() {
     queryKey: ['shop-me'],
     queryFn:  sellersApi.getMe,
     staleTime: 5 * 60_000,
+  });
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ['payments', id],
+    queryFn:  () => paymentsApi.list(id!),
+    enabled:  !!id,
   });
 
   const isLoading = instLoading || custLoading || shopLoading;
@@ -347,6 +354,45 @@ export default function AgreementPage() {
             </table>
           </div>
         </div>
+
+        {/* Payments Received — real transactions, so every recorded payment
+            (including odd/partial ones that don't complete a full scheduled
+            period above) is visible somewhere concrete. */}
+        {payments.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-2">
+              Payments Received / وصول شدہ ادائیگیاں
+            </p>
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-gray-700 w-12">#</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-gray-700">Date Paid</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-gray-700">Type</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-gray-700 w-20">Method</th>
+                  <th className="border border-gray-300 px-2 py-1 text-right font-semibold text-gray-700 w-28">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...payments]
+                  .sort((a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime())
+                  .map((p, i) => (
+                    <tr key={p.id}>
+                      <td className="border border-gray-200 px-2 py-1 text-center text-gray-600">{i + 1}</td>
+                      <td className="border border-gray-200 px-2 py-1 text-gray-800">
+                        {new Date(p.paidOn).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td className="border border-gray-200 px-2 py-1 text-gray-600">
+                        {p.isDownPayment ? 'Down Payment' : (isDaily ? 'Daily Installment' : 'Monthly Installment')}
+                      </td>
+                      <td className="border border-gray-200 px-2 py-1 text-gray-600">{p.method}</td>
+                      <td className="border border-gray-200 px-2 py-1 text-right font-semibold text-gray-800">{pkr(p.amount)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Terms */}
         <div className="border border-gray-200 rounded-lg p-3 mb-5 bg-gray-50">
