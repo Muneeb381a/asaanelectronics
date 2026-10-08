@@ -3,6 +3,25 @@ import { captureError } from '../utils/sentry.ts';
 
 type State = { error: Error | null };
 
+// After a deploy, a browser tab left open from before it still holds the old
+// index bundle, which points lazy-loaded routes at chunk filenames (content
+// hashed) that no longer exist on the server — the very next navigation to
+// one throws exactly this, cross-browser phrasing varies. One stale-tab visit
+// here should just silently self-heal with a reload, not blank the screen.
+const CHUNK_LOAD_ERROR = /Failed to fetch dynamically imported module|Importing a module script failed|Unable to preload CSS|error loading dynamically imported module/i;
+const RELOAD_FLAG = 'chunk-reload-attempted';
+
+function isChunkLoadError(error: Error): boolean {
+  return CHUNK_LOAD_ERROR.test(error.message);
+}
+
+// Called once from main.tsx after the app has rendered successfully, so a
+// long-lived tab that already self-healed from one deploy can still recover
+// from a later one instead of the flag permanently disabling auto-reload.
+export function clearChunkReloadFlag() {
+  try { sessionStorage.removeItem(RELOAD_FLAG); } catch { /* ignore */ }
+}
+
 // Without this a render error anywhere blanks the whole app with no way back.
 export default class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   override state: State = { error: null };
@@ -13,6 +32,19 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[UI crash]', error, info.componentStack);
+
+    // Stale chunk after a deploy — reload once to pick up the fresh bundle.
+    // The sessionStorage flag stops a genuinely broken deploy from reload-looping.
+    if (isChunkLoadError(error)) {
+      let alreadyTried = false;
+      try { alreadyTried = sessionStorage.getItem(RELOAD_FLAG) === '1'; } catch { /* private mode etc. */ }
+      if (!alreadyTried) {
+        try { sessionStorage.setItem(RELOAD_FLAG, '1'); } catch { /* ignore */ }
+        window.location.reload();
+        return;
+      }
+    }
+
     captureError(error, { componentStack: info.componentStack ?? undefined });
   }
 

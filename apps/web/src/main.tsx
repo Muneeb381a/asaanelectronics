@@ -8,6 +8,7 @@ import App from './App.tsx';
 import './index.css';
 import { initAppearance } from './utils/themes.ts';
 import { initSentry } from './utils/sentry.ts';
+import { clearChunkReloadFlag } from './components/ErrorBoundary.tsx';
 
 initSentry();
 
@@ -20,8 +21,17 @@ applyFriendlyZodMessages();
 // default look. DashboardLayout re-applies the authoritative server value.
 initAppearance();
 
-// Auto-reload when a lazy chunk is missing after a new deployment
-window.addEventListener('vite:preloadError', () => window.location.reload());
+// Auto-reload when a lazy chunk is missing after a new deployment. Without
+// preventDefault(), Vite still re-throws the original error after this fires,
+// which reaches the ErrorBoundary and flashes the crash screen before the
+// reload lands — preventDefault() here means this path (a <link
+// rel="modulepreload"> fetch failing) recovers silently. A raw import()
+// rejection that doesn't go through modulepreload bypasses this event
+// entirely; ErrorBoundary.tsx's isChunkLoadError check is the fallback for that.
+window.addEventListener('vite:preloadError', (e) => {
+  e.preventDefault();
+  window.location.reload();
+});
 
 // Register service worker for PWA / offline support
 if ('serviceWorker' in navigator) {
@@ -59,3 +69,9 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+// This execution reached here on a fresh bundle, so any earlier chunk-reload
+// flag has served its purpose — clear it so a later deploy, in this same
+// long-lived tab, can still trigger a silent auto-recovery instead of going
+// straight to the crash screen.
+setTimeout(clearChunkReloadFlag, 5000);
