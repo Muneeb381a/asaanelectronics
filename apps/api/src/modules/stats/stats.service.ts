@@ -601,29 +601,37 @@ export class StatsService {
         LEFT  JOIN payments p ON p.id = al.entity_id AND p.deleted_at IS NULL
         WHERE al.seller_id = ${sellerId}
           AND al.action    = 'PAYMENT_RECORDED'
-          AND al.created_at >= ${thirtyDaysAgo}
+          AND al.created_at >= ${thirtyDaysAgo.toISOString()}
         GROUP BY al.user_id, u.name
         ORDER BY count DESC
         LIMIT 10
       `),
 
-      // Area heatmap: overdue customers grouped by city (last comma-separated part of address)
+      // Area heatmap: overdue customers grouped by city (last comma-separated part of address).
+      // Postgres won't let ORDER BY reference two SELECT-list aliases combined
+      // in an expression (it resolves against FROM-clause columns, not output
+      // aliases, once it's more than a bare identifier) — wrapped in a CTE so
+      // the outer ORDER BY can use the aliases directly instead of repeating
+      // the full CASE expressions.
       db.execute<{ city: string; overdue_count: number; defaulted_count: number }>(sql`
-        SELECT
-          COALESCE(NULLIF(TRIM(SPLIT_PART(c.address, ',', -1)), ''), 'Unknown') AS city,
-          COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE'
-            AND ${nextDueDateSql('i')} < ${pktTodaySql} THEN c.id END)::int   AS overdue_count,
-          COUNT(DISTINCT CASE WHEN i.status = 'DEFAULTED' THEN c.id END)::int               AS defaulted_count
-        FROM customers c
-        LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
-        WHERE c.seller_id = ${sellerId}
-          AND c.deleted_at IS NULL
-          AND (
-            (i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql})
-            OR i.status = 'DEFAULTED'
-          )
-        GROUP BY city
-        HAVING COUNT(DISTINCT c.id) > 0
+        WITH city_stats AS (
+          SELECT
+            COALESCE(NULLIF(TRIM(SPLIT_PART(c.address, ',', -1)), ''), 'Unknown') AS city,
+            COUNT(DISTINCT CASE WHEN i.status = 'ACTIVE'
+              AND ${nextDueDateSql('i')} < ${pktTodaySql} THEN c.id END)::int   AS overdue_count,
+            COUNT(DISTINCT CASE WHEN i.status = 'DEFAULTED' THEN c.id END)::int               AS defaulted_count
+          FROM customers c
+          LEFT JOIN installments i ON i.customer_id = c.id AND i.deleted_at IS NULL
+          WHERE c.seller_id = ${sellerId}
+            AND c.deleted_at IS NULL
+            AND (
+              (i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql})
+              OR i.status = 'DEFAULTED'
+            )
+          GROUP BY city
+          HAVING COUNT(DISTINCT c.id) > 0
+        )
+        SELECT * FROM city_stats
         ORDER BY (overdue_count + defaulted_count) DESC
         LIMIT 10
       `),

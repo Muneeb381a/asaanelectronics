@@ -162,7 +162,7 @@ export class HandoversService {
       JOIN customers c ON c.id = i.customer_id
       WHERE c.seller_id = ${sellerId}
         AND p.collected_by = ${staffId}
-        AND p.paid_on >= ${todayStart}
+        AND p.paid_on >= ${todayStart.toISOString()}
         AND p.deleted_at IS NULL
         AND p.method = 'CASH'
     `);
@@ -172,7 +172,7 @@ export class HandoversService {
       FROM cash_sales
       WHERE seller_id = ${sellerId}
         AND sold_by_user_id = ${staffId}
-        AND created_at >= ${todayStart}
+        AND created_at >= ${todayStart.toISOString()}
         AND method = 'CASH'
     `);
 

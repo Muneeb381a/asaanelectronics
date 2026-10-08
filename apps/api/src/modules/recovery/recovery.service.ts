@@ -236,7 +236,7 @@ export class RecoveryService {
         eq(recoveryActions.type, 'PROMISE_TO_PAY'),
         staffScopeOrTrue(staffUserId, 'customers'),
         sql`${recoveryActions.promiseDate} IS NOT NULL`,
-        sql`${recoveryActions.promiseDate}::date <= ${sevenDaysAhead}`,
+        sql`${recoveryActions.promiseDate}::date <= ${sevenDaysAhead.toISOString()}`,
         eq(installments.status, 'ACTIVE'),
         isNull(installments.deletedAt),
         isNull(customers.deletedAt),
