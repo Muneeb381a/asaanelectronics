@@ -158,7 +158,7 @@ export default function CashSalesPage() {
         quantity: vars.quantity ?? 1, amount: String(vars.amount), method: vars.method,
         customerName: vars.customerName ?? null, customerPhone: vars.customerPhone ?? null,
         imeiNumber: vars.imeiNumber ?? null, note: vars.note ?? null,
-        soldByUserId: user?.id ?? null, createdAt: new Date().toISOString(),
+        soldByUserId: user?.id ?? null, soldByName: user?.name ?? null, createdAt: new Date().toISOString(),
         productName: selectedProd?.name ?? '', productCategory: selectedProd?.category ?? null,
       };
       qc.setQueryData<SaleList>(['cash-sales', listSearch, listPage], (c) =>
@@ -373,6 +373,9 @@ export default function CashSalesPage() {
                         {s.imeiNumber && <span className="text-gray-200">·</span>}
                         {s.imeiNumber && <p className="text-[10px] text-gray-400 font-mono truncate max-w-[100px]">{s.imeiNumber}</p>}
                       </div>
+                      {s.soldByName && (
+                        <p className="text-[11px] text-violet-600 font-medium mt-0.5">by {s.soldByName}</p>
+                      )}
                     </div>
 
                     {/* Amount + method */}

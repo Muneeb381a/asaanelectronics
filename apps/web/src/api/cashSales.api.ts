@@ -14,6 +14,7 @@ export interface CashSale {
   imeiNumber:    string | null;
   note:          string | null;
   soldByUserId:  string | null;
+  soldByName:    string | null;
   createdAt:     string;
   productName:   string;
   productCategory: string | null;

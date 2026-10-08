@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { customers, installments, ledgerEntries, payments, products, users, customerCredits, handoverItems, staffHandovers } from '../../db/schema.js';
+import { customers, installments, ledgerEntries, payments, products, users, customerCredits } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 import { staffScopeOrTrue } from '../../utils/staffScope.js';
@@ -9,6 +9,39 @@ import { accountingSvc } from '../accounting/accounting.service.js';
 import { FinancialPeriodsService } from '../expenses/financial-periods.service.js';
 
 const periodsSvc = new FinancialPeriodsService();
+
+// A staff member's running cash balance — everything they've ever collected
+// in CASH (installment payments + cash sales) minus what's been handed over
+// and CONFIRMED by the owner. Mirrors handovers.service.ts pendingBalances().
+// Reversing or shrinking a CASH payment can silently push this negative if
+// that cash was already counted into a confirmed handover total (a fixed
+// record of what the owner actually received, which never re-reads live
+// transactions) — verified in production: 63 confirmed handovers whose
+// linked items no longer summed to their confirmed amount.
+async function staffPendingCashBalance(sellerId: string, staffId: string): Promise<number> {
+  const [row] = await db.execute<{ balance: string }>(sql`
+    SELECT (
+      COALESCE((
+        SELECT SUM(p.amount) FROM payments p
+        JOIN installments i ON i.id = p.installment_id
+        JOIN customers c ON c.id = i.customer_id
+        WHERE p.collected_by = ${staffId} AND c.seller_id = ${sellerId}
+          AND p.deleted_at IS NULL AND p.method = 'CASH'
+      ), 0)
+      +
+      COALESCE((
+        SELECT SUM(amount) FROM cash_sales
+        WHERE sold_by_user_id = ${staffId} AND seller_id = ${sellerId} AND method = 'CASH'
+      ), 0)
+      -
+      COALESCE((
+        SELECT SUM(confirmed_amount) FROM staff_handovers
+        WHERE staff_id = ${staffId} AND seller_id = ${sellerId} AND status = 'CONFIRMED'
+      ), 0)
+    )::text AS balance
+  `);
+  return Number(row?.balance ?? 0);
+}
 
 type CreateBody = {
   installmentId: string;
@@ -200,6 +233,7 @@ export class PaymentsService {
           paidOn:        payments.paidOn,
           instRemaining: installments.remaining,
           instStatus:    installments.status,
+          collectedBy:   payments.collectedBy,
         })
         .from(payments)
         .innerJoin(installments, eq(payments.installmentId, installments.id))
@@ -214,6 +248,15 @@ export class PaymentsService {
       const oldAmount    = Number(pmt.amount);
       const newAmount    = body.amount ?? oldAmount;
       const oldRemaining = Number(pmt.instRemaining);
+
+      // Same invariant as remove() — shrinking a CASH payment that's already
+      // counted into a confirmed handover total would push the staff's
+      // balance negative.
+      if (newAmount < oldAmount && pmt.method === 'CASH' && pmt.collectedBy) {
+        const balance = await staffPendingCashBalance(sellerId, pmt.collectedBy);
+        if (balance - (oldAmount - newAmount) < -0.01)
+          throw new AppError('Lowering this amount would push the staff\'s cash balance negative — this cash may already be counted in a confirmed handover. Adjust the handover instead.', 400);
+      }
 
       // remaining before this payment = currentRemaining + oldAmount
       // new remaining = (remaining before payment) - newAmount
@@ -280,6 +323,7 @@ export class PaymentsService {
         instStatus:    installments.status,
         customerName:  customers.name,
         productName:   products.name,
+        collectedBy:   payments.collectedBy,
       })
       .from(payments)
       .innerJoin(installments, eq(payments.installmentId, installments.id))
@@ -298,14 +342,14 @@ export class PaymentsService {
     // un-collected digitally — doing so would silently shrink the staff's
     // live "collected" total while their already-confirmed handover total
     // stays fixed, permanently (and invisibly) understating their cash balance.
-    const [linkedConfirmed] = await db
-      .select({ handoverId: staffHandovers.id })
-      .from(handoverItems)
-      .innerJoin(staffHandovers, eq(staffHandovers.id, handoverItems.handoverId))
-      .where(and(eq(handoverItems.paymentId, id), eq(staffHandovers.status, 'CONFIRMED')))
-      .limit(1);
-    if (linkedConfirmed)
-      throw new AppError('This payment\'s cash was already handed over and confirmed — it cannot be reversed. Dispute or adjust the related handover instead.', 400);
+    // Checked against the staff's actual running balance rather than whether
+    // this specific row got claimed by the handover-item matcher, since that
+    // matcher frequently finds nothing to claim yet the cash was still real.
+    if (pmt.method === 'CASH' && pmt.collectedBy) {
+      const balance = await staffPendingCashBalance(sellerId, pmt.collectedBy);
+      if (balance - Number(pmt.amount) < -0.01)
+        throw new AppError('This payment\'s cash was already handed over and confirmed — reversing it would push the staff\'s balance negative. Adjust the handover instead.', 400);
+    }
 
     const restoredRemaining = Number(pmt.instRemaining) + Number(pmt.amount);
     const statusRevert = pmt.instStatus === 'COMPLETED' && restoredRemaining > 0
