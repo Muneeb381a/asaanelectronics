@@ -10,9 +10,12 @@ export class ReconciliationService {
   async runForSeller(sellerId: string, trigger: 'SCHEDULED' | 'MANUAL' = 'SCHEDULED') {
     const anomalies: Anomaly[] = [];
 
-    const [ledgerTotal, paymentsTotal] = await Promise.all([
+    // All four checks are independent, keyed only on sellerId — one batch.
+    const [ledgerTotal, paymentsTotal, drifts, imbalanced] = await Promise.all([
       this.#ledgerCreditTotal(sellerId),
       this.#paymentsTotal(sellerId),
+      this.#installmentDrifts(sellerId),
+      this.#journalImbalances(sellerId),
     ]);
 
     // ── Check 1: Ledger ↔ Payments ───────────────────────────────────
@@ -27,7 +30,6 @@ export class ReconciliationService {
     }
 
     // ── Check 2: Installment remaining drift ─────────────────────────
-    const drifts = await this.#installmentDrifts(sellerId);
     for (const d of drifts) {
       anomalies.push({
         type: 'INSTALLMENT_REMAINING_DRIFT',
@@ -39,7 +41,6 @@ export class ReconciliationService {
     }
 
     // ── Check 3: Journal entry imbalance ─────────────────────────────
-    const imbalanced = await this.#journalImbalances(sellerId);
     for (const j of imbalanced) {
       anomalies.push({
         type: 'JOURNAL_IMBALANCE',

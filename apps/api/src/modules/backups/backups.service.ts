@@ -62,24 +62,36 @@ async function buildSnapshot(sellerId: string): Promise<BackupSnapshot> {
   if (!seller) throw new AppError('Shop not found', 404);
 
   const tables: Record<string, unknown[]> = { sellers: [seller] };
-  for (const [key, table] of DIRECT_TABLES) {
-    tables[key] = await db.select().from(table as any).where(eq((table as any).sellerId, sellerId));
-  }
+  // Every DIRECT_TABLES row is independently filtered by sellerId alone —
+  // 25+ sequential round-trips collapsed into one parallel batch.
+  const directResults = await Promise.all(
+    DIRECT_TABLES.map(([, table]) => db.select().from(table as any).where(eq((table as any).sellerId, sellerId))),
+  );
+  DIRECT_TABLES.forEach(([key], i) => { tables[key] = directResults[i]!; });
 
   const customerIds = (tables.customers as { id: string }[]).map((c) => c.id);
-  tables.installments = customerIds.length
-    ? await db.select().from(installments).where(inArray(installments.customerId, customerIds))
-    : [];
+  const journalIds  = (tables.journalEntries as { id: string }[]).map((j) => j.id);
+
+  // installments/verifications/ledgerLines each only need customerIds or
+  // journalIds (both already resolved above) — independent of each other.
+  const [installmentRows, verificationRows, ledgerLineRows] = await Promise.all([
+    customerIds.length
+      ? db.select().from(installments).where(inArray(installments.customerId, customerIds))
+      : Promise.resolve([]),
+    customerIds.length
+      ? db.select().from(verifications).where(inArray(verifications.customerId, customerIds))
+      : Promise.resolve([]),
+    journalIds.length
+      ? db.select().from(ledgerLines).where(inArray(ledgerLines.journalId, journalIds))
+      : Promise.resolve([]),
+  ]);
+  tables.installments  = installmentRows;
+  tables.verifications = verificationRows;
+  tables.ledgerLines    = ledgerLineRows;
+
   const installmentIds = (tables.installments as { id: string }[]).map((i) => i.id);
   tables.payments = installmentIds.length
     ? await db.select().from(payments).where(inArray(payments.installmentId, installmentIds))
-    : [];
-  tables.verifications = customerIds.length
-    ? await db.select().from(verifications).where(inArray(verifications.customerId, customerIds))
-    : [];
-  const journalIds = (tables.journalEntries as { id: string }[]).map((j) => j.id);
-  tables.ledgerLines = journalIds.length
-    ? await db.select().from(ledgerLines).where(inArray(ledgerLines.journalId, journalIds))
     : [];
 
   return { version: 1, sellerId, shopName: seller.shopName, createdAt: new Date().toISOString(), tables };

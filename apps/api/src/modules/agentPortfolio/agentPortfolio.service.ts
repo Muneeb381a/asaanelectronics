@@ -346,33 +346,37 @@ export async function salarySummary(sellerId: string, month: string) {
 
   const staffIds = staffList.map((s) => s.id);
 
-  // Total deductions per staff for this month
-  const dedRows = await db.select({
-    staffId: salaryDeductions.staffId,
-    total:   sql<string>`SUM(${salaryDeductions.amount})::text`,
-    count:   sql<string>`COUNT(*)::text`,
-  })
-    .from(salaryDeductions)
-    .where(and(
-      eq(salaryDeductions.sellerId, sellerId),
-      eq(salaryDeductions.month, month),
-      inArray(salaryDeductions.staffId, staffIds),
-    ))
-    .groupBy(salaryDeductions.staffId);
-  const dedMap = new Map(dedRows.map((r) => [r.staffId, { total: Number(r.total), count: Number(r.count) }]));
+  // Deductions-per-staff and portfolio-size-per-agent are independent reads,
+  // both keyed only on staffIds — fetch together.
+  const [dedRows, portfolioRows] = await Promise.all([
+    // Total deductions per staff for this month
+    db.select({
+      staffId: salaryDeductions.staffId,
+      total:   sql<string>`SUM(${salaryDeductions.amount})::text`,
+      count:   sql<string>`COUNT(*)::text`,
+    })
+      .from(salaryDeductions)
+      .where(and(
+        eq(salaryDeductions.sellerId, sellerId),
+        eq(salaryDeductions.month, month),
+        inArray(salaryDeductions.staffId, staffIds),
+      ))
+      .groupBy(salaryDeductions.staffId),
 
-  // Portfolio size per agent
-  const portfolioRows = await db.select({
-    agentId: customerAssignments.agentId,
-    count:   sql<string>`COUNT(*)::text`,
-  })
-    .from(customerAssignments)
-    .where(and(
-      eq(customerAssignments.sellerId, sellerId),
-      isNull(customerAssignments.unassignedAt),
-      inArray(customerAssignments.agentId, staffIds),
-    ))
-    .groupBy(customerAssignments.agentId);
+    // Portfolio size per agent
+    db.select({
+      agentId: customerAssignments.agentId,
+      count:   sql<string>`COUNT(*)::text`,
+    })
+      .from(customerAssignments)
+      .where(and(
+        eq(customerAssignments.sellerId, sellerId),
+        isNull(customerAssignments.unassignedAt),
+        inArray(customerAssignments.agentId, staffIds),
+      ))
+      .groupBy(customerAssignments.agentId),
+  ]);
+  const dedMap       = new Map(dedRows.map((r) => [r.staffId, { total: Number(r.total), count: Number(r.count) }]));
   const portfolioMap = new Map(portfolioRows.map((r) => [r.agentId, Number(r.count)]));
 
   return {

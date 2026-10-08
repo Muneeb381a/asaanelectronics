@@ -177,37 +177,39 @@ export class StaffService {
   // ── Commission ────────────────────────────────────────────────────────────────
 
   async commissions(sellerId: string, month?: string) {
-    const seller = await db.query.sellers.findFirst({
-      where: eq(sellers.id, sellerId),
-      columns: { settings: true },
-    });
-    const shopRate = (seller?.settings as { commissionRate?: number } | null)?.commissionRate ?? 0;
-
     const ref  = month ? new Date(month + '-01') : new Date();
     const from = new Date(ref.getFullYear(), ref.getMonth(), 1);
     const to   = new Date(ref.getFullYear(), ref.getMonth() + 1, 1);
     const monthLabel = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}`;
 
-    // Fetch collections grouped by staff
-    const rows = await db.execute<{ userId: string; userName: string; total: string; count: number; perStaffRate: string | null }>(sql`
-      SELECT
-        p.collected_by                                          AS "userId",
-        u.name                                                  AS "userName",
-        COALESCE(SUM(p.amount::numeric), 0)::text               AS total,
-        COUNT(*)::int                                           AS count,
-        u.commission_rate::text                                 AS "perStaffRate"
-      FROM payments p
-      INNER JOIN users u        ON u.id = p.collected_by
-      INNER JOIN installments i ON i.id = p.installment_id
-      INNER JOIN customers c    ON c.id = i.customer_id
-      WHERE c.seller_id = ${sellerId}
-        AND p.deleted_at IS NULL
-        AND p.paid_on >= ${from.toISOString()}
-        AND p.paid_on <  ${to.toISOString()}
-        AND p.collected_by IS NOT NULL
-      GROUP BY p.collected_by, u.name, u.commission_rate
-      ORDER BY SUM(p.amount::numeric) DESC
-    `);
+    // seller settings and the per-staff collections are independent reads —
+    // fetch together instead of paying for two sequential round-trips.
+    const [seller, rows] = await Promise.all([
+      db.query.sellers.findFirst({
+        where: eq(sellers.id, sellerId),
+        columns: { settings: true },
+      }),
+      db.execute<{ userId: string; userName: string; total: string; count: number; perStaffRate: string | null }>(sql`
+        SELECT
+          p.collected_by                                          AS "userId",
+          u.name                                                  AS "userName",
+          COALESCE(SUM(p.amount::numeric), 0)::text               AS total,
+          COUNT(*)::int                                           AS count,
+          u.commission_rate::text                                 AS "perStaffRate"
+        FROM payments p
+        INNER JOIN users u        ON u.id = p.collected_by
+        INNER JOIN installments i ON i.id = p.installment_id
+        INNER JOIN customers c    ON c.id = i.customer_id
+        WHERE c.seller_id = ${sellerId}
+          AND p.deleted_at IS NULL
+          AND p.paid_on >= ${from.toISOString()}
+          AND p.paid_on <  ${to.toISOString()}
+          AND p.collected_by IS NOT NULL
+        GROUP BY p.collected_by, u.name, u.commission_rate
+        ORDER BY SUM(p.amount::numeric) DESC
+      `),
+    ]);
+    const shopRate = (seller?.settings as { commissionRate?: number } | null)?.commissionRate ?? 0;
 
     // Fetch which staff already had commission paid this month
     const staffIds = rows.map((r) => r.userId);
@@ -386,12 +388,6 @@ export class StaffService {
   // ── Daily Briefing ───────────────────────────────────────────────────────────
 
   async getBriefing(sellerId: string) {
-    const seller = await db.query.sellers.findFirst({
-      where: eq(sellers.id, sellerId),
-      columns: { settings: true },
-    });
-    const targets = (seller?.settings?.staffTargets ?? {}) as Record<string, { daily?: number; monthly?: number }>;
-
     // PKT = UTC+5; compute today start, end, month start in UTC
     const nowUTC     = new Date();
     const offsetMs   = 5 * 60 * 60 * 1000;
@@ -401,14 +397,21 @@ export class StaffService {
     const todayEnd   = new Date(pktYMD + 'T23:59:59.999+05:00');
     const monthStart = new Date(pktYMD.slice(0, 7) + '-01T00:00:00.000+05:00');
 
-    const rows = await db.execute<{
-      id:              string;
-      name:            string;
-      today_collected: string;
-      today_count:     number;
-      month_collected: string;
-      month_count:     number;
-    }>(sql`
+    // seller settings (for targets) and the per-staff collection stats are
+    // independent reads — fetch together instead of two sequential round-trips.
+    const [seller, rows] = await Promise.all([
+      db.query.sellers.findFirst({
+        where: eq(sellers.id, sellerId),
+        columns: { settings: true },
+      }),
+      db.execute<{
+        id:              string;
+        name:            string;
+        today_collected: string;
+        today_count:     number;
+        month_collected: string;
+        month_count:     number;
+      }>(sql`
       WITH today_stats AS (
         SELECT p.collected_by,
           COALESCE(SUM(p.amount::numeric), 0)::text AS today_collected,
@@ -449,7 +452,9 @@ export class StaffService {
       WHERE u.seller_id = ${sellerId}
         AND u.role = 'SELLER_STAFF'
       ORDER BY COALESCE(t.today_collected, '0')::numeric DESC, u.name
-    `);
+    `),
+    ]);
+    const targets = (seller?.settings?.staffTargets ?? {}) as Record<string, { daily?: number; monthly?: number }>;
 
     return rows.map((r) => {
       const t = targets[r.id] ?? {};

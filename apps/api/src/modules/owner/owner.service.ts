@@ -365,21 +365,19 @@ export class OwnerService {
       return sum + (price > 0 ? price : 0);
     }, 0);
 
-    // Total revenue ever recorded (admin payment logs)
-    const [revRes] = await db.execute<{ total: string }>(
-      sql`SELECT COALESCE(SUM(amount), 0) AS total FROM admin_payment_logs`
-    );
+    // Four independent platform-wide aggregates — run as one round-trip batch.
+    const [[revRes], [revMonthRes], [custRes], [instRes]] = await Promise.all([
+      db.execute<{ total: string }>(
+        sql`SELECT COALESCE(SUM(amount), 0) AS total FROM admin_payment_logs`
+      ),
+      db.execute<{ total: string }>(
+        sql`SELECT COALESCE(SUM(amount), 0) AS total FROM admin_payment_logs WHERE created_at >= ${monthStart.toISOString()}`
+      ),
+      db.execute<{ total: string }>(sql`SELECT COUNT(*)::text AS total FROM customers`),
+      db.execute<{ total: string }>(sql`SELECT COUNT(*)::text AS total FROM installments`),
+    ]);
     const totalRevenueCollected = Number(revRes?.total ?? 0);
-
-    // Revenue this month
-    const [revMonthRes] = await db.execute<{ total: string }>(
-      sql`SELECT COALESCE(SUM(amount), 0) AS total FROM admin_payment_logs WHERE created_at >= ${monthStart.toISOString()}`
-    );
-    const revenueThisMonth = Number(revMonthRes?.total ?? 0);
-
-    // Total customers + installments across platform
-    const [custRes] = await db.execute<{ total: string }>(sql`SELECT COUNT(*)::text AS total FROM customers`);
-    const [instRes] = await db.execute<{ total: string }>(sql`SELECT COUNT(*)::text AS total FROM installments`);
+    const revenueThisMonth      = Number(revMonthRes?.total ?? 0);
 
     return {
       totalShops:    allShops.length,
