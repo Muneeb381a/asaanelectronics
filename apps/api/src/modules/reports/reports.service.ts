@@ -190,65 +190,69 @@ export class ReportsService {
       paymentDueDay:    installments.paymentDueDay,
     };
 
-    // 1. All PENDING + ACTIVE + DEFAULTED installments that started on or before this month.
-    //    PENDING = created but not yet activated by owner (still shows as outstanding obligation).
-    const activeRows = await db
-      .select(instCols)
-      .from(installments)
-      .innerJoin(customers, eq(installments.customerId, customers.id))
-      .innerJoin(products,  eq(installments.productId,  products.id))
-      .where(and(
-        eq(customers.sellerId,      sellerId),
-        isNull(installments.deletedAt),
-        isNull(customers.deletedAt),
-        inArray(installments.status, ['PENDING', 'ACTIVE', 'DEFAULTED']),
-        lte(installments.startDate, monthEnd),
-      ))
-      .orderBy(asc(customers.name));
+    // Queries 1, 2, and 2b are independent of each other's results — fire
+    // them in parallel instead of paying for 3 sequential round-trips.
+    const [activeRows, payRows, cumPayRows] = await Promise.all([
+      // 1. All PENDING + ACTIVE + DEFAULTED installments that started on or before this month.
+      //    PENDING = created but not yet activated by owner (still shows as outstanding obligation).
+      db
+        .select(instCols)
+        .from(installments)
+        .innerJoin(customers, eq(installments.customerId, customers.id))
+        .innerJoin(products,  eq(installments.productId,  products.id))
+        .where(and(
+          eq(customers.sellerId,      sellerId),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
+          inArray(installments.status, ['PENDING', 'ACTIVE', 'DEFAULTED']),
+          lte(installments.startDate, monthEnd),
+        ))
+        .orderBy(asc(customers.name)),
 
-    // 2. Sum of payments per installment in this month (for this seller)
-    const payRows = await db
-      .select({
-        installmentId: payments.installmentId,
-        total:         sum(payments.amount),
-      })
-      .from(payments)
-      .innerJoin(installments, eq(payments.installmentId, installments.id))
-      .innerJoin(customers,    eq(installments.customerId, customers.id))
-      .where(and(
-        eq(customers.sellerId,       sellerId),
-        isNull(payments.deletedAt),
-        isNull(installments.deletedAt),
-        isNull(customers.deletedAt),
-        eq(payments.isDownPayment, false),
-        gte(payments.paidOn, monthStart),
-        lte(payments.paidOn, monthEnd),
-      ))
-      .groupBy(payments.installmentId);
+      // 2. Sum of payments per installment in this month (for this seller)
+      db
+        .select({
+          installmentId: payments.installmentId,
+          total:         sum(payments.amount),
+        })
+        .from(payments)
+        .innerJoin(installments, eq(payments.installmentId, installments.id))
+        .innerJoin(customers,    eq(installments.customerId, customers.id))
+        .where(and(
+          eq(customers.sellerId,       sellerId),
+          isNull(payments.deletedAt),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
+          eq(payments.isDownPayment, false),
+          gte(payments.paidOn, monthStart),
+          lte(payments.paidOn, monthEnd),
+        ))
+        .groupBy(payments.installmentId),
 
-    // 2b. Cumulative payments per installment from the very start through this
-    //     month's end — used for status, so a customer who always pays a
-    //     clean round number (e.g. 18,000) against a monthly figure that
-    //     didn't divide evenly (e.g. 18,433) isn't marked "Pending" forever:
-    //     the shortfall rolls into the next period instead, same as the
-    //     due-date math elsewhere in the app (utils/dueDate.ts) already does.
-    const cumPayRows = await db
-      .select({
-        installmentId: payments.installmentId,
-        total:         sum(payments.amount),
-      })
-      .from(payments)
-      .innerJoin(installments, eq(payments.installmentId, installments.id))
-      .innerJoin(customers,    eq(installments.customerId, customers.id))
-      .where(and(
-        eq(customers.sellerId,       sellerId),
-        isNull(payments.deletedAt),
-        isNull(installments.deletedAt),
-        isNull(customers.deletedAt),
-        eq(payments.isDownPayment, false),
-        lte(payments.paidOn, monthEnd),
-      ))
-      .groupBy(payments.installmentId);
+      // 2b. Cumulative payments per installment from the very start through this
+      //     month's end — used for status, so a customer who always pays a
+      //     clean round number (e.g. 18,000) against a monthly figure that
+      //     didn't divide evenly (e.g. 18,433) isn't marked "Pending" forever:
+      //     the shortfall rolls into the next period instead, same as the
+      //     due-date math elsewhere in the app (utils/dueDate.ts) already does.
+      db
+        .select({
+          installmentId: payments.installmentId,
+          total:         sum(payments.amount),
+        })
+        .from(payments)
+        .innerJoin(installments, eq(payments.installmentId, installments.id))
+        .innerJoin(customers,    eq(installments.customerId, customers.id))
+        .where(and(
+          eq(customers.sellerId,       sellerId),
+          isNull(payments.deletedAt),
+          isNull(installments.deletedAt),
+          isNull(customers.deletedAt),
+          eq(payments.isDownPayment, false),
+          lte(payments.paidOn, monthEnd),
+        ))
+        .groupBy(payments.installmentId),
+    ]);
 
     const payMap    = new Map(payRows.map((p) => [p.installmentId, Number(p.total ?? 0)]));
     const cumPayMap = new Map(cumPayRows.map((p) => [p.installmentId, Number(p.total ?? 0)]));
