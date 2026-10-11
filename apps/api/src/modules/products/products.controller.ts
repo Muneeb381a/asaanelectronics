@@ -66,6 +66,10 @@ export async function getValuation(req: AuthRequest, res: Response) {
   success(res, await svc.getValuation(req.user!.sellerId!));
 }
 
+export async function getProductHistory(req: AuthRequest, res: Response) {
+  success(res, await svc.getSaleHistory(req.user!.sellerId!, req.params['id']!));
+}
+
 export async function bulkReceiveProducts(req: AuthRequest, res: Response) {
   const input = req.body as BulkReceiveInput;
   const created = await svc.bulkCreate(req.user!.sellerId!, input);

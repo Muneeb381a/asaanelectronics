@@ -49,6 +49,31 @@ export interface InventoryIntelligence {
   reorderSuggestions: ReorderItem[];
 }
 
+export interface ProductSaleRow {
+  type: 'CASH' | 'INSTALLMENT';
+  id: string;
+  date: string;
+  amount: number;
+  customerName: string;
+  customerPhone: string | null;
+  imeiNumber: string | null;
+  status: string | null;
+  remaining: number | null;
+}
+
+export interface ProductSaleHistory {
+  productId: string;
+  productName: string;
+  summary: {
+    cashSalesCount: number;
+    cashSalesTotal: number;
+    installmentCount: number;
+    installmentTotal: number;
+    unitsSold: number;
+  };
+  rows: ProductSaleRow[];
+}
+
 export interface BulkReceiveUnit {
   name:             string;
   category?:        string;
@@ -113,6 +138,9 @@ export const productsApi = {
 
   getCategories: () =>
     api.get<{ data: string[] }>('/products/categories').then((r) => r.data.data),
+
+  getSaleHistory: (id: string) =>
+    api.get<{ data: ProductSaleHistory }>(`/products/${id}/history`).then(unwrap<ProductSaleHistory>),
 
   bulkReceive: (data: BulkReceiveInput) =>
     api.post<{ data: Product[] }>('/products/bulk', data).then(unwrap<Product[]>),

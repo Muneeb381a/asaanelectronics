@@ -1,7 +1,7 @@
 import { and, asc, eq, ilike, isNull, isNotNull, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { db } from '../../db/index.js';
-import { products, installments, supplierInvoices, supplierInvoiceLines } from '../../db/schema.js';
+import { products, installments, supplierInvoices, supplierInvoiceLines, cashSales, customers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { registerUnitsInTx } from '../productUnits/productUnits.service.js';
 import type { CreateProductInput, UpdateProductInput } from '@assaan/shared';
@@ -317,6 +317,70 @@ export class ProductsService {
       productsWithCost:  r.products_with_cost,
       totalProducts:     r.total_products,
       totalUnits:        r.total_units,
+    };
+  }
+
+  // Complete sale trail for one product — every cash sale and every
+  // installment it was ever sold on, newest first. No separate per-unit
+  // (IMEI) view needed: product_units has no FK to cash_sales/installments
+  // (only a text match on serial, used elsewhere for COGS lookups), and a
+  // serialized product always sells exactly one unit per transaction, so
+  // each row below already IS one unit's full history, IMEI included.
+  async getSaleHistory(sellerId: string, productId: string) {
+    const product = await db.query.products.findFirst({
+      where: and(eq(products.id, productId), eq(products.sellerId, sellerId), isNull(products.deletedAt)),
+      columns: { id: true, name: true },
+    });
+    if (!product) throw new AppError('Product not found', 404);
+
+    const rows = await db.execute<{
+      type: 'CASH' | 'INSTALLMENT'; id: string; date: string; amount: string;
+      customer_name: string; customer_phone: string | null; imei_number: string | null;
+      status: string | null; remaining: string | null;
+    }>(sql`
+      SELECT 'CASH' AS type, cs.id, cs.created_at AS date, cs.amount,
+             COALESCE(cs.customer_name, 'Walk-in') AS customer_name, cs.customer_phone,
+             cs.imei_number, NULL AS status, NULL AS remaining
+      FROM cash_sales cs
+      WHERE cs.seller_id = ${sellerId} AND cs.product_id = ${productId}
+
+      UNION ALL
+
+      SELECT 'INSTALLMENT' AS type, i.id, i.created_at AS date, i.total_amount AS amount,
+             c.name AS customer_name, c.phone AS customer_phone,
+             i.imei_number, i.status::text AS status, i.remaining
+      FROM installments i
+      JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
+      WHERE c.seller_id = ${sellerId} AND i.product_id = ${productId} AND i.deleted_at IS NULL
+
+      ORDER BY date DESC
+    `);
+
+    let cashSalesCount = 0, cashSalesTotal = 0, installmentCount = 0, installmentTotal = 0;
+    for (const r of rows) {
+      if (r.type === 'CASH') { cashSalesCount++; cashSalesTotal += Number(r.amount); }
+      else                   { installmentCount++; installmentTotal += Number(r.amount); }
+    }
+
+    return {
+      productId: product.id,
+      productName: product.name,
+      summary: {
+        cashSalesCount, cashSalesTotal,
+        installmentCount, installmentTotal,
+        unitsSold: cashSalesCount + installmentCount,
+      },
+      rows: rows.map((r) => ({
+        type: r.type,
+        id: r.id,
+        date: r.date,
+        amount: Number(r.amount),
+        customerName: r.customer_name,
+        customerPhone: r.customer_phone,
+        imeiNumber: r.imei_number,
+        status: r.status,
+        remaining: r.remaining !== null ? Number(r.remaining) : null,
+      })),
     };
   }
 

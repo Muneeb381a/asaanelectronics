@@ -9,11 +9,12 @@ import {
 } from '../api/products.api.ts';
 import type { CreateProductInput } from '@assaan/shared';
 import ProductForm from '../features/products/ProductForm.tsx';
+import ProductHistoryDrawer from '../components/ProductHistoryDrawer.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import {
-  Package, Pencil, Trash2, TrendingUp, TrendingDown, Minus,
+  Package, Pencil, Trash2, TrendingUp, TrendingDown, Minus, History,
   AlertTriangle, Zap, BarChart3, ShoppingCart, Brain, X, DollarSign,
 } from 'lucide-react';
 import { TableSkeleton, EmptyState, BlockSkeleton } from '../components/ui/Skeleton.tsx';
@@ -238,6 +239,7 @@ export default function ProductsPage() {
   const navigate = useNavigate();
   const isOwner  = useAuthStore((s) => s.user?.role === 'SELLER_OWNER');
   const [modal, setModal]   = useState<Modal>(null);
+  const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [tab, setTab]       = useState<Tab>('inventory');
   const [search, setSearch] = useState('');
   const [page, setPage]     = useState(1);
@@ -395,6 +397,10 @@ export default function ProductsPage() {
                             {p.serial && <p className="text-xs text-gray-400 mt-0.5 font-mono">{p.serial}</p>}
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => setHistoryProduct(p)} title="Sale History"
+                              className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition">
+                              <History size={14} />
+                            </button>
                             <button onClick={() => setModal({ mode: 'edit', product: p })}
                               className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                               <Pencil size={14} />
@@ -497,6 +503,10 @@ export default function ProductsPage() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => setHistoryProduct(p)} title="Sale History"
+                                  className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition">
+                                  <History size={14} />
+                                </button>
                                 <button onClick={() => setModal({ mode: 'edit', product: p })} title="Edit"
                                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                                   <Pencil size={14} />
@@ -597,6 +607,14 @@ export default function ProductsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {historyProduct && (
+        <ProductHistoryDrawer
+          productId={historyProduct.id}
+          productName={historyProduct.name}
+          onClose={() => setHistoryProduct(null)}
+        />
       )}
 
       <ConfirmDialog
