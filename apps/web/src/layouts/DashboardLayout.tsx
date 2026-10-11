@@ -6,7 +6,7 @@ import {
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck,
   RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart,
   FileDown, Building2, ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays,
-  ClipboardList, ChevronDown, UserCircle, PanelLeftClose, PanelLeftOpen, Wrench,
+  ClipboardList, ChevronDown, UserCircle, PanelLeftClose, PanelLeftOpen, Wrench, Landmark,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -39,6 +39,7 @@ const ALL_NAV: NavItemDef[] = [
   { to: '/dashboard',        label: 'Dashboard',        icon: LayoutDashboard, end: true, perm: '',                                                       group: 'core'       },
   { to: '/reports',          label: 'Analytics',        icon: BarChart3,                  perm: 'canViewReports',                                         group: 'finance'    },
   { to: '/ledger',           label: 'Accounting',       icon: BookOpen,                   perm: '__owner__',                                              group: 'finance'    },
+  { to: '/investors',        label: 'Investors',        icon: Landmark,                   perm: '__owner__',                                              group: 'finance'    },
   { to: '/expenses',         label: 'Expenses',         icon: Receipt,                    perm: 'canRecordExpense',                                       group: 'finance'    },
   { to: '/cashflow',         label: 'Cash Flow',        icon: CalendarDays,               perm: 'canViewReports',                                              group: 'finance'    },
   { to: '/products',         label: 'Products',         icon: Package,                    perm: 'canManageProducts',                                      group: 'catalog'    },

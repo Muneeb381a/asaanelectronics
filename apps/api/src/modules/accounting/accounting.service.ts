@@ -17,6 +17,7 @@ const DEFAULT_ACCOUNTS = [
   { code: '5500', name: 'Transport Expense',   type: 'EXPENSE' as const },
   { code: '5800', name: 'Bad Debt / Waiver',   type: 'EXPENSE' as const },
   { code: '5900', name: 'Other Expense',       type: 'EXPENSE' as const },
+  { code: '3000', name: 'Investor Capital',    type: 'EQUITY'  as const },
 ];
 
 const EXPENSE_ACCOUNT: Record<string, string> = {
@@ -162,6 +163,36 @@ export class AccountingService {
       refType: 'SUPPLIER_PAYMENT', refId: data.paymentId, createdBy: data.userId,
       lines: [
         { accountId: acct['5300']!, debit: data.amount, credit: 0 },
+        { accountId: acct['1000']!, debit: 0,            credit: data.amount },
+      ],
+    }, ex);
+  }
+
+  /** Capital injected by an investor: Dr Cash / Cr Investor Capital (equity). */
+  async postInvestorContributionEntry(sellerId: string, data: {
+    contributionId: string; amount: number; memo?: string; userId?: string;
+  }, ex: Executor = db) {
+    const acct = await this.getAcctIds(sellerId, ['1000', '3000'], ex);
+    await this.postEntry(sellerId, {
+      memo: data.memo ?? `Investor contribution — PKR ${data.amount.toLocaleString()}`,
+      refType: 'INVESTOR_CONTRIBUTION', refId: data.contributionId, createdBy: data.userId,
+      lines: [
+        { accountId: acct['1000']!, debit: data.amount, credit: 0 },
+        { accountId: acct['3000']!, debit: 0,            credit: data.amount },
+      ],
+    }, ex);
+  }
+
+  /** Profit share paid out to an investor: Dr Investor Capital (equity) / Cr Cash. */
+  async postInvestorPayoutEntry(sellerId: string, data: {
+    payoutId: string; amount: number; memo?: string; userId?: string;
+  }, ex: Executor = db) {
+    const acct = await this.getAcctIds(sellerId, ['1000', '3000'], ex);
+    await this.postEntry(sellerId, {
+      memo: data.memo ?? `Investor payout — PKR ${data.amount.toLocaleString()}`,
+      refType: 'INVESTOR_PAYOUT', refId: data.payoutId, createdBy: data.userId,
+      lines: [
+        { accountId: acct['3000']!, debit: data.amount, credit: 0 },
         { accountId: acct['1000']!, debit: 0,            credit: data.amount },
       ],
     }, ex);

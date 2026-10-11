@@ -26,6 +26,7 @@ const StaffPage             = lazy(() => import('../pages/StaffPage.tsx'));
 const VerificationQueuePage = lazy(() => import('../pages/VerificationQueuePage.tsx'));
 const SettingsPage          = lazy(() => import('../pages/SettingsPage.tsx'));
 const LedgerPage            = lazy(() => import('../pages/LedgerPage.tsx'));
+const InvestorsPage         = lazy(() => import('../pages/InvestorsPage.tsx'));
 const AuditLogPage          = lazy(() => import('../pages/AuditLogPage.tsx'));
 const ReturnsPage           = lazy(() => import('../pages/ReturnsPage.tsx'));
 const ExpensesPage          = lazy(() => import('../pages/ExpensesPage.tsx'));
@@ -184,6 +185,7 @@ export const router = createBrowserRouter([
       { path: '/returns',          element: <PermGuard perm="canManageReturns"><S><ReturnsPage /></S></PermGuard> },
       { path: '/expenses',         element: <PermGuard perm="canRecordExpense"><S><ExpensesPage /></S></PermGuard> },
       { path: '/ledger',           element: <SellerOwnerGuard><S><LedgerPage /></S></SellerOwnerGuard> },
+      { path: '/investors',        element: <SellerOwnerGuard><S><InvestorsPage /></S></SellerOwnerGuard> },
       { path: '/audit',            element: <SellerOwnerGuard><S><AuditLogPage /></S></SellerOwnerGuard> },
       { path: '/staff',            element: <SellerOwnerGuard><S><StaffPage /></S></SellerOwnerGuard> },
       { path: '/billing',          element: <SellerOwnerGuard><S><BillingPage /></S></SellerOwnerGuard> },

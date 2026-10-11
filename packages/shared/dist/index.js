@@ -22,4 +22,5 @@ export * from './schemas/owner.schema.js';
 export * from './schemas/tradeIn.schema.js';
 export * from './schemas/repossession.schema.js';
 export * from './schemas/repairJob.schema.js';
+export * from './schemas/investor.schema.js';
 export * from './zodErrorMap.js';

@@ -935,6 +935,67 @@ export const supplierInvoiceLines = pgTable('supplier_invoice_lines', {
   index('idx_sup_inv_lines_seller').on(t.sellerId),
 ]);
 
+// ── Investors (capital + profit-sharing) ──────────────────────────────────────
+// Mudarabah-style: investor provides capital, owner manages and shares profit
+// at a pre-agreed ratio set here — deliberately NOT derived from capital
+// contributed, since profit-share % and ownership % don't have to match.
+// Contributions/payouts post to ledgerEntries (real cash) but are never read
+// by reports.service.ts getPnL() — they're appropriation of already-earned
+// profit to an equity holder, not a business expense or revenue.
+export const investors = pgTable('investors', {
+  id:                 text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:           text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  name:               text('name').notNull(),
+  phone:              text('phone'),
+  cnic:               text('cnic'),
+  profitSharePercent: decimal('profit_share_percent', { precision: 5, scale: 2 }).notNull(),
+  notes:              text('notes'),
+  isActive:           boolean('is_active').default(true).notNull(),
+  createdAt:          timestamp('created_at').defaultNow().notNull(),
+  // Soft delete — contributions/payouts must survive an investor being
+  // deactivated, for the audit trail (unlike suppliers' hard delete).
+  deletedAt:          timestamp('deleted_at'),
+  deletedBy:          text('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+}, (t) => [
+  index('idx_investors_seller').on(t.sellerId),
+]);
+
+export const investorContributions = pgTable('investor_contributions', {
+  id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
+  investorId:    text('investor_id').notNull().references(() => investors.id, { onDelete: 'cascade' }),
+  sellerId:      text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  amount:        decimal('amount', { precision: 14, scale: 2 }).notNull(),
+  contributedOn: date('contributed_on').notNull(),
+  note:          text('note'),
+  recordedById:  text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_investor_contrib_investor').on(t.investorId),
+  index('idx_investor_contrib_seller').on(t.sellerId),
+]);
+
+export const investorPayouts = pgTable('investor_payouts', {
+  id:              text('id').primaryKey().$defaultFn(() => randomUUID()),
+  investorId:      text('investor_id').notNull().references(() => investors.id, { onDelete: 'cascade' }),
+  sellerId:        text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  period:          text('period').notNull(), // "2026-10" — same convention as commissionPayments.month
+  method:          text('method').notNull(), // 'MANUAL' | 'AUTO'
+  // What auto-suggest proposed before any edit — audit trail only, null for manual.
+  calculatedShare: decimal('calculated_share', { precision: 14, scale: 2 }),
+  // The owner's actual final number, whichever mode produced it.
+  amount:          decimal('amount', { precision: 14, scale: 2 }).notNull(),
+  note:            text('note'),
+  paidOn:          date('paid_on').notNull(),
+  paidById:        text('paid_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  // One payout per investor per period — same convention as commission/salary
+  // payments, prevents double-paying the same month by mistake.
+  uniqueIndex('uniq_investor_payout_period').on(t.investorId, t.period),
+  index('idx_investor_payouts_investor').on(t.investorId),
+  index('idx_investor_payouts_seller').on(t.sellerId),
+]);
+
 // ── Trade-Ins ─────────────────────────────────────────────────────────────────
 export const tradeIns = pgTable('trade_ins', {
   id:            text('id').primaryKey().$defaultFn(() => randomUUID()),
