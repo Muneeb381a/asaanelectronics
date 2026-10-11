@@ -1583,11 +1583,23 @@ export default function InstallmentsPage() {
     const onMouse = (e: MouseEvent) => {
       if (!(e.target as Element).closest('[data-menu]')) close();
     };
+    // Scrolling the page behind the menu should close it (its position is
+    // fixed to the trigger button, so a page scroll would leave it floating
+    // in the wrong place) — but the menu's own list can scroll internally
+    // (maxHeight + overflowY:auto, ~10 items). Without this guard, a tiny
+    // scroll/trackpad tick while the cursor is just resting over the menu
+    // fires a native "scroll" event on that inner list, which this listener
+    // (capture phase, so it sees every scroll in the document) mistook for
+    // "user scrolled the page" and closed the menu instantly.
+    const onScroll = (e: Event) => {
+      if ((e.target as Element)?.closest?.('[data-menu]')) return;
+      close();
+    };
     document.addEventListener('mousedown', onMouse);
-    window.addEventListener('scroll', close, true);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('mousedown', onMouse);
-      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, []);
 
