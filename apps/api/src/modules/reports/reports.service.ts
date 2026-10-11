@@ -1,7 +1,7 @@
 import { and, asc, count, eq, gte, inArray, isNull, lt, lte, sql, sum } from 'drizzle-orm';
 import { nextDueDateSql, overdueAmountSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
-import { cashSales, customers, expenses, installments, payments, products, supplierInvoices, returns, tradeIns } from '../../db/schema.js';
+import { cashSales, customers, expenses, installments, payments, products, supplierInvoices, returns, tradeIns, salaryPayments, commissionPayments, repairJobs, repossessions } from '../../db/schema.js';
 
 const _cache = new Map<string, { at: number; data: unknown }>();
 function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
@@ -432,7 +432,11 @@ export class ReportsService {
     const from = month ? new Date(year, month - 1, 1) : new Date(year, 0, 1);
     const to   = month ? new Date(year, month,     1) : new Date(year + 1, 0, 1);
 
-    const [payRow, cashRow, expRow, dupExpRow, purchaseCatRow, instCogs, cashCogs, suppRow, returnsRow, tradeInBuyRow, tradeInSoldRow] = await Promise.all([
+    const [
+      payRow, cashRow, expRow, dupExpRow, purchaseCatRow, instCogs, cashCogs, suppRow,
+      returnsRow, tradeInBuyRow, tradeInSoldRow,
+      salaryRow, commissionRow, repairRow, repossessionRecoveredRow, repossessionSoldRow,
+    ] = await Promise.all([
       // Revenue: installment payments collected
       db.select({ total: sum(payments.amount) })
         .from(payments)
@@ -588,13 +592,70 @@ export class ReportsService {
           gte(tradeIns.soldAt, from),
           lt(tradeIns.soldAt, to),
         )),
+
+      // Salary payouts — staff.service.ts writes these to their own table,
+      // never to `expenses`, so they were never subtracted from net profit.
+      // Verified against real data: one shop had PKR 10M+ in salary payments
+      // completely invisible to this report before this fix.
+      db.select({ total: sum(salaryPayments.amount) })
+        .from(salaryPayments)
+        .where(and(
+          eq(salaryPayments.sellerId, sellerId),
+          gte(salaryPayments.paidAt, from),
+          lt(salaryPayments.paidAt, to),
+        )),
+
+      // Commission payouts — same gap, same fix.
+      db.select({ total: sum(commissionPayments.amount) })
+        .from(commissionPayments)
+        .where(and(
+          eq(commissionPayments.sellerId, sellerId),
+          gte(commissionPayments.paidAt, from),
+          lt(commissionPayments.paidAt, to),
+        )),
+
+      // Repair job revenue — the customer's charge for a completed repair,
+      // currently posted only to the ledger cash-book (repairJobs.service.ts),
+      // never read by this report.
+      db.select({ total: sum(repairJobs.actualCost) })
+        .from(repairJobs)
+        .where(and(
+          eq(repairJobs.sellerId, sellerId),
+          eq(repairJobs.status, 'RETURNED'),
+          gte(repairJobs.returnedAt, from),
+          lt(repairJobs.returnedAt, to),
+        )),
+
+      // Repossession cash recovered at seizure time (real revenue, separate
+      // from any later resale of the device).
+      db.select({ total: sum(repossessions.amountRecovered) })
+        .from(repossessions)
+        .where(and(
+          eq(repossessions.sellerId, sellerId),
+          gte(repossessions.repossessedDate, ymd(from)),
+          lt(repossessions.repossessedDate, ymd(to)),
+        )),
+
+      // Repossessed devices resold this period — revenue and its matching
+      // cost (assessedValue), same recognition pattern as trade-in resales.
+      db.select({ revenue: sum(repossessions.soldPrice), cost: sum(repossessions.assessedValue) })
+        .from(repossessions)
+        .where(and(
+          eq(repossessions.sellerId, sellerId),
+          eq(repossessions.status, 'sold'),
+          gte(repossessions.soldAt, from),
+          lt(repossessions.soldAt, to),
+        )),
     ]);
 
     const installmentRevenue   = Number(payRow[0]?.total ?? 0);
     const cashRevenue          = Number(cashRow[0]?.total ?? 0);
     const tradeInResaleRevenue = Number(tradeInSoldRow[0]?.revenue ?? 0);
     const tradeInResaleCost    = Number(tradeInSoldRow[0]?.cost    ?? 0);
-    const totalRevenue       = installmentRevenue + cashRevenue + tradeInResaleRevenue;
+    const repairRevenue        = Number(repairRow[0]?.total ?? 0);
+    const repossessionRevenue  = Number(repossessionRecoveredRow[0]?.total ?? 0) + Number(repossessionSoldRow[0]?.revenue ?? 0);
+    const repossessionResaleCost = Number(repossessionSoldRow[0]?.cost ?? 0);
+    const totalRevenue       = installmentRevenue + cashRevenue + tradeInResaleRevenue + repairRevenue + repossessionRevenue;
     const duplicateStockExpense = Number(dupExpRow[0]?.total ?? 0);
     const duplicateStockCount   = Number(dupExpRow[0]?.cnt   ?? 0);
     const purchaseCategoryTotal = Number(purchaseCatRow[0]?.total ?? 0);
@@ -605,12 +666,14 @@ export class ReportsService {
     const unverifiedStockCount   = purchaseCategoryCount - duplicateStockCount;
     const returnsRefund      = Number(returnsRow[0]?.total ?? 0);
     const tradeInPurchases   = Number(tradeInBuyRow[0]?.total ?? 0);
+    const salaryExpense      = Number(salaryRow[0]?.total ?? 0);
+    const commissionExpense  = Number(commissionRow[0]?.total ?? 0);
     // Excludes entries that are a proven duplicate of a cost already counted via
     // COGS below — otherwise that stock's cost is subtracted twice. Adds back
     // real cash outflows that were never in the expenses table to begin with:
-    // return refunds and trade-in intake payouts.
-    const totalExpenses      = Number(expRow[0]?.total ?? 0) - duplicateStockExpense + returnsRefund + tradeInPurchases;
-    const cogsSales          = Number(instCogs[0]?.cogs ?? 0) + Number(cashCogs[0]?.cogs ?? 0) + tradeInResaleCost;
+    // return refunds, trade-in intake payouts, salary and commission payouts.
+    const totalExpenses      = Number(expRow[0]?.total ?? 0) - duplicateStockExpense + returnsRefund + tradeInPurchases + salaryExpense + commissionExpense;
+    const cogsSales          = Number(instCogs[0]?.cogs ?? 0) + Number(cashCogs[0]?.cogs ?? 0) + tradeInResaleCost + repossessionResaleCost;
     const missingCostRevenue = Number(instCogs[0]?.missing_revenue ?? 0) + Number(cashCogs[0]?.missing_revenue ?? 0);
     const missingCostCount   = Number(instCogs[0]?.missing_count ?? 0) + Number(cashCogs[0]?.missing_count ?? 0);
     const supplierPurchases  = Number(suppRow[0]?.total ?? 0);
@@ -625,6 +688,8 @@ export class ReportsService {
       installmentRevenue,
       cashRevenue,
       tradeInResaleRevenue,
+      repairRevenue,
+      repossessionRevenue,
       totalRevenue,
       cogsSales,
       missingCostRevenue,
@@ -638,6 +703,8 @@ export class ReportsService {
       unverifiedStockCount,
       returnsRefund,
       tradeInPurchases,
+      salaryExpense,
+      commissionExpense,
       netProfit,
       netMarginPct: totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0,
       supplierPurchases,

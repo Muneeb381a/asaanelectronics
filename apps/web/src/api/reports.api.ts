@@ -96,6 +96,8 @@ export type PnL = {
   installmentRevenue: number;
   cashRevenue: number;
   tradeInResaleRevenue: number;
+  repairRevenue: number;
+  repossessionRevenue: number;
   totalRevenue: number;
   cogsSales: number;
   missingCostRevenue: number;
@@ -109,6 +111,8 @@ export type PnL = {
   unverifiedStockCount: number;
   returnsRefund: number;
   tradeInPurchases: number;
+  salaryExpense: number;
+  commissionExpense: number;
   netProfit: number;
   netMarginPct: number;
   supplierPurchases: number;
