@@ -103,6 +103,7 @@ export const sellers = pgTable('sellers', {
     timezone?: string;
     theme?: 'cobalt' | 'violet' | 'teal' | 'navy' | 'berry' | 'graphite';
     font?: 'poppins' | 'inter' | 'nunito' | 'worksans' | 'notosans';
+    receiptStyle?: 'classic' | 'modern' | 'minimal';
   }>(),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
 });

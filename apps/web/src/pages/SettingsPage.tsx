@@ -8,10 +8,11 @@ import {
   Users, TrendingUp, BookOpen, Plus, CreditCard, KeyRound, Eye, EyeOff, Target,
   MessageSquare, Pencil, Check, X, Settings, Store, Wallet, Lock, ChevronRight,
   BadgeCheck, Zap, Package, Globe, Save, RotateCcw, Percent, CalendarClock, Sparkles,
-  Database, Download, History, Palette, Type,
+  Database, Download, History, Palette, Type, Receipt,
 } from 'lucide-react';
 import { setTimezone as applyTimezone } from '../utils/dateFormat.ts';
 import { THEME_PRESETS, FONT_PRESETS, applyTheme, applyFont } from '../utils/themes.ts';
+import { DOCUMENT_STYLE_META, DEFAULT_DOCUMENT_STYLE_ID, getDocumentSkin } from '../utils/printSkin.ts';
 import { sellersApi, type PaymentAccount, type PaymentAccountType, type Seller, type SellerSettings } from '../api/sellers.api.ts';
 import { whatsappTemplatesApi, type WhatsappTemplate, TEMPLATE_VARS } from '../api/whatsappTemplates.api.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -372,6 +373,15 @@ function AppearanceTab({ shop }: { shop: Seller | undefined }) {
     onError: (e) => toast.error(getErrorMessage(e, 'Update nahi hua')),
   });
 
+  const currentReceiptStyle = shop?.settings?.receiptStyle ?? DEFAULT_DOCUMENT_STYLE_ID;
+  const receiptStyleMutation = useMutation({
+    mutationFn: (receiptStyle: SellerSettings['receiptStyle']) => sellersApi.update({ settings: mergeSettings(shop, { receiptStyle }) }),
+    // No applyX() live-reskin here — this only affects documents generated in a
+    // later print popup, nothing in the running app's own UI changes.
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['shop-me'] }); toast.success('Receipt style update ho gaya'); },
+    onError: (e) => toast.error(getErrorMessage(e, 'Update nahi hua')),
+  });
+
   if (!shop) return null;
   return (
     <div className="space-y-5">
@@ -412,6 +422,65 @@ function AppearanceTab({ shop }: { shop: Seller | undefined }) {
                   {f.name} — Aa Bb 123
                 </span>
                 {active && <Check size={16} className="text-blue-600 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader icon={Receipt} tone="purple" title="Receipt Style" subtitle="Har print hone wali receipt, bill aur delivery slip par yehi design lagega" />
+        <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {DOCUMENT_STYLE_META.map((s) => {
+            const active = currentReceiptStyle === s.id;
+            const skin = getDocumentSkin(s.id);
+            const themeColor = THEME_PRESETS.find((t) => t.id === currentTheme)?.blue['600'] ?? '#2B4ED1';
+            return (
+              <button key={s.id} disabled={receiptStyleMutation.isPending}
+                onClick={() => receiptStyleMutation.mutate(s.id)}
+                className={`flex flex-col gap-2.5 p-3 rounded-2xl border-2 transition text-left ${
+                  active ? 'border-blue-500 bg-blue-50/50' : 'border-slate-100 hover:border-slate-200'
+                } disabled:opacity-50`}>
+                {/* Mini mock receipt — built from the real skin tokens, so it can never drift from reality */}
+                <div style={{
+                  aspectRatio: '3 / 4', background: '#fff', overflow: 'hidden',
+                  borderRadius: skin.radiusLg, boxShadow: skin.shadow === 'none' ? undefined : skin.shadow,
+                  border: skin.cardBorder !== 'none' ? skin.cardBorder : '1px solid #f1f5f9',
+                }}>
+                  {skin.headerStyle === 'rule-line' ? (
+                    <div style={{ padding: '8px 10px 6px', borderBottom: '2px solid #111827' }}>
+                      <div style={{ width: '55%', height: 4, background: '#111827' }} />
+                    </div>
+                  ) : (
+                    <div style={{
+                      margin: skin.headerStyle === 'card-banner' ? 6 : 0,
+                      borderRadius: skin.headerStyle === 'card-banner' ? skin.radiusMd : 0,
+                      background: skin.headerStyle === 'gradient-bar'
+                        ? `linear-gradient(135deg,${themeColor},#111c47)`
+                        : themeColor,
+                      padding: '8px 10px',
+                    }}>
+                      <div style={{ width: '50%', height: 4, background: 'rgba(255,255,255,.9)', borderRadius: 2 }} />
+                    </div>
+                  )}
+                  <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {[70, 90, 55].map((w, i) => (
+                      <div key={i} style={{ width: `${w}%`, height: 3, background: '#e2e8f0', borderRadius: skin.radiusSm / 2 }} />
+                    ))}
+                    <div style={{
+                      marginTop: 4, alignSelf: 'flex-start', fontSize: 6, fontWeight: 700, padding: '2px 7px',
+                      borderRadius: skin.pillRadius,
+                      background: skin.pillBg === 'transparent' ? 'transparent' : (skin.id === 'modern' ? themeColor : skin.pillBg),
+                      border: skin.pillBorder !== 'none' ? '1px solid #111827' : 'none',
+                      color: skin.pillBg === 'transparent' ? '#111827' : (skin.id === 'classic' ? skin.pillFg : '#fff'),
+                    }}>PAID</div>
+                  </div>
+                </div>
+                <div>
+                  <p className={`text-xs font-semibold ${active ? 'text-blue-700' : 'text-slate-700'}`}>{s.name}</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">{s.blurb}</p>
+                </div>
+                {active && <span className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5"><Check size={10} /> Active</span>}
               </button>
             );
           })}

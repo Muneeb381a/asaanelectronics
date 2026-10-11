@@ -1,6 +1,7 @@
 import QRCode from 'qrcode';
 import { fmtDate, fmtDateTime } from './dateFormat.ts';
 import { getPrintPalette, type PrintPalette } from './printTheme.ts';
+import { getDocumentSkin, skinVars, headerColors, type DocumentSkin } from './printSkin.ts';
 
 export interface InstallmentReceiptData {
   shopName: string;
@@ -354,6 +355,7 @@ export interface SinglePaymentReceiptData {
   shopPhone?: string | null;
   shopLogoUrl?: string | null;
   shopTheme?: string | null;
+  shopReceiptStyle?: string | null;
   customerName: string;
   customerPhone?: string | null;
   customerPhotoUrl?: string | null;
@@ -378,6 +380,14 @@ export interface SinglePaymentReceiptData {
 
 export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
   const palette    = getPrintPalette(d.shopTheme);
+  const skin       = getDocumentSkin(d.shopReceiptStyle);
+  const { hdrBg, hdrFg, hdrFgMuted } = headerColors(skin, palette);
+  const fill       = skin.colorUsage === 'fill';
+  function semBadge(bg: string, border: string, fg: string, label: string) {
+    return fill
+      ? `<span style="padding:3px 10px;border-radius:${skin.pillRadius}px;background:${bg};border:1px solid ${border};color:${fg};font-size:8px;font-weight:700">${label}</span>`
+      : `<span style="padding:3px 10px;border-radius:${skin.pillRadius}px;background:transparent;border:1px solid ${fg};color:${fg};font-size:8px;font-weight:700">${label}</span>`;
+  }
   const isDaily    = d.paymentFrequency === 'daily';
   const freq       = isDaily ? 'Day' : 'Month';
   const paidOnDate = new Date(d.paidOn);
@@ -398,8 +408,8 @@ export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
   const avatarBg  = AVATAR_COLORS[(d.customerName.charCodeAt(0) ?? 65) % AVATAR_COLORS.length];
   const initials  = d.customerName.trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase();
   const photoHtml = d.customerPhotoUrl
-    ? `<img src="${d.customerPhotoUrl}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid #E5E7EB;flex-shrink:0;display:block"/>`
-    : `<div style="width:54px;height:54px;border-radius:50%;background:${avatarBg};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff">${initials}</div>`;
+    ? `<img src="${d.customerPhotoUrl}" style="width:54px;height:54px;border-radius:${skin.avatarRadius}%;object-fit:cover;border:2px solid #E5E7EB;flex-shrink:0;display:block"/>`
+    : `<div style="width:54px;height:54px;border-radius:${skin.avatarRadius}%;background:${avatarBg};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff">${initials}</div>`;
 
   // ── QR code ─────────────────────────────────────────────────────────────────
   const qrText = [d.shopName, d.customerName, d.invoiceNumber ?? d.receiptNumber, `PKR ${numFmt(d.amountPaid)}`, dateStr].filter(Boolean).join(' | ');
@@ -439,8 +449,8 @@ export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
 
   // ── Late / on-time badge ────────────────────────────────────────────────────
   const timeBadge = isLate
-    ? `<span style="padding:3px 10px;border-radius:20px;background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;font-size:8px;font-weight:700">⚠ ${d.daysLate}d Late</span>`
-    : `<span style="padding:3px 10px;border-radius:20px;background:#DCFCE7;border:1px solid #86EFAC;color:#166534;font-size:8px;font-weight:700">✓ On Time</span>`;
+    ? semBadge('#FEE2E2', '#FECACA', '#991B1B', `⚠ ${d.daysLate}d Late`)
+    : semBadge('#DCFCE7', '#86EFAC', '#166534', '✓ On Time');
 
   // ── Installment progress — inline, no extra rows ────────────────────────────
   const instSection = hasProg ? `
@@ -451,7 +461,7 @@ export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
       <span style="font-size:9px;font-weight:600;color:#6B7280">${pct}% · ${pendingInst} remaining</span>
     </div>
     <div style="background:#E5E7EB;border-radius:4px;height:5px;overflow:hidden;margin-bottom:6px">
-      <div style="width:${pct}%;height:100%;background:${palette.navy900};border-radius:4px"></div>
+      <div style="width:${pct}%;height:100%;background:${fill ? 'var(--progress-fill)' : palette.navy900};border-radius:4px"></div>
     </div>
     <div style="display:flex;justify-content:space-between">
       <span style="font-size:8.5px;color:#6B7280">Balance: <strong style="color:${isFullyPaid ? '#16A34A' : '#C47008'}">PKR ${numFmt(d.remaining ?? 0)}</strong></span>
@@ -461,35 +471,39 @@ export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
 
   const css = `
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:#E8EDF4;padding:16px;display:flex;flex-direction:column;align-items:center}
-.rc{background:#fff;width:760px;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+${skinVars(skin, palette)}
+body{font-family:var(--font-body),'Noto Nastaliq Urdu',serif;background:var(--body-bg, #E8EDF4);padding:16px;display:flex;flex-direction:column;align-items:center}
+.rc{background:#fff;width:760px;box-shadow:var(--shadow);border:var(--card-border);border-radius:var(--radius-lg);overflow:hidden}
 .cut{width:760px;display:flex;align-items:center;gap:8px;margin-top:6px;color:#9CA3AF;font-size:9px;user-select:none}
 .cut-line{flex:1;border-top:1.5px dashed #CBD5E1}
 @media print{
   @page{size:A4 portrait;margin:0}
   body{background:#fff;padding:0;display:block}
-  .rc{box-shadow:none;width:100%}
+  .rc{box-shadow:none;border:none;border-radius:0;width:100%}
   .cut{display:flex;width:100%;padding:4px 8mm}
 }`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"/><title>Receipt${d.receiptNumber ? ` · ${d.receiptNumber}` : ''}</title><style>${css}</style></head>
+<head><meta charset="utf-8"/><title>Receipt${d.receiptNumber ? ` · ${d.receiptNumber}` : ''}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` : ''}
+<style>${css}</style></head>
 <body>
 <div class="rc">
 
-  <!-- HEADER: dark navy bar -->
-  <div style="background:${palette.navy900};padding:9px 16px;display:flex;justify-content:space-between;align-items:center">
+  <!-- HEADER -->
+  <div style="background:${hdrBg};padding:9px 16px;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-heading)">
     <div style="display:flex;align-items:center;gap:8px">
       ${d.shopLogoUrl ? `<img src="${d.shopLogoUrl}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;background:#fff;padding:2px;flex-shrink:0" alt="logo"/>` : ''}
       <div>
-        <div style="font-size:14px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-.2px">${d.shopName}</div>
-        ${d.shopPhone ? `<div style="font-size:8.5px;color:rgba(255,255,255,.42);margin-top:2px">${d.shopPhone}</div>` : ''}
+        <div style="font-size:14px;font-weight:800;color:${hdrFg};line-height:1.1;letter-spacing:-.2px">${d.shopName}</div>
+        ${d.shopPhone ? `<div style="font-size:8.5px;color:${hdrFgMuted};margin-top:2px">${d.shopPhone}</div>` : ''}
       </div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:7px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.32)">PAYMENT RECEIPT</div>
-      ${d.receiptNumber ? `<div style="font-size:8.5px;font-family:monospace;color:rgba(255,255,255,.48);margin-top:3px">${d.receiptNumber}</div>` : ''}
+      <div style="font-size:7px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${hdrFgMuted}">PAYMENT RECEIPT</div>
+      ${d.receiptNumber ? `<div style="font-size:8.5px;font-family:'Courier New',monospace;color:${hdrFgMuted};margin-top:3px">${d.receiptNumber}</div>` : ''}
     </div>
   </div>
 
@@ -505,17 +519,17 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:
     ${qrHtml}
   </div>
 
-  <!-- AMOUNT HERO: light blue tinted block -->
-  <div style="padding:11px 16px;background:${palette.skyPale};border-bottom:1px solid ${palette.skyBorder}">
+  <!-- AMOUNT HERO -->
+  <div style="padding:11px 16px;background:${fill ? palette.skyPale : '#fff'};border-bottom:1px solid ${palette.skyBorder}">
     <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#6B7280;margin-bottom:4px;text-align:center">Amount Paid</div>
     <div style="text-align:center;line-height:1;margin-bottom:9px">
       <span style="font-size:11px;font-weight:600;color:#6B7280;vertical-align:top;margin-top:4px;display:inline-block;margin-right:2px">PKR</span>
       <span style="font-size:30px;font-weight:900;color:${palette.navy900};letter-spacing:-1.5px;font-variant-numeric:tabular-nums">${numFmt(d.amountPaid)}</span>
     </div>
     <div style="display:flex;justify-content:center;gap:6px;align-items:center;flex-wrap:wrap">
-      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;background:${palette.navy900};color:#fff;font-size:9px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:${skin.pillRadius}px;background:${fill ? palette.navy900 : 'transparent'};border:1px solid ${fill ? palette.navy900 : '#111827'};color:${fill ? '#fff' : '#111827'};font-size:9px;font-weight:600">${methodIcon} ${mLabel(d.method)}</span>
       ${(d.periodDueDate !== undefined || isLate) ? timeBadge : ''}
-      ${isFullyPaid ? `<span style="padding:4px 12px;border-radius:20px;background:#DCFCE7;border:1px solid #86EFAC;color:#166534;font-size:9px;font-weight:700">✓ Fully Paid</span>` : ''}
+      ${isFullyPaid ? semBadge('#DCFCE7', '#86EFAC', '#166534', '✓ Fully Paid') : ''}
     </div>
   </div>
 
@@ -534,7 +548,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:
       <div style="font-size:7.5px;color:#9CA3AF;margin-top:1px">System-generated · No signature required</div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:10px;font-weight:600;color:#6B7280">شکریہ 🙏</div>
+      <div style="font-size:10px;font-weight:600;color:#6B7280"><span style="font-family:'Noto Nastaliq Urdu',serif">شکریہ</span> 🙏</div>
       <div style="font-size:7.5px;color:#9CA3AF">Thank You</div>
     </div>
   </div>
@@ -550,48 +564,53 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;background:
 }
 
 // A4 CSS for full-page reports
-function a4Css(palette: PrintPalette) { return `
+function a4Css(palette: PrintPalette, skin: DocumentSkin) {
+  const { hdrBg, hdrFg, hdrFgMuted, hdrRadius, hdrBorder } = headerColors(skin, palette);
+  const fill = skin.colorUsage === 'fill';
+  return `
+${skinVars(skin, palette)}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a202c;padding:24px}
+body{font-family:var(--font-body),'Noto Nastaliq Urdu',serif;font-size:11px;color:#1a202c;padding:24px}
 .page{max-width:860px;margin:0 auto}
-.hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:12px;border-bottom:3px solid ${palette.navy800};margin-bottom:16px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-end;padding:var(--sp-md) var(--sp-lg);margin:-24px -24px 16px;background:${hdrBg};border-radius:${hdrRadius};${hdrBorder}font-family:var(--font-heading)}
 .shop-logo{width:36px;height:36px;object-fit:contain;border-radius:6px;margin-right:10px}
-.shop-name{font-size:22px;font-weight:900;color:${palette.navy800};line-height:1}
-.shop-sub{font-size:10px;color:#64748b;margin-top:3px}
+.shop-name{font-size:22px;font-weight:900;color:${hdrFg};line-height:1}
+.shop-sub{font-size:10px;color:${hdrFgMuted};margin-top:3px}
 .rpt-title{text-align:right}
-.rpt-title h1{font-size:15px;font-weight:700;color:${palette.navy800}}
-.rpt-title p{font-size:9px;color:#94a3b8;margin-top:3px}
+.rpt-title h1{font-size:15px;font-weight:700;color:${hdrFg}}
+.rpt-title p{font-size:9px;color:${hdrFgMuted};margin-top:3px}
 .sec-title{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:7px;padding-bottom:3px;border-bottom:1px solid #e2e8f0}
 .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 .info-row{display:flex;gap:8px;padding:3px 0;border-bottom:1px solid #f8fafc}
 .info-lbl{font-size:9px;color:#94a3b8;min-width:92px;flex-shrink:0}
 .info-val{font-size:10px;font-weight:600;color:#1a202c;word-break:break-word}
 .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
-.sc{border-radius:7px;padding:9px 11px;text-align:center;border:1px solid #e2e8f0;background:#f8fafc}
-.sc.blue{background:${palette.skyPale};border-color:${palette.skyBorder}}
-.sc.green{background:#d1fae5;border-color:#6ee7b7}
-.sc.amber{background:#fef3c7;border-color:#fcd34d}
-.sc.red{background:#fee2e2;border-color:#fca5a5}
+.sc{border-radius:var(--radius-sm);padding:9px 11px;text-align:center;border:1px solid #e2e8f0;background:#f8fafc}
+.sc.blue{background:${fill ? palette.skyPale : 'transparent'};border-color:${fill ? palette.skyBorder : '#0f172a'}}
+.sc.green{background:${fill ? '#d1fae5' : 'transparent'};border-color:${fill ? '#6ee7b7' : '#065f46'}}
+.sc.amber{background:${fill ? '#fef3c7' : 'transparent'};border-color:${fill ? '#fcd34d' : '#92400e'}}
+.sc.red{background:${fill ? '#fee2e2' : 'transparent'};border-color:${fill ? '#fca5a5' : '#991b1b'}}
 .sl{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:3px}
 .sc.blue .sl{color:${palette.skyText}}.sc.green .sl{color:#065f46}.sc.amber .sl{color:#92400e}.sc.red .sl{color:#991b1b}
-.sv{font-size:17px;font-weight:900;color:${palette.navy800}}
+.sv{font-size:17px;font-weight:900;color:#0f172a}
 .sc.blue .sv{color:${palette.blue600}}.sc.green .sv{color:#059669}.sc.amber .sv{color:#b45309}.sc.red .sv{color:#dc2626}
 .ss{font-size:8.5px;color:#94a3b8;margin-top:1px}
 table{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:16px}
-thead{background:${palette.navy800}}
-thead th{color:#fff;padding:5px 8px;text-align:left;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+thead{background:${skin.tableHeaderStyle === 'solid-dark' ? palette.navy800 : 'transparent'};border-bottom:${skin.tableHeaderStyle === 'bold-bottom-border' ? `2px solid ${palette.blue500}` : skin.tableHeaderStyle === 'minimal-row' ? '1px solid #111827' : 'none'}}
+thead th{color:${skin.tableHeaderStyle === 'solid-dark' ? '#fff' : '#0f172a'};padding:5px 8px;text-align:left;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 thead th.r{text-align:right}
 tbody tr{border-bottom:1px solid #f1f5f9}
-tbody tr:nth-child(even){background:#f8fafc}
+tbody tr:nth-child(even){background:${skin.tableHeaderStyle === 'minimal-row' ? 'transparent' : '#f8fafc'}}
 td{padding:5px 8px;vertical-align:middle}
 td.r{text-align:right}
-.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:7.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.badge{display:inline-block;padding:1px 6px;border-radius:var(--pill-radius);font-size:7.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;border:var(--pill-border)}
 .st-ACTIVE{background:#dbeafe;color:#1d4ed8}
 .st-COMPLETED{background:#d1fae5;color:#065f46}
 .st-DEFAULTED{background:#fee2e2;color:#991b1b}
 .st-CANCELLED{background:#f1f5f9;color:#64748b}
 .st-PENDING{background:#fef3c7;color:#92400e}
 .st-CLOSED{background:#e0e7ff;color:#3730a3}
+${fill ? '' : '.badge{background:transparent !important}'}
 .foot{margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:9px;color:#94a3b8}
 @media print{
   @page{size:A4 portrait;margin:10mm 12mm}
@@ -604,6 +623,7 @@ export interface CustomerHistoryReportData {
   shopPhone?: string | null;
   shopLogoUrl?: string | null;
   shopTheme?: string | null;
+  shopReceiptStyle?: string | null;
   customer: {
     name: string;
     phone: string;
@@ -637,6 +657,7 @@ export interface CustomerHistoryReportData {
 
 export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
   const palette = getPrintPalette(d.shopTheme);
+  const skin = getDocumentSkin(d.shopReceiptStyle);
   const insts = d.installments;
   const totalBusiness = insts.reduce((s, i) => s + Number(i.totalAmount), 0);
   const totalPaid     = insts.reduce((s, i) => s + (Number(i.totalAmount) - Number(i.downPayment) - Number(i.remaining)), 0);
@@ -684,7 +705,10 @@ export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
 
   const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"/><title>Customer History — ${d.customer.name}</title><style>${a4Css(palette)}</style></head>
+<head><meta charset="UTF-8"/><title>Customer History — ${d.customer.name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` : ''}
+<style>${a4Css(palette, skin)}</style></head>
 <body>
 <div class="page">
   <!-- HEADER -->
@@ -703,14 +727,14 @@ export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
   </div>
 
   <!-- CUSTOMER PROFILE -->
-  <div class="sec-title">Customer Profile · گاہک کی تفصیل</div>
+  <div class="sec-title">Customer Profile · <span style="font-family:'Noto Nastaliq Urdu',serif">گاہک کی تفصیل</span></div>
   <div class="profile-grid" style="margin-bottom:16px">
     <div>${infoRows(profileLeft)}</div>
     <div>${infoRows(profileRight)}</div>
   </div>
 
   <!-- SUMMARY STATS -->
-  <div class="sec-title">Account Summary · حساب کتاب</div>
+  <div class="sec-title">Account Summary · <span style="font-family:'Noto Nastaliq Urdu',serif">حساب کتاب</span></div>
   <div class="stats-bar" style="margin-bottom:16px">
     <div class="sc blue">
       <div class="sl">Total Business</div>
@@ -735,7 +759,7 @@ export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
   </div>
 
   <!-- INSTALLMENTS TABLE -->
-  <div class="sec-title">Installment History · قسطوں کی تاریخ</div>
+  <div class="sec-title">Installment History · <span style="font-family:'Noto Nastaliq Urdu',serif">قسطوں کی تاریخ</span></div>
   <table>
     <thead>
       <tr>
@@ -770,6 +794,7 @@ export interface PaymentHistoryReceiptData {
   shopPhone?: string | null;
   shopLogoUrl?: string | null;
   shopTheme?: string | null;
+  shopReceiptStyle?: string | null;
   customerName: string;
   customerPhone?: string | null;
   productName: string;
@@ -802,6 +827,7 @@ export interface PaymentHistoryReceiptData {
 // thinking they already owe less (or more) than they do.
 export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
   const palette  = getPrintPalette(d.shopTheme);
+  const skin     = getDocumentSkin(d.shopReceiptStyle);
   const isDaily  = d.paymentFrequency === 'daily';
   const freqWord = isDaily ? 'Daily' : 'Monthly';
 
@@ -839,7 +865,10 @@ export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
 
   const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"/><title>Payment History — ${d.customerName}</title><style>${a4Css(palette)}</style></head>
+<head><meta charset="UTF-8"/><title>Payment History — ${d.customerName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` : ''}
+<style>${a4Css(palette, skin)}</style></head>
 <body>
 <div class="page">
   <!-- HEADER -->
@@ -852,7 +881,7 @@ export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
       </div>
     </div>
     <div class="rpt-title">
-      <h1>Payment History · ادا شدہ رقوم</h1>
+      <h1>Payment History · <span style="font-family:'Noto Nastaliq Urdu',serif">ادا شدہ رقوم</span></h1>
       <p>${d.invoiceNumber ? `Invoice: ${d.invoiceNumber} · ` : ''}Printed: ${printedDate}</p>
     </div>
   </div>
@@ -873,7 +902,7 @@ export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
   </div>
 
   <!-- SUMMARY -->
-  <div class="sec-title">Account Summary · حساب کتاب</div>
+  <div class="sec-title">Account Summary · <span style="font-family:'Noto Nastaliq Urdu',serif">حساب کتاب</span></div>
   <div class="stats-bar" style="margin-bottom:16px">
     <div class="sc blue">
       <div class="sl">Total Amount</div>
@@ -896,7 +925,7 @@ export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
   </div>
 
   <!-- PAYMENTS TABLE — paid only, never a future/unpaid row -->
-  <div class="sec-title">Payment History · ادا شدہ رقوم کی تفصیل</div>
+  <div class="sec-title">Payment History · <span style="font-family:'Noto Nastaliq Urdu',serif">ادا شدہ رقوم کی تفصیل</span></div>
   <table>
     <thead>
       <tr>

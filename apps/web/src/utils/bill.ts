@@ -1,6 +1,7 @@
 import QRCode from 'qrcode';
 import { fmtDate } from './dateFormat.ts';
 import { getPrintPalette } from './printTheme.ts';
+import { getDocumentSkin, skinVars, headerColors, amountBoxColors } from './printSkin.ts';
 
 export interface BillPaymentAccount {
   type: string;
@@ -10,7 +11,7 @@ export interface BillPaymentAccount {
 }
 
 export interface BillData {
-  shop: { shopName: string; phone: string; address?: string | null; logoUrl?: string | null; theme?: string | null };
+  shop: { shopName: string; phone: string; address?: string | null; logoUrl?: string | null; theme?: string | null; receiptStyle?: string | null };
   customer: { name: string; phone: string; cnic?: string; area?: string | null; photoUrl?: string | null };
   product: string;
   totalAmount: string | number;
@@ -35,7 +36,7 @@ export interface BillData {
 }
 
 export interface CashSaleBillData {
-  shop: { shopName: string; phone: string; address?: string | null; logoUrl?: string | null; theme?: string | null };
+  shop: { shopName: string; phone: string; address?: string | null; logoUrl?: string | null; theme?: string | null; receiptStyle?: string | null };
   customer: { name?: string | null; phone?: string | null };
   product: string;
   quantity: number;
@@ -57,6 +58,7 @@ const METHOD_LABELS: Record<string, string> = {
 function pkr(v: string | number) {
   return 'PKR ' + Number(v).toLocaleString('en-PK', { maximumFractionDigits: 0 });
 }
+
 
 function addMonths(date: Date, n: number): Date {
   const d = new Date(date);
@@ -95,6 +97,19 @@ function buildSchedule(data: BillData): { month: number; due: string; amount: st
 
 export async function openBill(data: BillData) {
   const palette    = getPrintPalette(data.shop.theme);
+  const skin       = getDocumentSkin(data.shop.receiptStyle);
+  const { isRule, hdrBg, hdrFg, hdrFgMuted } = headerColors(skin, palette);
+  const { hlBg, hlBorderColor, hlFg, hlMuted } = amountBoxColors(skin, palette);
+  const fill        = skin.colorUsage === 'fill';
+  const isCardBanner = skin.headerStyle === 'card-banner';
+  const hdrMargin   = isRule ? '0 0 10px' : isCardBanner ? '8px 8px 12px' : '-14px -16px 10px';
+  const hdrRadiusB  = isRule ? '0' : isCardBanner ? 'var(--radius-md)' : 'var(--radius-sm) var(--radius-sm) 0 0';
+  const hdrBorderB  = isRule ? 'border-bottom:2px solid #111827;' : '';
+  // Customer card & progress band are their own dark-fill bands — same fg/bg flip as .hdr, own background.
+  const custCardBg     = fill ? (isCardBanner ? palette.blue600 : `linear-gradient(135deg,${palette.navy800},${palette.blue600})`) : '#fff';
+  const custCardBorder = fill ? 'none' : '1px solid #111827';
+  const progBg         = fill ? `linear-gradient(135deg,${palette.navy900},${palette.navy800})` : '#fff';
+  const progBorder     = fill ? 'none' : '1px solid #111827';
   const invoiceNo  = data.invoiceNumber ?? `INV-${new Date().getFullYear()}-${data.installmentId.slice(0, 6).toUpperCase()}`;
   const printDate  = fmtDate(new Date());
   const isDaily    = data.paymentFrequency === 'daily';
@@ -137,26 +152,32 @@ export async function openBill(data: BillData) {
   function buildScheduleSection() {
     function row(r: { month: number; due: string; amount: string; paid: boolean } | null, colspan = 4): string {
       if (r === null) return `<tr><td colspan="${colspan}" style="padding:1px 6px;text-align:center;color:#94a3b8;font-size:8px;border-bottom:1px solid #f3f4f6">· · ·</td></tr>`;
+      const paidBadge = skin.id === 'minimal'
+        ? `<span style="font-size:8px;font-weight:700;color:#065f46">[PAID]</span>`
+        : `<span style="background:${fill ? '#d1fae5' : 'transparent'};border:1px solid ${fill ? '#d1fae5' : '#065f46'};color:#065f46;padding:1px 5px;border-radius:${skin.pillRadius}px;font-size:8px;font-weight:700">PAID</span>`;
+      const dueBadge = skin.id === 'minimal'
+        ? `<span style="font-size:8px;font-weight:700;color:#92400e">[DUE]</span>`
+        : `<span style="background:${fill ? '#fef3c7' : 'transparent'};border:1px solid ${fill ? '#fef3c7' : '#92400e'};color:#92400e;padding:1px 5px;border-radius:${skin.pillRadius}px;font-size:8px;font-weight:700">DUE</span>`;
       return `<tr>
         <td style="padding:2px 6px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:center;font-size:9px">${r.month}</td>
         <td style="padding:2px 6px;color:#374151;border-bottom:1px solid #f3f4f6;font-size:9px">${r.due}</td>
         <td style="padding:2px 6px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:600;color:#374151;font-size:9px">${r.amount}</td>
         <td style="padding:2px 6px;text-align:center;border-bottom:1px solid #f3f4f6">
-          ${r.paid
-            ? '<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:20px;font-size:8px;font-weight:700">PAID</span>'
-            : '<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:20px;font-size:8px;font-weight:700">DUE</span>'
-          }
+          ${r.paid ? paidBadge : dueBadge}
         </td></tr>`;
     }
-    const thead = `<thead><tr style="background:${palette.navy900}">
-      <th style="padding:4px 6px;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:center;width:24px">#</th>
-      <th style="padding:4px 6px;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase">Due Date</th>
-      <th style="padding:4px 6px;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:right">Amount</th>
-      <th style="padding:4px 6px;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:center">Status</th>
+    const theadBg = skin.tableHeaderStyle === 'solid-dark' ? palette.navy900 : 'transparent';
+    const theadFg = skin.tableHeaderStyle === 'solid-dark' ? '#fff' : '#0f172a';
+    const theadBorder = skin.tableHeaderStyle === 'bold-bottom-border' ? `border-bottom:2px solid ${palette.blue500};` : skin.tableHeaderStyle === 'minimal-row' ? 'border-bottom:1px solid #111827;' : '';
+    const thead = `<thead><tr style="background:${theadBg};${theadBorder}">
+      <th style="padding:4px 6px;color:${theadFg};font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:center;width:24px">#</th>
+      <th style="padding:4px 6px;color:${theadFg};font-size:8.5px;font-weight:700;text-transform:uppercase">Due Date</th>
+      <th style="padding:4px 6px;color:${theadFg};font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:right">Amount</th>
+      <th style="padding:4px 6px;color:${theadFg};font-size:8.5px;font-weight:700;text-transform:uppercase;text-align:center">Status</th>
     </tr></thead>`;
 
     if (schedule.length <= 12) {
-      return `<div style="border:1px solid #e2e8f0;border-radius:5px;overflow:hidden;margin-bottom:5px">
+      return `<div style="border:1px solid #e2e8f0;border-radius:var(--radius-sm);overflow:hidden;margin-bottom:5px">
         <table style="width:100%;border-collapse:collapse">${thead}<tbody>${schedule.map((r) => row(r)).join('')}</tbody></table>
       </div>`;
     }
@@ -183,8 +204,8 @@ export async function openBill(data: BillData) {
       <table style="width:100%;border-collapse:collapse">${thead}<tbody>${rows.map((r) => row(r)).join('')}</tbody></table>`;
 
     return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
-      <div style="border:1px solid #e2e8f0;border-radius:5px;overflow:hidden">${colTable(left)}</div>
-      <div style="border:1px solid #e2e8f0;border-radius:5px;overflow:hidden">${colTable(right)}</div>
+      <div style="border:1px solid #e2e8f0;border-radius:var(--radius-sm);overflow:hidden">${colTable(left)}</div>
+      <div style="border:1px solid #e2e8f0;border-radius:var(--radius-sm);overflow:hidden">${colTable(right)}</div>
     </div>${hiddenCount > 0 ? `<p style="font-size:8px;color:#94a3b8;text-align:center;margin-bottom:4px">${hiddenCount} more installments not shown</p>` : ''}`;
   }
 
@@ -225,8 +246,8 @@ export async function openBill(data: BillData) {
       <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
         ${data.shop.logoUrl ? `<img src="${data.shop.logoUrl}" style="width:34px;height:34px;object-fit:contain;border-radius:6px;background:#fff;padding:2px;flex-shrink:0" alt="logo"/>` : ''}
         <div style="min-width:0">
-          <div style="font-size:15px;font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.1">${data.shop.shopName}</div>
-          <div style="font-size:9px;color:${palette.blue300};margin-top:3px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
+          <div style="font-size:15px;font-weight:900;color:${hdrFg};letter-spacing:-.3px;line-height:1.1">${data.shop.shopName}</div>
+          <div style="font-size:9px;color:${hdrFgMuted};margin-top:3px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
           <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap">
             ${isDaily ? '<span class="pill pill-orange">Dukaan-Dar Daily</span>' : isMurabaha ? '<span class="pill pill-green">Murabaha</span>' : ''}
             ${copyLabel ? `<span class="pill pill-gray">${copyLabel}</span>` : ''}
@@ -234,14 +255,14 @@ export async function openBill(data: BillData) {
         </div>
       </div>
       <div style="text-align:center;flex-shrink:0;margin:0 12px">
-        <div style="font-size:11px;font-weight:800;color:${palette.blue400};letter-spacing:1.5px">INVOICE</div>
-        <div style="font-size:13px;font-weight:900;color:#fff;margin-top:1px;font-family:monospace;letter-spacing:.5px">${invoiceNo}</div>
-        <div style="font-size:8.5px;color:#94a3b8;margin-top:3px">${printDate}</div>
-        <div style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px;color:${palette.blue300};margin-top:2px;direction:rtl">اقساط نامہ</div>
+        <div style="font-size:11px;font-weight:800;color:${isRule ? palette.blue700 : hdrFg};letter-spacing:1.5px">INVOICE</div>
+        <div style="font-size:13px;font-weight:900;color:${hdrFg};margin-top:1px;font-family:'Courier New',monospace;letter-spacing:.5px">${invoiceNo}</div>
+        <div style="font-size:8.5px;color:${hdrFgMuted};margin-top:3px">${printDate}</div>
+        <div style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px;color:${hdrFgMuted};margin-top:2px;direction:rtl">اقساط نامہ</div>
       </div>
       <div style="flex-shrink:0">
         <img src="${qrDataUrl}" width="62" height="62"
-          style="border:2px solid rgba(255,255,255,.2);border-radius:6px;display:block;background:#fff;padding:2px" alt="QR"/>
+          style="${skin.qrFrame};display:block" alt="QR"/>
         <div style="font-size:6.5px;color:#64748b;text-align:center;margin-top:2px">Scan to verify</div>
       </div>
     </div>
@@ -251,14 +272,14 @@ export async function openBill(data: BillData) {
       <div style="display:flex;align-items:center;gap:12px">
         ${customerAvatar}
         <div style="min-width:0;flex:1">
-          <div style="font-size:7px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:3px">Customer · گاہک</div>
-          <div style="font-size:15px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1">${data.customer.name}</div>
-          <div style="font-size:10px;color:${palette.blue300};margin-top:3px">${data.customer.phone}${data.customer.cnic ? ` · <span style="font-family:monospace">${data.customer.cnic}</span>` : ''}</div>
-          ${data.customer.area ? `<div style="font-size:9px;color:${palette.blue300};margin-top:2px">📍 ${data.customer.area}</div>` : ''}
+          <div style="font-size:7px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${fill ? 'rgba(255,255,255,.55)' : '#6b7280'};margin-bottom:3px">Customer · گاہک</div>
+          <div style="font-size:15px;font-weight:800;color:${fill ? '#fff' : '#111827'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1">${data.customer.name}</div>
+          <div style="font-size:10px;color:${fill ? palette.blue300 : '#374151'};margin-top:3px">${data.customer.phone}${data.customer.cnic ? ` · <span style="font-family:'Courier New',monospace">${data.customer.cnic}</span>` : ''}</div>
+          ${data.customer.area ? `<div style="font-size:9px;color:${fill ? palette.blue300 : '#374151'};margin-top:2px">📍 ${data.customer.area}</div>` : ''}
         </div>
         <div style="flex-shrink:0;text-align:right">
           <span class="status-badge-lg status-${data.status}">${data.status}</span>
-          <div style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;direction:rtl">${STATUS_UR[data.status] ?? ''}</div>
+          <div style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px;color:${fill ? 'rgba(255,255,255,.5)' : '#6b7280'};margin-top:3px;direction:rtl">${STATUS_UR[data.status] ?? ''}</div>
         </div>
       </div>
     </div>
@@ -330,12 +351,12 @@ export async function openBill(data: BillData) {
           <span class="prog-sub">${isDaily ? 'days' : 'months'} left</span>
         </div>
       </div>
-      <div style="background:rgba(0,0,0,.15);border-radius:20px;height:8px;overflow:hidden">
-        <div style="background:linear-gradient(90deg,#34d399,#10b981);height:100%;width:${pctPaid}%;border-radius:20px;transition:width .3s"></div>
+      <div style="background:${fill ? 'rgba(0,0,0,.15)' : '#e5e7eb'};border-radius:20px;height:8px;overflow:hidden">
+        <div style="background:${fill ? 'linear-gradient(90deg,#34d399,#10b981)' : '#059669'};height:100%;width:${pctPaid}%;border-radius:20px;transition:width .3s"></div>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:4px">
-        <span style="font-size:8px;color:#34d399;font-weight:700">${data.paymentSummary.paidMonths} paid (${pctPaid}%)</span>
-        <span style="font-size:8px;color:rgba(255,255,255,.4)">${data.paymentSummary.totalMonths} total ${isDaily ? 'days' : 'months'}</span>
+        <span style="font-size:8px;color:${fill ? '#34d399' : '#059669'};font-weight:700">${data.paymentSummary.paidMonths} paid (${pctPaid}%)</span>
+        <span style="font-size:8px;color:${fill ? 'rgba(255,255,255,.4)' : '#6b7280'}">${data.paymentSummary.totalMonths} total ${isDaily ? 'days' : 'months'}</span>
       </div>
     </div>` : ''}
 
@@ -359,7 +380,7 @@ export async function openBill(data: BillData) {
         { label: 'Customer / گاہک', sub: data.customer.name },
         { label: 'Witness / گواہ', sub: 'Name & CNIC' },
       ].map(s => `
-        <div style="border:1px solid #e2e8f0;border-radius:6px;padding:6px;background:#f8fafc">
+        <div style="border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:6px;background:#f8fafc">
           <div style="height:30px"></div>
           <div style="border-top:1px solid #94a3b8;padding-top:4px;font-size:8px;color:#475569;text-align:center">
             ${s.label}<br/><span style="font-size:7px;color:#94a3b8">${s.sub}</span>
@@ -391,74 +412,78 @@ export async function openBill(data: BillData) {
 <meta charset="UTF-8"/>
 <title>${invoiceNo}</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
+${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` : ''}
 <style>
+  ${skinVars(skin, palette)}
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#e8edf5;padding:20px;display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
+  body{font-family:var(--font-body),'Noto Nastaliq Urdu',serif;background:var(--body-bg, #e8edf5);padding:20px;display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
 
-  .inv{background:#fff;width:700px;padding:14px 16px;font-size:10.5px;color:#374151;border-radius:8px;box-shadow:0 4px 24px rgba(15,23,42,.12);overflow:hidden}
+  .inv{background:#fff;width:700px;padding:14px 16px;font-size:10.5px;color:#374151;border-radius:var(--radius-lg);box-shadow:var(--shadow);border:var(--card-border);overflow:hidden}
 
   /* ── Header ── */
   .hdr{display:flex;align-items:center;gap:10px;padding:11px 14px 9px;
-    background:linear-gradient(135deg,${palette.navy900} 0%,${palette.navy800} 55%,${palette.blue700} 100%);
-    border-radius:6px 6px 0 0;margin:-14px -16px 10px;position:relative;overflow:hidden}
+    background:${hdrBg};font-family:var(--font-heading);
+    border-radius:${hdrRadiusB};margin:${hdrMargin};${hdrBorderB}position:relative;overflow:hidden}
+  ${skin.decorative ? `
   .hdr::before{content:'';position:absolute;top:-20px;right:80px;width:120px;height:120px;
     background:rgba(255,255,255,.04);border-radius:50%}
   .hdr::after{content:'';position:absolute;bottom:-30px;left:40px;width:80px;height:80px;
-    background:rgba(96,165,250,.08);border-radius:50%}
+    background:rgba(96,165,250,.08);border-radius:50%}` : ''}
 
   /* ── Pills ── */
-  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:8.5px;font-weight:700;letter-spacing:.3px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:var(--pill-radius);font-size:8.5px;font-weight:700;letter-spacing:.3px}
   .pill-orange{background:#fed7aa;color:#9a3412}
   .pill-green{background:#d1fae5;color:#065f46}
   .pill-gray{background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15)}
 
   /* ── Customer card ── */
-  .customer-card{background:linear-gradient(135deg,${palette.navy800},${palette.blue600});border-radius:7px;padding:10px 14px;margin-bottom:8px;position:relative;overflow:hidden}
-  .customer-card::before{content:'';position:absolute;top:-15px;right:-15px;width:90px;height:90px;background:rgba(255,255,255,.05);border-radius:50%}
+  .customer-card{background:${custCardBg};border:${custCardBorder};border-radius:var(--radius-md);padding:10px 14px;margin-bottom:8px;position:relative;overflow:hidden}
+  ${skin.decorative ? `.customer-card::before{content:'';position:absolute;top:-15px;right:-15px;width:90px;height:90px;background:rgba(255,255,255,.05);border-radius:50%}` : ''}
 
   /* ── Status badge large ── */
-  .status-badge-lg{display:inline-block;padding:3px 10px;border-radius:20px;font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+  .status-badge-lg{display:inline-block;padding:3px 10px;border-radius:var(--pill-radius);font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;border:var(--pill-border)}
   .status-ACTIVE{background:#d1fae5;color:#065f46}
   .status-COMPLETED{background:#dbeafe;color:#1e40af}
   .status-DEFAULTED{background:#fee2e2;color:#991b1b}
   .status-CANCELLED,.status-CLOSED{background:#f1f5f9;color:#64748b}
   .status-PENDING{background:#fef3c7;color:#92400e}
+  ${fill ? '' : '.status-badge-lg{background:transparent !important}'}
 
   /* ── Info cells ── */
-  .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:5px 7px;overflow:hidden}
+  .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:5px 7px;overflow:hidden}
   .il{display:block;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:2px}
   .iv{display:block;font-size:10.5px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .is{display:block;font-size:8.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 
   /* ── Amount cards ── */
-  .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:6px 8px;text-align:center}
-  .ac.hl{background:linear-gradient(135deg,${palette.blue700},${palette.blue600});border-color:${palette.blue700}}
-  .ac.rm{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fcd34d}
+  .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:6px 8px;text-align:center}
+  .ac.hl{background:${hlBg};border-color:${hlBorderColor}}
+  .ac.rm{background:${fill ? 'linear-gradient(135deg,#fffbeb,#fef3c7)' : 'transparent'};border-color:${fill ? '#fcd34d' : '#92400e'}}
   .al{display:block;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:2px}
-  .ac.hl .al{color:rgba(255,255,255,.7)}
+  .ac.hl .al{color:${hlMuted}}
   .ac.rm .al{color:#b45309}
   .av{display:block;font-size:12px;font-weight:800;color:#0f172a}
-  .ac.hl .av{color:#fff}
+  .ac.hl .av{color:${hlFg}}
   .ac.rm .av{color:#92400e}
 
   /* ── Progress band ── */
-  .progress-band{background:linear-gradient(135deg,${palette.navy900},${palette.navy800});border-radius:7px;padding:10px 12px;margin-bottom:7px}
-  .prog-card{border-radius:6px;padding:6px 4px;text-align:center;border:1px solid rgba(255,255,255,.1)}
-  .prog-blue{background:rgba(59,130,246,.2)}
-  .prog-green{background:rgba(16,185,129,.2)}
-  .prog-amber{background:rgba(245,158,11,.2)}
-  .prog-label{display:block;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:rgba(255,255,255,.55);margin-bottom:2px}
+  .progress-band{background:${progBg};border:${progBorder};border-radius:var(--radius-md);padding:10px 12px;margin-bottom:7px}
+  .prog-card{border-radius:var(--radius-sm);padding:6px 4px;text-align:center;border:1px solid ${fill ? 'rgba(255,255,255,.1)' : '#111827'}}
+  .prog-blue{background:${fill ? 'rgba(59,130,246,.2)' : 'transparent'}}
+  .prog-green{background:${fill ? 'rgba(16,185,129,.2)' : 'transparent'}}
+  .prog-amber{background:${fill ? 'rgba(245,158,11,.2)' : 'transparent'}}
+  .prog-label{display:block;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${fill ? 'rgba(255,255,255,.55)' : '#6b7280'};margin-bottom:2px}
   .prog-num{display:block;font-size:18px;font-weight:900;line-height:1.1}
-  .prog-blue .prog-num{color:${palette.blue400}}
-  .prog-green .prog-num{color:#34d399}
-  .prog-amber .prog-num{color:#fbbf24}
-  .prog-sub{display:block;font-size:7.5px;color:rgba(255,255,255,.4);margin-top:1px}
+  .prog-blue .prog-num{color:${fill ? palette.blue400 : palette.blue700}}
+  .prog-green .prog-num{color:${fill ? '#34d399' : '#059669'}}
+  .prog-amber .prog-num{color:${fill ? '#fbbf24' : '#b45309'}}
+  .prog-sub{display:block;font-size:7.5px;color:${fill ? 'rgba(255,255,255,.4)' : '#6b7280'};margin-top:1px}
 
   @media print{
     @page{size:A4 portrait;margin:6mm 8mm}
     body{background:#fff;padding:0;display:block}
-    .inv{border-radius:0;box-shadow:none;width:100%}
-    .hdr{border-radius:0}
+    .inv{border-radius:0;box-shadow:none;border:none;width:100%}
+    ${isCardBanner ? '' : '.hdr{border-radius:0}'}
   }
 </style>
 </head>
@@ -590,6 +615,9 @@ export function openLegalNotice(data: LegalNoticeData) {
 
 export async function openCashSaleBill(data: CashSaleBillData) {
   const palette   = getPrintPalette(data.shop.theme);
+  const skin      = getDocumentSkin(data.shop.receiptStyle);
+  const { isRule, hdrBg, hdrFg, hdrFgMuted, hdrRadius, hdrBorder } = headerColors(skin, palette);
+  const { hlBg, hlBorderColor, hlFg, hlMuted, gnBg, gnBorderColor } = amountBoxColors(skin, palette);
   const invoiceNo = `CS-${data.saleId.slice(0, 6).toUpperCase()}`;
   const saleDate  = fmtDate(data.soldAt);
   const method    = METHOD_LABELS[data.method] ?? data.method;
@@ -616,26 +644,27 @@ export async function openCashSaleBill(data: CashSaleBillData) {
 
   const css = `
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;display:flex;justify-content:center}
-    .inv{background:#fff;width:680px;padding:13px 16px;font-size:10.5px;color:#374151;border:1px solid #e2e8f0}
-    .hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:linear-gradient(135deg,${palette.navy900},${palette.navy800});border-radius:4px 4px 0 0;margin:-13px -16px 9px}
-    .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;overflow:hidden}
+    ${skinVars(skin, palette)}
+    body{font-family:var(--font-body);background:var(--body-bg, #f1f5f9);padding:20px;display:flex;justify-content:center}
+    .inv{background:#fff;width:680px;padding:13px 16px;font-size:10.5px;color:#374151;border:var(--card-border);box-shadow:var(--shadow);border-radius:var(--radius-lg)}
+    .hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:${hdrBg};border-radius:${hdrRadius};margin:${isRule ? '0 0 9px' : '-13px -16px 9px'};${hdrBorder}font-family:var(--font-heading)}
+    .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:4px 6px;overflow:hidden}
     .il{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:1px}
     .iv{display:block;font-size:10.5px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .is{display:block;font-size:9px;color:#64748b}
-    .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;text-align:center}
-    .ac.hl{background:${palette.blue600};border-color:${palette.blue600}}
-    .ac.gn{background:#d1fae5;border-color:#6ee7b7}
+    .ac{background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:5px 7px;text-align:center}
+    .ac.hl{background:${hlBg};border:1px solid ${hlBorderColor}}
+    .ac.gn{background:${gnBg};border:1px solid ${gnBorderColor}}
     .al{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8;margin-bottom:1px}
-    .ac.hl .al{color:rgba(255,255,255,.65)}
+    .ac.hl .al{color:${hlMuted}}
     .ac.gn .al{color:#065f46}
     .av{display:block;font-size:11.5px;font-weight:800;color:#0f172a}
-    .ac.hl .av{color:#fff}
+    .ac.hl .av{color:${hlFg}}
     .ac.gn .av{color:#065f46;font-size:13px}
     @media print{
       @page{size:A5 landscape;margin:5mm 7mm}
       body{background:#fff;padding:0}
-      .inv{border:none;width:100%}
+      .inv{border:none;box-shadow:none;width:100%}
     }
   `;
 
@@ -645,6 +674,7 @@ export async function openCashSaleBill(data: CashSaleBillData) {
 <meta charset="UTF-8"/>
 <title>${invoiceNo}</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` : ''}
 <style>${css}</style>
 </head>
 <body>
@@ -653,18 +683,18 @@ export async function openCashSaleBill(data: CashSaleBillData) {
     <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
       ${data.shop.logoUrl ? `<img src="${data.shop.logoUrl}" style="width:30px;height:30px;object-fit:contain;border-radius:6px;background:#fff;padding:2px;flex-shrink:0" alt="logo"/>` : ''}
       <div style="min-width:0">
-        <div style="font-size:14px;font-weight:900;color:#fff;line-height:1">${data.shop.shopName}</div>
-        <div style="font-size:9.5px;color:${palette.blue300};margin-top:2px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
-        <span style="font-size:9px;font-weight:700;background:#d1fae5;color:#065f46;padding:1px 7px;border-radius:20px;margin-top:4px;display:inline-block">Cash Sale · نقد فروخت</span>
+        <div style="font-size:14px;font-weight:900;color:${hdrFg};line-height:1">${data.shop.shopName}</div>
+        <div style="font-size:9.5px;color:${hdrFgMuted};margin-top:2px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
+        <span style="font-size:9px;font-weight:700;background:${skin.pillBg === 'transparent' ? 'transparent' : '#d1fae5'};color:${skin.pillBg === 'transparent' ? hdrFg : '#065f46'};border:${skin.pillBorder !== 'none' ? '1px solid currentColor' : 'none'};padding:1px 7px;border-radius:var(--pill-radius);margin-top:4px;display:inline-block">Cash Sale · نقد فروخت</span>
       </div>
     </div>
     <div style="text-align:right;flex-shrink:0;margin:0 10px">
-      <div style="font-size:13px;font-weight:900;color:${palette.blue400}">RECEIPT <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px">رسید</span></div>
-      <div style="font-size:11px;font-weight:700;color:#fff;margin-top:1px">${invoiceNo}</div>
-      <div style="font-size:9px;color:#94a3b8;margin-top:1px">${saleDate}</div>
+      <div style="font-size:13px;font-weight:900;color:${isRule ? palette.blue700 : hdrFg}">RECEIPT <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px">رسید</span></div>
+      <div style="font-size:11px;font-weight:700;color:${hdrFg};margin-top:1px">${invoiceNo}</div>
+      <div style="font-size:9px;color:${hdrFgMuted};margin-top:1px">${saleDate}</div>
     </div>
     <div style="flex-shrink:0">
-      <img src="${qrDataUrl}" width="58" height="58" style="border:1px solid rgba(255,255,255,.2);border-radius:4px;display:block" alt="QR"/>
+      <img src="${qrDataUrl}" width="58" height="58" style="${skin.qrFrame};display:block" alt="QR"/>
     </div>
   </div>
 
@@ -678,10 +708,10 @@ export async function openCashSaleBill(data: CashSaleBillData) {
       <span class="il">Product · مصنوعہ</span>
       <span class="iv">${data.product}</span>
       ${isVehicleCS ? `
-        <span class="is" style="font-family:monospace;font-size:9px;color:${palette.indigo500}">Chassis: ${data.chassisNumber}</span>
-        ${data.engineNumber ? `<span class="is" style="font-family:monospace;font-size:9px;color:${palette.indigo500}">Engine: ${data.engineNumber}</span>` : ''}
-        ${data.registrationNumber ? `<span class="is" style="font-family:monospace;font-size:9px;color:${palette.indigo500}">Reg: ${data.registrationNumber}</span>` : ''}
-      ` : data.imeiNumber ? `<span class="is" style="font-family:monospace;font-size:9px">IMEI: ${data.imeiNumber}</span>` : ''}
+        <span class="is" style="font-family:'Courier New',monospace;font-size:9px;color:${palette.indigo500}">Chassis: ${data.chassisNumber}</span>
+        ${data.engineNumber ? `<span class="is" style="font-family:'Courier New',monospace;font-size:9px;color:${palette.indigo500}">Engine: ${data.engineNumber}</span>` : ''}
+        ${data.registrationNumber ? `<span class="is" style="font-family:'Courier New',monospace;font-size:9px;color:${palette.indigo500}">Reg: ${data.registrationNumber}</span>` : ''}
+      ` : data.imeiNumber ? `<span class="is" style="font-family:'Courier New',monospace;font-size:9px">IMEI: ${data.imeiNumber}</span>` : ''}
       ${data.quantity > 1 ? `<span class="is">Qty · تعداد: ${data.quantity}</span>` : ''}
     </div>
   </div>
@@ -701,7 +731,7 @@ export async function openCashSaleBill(data: CashSaleBillData) {
     </div>
   </div>
 
-  ${data.note ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 8px;margin-bottom:6px;font-size:9.5px;color:#374151"><strong>Note:</strong> ${data.note}</div>` : ''}
+  ${data.note ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:4px 8px;margin-bottom:6px;font-size:9.5px;color:#374151"><strong>Note:</strong> ${data.note}</div>` : ''}
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px">
     <div style="border-top:1px solid #94a3b8;padding-top:4px;font-size:9px;color:#94a3b8;text-align:center">

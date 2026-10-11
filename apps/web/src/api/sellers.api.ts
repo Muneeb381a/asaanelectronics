@@ -16,6 +16,7 @@ export interface SellerSettings {
   timezone?: string;
   theme?: 'cobalt' | 'violet' | 'teal' | 'navy' | 'berry' | 'graphite';
   font?: 'poppins' | 'inter' | 'nunito' | 'worksans' | 'notosans';
+  receiptStyle?: 'classic' | 'modern' | 'minimal';
 }
 
 export interface Seller {

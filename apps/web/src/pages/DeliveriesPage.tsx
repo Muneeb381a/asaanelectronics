@@ -329,6 +329,7 @@ export default function DeliveriesPage() {
   const shop = {
     shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address,
     logoUrl: seller?.logoUrl ?? null, theme: seller?.settings?.theme ?? null,
+    receiptStyle: seller?.settings?.receiptStyle ?? null,
   };
 
   return (

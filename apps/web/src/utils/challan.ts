@@ -1,9 +1,10 @@
 import QRCode from 'qrcode';
 import { fmtDate } from './dateFormat.ts';
 import { getPrintPalette } from './printTheme.ts';
+import { getDocumentSkin, skinVars, headerColors } from './printSkin.ts';
 
 export interface DeliveryChallanData {
-  shop: { shopName: string; phone: string; address?: string | null; logoUrl?: string | null; theme?: string | null };
+  shop: { shopName: string; phone: string; address?: string | null; logoUrl?: string | null; theme?: string | null; receiptStyle?: string | null };
   slipNumber: string;
   saleType: 'CASH' | 'INSTALLMENT';
   customerName: string;
@@ -22,6 +23,7 @@ export interface DeliveryChallanData {
 
 export async function openDeliveryChallan(data: DeliveryChallanData) {
   const palette = getPrintPalette(data.shop.theme);
+  const skin    = getDocumentSkin(data.shop.receiptStyle);
   const date    = fmtDate(data.createdAt);
 
   const qrPayload = [
@@ -38,19 +40,24 @@ export async function openDeliveryChallan(data: DeliveryChallanData) {
     color: { dark: '#171C28', light: '#ffffff' },
   });
 
+  const { isRule, hdrBg, hdrFg, hdrFgMuted, hdrRadius, hdrBorder } = headerColors(skin, palette);
+  const hdrMargin = isRule ? '0 0 9px' : '-13px -16px 9px';
+
   const css = `
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;display:flex;justify-content:center}
-    .inv{background:#fff;width:680px;padding:13px 16px;font-size:10.5px;color:#374151;border:1px solid #e2e8f0}
-    .hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:linear-gradient(135deg,${palette.navy900},${palette.navy800});border-radius:4px 4px 0 0;margin:-13px -16px 9px}
-    .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;overflow:hidden}
+    ${skinVars(skin, palette)}
+    body{font-family:var(--font-body);background:var(--body-bg, #f1f5f9);padding:20px;display:flex;justify-content:center}
+    .inv{background:#fff;width:680px;padding:13px 16px;font-size:10.5px;color:#374151;border:var(--card-border);box-shadow:var(--shadow);border-radius:var(--radius-lg)}
+    .hdr{display:flex;align-items:center;gap:8px;padding:9px 11px 7px;background:${hdrBg};border-radius:${hdrRadius};margin:${hdrMargin};${hdrBorder}font-family:var(--font-heading)}
+    .ic{background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:4px 6px;overflow:hidden}
     .il{display:block;font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:1px}
     .iv{display:block;font-size:10.5px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .is{display:block;font-size:9px;color:#64748b}
+    .pill{font-size:9px;font-weight:700;padding:1px 7px;border-radius:var(--pill-radius);border:var(--pill-border);margin-top:4px;display:inline-block}
     @media print{
       @page{size:A5 landscape;margin:5mm 7mm}
       body{background:#fff;padding:0}
-      .inv{border:none;width:100%}
+      .inv{border:none;box-shadow:none;width:100%}
     }
   `;
 
@@ -71,6 +78,7 @@ export async function openDeliveryChallan(data: DeliveryChallanData) {
 <meta charset="UTF-8"/>
 <title>${data.slipNumber}</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` : ''}
 <style>${css}</style>
 </head>
 <body>
@@ -79,22 +87,22 @@ export async function openDeliveryChallan(data: DeliveryChallanData) {
     <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
       ${data.shop.logoUrl ? `<img src="${data.shop.logoUrl}" style="width:30px;height:30px;object-fit:contain;border-radius:6px;background:#fff;padding:2px;flex-shrink:0" alt="logo"/>` : ''}
       <div style="min-width:0">
-        <div style="font-size:14px;font-weight:900;color:#fff;line-height:1">${data.shop.shopName}</div>
-        <div style="font-size:9.5px;color:${palette.blue300};margin-top:2px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
-        <span style="font-size:9px;font-weight:700;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:20px;margin-top:4px;display:inline-block">${saleTypeLabel}</span>
+        <div style="font-size:14px;font-weight:900;color:${hdrFg};line-height:1">${data.shop.shopName}</div>
+        <div style="font-size:9.5px;color:${hdrFgMuted};margin-top:2px">${data.shop.phone}${data.shop.address ? ` · ${data.shop.address}` : ''}</div>
+        <span class="pill" style="background:${skin.pillBg === 'transparent' ? 'transparent' : '#fef3c7'};color:${skin.pillBg === 'transparent' ? hdrFg : '#92400e'}">${saleTypeLabel}</span>
       </div>
     </div>
     <div style="text-align:right;flex-shrink:0;margin:0 10px">
-      <div style="font-size:13px;font-weight:900;color:${palette.blue400}">DELIVERY SLIP <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px">ترسیل پرچی</span></div>
-      <div style="font-size:11px;font-weight:700;color:#fff;margin-top:1px">${data.slipNumber}</div>
-      <div style="font-size:9px;color:#94a3b8;margin-top:1px">${date}</div>
+      <div style="font-size:13px;font-weight:900;color:${isRule ? palette.blue700 : hdrFg}">DELIVERY SLIP <span style="font-family:'Noto Nastaliq Urdu',serif;font-size:11px">ترسیل پرچی</span></div>
+      <div style="font-size:11px;font-weight:700;color:${hdrFg};margin-top:1px">${data.slipNumber}</div>
+      <div style="font-size:9px;color:${hdrFgMuted};margin-top:1px">${date}</div>
     </div>
     <div style="flex-shrink:0">
-      <img src="${qrDataUrl}" width="58" height="58" style="border:1px solid rgba(255,255,255,.2);border-radius:4px;display:block" alt="QR"/>
+      <img src="${qrDataUrl}" width="58" height="58" style="${skin.qrFrame};display:block" alt="QR"/>
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px;margin-top:var(--sp-sm)">
     <div class="ic">
       <span class="il">Customer · گاہک</span>
       <span class="iv">${data.customerName}</span>
@@ -104,7 +112,7 @@ export async function openDeliveryChallan(data: DeliveryChallanData) {
     <div class="ic">
       <span class="il">Item · سامان</span>
       <span class="iv">${data.productName}${data.quantity > 1 ? ` ×${data.quantity}` : ''}</span>
-      ${data.serialSnapshot ? `<span class="is" style="font-family:monospace;font-size:9px;color:${palette.indigo500}">Serial/IMEI: ${data.serialSnapshot}</span>` : ''}
+      ${data.serialSnapshot ? `<span class="is" style="font-family:'Courier New',monospace;font-size:9px;color:${palette.indigo500}">Serial/IMEI: ${data.serialSnapshot}</span>` : ''}
     </div>
   </div>
 
@@ -120,9 +128,9 @@ export async function openDeliveryChallan(data: DeliveryChallanData) {
     </div>
   </div>
 
-  ${data.conditionNote ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:4px 8px;margin-bottom:6px;font-size:9.5px;color:#374151"><strong>Note:</strong> ${data.conditionNote}</div>` : ''}
+  ${data.conditionNote ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:4px 8px;margin-bottom:6px;font-size:9.5px;color:#374151"><strong>Note:</strong> ${data.conditionNote}</div>` : ''}
 
-  <div style="background:#eff6ff;border:1px solid ${palette.skyBorder};border-radius:4px;padding:5px 8px;margin-bottom:8px;font-size:9px;color:${palette.skyText}">
+  <div style="background:${skin.colorUsage === 'fill' ? '#eff6ff' : '#fff'};border:1px solid ${palette.skyBorder};border-radius:var(--radius-sm);padding:5px 8px;margin-bottom:8px;font-size:9px;color:${palette.skyText}">
     Customer ko guzarish hai k samaan check kar k receive karein, phir neeche dastkhat karein. Please inspect the item before signing below.
   </div>
 

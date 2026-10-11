@@ -625,6 +625,7 @@ function ScheduleModal({ inst, shop, onClose }: { inst: Installment; shop?: Sell
       shopPhone: shop?.phone,
       shopLogoUrl: shop?.logoUrl,
       shopTheme: shop?.settings?.theme,
+      shopReceiptStyle: shop?.settings?.receiptStyle,
       customerName: inst.customerName,
       customerPhone: inst.customerPhone,
       productName: inst.productName,
@@ -1915,7 +1916,7 @@ export default function InstallmentsPage() {
                       )}
                       <button
                         onClick={() => shopData && void openBill({
-                          shop: { ...shopData, theme: shopData.settings?.theme },
+                          shop: { ...shopData, theme: shopData.settings?.theme, receiptStyle: shopData.settings?.receiptStyle },
                           customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
                           product: inst.productName,
                           totalAmount: inst.totalAmount, downPayment: inst.downPayment,
@@ -2064,7 +2065,7 @@ export default function InstallmentsPage() {
                         )}
                         <button
                           onClick={() => shopData && void openBill({
-                            shop: { ...shopData, theme: shopData.settings?.theme },
+                            shop: { ...shopData, theme: shopData.settings?.theme, receiptStyle: shopData.settings?.receiptStyle },
                             customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
                             product: inst.productName,
                             totalAmount: inst.totalAmount, downPayment: inst.downPayment,
@@ -2233,6 +2234,7 @@ export default function InstallmentsPage() {
                   shopPhone: shopData?.phone,
                   shopLogoUrl: shopData?.logoUrl,
                   shopTheme: shopData?.settings?.theme,
+                  shopReceiptStyle: shopData?.settings?.receiptStyle,
                   customerName: inst.customerName,
                   customerPhone: inst.customerPhone,
                   productName: inst.productName,

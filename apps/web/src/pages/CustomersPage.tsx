@@ -1012,6 +1012,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                 shopPhone: shopData?.phone,
                 shopLogoUrl: shopData?.logoUrl ?? null,
                 shopTheme: shopData?.settings?.theme ?? null,
+                shopReceiptStyle: shopData?.settings?.receiptStyle ?? null,
                 customer: {
                   name: customer.name,
                   phone: customer.phone,
