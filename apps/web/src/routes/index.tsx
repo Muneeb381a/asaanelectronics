@@ -42,6 +42,7 @@ const PortalDashboardPage   = lazy(() => import('../pages/portal/PortalDashboard
 const ImeiPage              = lazy(() => import('../pages/ImeiPage.tsx'));
 const DueSheetPage          = lazy(() => import('../pages/DueSheetPage.tsx'));
 const SuppliersPage         = lazy(() => import('../pages/SuppliersPage.tsx'));
+const DeliveriesPage        = lazy(() => import('../pages/DeliveriesPage.tsx'));
 const StockReceivePage      = lazy(() => import('../pages/StockReceivePage.tsx'));
 const TradeInsPage          = lazy(() => import('../pages/TradeInsPage.tsx'));
 const RepossessionsPage     = lazy(() => import('../pages/RepossessionsPage.tsx'));
@@ -195,6 +196,7 @@ export const router = createBrowserRouter([
       { path: '/settings',         element: <SellerOwnerGuard><S><SettingsPage /></S></SellerOwnerGuard> },
       { path: '/imei',             element: <PermGuard perm="canManageProducts"><S><ImeiPage /></S></PermGuard> },
       { path: '/suppliers',         element: <PermGuard perm="canManageSuppliers"><S><SuppliersPage /></S></PermGuard> },
+      { path: '/deliveries',        element: <PermGuard perm="canManageDeliveries"><S><DeliveriesPage /></S></PermGuard> },
       { path: '/trade-ins',         element: <PermGuard perm="canManageTradeIns"><S><TradeInsPage /></S></PermGuard> },
       { path: '/repossessions',     element: <PermGuard perm="canManageTradeIns"><S><RepossessionsPage /></S></PermGuard> },
       { path: '/guarantors',        element: <SellerOwnerGuard><S><GuarantorsPage /></S></SellerOwnerGuard> },

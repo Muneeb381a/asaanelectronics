@@ -124,6 +124,7 @@ export type StaffPermissions = {
   canManageSuppliers?: boolean;
   canManageTradeIns?: boolean;
   canExportData?: boolean;
+  canManageDeliveries?: boolean;
 };
 
 export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
@@ -143,6 +144,7 @@ export const DEFAULT_STAFF_PERMISSIONS: StaffPermissions = {
   canManageSuppliers: false,
   canManageTradeIns: false,
   canExportData: false,
+  canManageDeliveries: false,
 };
 
 export const users = pgTable('users', {
@@ -994,6 +996,58 @@ export const investorPayouts = pgTable('investor_payouts', {
   uniqueIndex('uniq_investor_payout_period').on(t.investorId, t.period),
   index('idx_investor_payouts_investor').on(t.investorId),
   index('idx_investor_payouts_seller').on(t.sellerId),
+]);
+
+// ── Deliveries ───────────────────────────────────────────────────────────────
+// Tracks the loader/driver handoff of a sold item to the customer's home, with a
+// printable slip and/or a digitally-captured signature as proof of receipt. Does
+// NOT touch stock or product_units — those are already adjusted at sale-creation
+// time in cashSales/installments; this table is delivery logistics layered on top.
+export const deliverySaleTypeEnum = pgEnum('delivery_sale_type', ['CASH', 'INSTALLMENT']);
+export const deliveryStatusEnum   = pgEnum('delivery_status', [
+  'PENDING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'REJECTED', 'CANCELLED',
+]);
+
+export const deliveries = pgTable('deliveries', {
+  id:              text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:        text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  saleType:        deliverySaleTypeEnum('sale_type').notNull(),
+  // cash_sales has no cancel status — only a hard delete — so cascade here would
+  // silently wipe a "permanent" delivered record (incl. its signature) if the
+  // underlying cash sale is ever deleted. installments are cancelled via status
+  // and never hard-deleted, so cascade there is safe.
+  cashSaleId:      text('cash_sale_id').references(() => cashSales.id, { onDelete: 'restrict' }),
+  installmentId:   text('installment_id').references(() => installments.id, { onDelete: 'cascade' }),
+  slipNumber:      text('slip_number').notNull(), // "DS-2026-00001", sequential per seller
+  customerName:    text('customer_name').notNull(),
+  customerPhone:   text('customer_phone'),
+  deliveryAddress: text('delivery_address').notNull(),
+  productName:     text('product_name').notNull(),
+  quantity:        integer('quantity').default(1).notNull(),
+  // IMEI/chassis snapshot via the existing serialMatch() lookup at creation time —
+  // frozen on purpose; there's no FK from a sale to product_units to re-derive it from.
+  serialSnapshot:  text('serial_snapshot'),
+  driverUserId:    text('driver_user_id').references(() => users.id, { onDelete: 'set null' }),
+  driverName:      text('driver_name').notNull(),
+  driverPhone:     text('driver_phone'),
+  status:          deliveryStatusEnum('status').default('PENDING').notNull(),
+  scheduledDate:   date('scheduled_date'),
+  dispatchedAt:    timestamp('dispatched_at'),
+  deliveredAt:     timestamp('delivered_at'),
+  signatureUrl:    text('signature_url'),   // canvas-drawn signature OR a photo of a signed paper slip
+  proofPhotoUrl:   text('proof_photo_url'), // optional separate item/condition photo
+  conditionNote:   text('condition_note'),
+  rejectionReason: text('rejection_reason'),
+  // Manual ack only — never auto-set. Marking a delivery REJECTED does not itself
+  // reverse the stock/unit decrement made at sale time; this just tracks whether
+  // someone has gone and separately fixed that via the sale's own cancel/delete flow.
+  stockReversed:   boolean('stock_reversed').default(false).notNull(),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_deliveries_seller').on(t.sellerId),
+  index('idx_deliveries_status').on(t.status),
+  index('idx_deliveries_driver').on(t.driverUserId),
 ]);
 
 // ── Trade-Ins ─────────────────────────────────────────────────────────────────

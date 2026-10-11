@@ -6,7 +6,7 @@ import {
   Bell, AlertTriangle, UserCog, ClipboardCheck, Settings, BookOpen, ShieldCheck,
   RotateCcw, Receipt, Wallet, PhoneCall, Search, Menu, X, TrendingUp, ShoppingCart,
   FileDown, Building2, ArrowLeftRight, AlertOctagon, Shield, Megaphone, CalendarDays,
-  ClipboardList, ChevronDown, UserCircle, PanelLeftClose, PanelLeftOpen, Wrench, Landmark,
+  ClipboardList, ChevronDown, UserCircle, PanelLeftClose, PanelLeftOpen, Wrench, Landmark, Truck,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { authApi } from '../api/auth.api.ts';
@@ -56,6 +56,7 @@ const ALL_NAV: NavItemDef[] = [
   { to: '/returns',          label: 'Returns',          icon: RotateCcw,                  perm: 'canManageReturns',                                       group: 'operations' },
   { to: '/trade-ins',        label: 'Trade-Ins',        icon: ArrowLeftRight,             perm: 'canManageTradeIns',                                              group: 'operations' },
   { to: '/repossessions',    label: 'Repossessions',    icon: AlertOctagon,               perm: 'canManageTradeIns',                                              group: 'operations' },
+  { to: '/deliveries',       label: 'Deliveries',       icon: Truck,                      perm: 'canManageDeliveries',                                            group: 'operations' },
   { to: '/collection-sheet', label: 'Field Sheet',      icon: ClipboardList,              perm: ['canRecordPayment','canManageRecovery'],                                              group: 'reporting'  },
   { to: '/exports',          label: 'Exports',          icon: FileDown,                   perm: 'canExportData',                                              group: 'reporting'  },
   { to: '/staff',            label: 'Staff',            icon: UserCog,                    perm: '__owner__',                                              group: 'system'     },

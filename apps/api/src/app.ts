@@ -53,6 +53,7 @@ import backupsRoutes              from './modules/backups/backups.routes.js';
 import assistantRoutes            from './modules/assistant/assistant.routes.js';
 import staffExpenseClaimsRoutes   from './modules/staffExpenseClaims/staffExpenseClaims.routes.js';
 import investorsRoutes            from './modules/investors/investors.routes.js';
+import deliveriesRoutes           from './modules/deliveries/deliveries.routes.js';
 
 const app = express();
 
@@ -146,6 +147,7 @@ app.use('/api/backups',               backupsRoutes);
 app.use('/api/assistant',             assistantRoutes);
 app.use('/api/expense-claims',        staffExpenseClaimsRoutes);
 app.use('/api/investors',             investorsRoutes);
+app.use('/api/deliveries',            deliveriesRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, data: null, error: 'Not found' }));
 app.use(errorMiddleware);

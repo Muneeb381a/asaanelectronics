@@ -11,6 +11,9 @@ import { db } from '../../db/index.js';
 import { ocrCache } from '../../db/schema.js';
 
 const MIN_FILE_SIZE = 15 * 1024;
+// A canvas-drawn signature (thin stroke on a mostly-blank background) routinely
+// PNG-compresses to a few KB — well under the document-photo floor above.
+const MIN_FILE_SIZE_SIGNATURE = 300;
 const MAX_FILE_SIZE = 8 * 1024 * 1024; // client compresses to ~400 KB; 8 MB gives headroom
 const ALLOWED_MIME  = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 
@@ -33,6 +36,7 @@ const ALLOWED_FOLDERS: Record<string, 'cnic' | 'cheque' | 'other'> = {
   'assaan/cheques':       'cheque',
   'assaan/verifications': 'other',
   'assaan/payments':      'other',
+  'assaan/deliveries':    'other',
 };
 
 // ── Magic-byte signatures ────────────────────────────────────────────────────
@@ -98,11 +102,12 @@ function dbSet(hash: string, docType: string, result: DocumentExtracted) {
 router.post('/', uploadLimiter, upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.file) throw new AppError('No file provided', 400);
-    if (req.file.size < MIN_FILE_SIZE) throw new AppError('Image is too small or blank. Please upload a clear photo.', 400);
-    if (!hasMagicBytes(req.file.buffer)) throw new AppError('File content does not match a supported image format.', 400);
-
     const folder = (req.body['folder'] as string | undefined) ?? '';
     if (!ALLOWED_FOLDERS[folder]) throw new AppError('Invalid upload folder', 400);
+
+    const minSize = folder === 'assaan/deliveries' ? MIN_FILE_SIZE_SIGNATURE : MIN_FILE_SIZE;
+    if (req.file.size < minSize) throw new AppError('Image is too small or blank. Please upload a clear photo.', 400);
+    if (!hasMagicBytes(req.file.buffer)) throw new AppError('File content does not match a supported image format.', 400);
 
     const hash     = createHash('sha256').update(req.file.buffer).digest('hex');
     const docType  = ALLOWED_FOLDERS[folder];

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck, AlertOctagon, AlertTriangle, Users } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck, AlertOctagon, AlertTriangle, Users, Truck } from 'lucide-react';
 import { staffApi } from '../api/staff.api.ts';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
@@ -25,6 +25,7 @@ import { fmtDate } from '../utils/dateFormat.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
 import { openPaymentHistoryReceipt } from '../utils/receipt.ts';
 import { whatsappTemplatesApi, applyTemplate } from '../api/whatsappTemplates.api.ts';
+import CreateDeliveryModal from '../components/CreateDeliveryModal.tsx';
 
 function calcNextDueDate(inst: Installment): Date | null {
   if (inst.status !== 'ACTIVE') return null;
@@ -1447,7 +1448,9 @@ export default function InstallmentsPage() {
   const staffPerms = user?.permissions as Record<string, boolean> | null | undefined;
   const canPay = isOwner || !!staffPerms?.canRecordPayment;
   const canCreate = isOwner || !!staffPerms?.canAddInstallment;
+  const canDeliver = isOwner || !!staffPerms?.canManageDeliveries;
   const [showForm,   setShowForm]   = useState(false);
+  const [deliveringInst, setDeliveringInst] = useState<Installment | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -2215,6 +2218,12 @@ export default function InstallmentsPage() {
             >
               <FileText size={11} className="shrink-0" /> Agreement (Iqrarnama)
             </button>
+            {canDeliver && inst.status !== 'CANCELLED' && (
+              <button onClick={() => { close(); setDeliveringInst(inst); }}
+                className="w-full text-left px-3 py-2 text-xs text-violet-700 hover:bg-violet-50 transition font-medium flex items-center gap-1.5">
+                <Truck size={11} className="shrink-0" /> Delivery Slip
+              </button>
+            )}
             <button
               onClick={async () => {
                 close();
@@ -2420,6 +2429,16 @@ export default function InstallmentsPage() {
 
       {/* Repossess device modal */}
       {repoInst && <RepossessModal inst={repoInst} onClose={() => setRepoInst(null)} />}
+
+      {/* Delivery slip modal */}
+      {deliveringInst && (
+        <CreateDeliveryModal
+          saleType="INSTALLMENT"
+          saleId={deliveringInst.id}
+          customerId={deliveringInst.customerId}
+          onClose={() => setDeliveringInst(null)}
+        />
+      )}
 
       {/* Schedule modal */}
       {scheduleInst && <ScheduleModal inst={scheduleInst} shop={shopData} onClose={() => setScheduleInst(null)} />}

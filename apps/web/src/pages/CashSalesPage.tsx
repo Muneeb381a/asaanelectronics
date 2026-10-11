@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Search, CheckCircle2, X, Trash2, Pencil,
   Printer, MessageCircle, AlertTriangle, Wallet, CreditCard, Smartphone,
-  TrendingUp, Package, ChevronLeft, ChevronRight,
+  TrendingUp, Package, ChevronLeft, ChevronRight, Truck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
@@ -21,6 +21,7 @@ import { openCashSaleBill } from '../utils/bill.ts';
 import { cashSaleWhatsappUrl } from '../utils/receipt.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import { RowSkeleton } from '../components/ui/Skeleton.tsx';
+import CreateDeliveryModal from '../components/CreateDeliveryModal.tsx';
 
 /* ── constants ── */
 const METHODS: PaymentMethod[] = ['CASH', 'BANK', 'JAZZCASH', 'EASYPAISA', 'OTHER'];
@@ -85,6 +86,7 @@ export default function CashSalesPage() {
   const qc      = useQueryClient();
   const user    = useAuthStore((s) => s.user);
   const isOwner = user?.role === 'SELLER_OWNER';
+  const canDeliver = isOwner || !!user?.permissions?.canManageDeliveries;
 
   const [showModal,      setShowModal]      = useState(false);
   const [productSearch,  setProductSearch]  = useState('');
@@ -96,6 +98,7 @@ export default function CashSalesPage() {
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null);
   const [editingSale,    setEditingSale]    = useState<CashSale | null>(null);
   const [lastSale,       setLastSale]       = useState<CashSale | null>(null);
+  const [deliveringSale, setDeliveringSale] = useState<CashSale | null>(null);
 
   const { data: seller } = useQuery({ queryKey: ['seller-me'], queryFn: sellersApi.getMe, staleTime: 10 * 60_000, retry: false });
   const { data: stats }  = useQuery({ queryKey: ['stats'],     queryFn: statsApi.get,     staleTime: 5 * 60_000  });
@@ -414,6 +417,12 @@ export default function CashSalesPage() {
                           <MessageCircle size={14}/>
                         </a>
                       )}
+                      {canDeliver && (
+                        <button title="Delivery slip" onClick={() => setDeliveringSale(s)}
+                          className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition">
+                          <Truck size={14}/>
+                        </button>
+                      )}
                       {isOwner && (
                         <>
                           <button title="Edit" onClick={() => setEditingSale(s)}
@@ -716,6 +725,14 @@ export default function CashSalesPage() {
           onClose={() => setEditingSale(null)}
           onSave={(body) => updateMutation.mutate({ id: editingSale.id, body })}
           isPending={updateMutation.isPending}
+        />
+      )}
+
+      {deliveringSale && (
+        <CreateDeliveryModal
+          saleType="CASH"
+          saleId={deliveringSale.id}
+          onClose={() => setDeliveringSale(null)}
         />
       )}
     </div>

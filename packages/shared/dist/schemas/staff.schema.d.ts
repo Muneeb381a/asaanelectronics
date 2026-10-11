@@ -20,6 +20,7 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageSuppliers: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         canManageTradeIns: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         canExportData: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        canManageDeliveries: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     }, "strip", z.ZodTypeAny, {
         canAddCustomer: boolean;
         canEditCustomer: boolean;
@@ -37,6 +38,7 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageSuppliers: boolean;
         canManageTradeIns: boolean;
         canExportData: boolean;
+        canManageDeliveries: boolean;
     }, {
         canAddCustomer: boolean;
         canEditCustomer: boolean;
@@ -54,6 +56,7 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageSuppliers?: boolean | undefined;
         canManageTradeIns?: boolean | undefined;
         canExportData?: boolean | undefined;
+        canManageDeliveries?: boolean | undefined;
     }>>;
 }, "strip", z.ZodTypeAny, {
     name: string;
@@ -76,6 +79,7 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageSuppliers: boolean;
         canManageTradeIns: boolean;
         canExportData: boolean;
+        canManageDeliveries: boolean;
     } | undefined;
 }, {
     name: string;
@@ -98,6 +102,7 @@ export declare const createStaffSchema: z.ZodObject<{
         canManageSuppliers?: boolean | undefined;
         canManageTradeIns?: boolean | undefined;
         canExportData?: boolean | undefined;
+        canManageDeliveries?: boolean | undefined;
     } | undefined;
 }>;
 export declare const updateStaffPermissionsSchema: z.ZodObject<{
@@ -117,6 +122,7 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canManageSuppliers: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
     canManageTradeIns: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
     canExportData: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
+    canManageDeliveries: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodBoolean>>>;
 }, "strip", z.ZodTypeAny, {
     canAddCustomer?: boolean | undefined;
     canEditCustomer?: boolean | undefined;
@@ -134,6 +140,7 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canManageSuppliers?: boolean | undefined;
     canManageTradeIns?: boolean | undefined;
     canExportData?: boolean | undefined;
+    canManageDeliveries?: boolean | undefined;
 }, {
     canAddCustomer?: boolean | undefined;
     canEditCustomer?: boolean | undefined;
@@ -151,6 +158,7 @@ export declare const updateStaffPermissionsSchema: z.ZodObject<{
     canManageSuppliers?: boolean | undefined;
     canManageTradeIns?: boolean | undefined;
     canExportData?: boolean | undefined;
+    canManageDeliveries?: boolean | undefined;
 }>;
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 export type UpdateStaffPermissionsInput = z.infer<typeof updateStaffPermissionsSchema>;

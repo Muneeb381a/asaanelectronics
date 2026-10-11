@@ -17,6 +17,7 @@ export type StaffPermissions = {
   canManageSuppliers: boolean;
   canManageTradeIns: boolean;
   canExportData: boolean;
+  canManageDeliveries: boolean;
 };
 
 export type StaffMember = {
@@ -49,6 +50,7 @@ const PERM_LABELS: Record<keyof StaffPermissions, string> = {
   canManageSuppliers:     'Suppliers & purchase invoices',
   canManageTradeIns:      'Trade-ins & repossessions',
   canExportData:          'Export data (CSV / PDF / backup)',
+  canManageDeliveries:    'Deliveries — dispatch, deliver & sign slips (also what a loader/driver account needs)',
 };
 
 export type PermGroup = { label: string; keys: (keyof StaffPermissions)[] };
@@ -56,7 +58,7 @@ export type PermGroup = { label: string; keys: (keyof StaffPermissions)[] };
 export const PERM_GROUPS: PermGroup[] = [
   { label: 'Customer Management',        keys: ['canAddCustomer', 'canEditCustomer', 'canVerifyCustomers', 'canSearchCnic'] },
   { label: 'Installments & Payments',    keys: ['canAddInstallment', 'canRecordPayment', 'canMakeCashSales', 'canManageReturns'] },
-  { label: 'Recovery & Field Work',      keys: ['canManageRecovery', 'canManageTradeIns'] },
+  { label: 'Recovery & Field Work',      keys: ['canManageRecovery', 'canManageTradeIns', 'canManageDeliveries'] },
   { label: 'Inventory & Purchasing',     keys: ['canManageProducts', 'canManageSuppliers'] },
   { label: 'Finance & Reports',          keys: ['canRecordExpense', 'canViewReports', 'canExportData'] },
   { label: 'Data Visibility',            keys: ['canViewAllInstallments'] },

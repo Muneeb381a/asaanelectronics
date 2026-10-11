@@ -17,6 +17,7 @@ const permissionsSchema = z.object({
   canManageSuppliers: z.boolean().optional().default(false),
   canManageTradeIns:  z.boolean().optional().default(false),
   canExportData:      z.boolean().optional().default(false),
+  canManageDeliveries: z.boolean().optional().default(false),
 });
 
 export const createStaffSchema = z.object({

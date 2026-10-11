@@ -21,13 +21,13 @@ type StaffType = 'ACCOUNT' | 'AVO' | 'MANAGER' | 'CASHIER' | 'CUSTOM';
 
 const PRESET_PERMS: Record<Exclude<StaffType, 'CUSTOM'>, StaffPermissions> = {
   // Account staff: day-to-day customer & installment operations — no financial reports
-  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: true  , canManageRecovery: true,  canManageSuppliers: false, canManageTradeIns: false, canExportData: false },
+  ACCOUNT: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: true  , canManageRecovery: true,  canManageSuppliers: false, canManageTradeIns: false, canExportData: false, canManageDeliveries: false },
   // AVO: verification-only — cannot add/edit customers or see financials
-  AVO:     { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: false, canViewReports: false, canManageProducts: false, canVerifyCustomers: true,  canRecordExpense: false, canManageReturns: false, canSearchCnic: true,  canMakeCashSales: false, canViewAllInstallments: false , canManageRecovery: false, canManageSuppliers: false, canManageTradeIns: false, canExportData: false },
+  AVO:     { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: false, canViewReports: false, canManageProducts: false, canVerifyCustomers: true,  canRecordExpense: false, canManageReturns: false, canSearchCnic: true,  canMakeCashSales: false, canViewAllInstallments: false , canManageRecovery: false, canManageSuppliers: false, canManageTradeIns: false, canExportData: false, canManageDeliveries: false },
   // Manager: full access including reports and expenses
-  MANAGER: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: true,  canRecordExpense: true,  canManageReturns: true,  canSearchCnic: true,  canMakeCashSales: true,  canViewAllInstallments: true  , canManageRecovery: true,  canManageSuppliers: true,  canManageTradeIns: true,  canExportData: true  },
+  MANAGER: { canAddCustomer: true,  canEditCustomer: true,  canAddInstallment: true,  canRecordPayment: true,  canViewReports: true,  canManageProducts: true,  canVerifyCustomers: true,  canRecordExpense: true,  canManageReturns: true,  canSearchCnic: true,  canMakeCashSales: true,  canViewAllInstallments: true  , canManageRecovery: true,  canManageSuppliers: true,  canManageTradeIns: true,  canExportData: true  , canManageDeliveries: true },
   // Cashier: records payments and cash sales only — no customer/installment mgmt, no reports
-  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: true,  canViewAllInstallments: false , canManageRecovery: false, canManageSuppliers: false, canManageTradeIns: false, canExportData: false },
+  CASHIER: { canAddCustomer: false, canEditCustomer: false, canAddInstallment: false, canRecordPayment: true,  canViewReports: false, canManageProducts: false, canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false, canSearchCnic: false, canMakeCashSales: true,  canViewAllInstallments: false , canManageRecovery: false, canManageSuppliers: false, canManageTradeIns: false, canExportData: false, canManageDeliveries: false },
 };
 
 const DEFAULT_CUSTOM_PERMS: StaffPermissions = {
@@ -36,6 +36,7 @@ const DEFAULT_CUSTOM_PERMS: StaffPermissions = {
   canVerifyCustomers: false, canRecordExpense: false, canManageReturns: false,
   canSearchCnic: false, canMakeCashSales: false, canViewAllInstallments: false,
   canManageRecovery: false, canManageSuppliers: false, canManageTradeIns: false, canExportData: false,
+  canManageDeliveries: false,
 };
 
 const STAFF_TYPES: { value: StaffType; label: string; desc: string }[] = [
