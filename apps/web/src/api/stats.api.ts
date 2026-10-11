@@ -50,7 +50,7 @@ export interface Reports {
   monthlyCollections: Array<{ month: string; label: string; total: number; installments: number; cashSales: number }>;
   collectionRate: { totalBilled: number; totalCollected: number; totalOutstanding: number; rate: number };
   agingBuckets: { current: number; days0_7: number; days8_30: number; days31_90: number; days90plus: number };
-  topDebtors: Array<{ name: string; phone: string; remaining: number; count: number }>;
+  topDebtors: Array<{ name: string; phone: string; remaining: number; monthlyDue: number; count: number }>;
   topProducts: Array<{ name: string; totalAmount: number; count: number }>;
 }
 

@@ -99,6 +99,9 @@ export class StatsService {
           name: customers.name,
           phone: customers.phone,
           remaining: sum(installments.remaining),
+          // Sum of each active plan's per-period installment — what's actually due THIS
+          // period across all their plans, not the full life-of-loan remaining balance.
+          monthlyDue: sum(installments.monthly),
           count: count(),
         })
         .from(installments)
@@ -153,10 +156,11 @@ export class StatsService {
         days90plus: Number(a.days90plus),
       },
       topDebtors: topDebtors.map((d) => ({
-        name:      d.name,
-        phone:     d.phone,
-        remaining: Number(d.remaining ?? 0),
-        count:     Number(d.count),
+        name:       d.name,
+        phone:      d.phone,
+        remaining:  Number(d.remaining ?? 0),
+        monthlyDue: Number(d.monthlyDue ?? 0),
+        count:      Number(d.count),
       })),
       topProducts: topProducts.map((p) => ({
         name:        p.name,

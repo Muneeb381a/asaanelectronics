@@ -768,7 +768,7 @@ export default function ReportsPage() {
                         shopName:     shopData.shopName,
                         customerName: d.name,
                         productName:  d.count > 1 ? `${d.count} active plans` : 'your installment',
-                        monthly:      0,
+                        monthly:      d.monthlyDue,
                         remaining:    d.remaining,
                       }))}
                       title="Send WhatsApp reminder"
@@ -1332,7 +1332,7 @@ export default function ReportsPage() {
                 shopName:     shopData.shopName,
                 customerName: d.name,
                 productName:  d.count > 1 ? `${d.count} active plans` : 'your installment',
-                monthly:      0,
+                monthly:      d.monthlyDue,
                 remaining:    d.remaining,
               })), i * 600);
             });
