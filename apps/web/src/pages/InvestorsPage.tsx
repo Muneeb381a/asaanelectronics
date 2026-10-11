@@ -27,6 +27,7 @@ const periodLabel = (p: string) => {
   const [y, m] = p.split('-').map(Number);
   return `${MONTH_NAMES[(m ?? 1) - 1]} ${y}`;
 };
+const METHOD_LABEL: Record<string, string> = { AUTO: 'Auto', MANUAL: 'Manual', MANUAL_SPLIT: 'Split' };
 
 /* ══════════════════════════════════════════════════════════
    INVESTOR FORM MODAL
@@ -472,7 +473,7 @@ function InvestorRow({ investor, index }: { investor: Investor; index: number })
                         <span className={`text-[11px] font-bold tabular-nums ${r.type === 'CONTRIBUTION' ? 'text-blue-700' : 'text-emerald-700'}`}>{pkr(r.amount)}</span>
                         <span className="text-[10px] text-slate-400">{r.date.slice(0, 10)}</span>
                         {r.period && <span className="text-[10px] text-slate-400">· {periodLabel(r.period)}</span>}
-                        {r.method && <span className="text-[10px] text-slate-400">· {r.method === 'AUTO' ? 'Auto' : 'Manual'}</span>}
+                        {r.method && <span className="text-[10px] text-slate-400">· {METHOD_LABEL[r.method] ?? r.method}</span>}
                         {r.note && <span className="text-[10px] text-slate-400 italic truncate">· {r.note}</span>}
                         {r.recordedByName && <span className="text-[10px] text-slate-300">— {r.recordedByName}</span>}
                       </div>
@@ -503,10 +504,159 @@ function InvestorRow({ investor, index }: { investor: Investor; index: number })
 }
 
 /* ══════════════════════════════════════════════════════════
+   DISTRIBUTE PROFIT — owner types ONE total profit figure for the
+   month (their own number, independent of system P&L) and the system
+   splits it across all active investors by their agreed %. Every row
+   stays editable before confirming, same "suggest then confirm" rule
+   as the single-investor Auto mode.
+══════════════════════════════════════════════════════════ */
+function DistributeProfitModal({ investors, onClose }: { investors: Investor[]; onClose: () => void }) {
+  const qc = useQueryClient();
+  const activeInvestors = investors.filter(i => i.isActive);
+  const [period, setPeriod]       = useState(currentPeriod());
+  const [totalProfit, setTotalProfit] = useState('');
+  const [paidOn, setPaidOn]       = useState(todayStr());
+  const [note, setNote]           = useState('');
+  const [included, setIncluded]   = useState<Record<string, boolean>>(
+    Object.fromEntries(activeInvestors.map(i => [i.id, true])),
+  );
+  const [amounts, setAmounts]     = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const totalProfitNum = Number(totalProfit) || 0;
+  const suggestedFor = (inv: Investor) => Math.round(totalProfitNum * inv.profitSharePercent / 100);
+  const amountFor = (inv: Investor) => amounts[inv.id] ?? String(suggestedFor(inv));
+
+  // Re-derive each row's amount whenever the total changes, unless the owner already typed a custom override for that row.
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const setAmount = (id: string, val: string) => { setAmounts(a => ({ ...a, [id]: val })); setTouched(t => ({ ...t, [id]: true })); };
+  const effectiveAmounts = Object.fromEntries(activeInvestors.map(inv => [
+    inv.id, touched[inv.id] ? (amounts[inv.id] ?? '') : String(suggestedFor(inv)),
+  ]));
+
+  const allocatedTotal = activeInvestors.reduce((s, inv) => included[inv.id] ? s + (Number(effectiveAmounts[inv.id]) || 0) : s, 0);
+  const selectedCount = activeInvestors.filter(inv => included[inv.id]).length;
+  const valid = totalProfitNum > 0 && period && paidOn && selectedCount > 0;
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    const targets = activeInvestors.filter(inv => included[inv.id]);
+    let ok = 0, skipped = 0, failed = 0;
+    for (const inv of targets) {
+      const amt = Number(effectiveAmounts[inv.id]);
+      if (!amt || amt <= 0) { skipped++; continue; }
+      try {
+        await investorsApi.recordPayout(inv.id, {
+          period, method: 'MANUAL_SPLIT',
+          calculatedShare: suggestedFor(inv),
+          amount: amt,
+          note: note.trim() || undefined,
+          paidOn,
+        });
+        ok++;
+      } catch (e) {
+        failed++;
+        toast.error(`${inv.name}: ${getErrorMessage(e)}`);
+      }
+    }
+    setSubmitting(false);
+    void qc.invalidateQueries({ queryKey: ['investors'] });
+    for (const inv of targets) void qc.invalidateQueries({ queryKey: ['investor-ledger', inv.id] });
+    if (ok > 0) toast.success(`${ok} investor${ok !== 1 ? 's' : ''} ko payout record ho gaya${skipped || failed ? ` (${skipped + failed} skip/fail)` : ''}`);
+    if (ok > 0) onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="border-b border-gray-100 flex items-center justify-between px-5 py-4 shrink-0">
+          <div>
+            <p className="text-gray-900 font-semibold text-sm">Monthly Profit Distribute Karo</p>
+            <p className="text-gray-500 text-xs mt-0.5">Total profit aap decide karen, har investor ka share % se nikal jayega</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition"><X size={16} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Month</label>
+              <input type="month" value={period} max={currentPeriod()} onChange={(e) => setPeriod(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 transition" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Date</label>
+              <input type="date" value={paidOn} max={todayStr()} onChange={(e) => setPaidOn(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 transition" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Is Mahine Ka Total Profit (PKR) *</label>
+            <input type="number" min={0} step="0.01" autoFocus value={totalProfit} onChange={(e) => setTotalProfit(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold tabular-nums focus:outline-none focus:border-blue-400 transition"
+              placeholder="e.g. 150000" />
+            <p className="text-[11px] text-slate-400 mt-1">Apna hisaab se jo bhi profit figure decide karein — system ke calculated net profit se alag ho sakta hai.</p>
+          </div>
+
+          {totalProfitNum > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Har Investor Ka Share</label>
+                <span className="text-[10px] text-slate-400">Amount edit kar sakte hain</span>
+              </div>
+              <div className="space-y-1.5">
+                {activeInvestors.map(inv => {
+                  const alreadyThisPeriod = inv.lastPayoutPeriod === period;
+                  return (
+                    <div key={inv.id} className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 ${included[inv.id] ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-50'}`}>
+                      <input type="checkbox" checked={included[inv.id] ?? false}
+                        onChange={(e) => setIncluded(s => ({ ...s, [inv.id]: e.target.checked }))}
+                        className="shrink-0 w-4 h-4 accent-blue-600" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{inv.name} <span className="text-slate-400 font-normal">· {inv.profitSharePercent}%</span></p>
+                        {alreadyThisPeriod && <p className="text-[10px] text-amber-500">{periodLabel(period)} mein pehle se payout record ho sakta hai</p>}
+                      </div>
+                      <input type="number" min={0} step="0.01" disabled={!included[inv.id]}
+                        value={amountFor(inv)}
+                        onChange={(e) => setAmount(inv.id, e.target.value)}
+                        className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-right tabular-nums focus:outline-none focus:border-blue-400 disabled:bg-slate-100 transition" />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
+                <span className="text-[11px] text-slate-500">Total Allocate Ho Raha</span>
+                <span className={`text-xs font-bold tabular-nums ${allocatedTotal > totalProfitNum ? 'text-red-600' : 'text-slate-800'}`}>{pkr(allocatedTotal)}</span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Note <span className="font-normal text-slate-400">(optional, sab ke liye)</span></label>
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Kuch aur…"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 transition" />
+          </div>
+        </div>
+
+        <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-slate-100 shrink-0">
+          <button onClick={onClose} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Wapas</button>
+          <button onClick={handleSubmit} disabled={!valid || submitting}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 text-sm font-bold disabled:opacity-40 transition flex items-center justify-center gap-1.5">
+            <HandCoins size={14} /> {submitting ? 'Record ho raha…' : `${selectedCount} Investor${selectedCount !== 1 ? 's' : ''} Ko Distribute`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════════════════ */
 export default function InvestorsPage() {
   const [showAdd, setShowAdd] = useState(false);
+  const [showDistribute, setShowDistribute] = useState(false);
 
   const { data: investors = [], isLoading } = useQuery<Investor[]>({
     queryKey: ['investors'],
@@ -524,7 +674,14 @@ export default function InvestorsPage() {
       <div className={`${shell.wide} !pb-0`}>
         <PageHeader title="Investors"
           subtitle={<>{activeInvestors.length} active investor{activeInvestors.length !== 1 ? 's' : ''}</>}
-          actions={<button onClick={() => setShowAdd(true)} className={btn.primary}><Plus size={14} /> Add investor</button>} />
+          actions={<>
+            {activeInvestors.length > 0 && (
+              <button onClick={() => setShowDistribute(true)} className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition">
+                <HandCoins size={14} /> Distribute profit
+              </button>
+            )}
+            <button onClick={() => setShowAdd(true)} className={btn.primary}><Plus size={14} /> Add investor</button>
+          </>} />
       </div>
 
       {/* ── KPI STRIP ── */}
@@ -588,6 +745,7 @@ export default function InvestorsPage() {
       </div>
 
       {showAdd && <InvestorModal onClose={() => setShowAdd(false)} />}
+      {showDistribute && <DistributeProfitModal investors={investors} onClose={() => setShowDistribute(false)} />}
     </div>
   );
 }

@@ -55,21 +55,21 @@ export declare const addContributionSchema: z.ZodObject<{
 }>;
 export declare const recordInvestorPayoutSchema: z.ZodObject<{
     period: z.ZodString;
-    method: z.ZodEnum<["MANUAL", "AUTO"]>;
+    method: z.ZodEnum<["MANUAL", "AUTO", "MANUAL_SPLIT"]>;
     calculatedShare: z.ZodOptional<z.ZodNumber>;
     amount: z.ZodNumber;
     note: z.ZodOptional<z.ZodString>;
     paidOn: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     amount: number;
-    method: "MANUAL" | "AUTO";
+    method: "MANUAL" | "AUTO" | "MANUAL_SPLIT";
     paidOn: string;
     period: string;
     note?: string | undefined;
     calculatedShare?: number | undefined;
 }, {
     amount: number;
-    method: "MANUAL" | "AUTO";
+    method: "MANUAL" | "AUTO" | "MANUAL_SPLIT";
     paidOn: string;
     period: string;
     note?: string | undefined;

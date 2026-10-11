@@ -66,7 +66,7 @@ export const investorsApi = {
     api.delete(`/investors/${id}/contributions/${contribId}`),
 
   recordPayout: (id: string, body: {
-    period: string; method: 'MANUAL' | 'AUTO'; calculatedShare?: number; amount: number; note?: string; paidOn: string;
+    period: string; method: 'MANUAL' | 'AUTO' | 'MANUAL_SPLIT'; calculatedShare?: number; amount: number; note?: string; paidOn: string;
   }) =>
     api.post<{ data: InvestorLedgerRow }>(`/investors/${id}/payouts`, body).then(unwrap<InvestorLedgerRow>),
 

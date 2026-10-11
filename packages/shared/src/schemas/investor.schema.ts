@@ -25,7 +25,7 @@ export const addContributionSchema = z.object({
 
 export const recordInvestorPayoutSchema = z.object({
   period:          z.string().regex(/^\d{4}-\d{2}$/, 'Period must be YYYY-MM'),
-  method:          z.enum(['MANUAL', 'AUTO']),
+  method:          z.enum(['MANUAL', 'AUTO', 'MANUAL_SPLIT']),
   calculatedShare: z.number().min(0).optional(),
   amount:          z.number().positive(),
   note:            z.string().max(300).optional(),
