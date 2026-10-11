@@ -28,6 +28,14 @@ const periodLabel = (p: string) => {
   return `${MONTH_NAMES[(m ?? 1) - 1]} ${y}`;
 };
 const METHOD_LABEL: Record<string, string> = { AUTO: 'Auto', MANUAL: 'Manual', MANUAL_SPLIT: 'Split' };
+// How far the amount actually being paid sits from the investor's agreed %, purely for
+// on-screen visibility — the owner can still save any amount, this never blocks saving.
+const deviationCls = (effectivePct: number, agreedPct: number) => {
+  const diff = Math.abs(effectivePct - agreedPct);
+  return diff < 1 ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
+    : diff < 5 ? 'text-amber-600 bg-amber-50 border-amber-100'
+    : 'text-red-600 bg-red-50 border-red-100';
+};
 
 /* ══════════════════════════════════════════════════════════
    INVESTOR FORM MODAL
@@ -190,10 +198,11 @@ function RecordPayoutModal({ investor, onClose }: { investor: Investor; onClose:
   const [calculatedShare, setCalculatedShare] = useState<number | null>(null);
 
   const [year, month] = period.split('-').map(Number);
+  // Fetched for both methods — Manual needs it too, so the owner can see the
+  // effective % they're actually paying, not just the agreed contractual %.
   const { data: pnl, isFetching: pnlLoading } = useQuery({
     queryKey: ['pnl-for-payout', year, month],
     queryFn:  () => reportsApi.getPnL(year!, month),
-    enabled:  method === 'AUTO',
     staleTime: 60_000,
   });
 
@@ -231,6 +240,11 @@ function RecordPayoutModal({ investor, onClose }: { investor: Investor; onClose:
   const amountNum = Number(amount);
   const valid = amountNum >= 0 && amountNum > 0 && period && paidOn;
   const alreadyPaidThisPeriod = investor.lastPayoutPeriod === period;
+
+  // Effective % actually being paid, vs. the investor's agreed contractual %.
+  // Purely informational — the owner can still save any amount they want.
+  const effectivePct = pnl && pnl.netProfit > 0 && amountNum > 0 ? (amountNum / pnl.netProfit) * 100 : null;
+  const effectiveCls = effectivePct !== null ? deviationCls(effectivePct, investor.profitSharePercent) : '';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
@@ -293,6 +307,15 @@ function RecordPayoutModal({ investor, onClose }: { investor: Investor; onClose:
             <input type="number" min={0.01} step="0.01"
               value={amount} onChange={(e) => setAmount(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-bold tabular-nums focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition" />
+            {effectivePct !== null && (
+              <div className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 border text-[11px] mt-1.5 ${effectiveCls}`}>
+                <span>Ye amount {periodLabel(period)} net profit ka <b>{effectivePct.toFixed(1)}%</b> ban raha hai</span>
+                <span className="font-bold">Agreed: {investor.profitSharePercent}%</span>
+              </div>
+            )}
+            {pnl && pnl.netProfit <= 0 && amountNum > 0 && (
+              <p className="text-[11px] text-slate-400 mt-1.5">{periodLabel(period)} ka net profit zero/negative hai — % comparison yahan maqsad nahi rakhta.</p>
+            )}
           </div>
 
           <div>
@@ -608,19 +631,28 @@ function DistributeProfitModal({ investors, onClose }: { investors: Investor[]; 
               <div className="space-y-1.5">
                 {activeInvestors.map(inv => {
                   const alreadyThisPeriod = inv.lastPayoutPeriod === period;
+                  const rowAmount = Number(effectiveAmounts[inv.id]) || 0;
+                  const rowEffectivePct = included[inv.id] && rowAmount > 0 ? (rowAmount / totalProfitNum) * 100 : null;
                   return (
-                    <div key={inv.id} className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 ${included[inv.id] ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-50'}`}>
-                      <input type="checkbox" checked={included[inv.id] ?? false}
-                        onChange={(e) => setIncluded(s => ({ ...s, [inv.id]: e.target.checked }))}
-                        className="shrink-0 w-4 h-4 accent-blue-600" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-800 truncate">{inv.name} <span className="text-slate-400 font-normal">· {inv.profitSharePercent}%</span></p>
-                        {alreadyThisPeriod && <p className="text-[10px] text-amber-500">{periodLabel(period)} mein pehle se payout record ho sakta hai</p>}
+                    <div key={inv.id} className={`rounded-xl border px-2.5 py-2 ${included[inv.id] ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-50'}`}>
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" checked={included[inv.id] ?? false}
+                          onChange={(e) => setIncluded(s => ({ ...s, [inv.id]: e.target.checked }))}
+                          className="shrink-0 w-4 h-4 accent-blue-600" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 truncate">{inv.name} <span className="text-slate-400 font-normal">· agreed {inv.profitSharePercent}%</span></p>
+                          {alreadyThisPeriod && <p className="text-[10px] text-amber-500">{periodLabel(period)} mein pehle se payout record ho sakta hai</p>}
+                        </div>
+                        <input type="number" min={0} step="0.01" disabled={!included[inv.id]}
+                          value={amountFor(inv)}
+                          onChange={(e) => setAmount(inv.id, e.target.value)}
+                          className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-right tabular-nums focus:outline-none focus:border-blue-400 disabled:bg-slate-100 transition" />
                       </div>
-                      <input type="number" min={0} step="0.01" disabled={!included[inv.id]}
-                        value={amountFor(inv)}
-                        onChange={(e) => setAmount(inv.id, e.target.value)}
-                        className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-right tabular-nums focus:outline-none focus:border-blue-400 disabled:bg-slate-100 transition" />
+                      {rowEffectivePct !== null && (
+                        <div className={`flex items-center justify-between rounded-lg px-2 py-1 border text-[10px] mt-1.5 ml-6 ${deviationCls(rowEffectivePct, inv.profitSharePercent)}`}>
+                          <span>Ye amount total profit ka <b>{rowEffectivePct.toFixed(1)}%</b> ban raha hai</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
