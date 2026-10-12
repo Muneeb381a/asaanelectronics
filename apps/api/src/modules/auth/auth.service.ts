@@ -16,6 +16,14 @@ const MAX_OTP_ATTEMPTS = 3;
 // hashed its token (see hashToken() in utils/hash.ts) keeps working.
 const tokenMatches = (t: string) => or(eq(refreshTokens.token, hashToken(t)), eq(refreshTokens.token, t))!;
 
+// Email lookups must be case/whitespace-insensitive — mobile keyboards
+// routinely autocapitalize the first letter of a typed email even on
+// type="email" fields, and users paste trailing spaces from password
+// managers. Postgres text equality is case-sensitive, so a raw eq() here
+// silently fails "same credentials" logins depending on how the device
+// happened to capitalize the input.
+const emailMatches = (email: string) => sql`lower(${users.email}) = lower(${email.trim()})`;
+
 type DeviceInfo = { ip?: string; userAgent?: string };
 
 function parseDevice(ua: string): { deviceName: string; deviceType: string } {
@@ -125,16 +133,16 @@ export class AuthService {
   }
 
   async register(body: { name: string; email: string; password: string }, device?: DeviceInfo) {
-    const existing = await db.query.users.findFirst({ where: eq(users.email, body.email) });
+    const existing = await db.query.users.findFirst({ where: emailMatches(body.email) });
     if (existing) throw new AppError('Email already registered', 409);
     const password = await hashPassword(body.password);
-    const [user] = await db.insert(users).values({ ...body, password }).returning();
+    const [user] = await db.insert(users).values({ ...body, email: body.email.trim().toLowerCase(), password }).returning();
     if (!user) throw new AppError('Registration failed', 500);
     return issueTokens(user, device);
   }
 
   async login(body: { email: string; password: string }, device?: DeviceInfo) {
-    const user = await db.query.users.findFirst({ where: eq(users.email, body.email) });
+    const user = await db.query.users.findFirst({ where: emailMatches(body.email) });
     if (!user || !(await comparePassword(body.password, user.password))) {
       throw new AppError('Invalid credentials', 401);
     }
@@ -205,13 +213,13 @@ export class AuthService {
   }
 
   async forgotPassword(body: { email: string }) {
-    const user = await db.query.users.findFirst({ where: eq(users.email, body.email) });
+    const user = await db.query.users.findFirst({ where: emailMatches(body.email) });
     if (!user) return;
     await createAndSendOtp(user, 'PASSWORD_RESET');
   }
 
   async resetPassword(body: { email: string; code: string; newPassword: string }) {
-    const user = await db.query.users.findFirst({ where: eq(users.email, body.email) });
+    const user = await db.query.users.findFirst({ where: emailMatches(body.email) });
     if (!user) throw new AppError('Invalid request', 400);
 
     const otp = await db.query.otps.findFirst({
