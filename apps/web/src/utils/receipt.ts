@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 import { fmtDate, fmtDateTime } from './dateFormat.ts';
 import { getPrintPalette, type PrintPalette } from './printTheme.ts';
 import { getDocumentSkin, skinVars, headerColors, type DocumentSkin } from './printSkin.ts';
+import { shareHtmlAsImage } from './shareReceipt.ts';
 
 export interface InstallmentReceiptData {
   shopName: string;
@@ -378,7 +379,7 @@ export interface SinglePaymentReceiptData {
   paidInstallments?: number;
 }
 
-export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
+async function buildSinglePaymentReceiptHtml(d: SinglePaymentReceiptData): Promise<string> {
   const palette    = getPrintPalette(d.shopTheme);
   const skin       = getDocumentSkin(d.shopReceiptStyle);
   const { hdrBg, hdrFg, hdrFgMuted } = headerColors(skin, palette);
@@ -556,11 +557,20 @@ ${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` 
 </div>
 <!-- Cut guide — visible on screen, prints below receipt on A4 -->
 <div class="cut"><div class="cut-line"></div><span>✂ cut here</span><div class="cut-line"></div></div>
-<script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
 
-  openPrint(html, 820, 640);
+  return html;
+}
+
+export async function openSinglePaymentReceipt(d: SinglePaymentReceiptData) {
+  const html = await buildSinglePaymentReceiptHtml(d);
+  openPrint(html.replace('</body>', '<script>window.onload=()=>window.print();</script></body>'), 820, 640);
+}
+
+export async function shareSinglePaymentReceipt(d: SinglePaymentReceiptData) {
+  const html = await buildSinglePaymentReceiptHtml(d);
+  await shareHtmlAsImage(html, `receipt-${d.receiptNumber ?? d.invoiceNumber ?? 'payment'}.png`);
 }
 
 // A4 CSS for full-page reports
@@ -655,7 +665,7 @@ export interface CustomerHistoryReportData {
   printedAt: string;
 }
 
-export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
+function buildCustomerHistoryReportHtml(d: CustomerHistoryReportData): string {
   const palette = getPrintPalette(d.shopTheme);
   const skin = getDocumentSkin(d.shopReceiptStyle);
   const insts = d.installments;
@@ -782,11 +792,20 @@ ${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` 
     <span>Confidential · ${printedDate}</span>
   </div>
 </div>
-<script>window.onload = () => window.print();</script>
 </body>
 </html>`;
 
-  openPrint(html, 1000, 900);
+  return html;
+}
+
+export function openCustomerHistoryReport(d: CustomerHistoryReportData) {
+  const html = buildCustomerHistoryReportHtml(d);
+  openPrint(html.replace('</body>', '<script>window.onload=()=>window.print();</script></body>'), 1000, 900);
+}
+
+export async function shareCustomerHistoryReport(d: CustomerHistoryReportData) {
+  const html = buildCustomerHistoryReportHtml(d);
+  await shareHtmlAsImage(html, `customer-history-${d.customer.name.replace(/\s+/g, '-')}.png`);
 }
 
 export interface PaymentHistoryReceiptData {
@@ -825,7 +844,7 @@ export interface PaymentHistoryReceiptData {
 // openSinglePaymentReceipt — deliberately excludes any period that hasn't
 // been collected yet, so there's nothing in it to confuse a customer into
 // thinking they already owe less (or more) than they do.
-export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
+function buildPaymentHistoryReceiptHtml(d: PaymentHistoryReceiptData): string {
   const palette  = getPrintPalette(d.shopTheme);
   const skin     = getDocumentSkin(d.shopReceiptStyle);
   const isDaily  = d.paymentFrequency === 'daily';
@@ -950,11 +969,20 @@ ${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` 
     <span>Confidential · ${printedDate}</span>
   </div>
 </div>
-<script>window.onload = () => window.print();</script>
 </body>
 </html>`;
 
-  openPrint(html, 1000, 900);
+  return html;
+}
+
+export function openPaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
+  const html = buildPaymentHistoryReceiptHtml(d);
+  openPrint(html.replace('</body>', '<script>window.onload=()=>window.print();</script></body>'), 1000, 900);
+}
+
+export async function sharePaymentHistoryReceipt(d: PaymentHistoryReceiptData) {
+  const html = buildPaymentHistoryReceiptHtml(d);
+  await shareHtmlAsImage(html, `payment-history-${d.customerName.replace(/\s+/g, '-')}.png`);
 }
 
 export function cashSaleWhatsappUrl(d: CashSaleReceiptData): string {

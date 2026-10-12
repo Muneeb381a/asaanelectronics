@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Search, CheckCircle2, X, Trash2, Pencil,
   Printer, MessageCircle, AlertTriangle, Wallet, CreditCard, Smartphone,
-  TrendingUp, Package, ChevronLeft, ChevronRight, Truck,
+  TrendingUp, Package, ChevronLeft, ChevronRight, Truck, Share2, Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
@@ -17,7 +17,7 @@ import { statsApi } from '../api/stats.api.ts';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { useAuthStore } from '../store/auth.store.ts';
-import { openCashSaleBill } from '../utils/bill.ts';
+import { openCashSaleBill, shareCashSaleBill } from '../utils/bill.ts';
 import { cashSaleWhatsappUrl } from '../utils/receipt.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import { RowSkeleton } from '../components/ui/Skeleton.tsx';
@@ -101,6 +101,25 @@ export default function CashSalesPage() {
   const [deliveringSale, setDeliveringSale] = useState<CashSale | null>(null);
 
   const { data: seller } = useQuery({ queryKey: ['seller-me'], queryFn: sellersApi.getMe, staleTime: 10 * 60_000, retry: false });
+
+  const cashSaleBillPayload = (sale: Pick<CashSale, 'customerName' | 'customerPhone' | 'productName' | 'quantity' | 'amount' | 'method' | 'imeiNumber' | 'note' | 'createdAt' | 'id'>) => ({
+    shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address, logoUrl: seller?.logoUrl ?? null, theme: seller?.settings?.theme ?? null, receiptStyle: seller?.settings?.receiptStyle ?? null },
+    customer: { name: sale.customerName, phone: sale.customerPhone },
+    product: sale.productName, quantity: sale.quantity, amount: sale.amount,
+    method: sale.method, imeiNumber: sale.imeiNumber, note: sale.note,
+    soldAt: sale.createdAt, saleId: sale.id,
+  });
+  const [sharingCashSale, setSharingCashSale] = useState<string | null>(null);
+  const handleShareCashSale = async (sale: CashSale) => {
+    setSharingCashSale(sale.id);
+    try {
+      await shareCashSaleBill(cashSaleBillPayload(sale));
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharingCashSale(null);
+    }
+  };
   const { data: stats }  = useQuery({ queryKey: ['stats'],     queryFn: statsApi.get,     staleTime: 5 * 60_000  });
 
   const { data: salesData, isLoading } = useQuery({
@@ -394,15 +413,14 @@ export default function CashSalesPage() {
                     {/* Actions */}
                     <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition">
                       <button title="Print"
-                        onClick={() => void openCashSaleBill({
-                          shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address, logoUrl: seller?.logoUrl ?? null, theme: seller?.settings?.theme ?? null, receiptStyle: seller?.settings?.receiptStyle ?? null },
-                          customer: { name: s.customerName, phone: s.customerPhone },
-                          product: s.productName, quantity: s.quantity, amount: s.amount,
-                          method: s.method, imeiNumber: s.imeiNumber, note: s.note,
-                          soldAt: s.createdAt, saleId: s.id,
-                        })}
+                        onClick={() => void openCashSaleBill(cashSaleBillPayload(s))}
                         className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">
                         <Printer size={14}/>
+                      </button>
+                      <button title="Share as image (color, WhatsApp)" disabled={sharingCashSale === s.id}
+                        onClick={() => void handleShareCashSale(s)}
+                        className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition disabled:opacity-50">
+                        {sharingCashSale === s.id ? <Loader2 size={14} className="animate-spin"/> : <Share2 size={14}/>}
                       </button>
                       {(s.customerPhone || s.customerName) && (
                         <a title="WhatsApp"
@@ -486,15 +504,13 @@ export default function CashSalesPage() {
                   {lastSale.customerName && <p className="text-xs text-slate-400 mt-0.5">{lastSale.customerName}</p>}
                 </div>
                 <div className="flex gap-3 w-full">
-                  <button onClick={() => void openCashSaleBill({
-                      shop: { shopName: seller?.shopName ?? '', phone: seller?.phone ?? '', address: seller?.address, logoUrl: seller?.logoUrl ?? null, theme: seller?.settings?.theme ?? null, receiptStyle: seller?.settings?.receiptStyle ?? null },
-                      customer: { name: lastSale.customerName, phone: lastSale.customerPhone },
-                      product: lastSale.productName, quantity: lastSale.quantity, amount: lastSale.amount,
-                      method: lastSale.method, imeiNumber: lastSale.imeiNumber, note: lastSale.note,
-                      soldAt: lastSale.createdAt, saleId: lastSale.id,
-                    })}
+                  <button onClick={() => void openCashSaleBill(cashSaleBillPayload(lastSale))}
                     className={`flex-1 ${btn.secondary}`}>
                     <Printer size={14}/> Print
+                  </button>
+                  <button disabled={sharingCashSale === lastSale.id} onClick={() => void handleShareCashSale(lastSale)}
+                    className={`flex-1 ${btn.secondary} disabled:opacity-50`}>
+                    {sharingCashSale === lastSale.id ? <Loader2 size={14} className="animate-spin"/> : <Share2 size={14}/>} Share
                   </button>
                   <a href={cashSaleWhatsappUrl({
                       shopName: seller?.shopName ?? 'Receipt', shopPhone: seller?.phone,

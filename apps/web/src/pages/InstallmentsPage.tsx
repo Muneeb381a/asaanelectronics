@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/auth.store.ts';
-import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck, AlertOctagon, AlertTriangle, Users, Truck } from 'lucide-react';
+import { FileText, MessageCircle, Download, MoreVertical, CreditCard, Loader2, X, Upload, ChevronUp, ChevronDown, ArrowUpDown, Printer, Layers, Link2, Copy, CheckCheck, AlertOctagon, AlertTriangle, Users, Truck, Share2 } from 'lucide-react';
 import { staffApi } from '../api/staff.api.ts';
 import ImportInstallmentsModal from '../components/ImportInstallmentsModal.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
@@ -19,11 +19,11 @@ import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi, type PaymentAccount, type Seller } from '../api/sellers.api.ts';
 import { paymentsApi, type PaymentMethod } from '../api/payments.api.ts';
 import { repossessionsApi } from '../api/repossessions.api.ts';
-import { openBill, openLegalNotice } from '../utils/bill.ts';
+import { openBill, openLegalNotice, shareBill, shareLegalNotice } from '../utils/bill.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate } from '../utils/dateFormat.ts';
 import { openWhatsApp, reminderMessage } from '../utils/whatsapp.ts';
-import { openPaymentHistoryReceipt } from '../utils/receipt.ts';
+import { openPaymentHistoryReceipt, sharePaymentHistoryReceipt } from '../utils/receipt.ts';
 import { whatsappTemplatesApi, applyTemplate } from '../api/whatsappTemplates.api.ts';
 import CreateDeliveryModal from '../components/CreateDeliveryModal.tsx';
 
@@ -619,34 +619,44 @@ function ScheduleModal({ inst, shop, onClose }: { inst: Installment; shop?: Sell
 
   // What actually gets printed/sent to the customer — real payments only,
   // never a projected future period (see openPaymentHistoryReceipt).
-  const printSchedule = () => {
-    openPaymentHistoryReceipt({
-      shopName: shop?.shopName ?? 'Receipt',
-      shopPhone: shop?.phone,
-      shopLogoUrl: shop?.logoUrl,
-      shopTheme: shop?.settings?.theme,
-      shopReceiptStyle: shop?.settings?.receiptStyle,
-      customerName: inst.customerName,
-      customerPhone: inst.customerPhone,
-      productName: inst.productName,
-      invoiceNumber: inst.invoiceNumber,
-      imeiNumber: inst.imeiNumber,
-      totalAmount: Number(inst.totalAmount),
-      downPayment: Number(inst.downPayment),
-      monthly,
-      remaining,
-      months: inst.months,
-      paymentFrequency: inst.paymentFrequency,
-      startDate: inst.startDate,
-      status: inst.status,
-      payments: payments.map((p) => ({
-        amount: Number(p.amount),
-        paidOn: p.paidOn,
-        method: p.method,
-        isDownPayment: p.isDownPayment,
-        receiptNumber: p.receiptNumber,
-      })),
-    });
+  const paymentHistoryPayload = () => ({
+    shopName: shop?.shopName ?? 'Receipt',
+    shopPhone: shop?.phone,
+    shopLogoUrl: shop?.logoUrl,
+    shopTheme: shop?.settings?.theme,
+    shopReceiptStyle: shop?.settings?.receiptStyle,
+    customerName: inst.customerName,
+    customerPhone: inst.customerPhone,
+    productName: inst.productName,
+    invoiceNumber: inst.invoiceNumber,
+    imeiNumber: inst.imeiNumber,
+    totalAmount: Number(inst.totalAmount),
+    downPayment: Number(inst.downPayment),
+    monthly,
+    remaining,
+    months: inst.months,
+    paymentFrequency: inst.paymentFrequency,
+    startDate: inst.startDate,
+    status: inst.status,
+    payments: payments.map((p) => ({
+      amount: Number(p.amount),
+      paidOn: p.paidOn,
+      method: p.method,
+      isDownPayment: p.isDownPayment,
+      receiptNumber: p.receiptNumber,
+    })),
+  });
+  const printSchedule = () => openPaymentHistoryReceipt(paymentHistoryPayload());
+  const [sharingSchedule, setSharingSchedule] = useState(false);
+  const shareSchedule = async () => {
+    setSharingSchedule(true);
+    try {
+      await sharePaymentHistoryReceipt(paymentHistoryPayload());
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharingSchedule(false);
+    }
   };
 
   return (
@@ -667,6 +677,14 @@ function ScheduleModal({ inst, shop, onClose }: { inst: Installment; shop?: Sell
               title="Print or save as PDF"
             >
               <Printer size={13} /> Print
+            </button>
+            <button
+              onClick={() => void shareSchedule()}
+              disabled={sharingSchedule}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50 transition font-medium disabled:opacity-50"
+              title="Share as image (color, WhatsApp)"
+            >
+              {sharingSchedule ? <Loader2 size={13} className="animate-spin" /> : <Share2 size={13} />}
             </button>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
           </div>
@@ -1532,6 +1550,102 @@ export default function InstallmentsPage() {
   const { data: shopData } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe });
   const { data: paymentAccountsData = [] } = useQuery<PaymentAccount[]>({ queryKey: ['payment-accounts'], queryFn: sellersApi.listPaymentAccounts, staleTime: 10 * 60_000 });
 
+  const billPayload = (inst: Installment) => shopData && ({
+    shop: { ...shopData, theme: shopData.settings?.theme, receiptStyle: shopData.settings?.receiptStyle },
+    customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
+    product: inst.productName,
+    totalAmount: inst.totalAmount, downPayment: inst.downPayment,
+    monthly: inst.monthly, months: inst.months, remaining: inst.remaining,
+    status: inst.status, startDate: inst.startDate, installmentId: inst.id,
+    invoiceNumber: inst.invoiceNumber, imeiNumber: inst.imeiNumber,
+    cashPrice: inst.cashPrice, profitMarkup: inst.profitMarkup,
+    murabahaMode: shopData.murabahaMode, paymentFrequency: inst.paymentFrequency,
+    paymentAccounts: paymentAccountsData,
+    chassisNumber: inst.chassisNumber, engineNumber: inst.engineNumber,
+    registrationNumber: inst.registrationNumber,
+  });
+  const [sharingBillId, setSharingBillId] = useState<string | null>(null);
+  const handleShareBill = async (inst: Installment) => {
+    const payload = billPayload(inst);
+    if (!payload) return;
+    setSharingBillId(inst.id);
+    try {
+      await shareBill(payload);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharingBillId(null);
+    }
+  };
+
+  const buildPaymentsReceivedPayload = async (inst: Installment) => {
+    const pays = await paymentsApi.list(inst.id);
+    return {
+      shopName: shopData?.shopName ?? 'Receipt',
+      shopPhone: shopData?.phone,
+      shopLogoUrl: shopData?.logoUrl,
+      shopTheme: shopData?.settings?.theme,
+      shopReceiptStyle: shopData?.settings?.receiptStyle,
+      customerName: inst.customerName,
+      customerPhone: inst.customerPhone,
+      productName: inst.productName,
+      invoiceNumber: inst.invoiceNumber,
+      imeiNumber: inst.imeiNumber,
+      totalAmount: Number(inst.totalAmount),
+      downPayment: Number(inst.downPayment),
+      monthly: Number(inst.monthly),
+      remaining: Number(inst.remaining),
+      months: inst.months,
+      paymentFrequency: inst.paymentFrequency,
+      startDate: inst.startDate,
+      status: inst.status,
+      payments: pays.map((p) => ({
+        amount: Number(p.amount),
+        paidOn: p.paidOn,
+        method: p.method,
+        isDownPayment: p.isDownPayment,
+        receiptNumber: p.receiptNumber,
+      })),
+    };
+  };
+  const [sharingPaymentsId, setSharingPaymentsId] = useState<string | null>(null);
+  const handleSharePaymentsReceived = async (inst: Installment) => {
+    setSharingPaymentsId(inst.id);
+    try {
+      await sharePaymentHistoryReceipt(await buildPaymentsReceivedPayload(inst));
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharingPaymentsId(null);
+    }
+  };
+
+  const legalNoticePayload = (inst: Installment, daysLate: number) => shopData && ({
+    shop: { shopName: shopData.shopName, phone: shopData.phone, address: shopData.address, logoUrl: shopData.logoUrl, theme: shopData.settings?.theme },
+    customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
+    product: inst.productName,
+    imeiNumber: inst.imeiNumber,
+    totalAmount: inst.totalAmount,
+    downPayment: inst.downPayment,
+    remaining: inst.remaining,
+    invoiceNumber: inst.invoiceNumber,
+    startDate: inst.startDate,
+    daysOverdue: daysLate,
+  });
+  const [sharingLegalId, setSharingLegalId] = useState<string | null>(null);
+  const handleShareLegalNotice = async (inst: Installment, daysLate: number) => {
+    const payload = legalNoticePayload(inst, daysLate);
+    if (!payload) return;
+    setSharingLegalId(inst.id);
+    try {
+      await shareLegalNotice(payload);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharingLegalId(null);
+    }
+  };
+
   // Staff must search first — don't load all installments by default
   const staffMustSearch = !isOwner && committedSearch.trim().length < 2;
 
@@ -1927,22 +2041,15 @@ export default function InstallmentsPage() {
                         </button>
                       )}
                       <button
-                        onClick={() => shopData && void openBill({
-                          shop: { ...shopData, theme: shopData.settings?.theme, receiptStyle: shopData.settings?.receiptStyle },
-                          customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
-                          product: inst.productName,
-                          totalAmount: inst.totalAmount, downPayment: inst.downPayment,
-                          monthly: inst.monthly, months: inst.months, remaining: inst.remaining,
-                          status: inst.status, startDate: inst.startDate, installmentId: inst.id,
-                          invoiceNumber: inst.invoiceNumber, imeiNumber: inst.imeiNumber,
-                          cashPrice: inst.cashPrice, profitMarkup: inst.profitMarkup,
-                          murabahaMode: shopData.murabahaMode, paymentFrequency: inst.paymentFrequency,
-                          paymentAccounts: paymentAccountsData,
-                          chassisNumber: inst.chassisNumber, engineNumber: inst.engineNumber,
-                          registrationNumber: inst.registrationNumber,
-                        })}
+                        onClick={() => { const p = billPayload(inst); if (p) void openBill(p); }}
                         className="p-2 text-gray-400 hover:text-indigo-600 transition rounded-xl border border-gray-100">
                         <FileText size={15} />
+                      </button>
+                      <button
+                        onClick={() => void handleShareBill(inst)}
+                        disabled={sharingBillId === inst.id}
+                        className="p-2 text-gray-400 hover:text-violet-600 transition rounded-xl border border-gray-100 disabled:opacity-50">
+                        {sharingBillId === inst.id ? <Loader2 size={15} className="animate-spin" /> : <Share2 size={15} />}
                       </button>
                       {inst.status === 'ACTIVE' && shopData && (
                         <button
@@ -2076,23 +2183,17 @@ export default function InstallmentsPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => shopData && void openBill({
-                            shop: { ...shopData, theme: shopData.settings?.theme, receiptStyle: shopData.settings?.receiptStyle },
-                            customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
-                            product: inst.productName,
-                            totalAmount: inst.totalAmount, downPayment: inst.downPayment,
-                            monthly: inst.monthly, months: inst.months, remaining: inst.remaining,
-                            status: inst.status, startDate: inst.startDate, installmentId: inst.id,
-                            invoiceNumber: inst.invoiceNumber, imeiNumber: inst.imeiNumber,
-                            cashPrice: inst.cashPrice, profitMarkup: inst.profitMarkup,
-                            murabahaMode: shopData.murabahaMode, paymentFrequency: inst.paymentFrequency,
-                            paymentAccounts: paymentAccountsData,
-                            chassisNumber: inst.chassisNumber, engineNumber: inst.engineNumber,
-                            registrationNumber: inst.registrationNumber,
-                          })}
+                          onClick={() => { const p = billPayload(inst); if (p) void openBill(p); }}
                           title="Bill"
                           className="p-2 text-gray-400 hover:text-indigo-600 transition rounded">
                           <FileText size={14} />
+                        </button>
+                        <button
+                          onClick={() => void handleShareBill(inst)}
+                          disabled={sharingBillId === inst.id}
+                          title="Share as image (color, WhatsApp)"
+                          className="p-2 text-gray-400 hover:text-violet-600 transition rounded disabled:opacity-50">
+                          {sharingBillId === inst.id ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
                         </button>
                         {inst.status === 'ACTIVE' && shopData && (
                           <button
@@ -2238,40 +2339,17 @@ export default function InstallmentsPage() {
               </button>
             )}
             <button
-              onClick={async () => {
-                close();
-                const pays = await paymentsApi.list(inst.id);
-                openPaymentHistoryReceipt({
-                  shopName: shopData?.shopName ?? 'Receipt',
-                  shopPhone: shopData?.phone,
-                  shopLogoUrl: shopData?.logoUrl,
-                  shopTheme: shopData?.settings?.theme,
-                  shopReceiptStyle: shopData?.settings?.receiptStyle,
-                  customerName: inst.customerName,
-                  customerPhone: inst.customerPhone,
-                  productName: inst.productName,
-                  invoiceNumber: inst.invoiceNumber,
-                  imeiNumber: inst.imeiNumber,
-                  totalAmount: Number(inst.totalAmount),
-                  downPayment: Number(inst.downPayment),
-                  monthly: Number(inst.monthly),
-                  remaining: Number(inst.remaining),
-                  months: inst.months,
-                  paymentFrequency: inst.paymentFrequency,
-                  startDate: inst.startDate,
-                  status: inst.status,
-                  payments: pays.map((p) => ({
-                    amount: Number(p.amount),
-                    paidOn: p.paidOn,
-                    method: p.method,
-                    isDownPayment: p.isDownPayment,
-                    receiptNumber: p.receiptNumber,
-                  })),
-                });
-              }}
+              onClick={async () => { close(); openPaymentHistoryReceipt(await buildPaymentsReceivedPayload(inst)); }}
               className="w-full text-left px-3 py-2 text-xs text-blue-700 hover:bg-blue-50 transition font-medium flex items-center gap-1.5"
             >
               <Printer size={11} className="shrink-0" /> Payments Received
+            </button>
+            <button
+              onClick={() => { close(); void handleSharePaymentsReceived(inst); }}
+              disabled={sharingPaymentsId === inst.id}
+              className="w-full text-left px-3 py-2 text-xs text-violet-700 hover:bg-violet-50 transition font-medium flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {sharingPaymentsId === inst.id ? <Loader2 size={11} className="shrink-0 animate-spin" /> : <Share2 size={11} className="shrink-0" />} Share Payments (image)
             </button>
             {inst.status !== 'ACTIVE' && inst.status !== 'PENDING' && (
               <button onClick={() => { close(); setPayInstTab('history'); setPayInst(inst); }}
@@ -2321,27 +2399,21 @@ export default function InstallmentsPage() {
               const daysLate = dueDate ? Math.max(0, Math.floor((_now.getTime() - dueDate.getTime()) / 86_400_000)) : (inst.status === 'DEFAULTED' ? 30 : 0);
               if (daysLate < 30 && inst.status !== 'DEFAULTED') return null;
               return (
-                <button
-                  onClick={() => {
-                    close();
-                    if (!shopData) return;
-                    openLegalNotice({
-                      shop: { shopName: shopData.shopName, phone: shopData.phone, address: shopData.address, logoUrl: shopData.logoUrl, theme: shopData.settings?.theme },
-                      customer: { name: inst.customerName, phone: inst.customerPhone, area: inst.customerArea },
-                      product: inst.productName,
-                      imeiNumber: inst.imeiNumber,
-                      totalAmount: inst.totalAmount,
-                      downPayment: inst.downPayment,
-                      remaining: inst.remaining,
-                      invoiceNumber: inst.invoiceNumber,
-                      startDate: inst.startDate,
-                      daysOverdue: daysLate,
-                    });
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition font-medium"
-                >
-                  Legal Notice (Print)
-                </button>
+                <>
+                  <button
+                    onClick={() => { close(); const p = legalNoticePayload(inst, daysLate); if (p) openLegalNotice(p); }}
+                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition font-medium"
+                  >
+                    Legal Notice (Print)
+                  </button>
+                  <button
+                    onClick={() => { close(); void handleShareLegalNotice(inst, daysLate); }}
+                    disabled={sharingLegalId === inst.id}
+                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition font-medium flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {sharingLegalId === inst.id ? <Loader2 size={11} className="shrink-0 animate-spin" /> : <Share2 size={11} className="shrink-0" />} Legal Notice (Share image)
+                  </button>
+                </>
               );
             })()}
             {inst.status === 'ACTIVE' && isOwner && (

@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck, Receipt, ArrowRightLeft, AlertTriangle, Users, FileText, Fingerprint } from 'lucide-react';
+import { Loader2, Upload, X, CheckCircle2, Printer, MessageCircle, Pencil, BadgeCheck, Receipt, ArrowRightLeft, AlertTriangle, Users, FileText, Fingerprint, Share2 } from 'lucide-react';
 
 const VEHICLE_CATEGORIES = ['Bike', 'Rickshaw', 'Loader Rickshaw', 'Electric Bike', 'Electric Rickshaw'];
 import { useAuthStore } from '../../store/auth.store.ts';
@@ -16,6 +16,7 @@ import { getErrorMessage } from '../../utils/error.ts';
 import {
   installmentWhatsappUrl,
   openSinglePaymentReceipt,
+  shareSinglePaymentReceipt,
   type InstallmentReceiptData,
   type SinglePaymentReceiptData,
 } from '../../utils/receipt.ts';
@@ -112,6 +113,28 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
   const [showTransfer, setShowTransfer] = useState(false);
   const [receiptData, setReceiptData] = useState<InstallmentReceiptData | null>(null);
   const [singlePayload, setSinglePayload] = useState<SinglePaymentReceiptData | null>(null);
+  const [sharingReceipt, setSharingReceipt] = useState(false);
+  const handleShareSingleReceipt = async (payload: SinglePaymentReceiptData) => {
+    setSharingReceipt(true);
+    try {
+      await shareSinglePaymentReceipt(payload);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharingReceipt(false);
+    }
+  };
+  const [sharingHistoryPaymentId, setSharingHistoryPaymentId] = useState<string | null>(null);
+  const handleShareHistoryPayment = async (payload: SinglePaymentReceiptData, id: string) => {
+    setSharingHistoryPaymentId(id);
+    try {
+      await shareSinglePaymentReceipt(payload);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharingHistoryPaymentId(null);
+    }
+  };
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Edit payment state
@@ -593,6 +616,13 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
               >
                 <Printer size={15} /> Print
               </button>
+              <button
+                onClick={() => { if (singlePayload) void handleShareSingleReceipt(singlePayload); }}
+                disabled={sharingReceipt || !singlePayload}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                {sharingReceipt ? <Loader2 size={15} className="animate-spin" /> : <Share2 size={15} />} Share
+              </button>
               <a
                 href={installmentWhatsappUrl(receiptData)}
                 target="_blank"
@@ -1011,6 +1041,39 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
                             title="Print receipt"
                             className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded transition">
                             <Receipt size={12} />
+                          </button>
+                          <button
+                            onClick={() => void handleShareHistoryPayment({
+                              shopName:          seller?.shopName ?? 'Receipt',
+                              shopPhone:         seller?.phone,
+                              shopLogoUrl:       seller?.logoUrl ?? null,
+                              shopTheme:         seller?.settings?.theme ?? null,
+                              shopReceiptStyle:  seller?.settings?.receiptStyle ?? null,
+                              customerName:      freshInst.customerName,
+                              customerPhone:     freshInst.customerPhone,
+                              customerPhotoUrl:  freshInst.customerPhotoUrl,
+                              productName:       freshInst.productName,
+                              invoiceNumber:     freshInst.invoiceNumber,
+                              receiptNumber:     p.receiptNumber,
+                              amountPaid:        Number(p.amount),
+                              method:            p.method,
+                              paidOn:            p.paidOn,
+                              note:              p.note,
+                              collectorName:     p.collectorName,
+                              periodNum:         p.periodNum,
+                              paymentFrequency:  freshInst.paymentFrequency,
+                              periodDueDate:     p.periodDue ?? null,
+                              daysLate:          p.late,
+                              monthly:           Number(freshInst.monthly),
+                              totalAmount:       Number(freshInst.totalAmount),
+                              remaining:         Number(freshInst.remaining),
+                              totalInstallments: freshInst.months,
+                              paidInstallments:  p.periodNum,
+                            }, p.id)}
+                            disabled={sharingHistoryPaymentId === p.id}
+                            title="Share as image (color, WhatsApp)"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-violet-500 hover:bg-violet-50 rounded transition disabled:opacity-50">
+                            {sharingHistoryPaymentId === p.id ? <Loader2 size={12} className="animate-spin" /> : <Share2 size={12} />}
                           </button>
                           {isOwner && (
                             <>

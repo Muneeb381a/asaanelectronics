@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 import { fmtDate } from './dateFormat.ts';
 import { getPrintPalette } from './printTheme.ts';
 import { getDocumentSkin, skinVars, headerColors, amountBoxColors } from './printSkin.ts';
+import { shareHtmlAsImage } from './shareReceipt.ts';
 
 export interface BillPaymentAccount {
   type: string;
@@ -95,7 +96,7 @@ function buildSchedule(data: BillData): { month: number; due: string; amount: st
   }));
 }
 
-export async function openBill(data: BillData) {
+async function buildBillHtml(data: BillData): Promise<string> {
   const palette    = getPrintPalette(data.shop.theme);
   const skin       = getDocumentSkin(data.shop.receiptStyle);
   const { isRule, hdrBg, hdrFg, hdrFgMuted } = headerColors(skin, palette);
@@ -489,14 +490,24 @@ ${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` 
 </head>
 <body>
   ${invoiceCopy('')}
-<script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
 
+  return html;
+}
+
+export async function openBill(data: BillData) {
+  const html = await buildBillHtml(data);
   const w = window.open('', '_blank', 'width=840,height=980');
   if (!w) return;
-  w.document.write(html);
+  w.document.write(html.replace('</body>', '<script>window.onload=()=>window.print();</script></body>'));
   w.document.close();
+}
+
+export async function shareBill(data: BillData) {
+  const html = await buildBillHtml(data);
+  const invoiceNo = data.invoiceNumber ?? `INV-${new Date().getFullYear()}-${data.installmentId.slice(0, 6).toUpperCase()}`;
+  await shareHtmlAsImage(html, `bill-${invoiceNo}.png`);
 }
 
 export interface LegalNoticeData {
@@ -513,7 +524,7 @@ export interface LegalNoticeData {
   issuedBy?: string | null;
 }
 
-export function openLegalNotice(data: LegalNoticeData) {
+function buildLegalNoticeHtml(data: LegalNoticeData): string {
   const palette   = getPrintPalette(data.shop.theme);
   const today     = fmtDate(new Date());
   const deadline  = fmtDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
@@ -603,17 +614,26 @@ export function openLegalNotice(data: LegalNoticeData) {
   <div class="footer">
     ${data.shop.shopName} · ${data.shop.phone}${data.shop.address ? ' · ' + data.shop.address : ''} · Issued: ${today}
   </div>
-<script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
 
+  return html;
+}
+
+export function openLegalNotice(data: LegalNoticeData) {
+  const html = buildLegalNoticeHtml(data);
   const w = window.open('', '_blank', 'width=840,height=1000');
   if (!w) return;
-  w.document.write(html);
+  w.document.write(html.replace('</body>', '<script>window.onload=()=>window.print();</script></body>'));
   w.document.close();
 }
 
-export async function openCashSaleBill(data: CashSaleBillData) {
+export async function shareLegalNotice(data: LegalNoticeData) {
+  const html = buildLegalNoticeHtml(data);
+  await shareHtmlAsImage(html, `legal-notice-${data.customer.name.replace(/\s+/g, '-')}.png`);
+}
+
+async function buildCashSaleBillHtml(data: CashSaleBillData): Promise<string> {
   const palette   = getPrintPalette(data.shop.theme);
   const skin      = getDocumentSkin(data.shop.receiptStyle);
   const { isRule, hdrBg, hdrFg, hdrFgMuted, hdrRadius, hdrBorder } = headerColors(skin, palette);
@@ -747,12 +767,21 @@ ${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` 
     <div style="font-size:9px;color:#94a3b8">Ref: ${data.saleId.slice(0, 8).toUpperCase()} · ${saleDate}</div>
   </div>
 </div>
-<script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
 
+  return htmlContent;
+}
+
+export async function openCashSaleBill(data: CashSaleBillData) {
+  const html = await buildCashSaleBillHtml(data);
   const w = window.open('', '_blank', 'width=840,height=700');
   if (!w) return;
-  w.document.write(htmlContent);
+  w.document.write(html.replace('</body>', '<script>window.onload=()=>window.print();</script></body>'));
   w.document.close();
+}
+
+export async function shareCashSaleBill(data: CashSaleBillData) {
+  const html = await buildCashSaleBillHtml(data);
+  await shareHtmlAsImage(html, `cash-sale-${data.saleId.slice(0, 8)}.png`);
 }

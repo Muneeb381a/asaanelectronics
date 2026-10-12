@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
-import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon, UserPlus, UserCog, Wallet } from 'lucide-react';
+import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon, UserPlus, UserCog, Wallet, Share2, Loader2 } from 'lucide-react';
 import { customersApi, type Customer, type CustomerDoc, type CustomerCreditEntry, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import type { CreateCustomerInput } from '@assaan/shared';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
@@ -22,7 +22,7 @@ import { openWhatsApp, reminderMessage, balanceStatementMessage } from '../utils
 import { useAuthStore } from '../store/auth.store.ts';
 import CustomerAgreementPrint from '../components/CustomerAgreementPrint.tsx';
 import CustomerStatementPrint from '../components/CustomerStatementPrint.tsx';
-import { openCustomerHistoryReport } from '../utils/receipt.ts';
+import { openCustomerHistoryReport, shareCustomerHistoryReport } from '../utils/receipt.ts';
 import { TableSkeleton, CardSkeleton, RowSkeleton, EmptyState } from '../components/ui/Skeleton.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 
@@ -950,6 +950,56 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   }
 
   const installments = data?.data ?? [];
+
+  const historyReportPayload = () => ({
+    shopName: shopData?.shopName ?? 'Our Shop',
+    shopPhone: shopData?.phone,
+    shopLogoUrl: shopData?.logoUrl ?? null,
+    shopTheme: shopData?.settings?.theme ?? null,
+    shopReceiptStyle: shopData?.settings?.receiptStyle ?? null,
+    customer: {
+      name: customer.name,
+      phone: customer.phone,
+      cnicMasked: customer.cnicMasked,
+      address: customer.address,
+      area: customer.area,
+      occupation: customer.occupation,
+      employer: customer.employer,
+      guarantorName: customer.guarantorName,
+      guarantorPhone: customer.guarantorPhone,
+      guarantorRelation: customer.guarantorRelation,
+      guarantor2Name: customer.guarantor2Name,
+      guarantor2Phone: customer.guarantor2Phone,
+      createdAt: customer.createdAt,
+    },
+    installments: installments.map((i) => ({
+      invoiceNumber: i.invoiceNumber,
+      productName: i.productName,
+      imeiNumber: i.imeiNumber,
+      totalAmount: i.totalAmount,
+      downPayment: i.downPayment,
+      remaining: i.remaining,
+      monthly: i.monthly,
+      months: i.months,
+      startDate: i.startDate,
+      status: i.status,
+      paymentFrequency: i.paymentFrequency,
+    })),
+    printedAt: new Date().toISOString(),
+  });
+
+  const [sharingHistory, setSharingHistory] = useState(false);
+  const handleShareHistory = async () => {
+    setSharingHistory(true);
+    try {
+      await shareCustomerHistoryReport(historyReportPayload());
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharingHistory(false);
+    }
+  };
+
   const totalBusiness  = installments.reduce((s, i) => s + Number(i.totalAmount), 0);
   const totalPaid      = installments.reduce((s, i) => s + (Number(i.totalAmount) - Number(i.remaining)), 0);
   const totalRemaining = installments.reduce((s, i) => s + Number(i.remaining), 0);
@@ -1007,48 +1057,21 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
               Statement
             </button>
             <button
-              onClick={() => openCustomerHistoryReport({
-                shopName: shopData?.shopName ?? 'Our Shop',
-                shopPhone: shopData?.phone,
-                shopLogoUrl: shopData?.logoUrl ?? null,
-                shopTheme: shopData?.settings?.theme ?? null,
-                shopReceiptStyle: shopData?.settings?.receiptStyle ?? null,
-                customer: {
-                  name: customer.name,
-                  phone: customer.phone,
-                  cnicMasked: customer.cnicMasked,
-                  address: customer.address,
-                  area: customer.area,
-                  occupation: customer.occupation,
-                  employer: customer.employer,
-                  guarantorName: customer.guarantorName,
-                  guarantorPhone: customer.guarantorPhone,
-                  guarantorRelation: customer.guarantorRelation,
-                  guarantor2Name: customer.guarantor2Name,
-                  guarantor2Phone: customer.guarantor2Phone,
-                  createdAt: customer.createdAt,
-                },
-                installments: installments.map((i) => ({
-                  invoiceNumber: i.invoiceNumber,
-                  productName: i.productName,
-                  imeiNumber: i.imeiNumber,
-                  totalAmount: i.totalAmount,
-                  downPayment: i.downPayment,
-                  remaining: i.remaining,
-                  monthly: i.monthly,
-                  months: i.months,
-                  startDate: i.startDate,
-                  status: i.status,
-                  paymentFrequency: i.paymentFrequency,
-                })),
-                printedAt: new Date().toISOString(),
-              })}
+              onClick={() => openCustomerHistoryReport(historyReportPayload())}
               disabled={isLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 text-xs text-indigo-600 hover:bg-indigo-50 transition disabled:opacity-40"
               title="Print Full History Report"
             >
               <Printer size={13} />
               History
+            </button>
+            <button
+              onClick={() => void handleShareHistory()}
+              disabled={isLoading || sharingHistory}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-200 text-xs text-violet-600 hover:bg-violet-50 transition disabled:opacity-40"
+              title="Share as image (color, WhatsApp)"
+            >
+              {sharingHistory ? <Loader2 size={13} className="animate-spin" /> : <Share2 size={13} />}
             </button>
             <button
               onClick={() => setShowPrint(true)}

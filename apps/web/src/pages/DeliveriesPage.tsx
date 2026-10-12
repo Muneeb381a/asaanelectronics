@@ -2,12 +2,12 @@ import { PageHeader, shell } from '../components/ui/Page';
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Truck, Printer, Check, X, Ban, AlertTriangle, PenLine, Upload, RotateCcw,
+  Truck, Printer, Check, X, Ban, AlertTriangle, PenLine, Upload, RotateCcw, Share2, Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { deliveriesApi, type Delivery, type DeliveryStatus } from '../api/deliveries.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
-import { openDeliveryChallan } from '../utils/challan.ts';
+import { openDeliveryChallan, shareDeliveryChallan } from '../utils/challan.ts';
 import { getErrorMessage } from '../utils/error.ts';
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx';
 import SignaturePad, { type SignaturePadHandle } from '../components/SignaturePad.tsx';
@@ -194,6 +194,28 @@ function DeliveryRow({ delivery, index, shop }: { delivery: Delivery; index: num
   const qc = useQueryClient();
   const [marking, setMarking] = useState<'delivered' | 'rejected' | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  const challanPayload = {
+    shop, slipNumber: delivery.slipNumber, saleType: delivery.saleType,
+    customerName: delivery.customerName, customerPhone: delivery.customerPhone,
+    deliveryAddress: delivery.deliveryAddress, productName: delivery.productName,
+    quantity: delivery.quantity, serialSnapshot: delivery.serialSnapshot,
+    driverName: delivery.driverName, driverPhone: delivery.driverPhone,
+    scheduledDate: delivery.scheduledDate, createdAt: delivery.createdAt,
+    signatureUrl: delivery.signatureUrl, conditionNote: delivery.conditionNote,
+  };
+
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      await shareDeliveryChallan(challanPayload);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Share nahi ho saka'));
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const dispatchMut = useMutation({
     mutationFn: () => deliveriesApi.dispatch(delivery.id),
@@ -246,17 +268,13 @@ function DeliveryRow({ delivery, index, shop }: { delivery: Delivery; index: num
 
           <div className="flex items-center gap-1 shrink-0">
             <button title="Print slip"
-              onClick={() => void openDeliveryChallan({
-                shop, slipNumber: delivery.slipNumber, saleType: delivery.saleType,
-                customerName: delivery.customerName, customerPhone: delivery.customerPhone,
-                deliveryAddress: delivery.deliveryAddress, productName: delivery.productName,
-                quantity: delivery.quantity, serialSnapshot: delivery.serialSnapshot,
-                driverName: delivery.driverName, driverPhone: delivery.driverPhone,
-                scheduledDate: delivery.scheduledDate, createdAt: delivery.createdAt,
-                signatureUrl: delivery.signatureUrl, conditionNote: delivery.conditionNote,
-              })}
+              onClick={() => void openDeliveryChallan(challanPayload)}
               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition">
               <Printer size={14} />
+            </button>
+            <button title="Share as image (color, WhatsApp)" disabled={sharing} onClick={() => void handleShare()}
+              className="p-1.5 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition disabled:opacity-50">
+              {sharing ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
             </button>
 
             {canDispatch && (

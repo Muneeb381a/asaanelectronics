@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 import { fmtDate } from './dateFormat.ts';
 import { getPrintPalette } from './printTheme.ts';
 import { getDocumentSkin, skinVars, headerColors } from './printSkin.ts';
+import { shareHtmlAsImage } from './shareReceipt.ts';
 
 export interface DeliveryChallanData {
   shop: { shopName: string; phone: string; address?: string | null; logoUrl?: string | null; theme?: string | null; receiptStyle?: string | null };
@@ -21,7 +22,7 @@ export interface DeliveryChallanData {
   conditionNote?: string | null;
 }
 
-export async function openDeliveryChallan(data: DeliveryChallanData) {
+async function buildDeliveryChallanHtml(data: DeliveryChallanData): Promise<string> {
   const palette = getPrintPalette(data.shop.theme);
   const skin    = getDocumentSkin(data.shop.receiptStyle);
   const date    = fmtDate(data.createdAt);
@@ -146,12 +147,21 @@ ${skin.googleFontLink ? `<link href="${skin.googleFontLink}" rel="stylesheet">` 
     <div style="font-size:9px;color:#94a3b8">Slip: ${data.slipNumber} · ${date}</div>
   </div>
 </div>
-<script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
 
+  return htmlContent;
+}
+
+export async function openDeliveryChallan(data: DeliveryChallanData) {
+  const html = await buildDeliveryChallanHtml(data);
   const w = window.open('', '_blank', 'width=840,height=600');
   if (!w) return;
-  w.document.write(htmlContent);
+  w.document.write(html.replace('</body>', '<script>window.onload=()=>window.print();</script></body>'));
   w.document.close();
+}
+
+export async function shareDeliveryChallan(data: DeliveryChallanData) {
+  const html = await buildDeliveryChallanHtml(data);
+  await shareHtmlAsImage(html, `delivery-slip-${data.slipNumber}.png`);
 }
