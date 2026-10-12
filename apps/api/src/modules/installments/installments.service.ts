@@ -16,8 +16,10 @@ import type { ImportInstallmentRow } from '@assaan/shared';
 // Elapsed-but-unpaid periods, in rupees, as of `asOf` — the JS-side twin of
 // utils/dueDate.ts's overdueAmountRaw (SQL), for dueSheet()/collectionSchedule()
 // which compute their due-date math in JS rather than through a raw query.
-// This is what a customer needs to bring to fully catch up, BEFORE the
-// current/next period's own installment is added on top of it.
+// periodsElapsed counts every period whose due date has already passed,
+// INCLUDING the most recently due one — so this figure is already the full
+// amount owed to catch up as of today. Callers must not add another
+// `monthly` on top once this is nonzero; that double-counts the latest period.
 function carriedShortfall(opts: {
   startDate: Date; paymentDueDay: number; paymentFrequency: string;
   monthly: number; remaining: number; paidPeriods: number; asOf: Date;
@@ -915,7 +917,7 @@ export class InstallmentsService {
           daysOverdue,
           area,
           carriedShortfall: shortfall,
-          totalDueNow:      Math.min(monthly + shortfall, Number(inst.remaining)),
+          totalDueNow:      Math.min(shortfall > 0 ? shortfall : monthly, Number(inst.remaining)),
         });
       }
     }
@@ -1031,7 +1033,7 @@ export class InstallmentsService {
         lastPaymentAmount:   inst.last_payment_amount != null ? Number(inst.last_payment_amount) : null,
         urgency:             diffDays < 0 ? 'overdue' : diffDays === 0 ? 'today' : 'upcoming',
         carriedShortfall:    shortfall,
-        totalDueNow:         Math.min(monthly + shortfall, Number(inst.remaining)),
+        totalDueNow:         Math.min(shortfall > 0 ? shortfall : monthly, Number(inst.remaining)),
       });
     }
 

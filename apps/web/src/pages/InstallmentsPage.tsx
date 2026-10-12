@@ -139,11 +139,14 @@ function TemplatePickerModal({ inst, shopName, onClose }: {
   });
   const [selected, setSelected] = useState<string | null>(null);
 
-  // Quote what's actually due — this period's installment plus whatever
-  // shortfall carried forward from earlier periods — not just the flat
-  // monthly figure, which under-asks a customer who's fallen behind.
+  // Quote what's actually due. carriedShortfall already totals every
+  // elapsed-but-unpaid period including the most recent one, so it IS the
+  // full amount owed once it's nonzero — adding monthly on top would
+  // double-count that period. Fall back to the flat monthly figure only
+  // when nothing's overdue yet.
+  const shortfallNow = Number(inst.carriedShortfall ?? 0);
   const totalDueNow = Math.min(
-    Number(inst.monthly) + Number(inst.carriedShortfall ?? 0),
+    shortfallNow > 0 ? shortfallNow : Number(inst.monthly),
     Number(inst.remaining),
   );
 
@@ -271,8 +274,9 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
 
   function send(inst: Installment, daysOverdue?: number) {
     if (!shopData) return;
+    const shortfallNow = Number(inst.carriedShortfall ?? 0);
     const totalDueNow = Math.min(
-      Number(inst.monthly) + Number(inst.carriedShortfall ?? 0),
+      shortfallNow > 0 ? shortfallNow : Number(inst.monthly),
       Number(inst.remaining),
     );
     openWhatsApp(inst.customerPhone, reminderMessage({

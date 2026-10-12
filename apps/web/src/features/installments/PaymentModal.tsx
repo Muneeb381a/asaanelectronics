@@ -101,8 +101,12 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
     // reasonably — auto-suggesting that as "today's amount" is misleading.
     // Default to just the daily figure; the banner below still offers the
     // full carried balance as an explicit, opt-in top-up.
+    // carriedShortfall is the total rupee value of every elapsed-but-unpaid
+    // period as of today (including the one most recently due) — it is
+    // already the full current amount owed, not an extra on top of
+    // `monthly`. Adding monthly to it double-counts that last period.
     const shortfall = inst.paymentFrequency === 'daily' ? 0 : Number(inst.carriedShortfall ?? 0);
-    return String(Math.min(monthly + shortfall, cap));
+    return String(Math.min(shortfall > 0 ? shortfall : monthly, cap));
   });
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [note, setNote] = useState('');
@@ -448,9 +452,9 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
   const accumulatedLateFee = lateFeePerDay > 0 && daysOverdue > lateFeeGraceDays
     ? Math.max(0, daysOverdue - lateFeeGraceDays) * lateFeePerDay
     : 0;
-  // Sum of every elapsed-but-unpaid period so far — a customer who paid
-  // 18,000 against an 18,500 monthly is 500 short; that 500 doesn't vanish,
-  // it's still owed on top of whatever they bring next.
+  // Total rupee value of every elapsed-but-unpaid period as of today,
+  // including the most recently due one — this is already the full amount
+  // owed right now, not an extra on top of the regular monthly/daily figure.
   const carriedShortfall = Number(freshInst.carriedShortfall ?? 0);
 
   const historyWithPeriods = useMemo(() => {
@@ -661,16 +665,16 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
                       </p>
                       <p className="text-[11px] text-orange-700 mt-0.5">
                         {freshInst.paymentFrequency === 'daily'
-                          ? <>Pichle din poori qist nahi hui thi — <span className="font-bold">{pkr(carriedShortfall)}</span> ab bhi baqi hai. Chahein to neeche "Baqaya Include" se saath shamil kar lein, warna sirf aaj ki qist bhi chalegi.</>
-                          : <>Pichli qist{carriedShortfall > Number(freshInst.monthly) ? 'ein' : ''} poori nahi hui thi — <span className="font-bold">{pkr(carriedShortfall)}</span> ab bhi baqi hai, is mahine ki qist ke upar.</>}
+                          ? <>Pichle din poori qist nahi hui thi — ab tak ki total baqi raqam <span className="font-bold">{pkr(carriedShortfall)}</span> hai (is mahine ki qist bhi is mein shamil hai). Chahein to neeche se poori raqam bhar lein, warna sirf aaj ki qist bhi chalegi.</>
+                          : <>Pichli qist{carriedShortfall > Number(freshInst.monthly) ? 'ein' : ''} poori nahi hui thi — ab tak ki total baqi raqam <span className="font-bold">{pkr(carriedShortfall)}</span> hai (is mahine ki qist bhi is mein shamil hai).</>}
                       </p>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setAmount(String(Math.min(Number(freshInst.monthly) + carriedShortfall, remaining)))}
+                      onClick={() => setAmount(String(Math.min(carriedShortfall, remaining)))}
                       className="shrink-0 text-[11px] px-2.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition"
                     >
-                      +Baqaya Include
+                      Poora Baqaya
                     </button>
                   </div>
                 </div>
@@ -711,8 +715,9 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
                   className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  {freshInst.paymentFrequency === 'daily' ? 'Daily' : 'Monthly'}: {pkr(freshInst.monthly)}
-                  {carriedShortfall > 0 && <> + Baqaya: {pkr(carriedShortfall)}</>} · Max: {pkr(remaining)}
+                  {carriedShortfall > 0
+                    ? <>Total Baqaya: {pkr(carriedShortfall)}</>
+                    : <>{freshInst.paymentFrequency === 'daily' ? 'Daily' : 'Monthly'}: {pkr(freshInst.monthly)}</>} · Max: {pkr(remaining)}
                 </p>
               </div>
 

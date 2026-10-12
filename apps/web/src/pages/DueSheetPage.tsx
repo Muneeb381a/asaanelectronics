@@ -112,7 +112,7 @@ export default function DueSheetPage() {
                       <td className="py-1.5 pr-2 text-right font-semibold">
                         {pkr(item.totalDueNow)}
                         {item.carriedShortfall > 0 && (
-                          <div className="text-[9px] text-orange-600 font-normal">+{pkr(item.carriedShortfall)} baqaya</div>
+                          <div className="text-[9px] text-orange-600 font-normal">baqaya shamil</div>
                         )}
                       </td>
                       <td className="py-1.5 pr-2 text-right text-gray-600">{pkr(item.remaining)}</td>

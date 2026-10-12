@@ -271,7 +271,7 @@ export default function CollectionSheetPage() {
                             <div className="shrink-0 text-right">
                               <p className="text-sm font-bold text-gray-900">{pkr(item.totalDueNow)}</p>
                               {item.carriedShortfall > 0 && (
-                                <p className="text-[10px] text-orange-600 font-semibold">+{pkr(item.carriedShortfall)} baqaya</p>
+                                <p className="text-[10px] text-orange-600 font-semibold">baqaya shamil</p>
                               )}
                               <p className="text-xs text-gray-400">Baqi: {pkr(item.remaining)}</p>
                               {item.lastPaymentDate && (
