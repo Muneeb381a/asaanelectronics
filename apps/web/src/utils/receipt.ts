@@ -392,8 +392,8 @@ async function buildSinglePaymentReceiptHtml(d: SinglePaymentReceiptData): Promi
   const isDaily    = d.paymentFrequency === 'daily';
   const freq       = isDaily ? 'Day' : 'Month';
   const paidOnDate = new Date(d.paidOn);
-  const dateStr    = paidOnDate.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-  const timeStr    = paidOnDate.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const dateStr    = paidOnDate.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Karachi' });
+  const timeStr    = paidOnDate.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' });
   const isLate     = (d.daysLate ?? 0) > 0;
   const isFullyPaid = (d.remaining ?? 1) <= 0;
   const hasProg    = (d.totalInstallments ?? 0) > 0;
@@ -711,7 +711,7 @@ function buildCustomerHistoryReportHtml(d: CustomerHistoryReportData): string {
         </tr>`;
       }).join('');
 
-  const printedDate = new Date(d.printedAt).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+  const printedDate = new Date(d.printedAt).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' });
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -854,7 +854,7 @@ function buildPaymentHistoryReceiptHtml(d: PaymentHistoryReceiptData): string {
   const totalPaid = sorted.reduce((s, p) => s + p.amount, 0);
   const paidCount = sorted.filter((p) => !p.isDownPayment).length;
   const pct = d.totalAmount > 0 ? Math.round((totalPaid / d.totalAmount) * 100) : 0;
-  const printedDate = new Date().toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+  const printedDate = new Date().toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' });
 
   // Running outstanding balance and a per-payment short/extra note vs the
   // scheduled amount — so a partial payment (e.g. 1,000 against a 14,175
@@ -874,7 +874,7 @@ function buildPaymentHistoryReceiptHtml(d: PaymentHistoryReceiptData): string {
         return `
       <tr>
         <td style="color:#94a3b8;text-align:center">${idx + 1}</td>
-        <td>${fmtDate(p.paidOn)}<br><span style="font-size:8px;color:#9ca3af">${new Date(p.paidOn).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></td>
+        <td>${fmtDate(p.paidOn)}<br><span style="font-size:8px;color:#9ca3af">${new Date(p.paidOn).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' })}</span></td>
         <td>${p.isDownPayment ? '<span class="badge" style="background:#ede9fe;color:#5b21b6">Down Payment</span>' : `${freqWord} Installment`}</td>
         <td>${mLabel(p.method)}</td>
         <td class="r" style="font-weight:700;color:#059669">${pkr(p.amount)}${diffNote}</td>

@@ -320,7 +320,7 @@ export default function DashboardPage() {
   const todayAtt   = attendance.filter((a) => a.date.slice(0, 10) === todayYmd);
   const deadStock  = intel?.slowMoving.filter((s) => s.severity === 'CRITICAL') ?? [];
   const reorderNow = intel?.reorderSuggestions.filter((r) => r.priority === 'URGENT') ?? [];
-  const fmtTime    = (iso: string) => new Date(iso).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
+  const fmtTime    = (iso: string) => new Date(iso).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' });
 
   /* ── derived ── */
   const d              = dash?.stats;

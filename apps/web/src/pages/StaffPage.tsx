@@ -760,7 +760,7 @@ function CashInHandCard({ balance, onSubmit }: { balance: StaffBalance | null | 
             </div>
             <p className="text-[11px] text-gray-600">
               {pkr(Number(pending.handedAmount))} ·{' '}
-              {new Date(pending.createdAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              {new Date(pending.createdAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' })}
             </p>
             {pending.note && <p className="text-[10px] text-gray-400 italic mt-1">"{pending.note}"</p>}
           </div>
@@ -1590,7 +1590,7 @@ function ExpenseClaimsSection({ isOwner, staff }: { isOwner: boolean; staff: Sta
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return new Date(iso).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' });
 }
 function formatDuration(min: number) {
   const h = Math.floor(min / 60);
