@@ -681,10 +681,22 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
               <input {...register('name')} placeholder="Muhammad Ali" className={inp} />
             </Field>
             <Field label={isEdit ? 'ID Card Number (CNIC)' : 'CNIC'} error={errors.cnic?.message} optional={isEdit}>
-              <input {...register('cnic')} placeholder={isEdit ? (customer.cnicMasked ?? 'XXXXX-XXXXXXX-X') : 'XXXXX-XXXXXXX-X'} maxLength={15} className={inp}
-                onChange={(e) => { e.target.value = formatCnic(e.target.value); register('cnic').onChange(e); }}
-                onBlur={(e) => { register('cnic').onBlur(e); void checkDuplicate(e.target.value); }} />
-              {isEdit && <p className="text-xs text-gray-400 mt-1">Current: {customer.cnicMasked} — leave blank to keep unchanged, or enter new CNIC to update</p>}
+              {isEdit && !cnicPhotosUnlocked ? (
+                <button type="button" onClick={() => setShowCnicPasswordGate(true)}
+                  className={`${inp} flex items-center justify-between text-slate-400 hover:border-amber-300 hover:bg-amber-50/30 transition`}>
+                  <span>{customer.cnicMasked ?? 'XXXXX-XXXXXXX-X'}</span>
+                  <Lock size={14} className="shrink-0" />
+                </button>
+              ) : (
+                <input {...register('cnic')} placeholder={isEdit ? (customer.cnicMasked ?? 'XXXXX-XXXXXXX-X') : 'XXXXX-XXXXXXX-X'} maxLength={15} className={inp}
+                  onChange={(e) => { e.target.value = formatCnic(e.target.value); register('cnic').onChange(e); }}
+                  onBlur={(e) => { register('cnic').onBlur(e); void checkDuplicate(e.target.value); }} />
+              )}
+              {isEdit && <p className="text-xs text-gray-400 mt-1">
+                {cnicPhotosUnlocked
+                  ? <>Current: {customer.cnicMasked} — leave blank to keep unchanged, or enter new CNIC to update</>
+                  : 'Edit karne ke liye lock pe click karein — password confirm karna hoga'}
+              </p>}
             </Field>
             {duplicateCustomer && (
               <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 leading-relaxed">
