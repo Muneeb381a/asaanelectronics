@@ -801,7 +801,7 @@ export class ReportsService {
           i.customer_id,
           COUNT(*) FILTER (WHERE i.status = 'ACTIVE')::int AS active_count,
           COUNT(*) FILTER (WHERE i.status = 'ACTIVE' AND ${nextDueDateSql('i')} < ${pktTodaySql})::int AS overdue_count,
-          COALESCE(SUM(${overdueAmountSql('i')}), 0) AS overdue_amount,
+          COALESCE(SUM(CASE WHEN i.payment_frequency = 'daily' THEN i.monthly::numeric ELSE ${overdueAmountSql('i')} END), 0) AS overdue_amount,
           COALESCE(SUM(CASE WHEN i.status = 'ACTIVE' THEN i.remaining::numeric ELSE 0 END), 0) AS remaining
         FROM installments i
         WHERE i.deleted_at IS NULL

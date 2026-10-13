@@ -281,8 +281,17 @@ export class StatsService {
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .where(and(eq(customers.sellerId, sellerId), inArray(installments.status, ['ACTIVE', 'PENDING']), isNull(installments.deletedAt), isNull(customers.deletedAt))),
 
+      // Daily plans are naturally collected every few days, not literally every
+      // calendar day, so overdueAmountSql's day-by-day tally for them grows fast
+      // and can near their full remaining balance even when they're paying
+      // reasonably — counting that raw figure here would badly overstate the
+      // shop's real total overdue. Count just one day's amount per daily
+      // installment instead, same substitution used everywhere else this was fixed.
       db
-        .select({ total: count(), amount: sql<string>`COALESCE(SUM(${overdueAmountSql('installments')}), 0)::text` })
+        .select({
+          total: count(),
+          amount: sql<string>`COALESCE(SUM(CASE WHEN ${installments.paymentFrequency} = 'daily' THEN ${installments.monthly} ELSE ${overdueAmountSql('installments')} END), 0)::text`,
+        })
         .from(installments)
         .innerJoin(customers, eq(installments.customerId, customers.id))
         .where(and(
