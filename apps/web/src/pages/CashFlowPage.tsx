@@ -369,7 +369,7 @@ export default function CashFlowPage() {
                                 shopName:         shop.shopName,
                                 customerName:     inst.customerName,
                                 productName:      inst.productName,
-                                monthly:          Math.min(inst.carriedShortfall > 0 ? inst.carriedShortfall : inst.monthly, inst.remaining),
+                                monthly:          Math.min(inst.paymentFrequency !== 'daily' && inst.carriedShortfall > 0 ? inst.carriedShortfall : inst.monthly, inst.remaining),
                                 remaining:        inst.remaining,
                                 paymentFrequency: inst.paymentFrequency,
                               }),

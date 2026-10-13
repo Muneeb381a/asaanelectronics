@@ -1391,7 +1391,7 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                                 customerName: customer.name,
                                 productName: inst.productName,
                                 monthly: Math.min(
-                                  Number(inst.carriedShortfall ?? 0) > 0 ? Number(inst.carriedShortfall) : Number(inst.monthly),
+                                  inst.paymentFrequency !== 'daily' && Number(inst.carriedShortfall ?? 0) > 0 ? Number(inst.carriedShortfall) : Number(inst.monthly),
                                   Number(inst.remaining),
                                 ),
                                 remaining: inst.remaining,

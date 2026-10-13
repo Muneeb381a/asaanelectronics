@@ -455,7 +455,11 @@ export default function PaymentModal({ inst, onClose, extraInvalidate = [], init
   // Total rupee value of every elapsed-but-unpaid period as of today,
   // including the most recently due one — this is already the full amount
   // owed right now, not an extra on top of the regular monthly/daily figure.
-  const carriedShortfall = Number(freshInst.carriedShortfall ?? 0);
+  // Daily plans naturally skip days between visits, so this day-by-day tally
+  // grows fast and misleadingly approaches the full remaining balance even
+  // for an on-track customer — same reason the default amount above
+  // suppresses it for daily; keep every other daily display consistent.
+  const carriedShortfall = freshInst.paymentFrequency === 'daily' ? 0 : Number(freshInst.carriedShortfall ?? 0);
 
   const historyWithPeriods = useMemo(() => {
     if (!history) return [];

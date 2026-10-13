@@ -143,8 +143,11 @@ function TemplatePickerModal({ inst, shopName, onClose }: {
   // elapsed-but-unpaid period including the most recent one, so it IS the
   // full amount owed once it's nonzero — adding monthly on top would
   // double-count that period. Fall back to the flat monthly figure only
-  // when nothing's overdue yet.
-  const shortfallNow = Number(inst.carriedShortfall ?? 0);
+  // when nothing's overdue yet. Daily plans skip the shortfall entirely —
+  // the day-by-day tally grows fast and misleadingly nears the full
+  // remaining balance even for an on-track customer, so it'd quote them
+  // way more than the one day they actually owe.
+  const shortfallNow = inst.paymentFrequency === 'daily' ? 0 : Number(inst.carriedShortfall ?? 0);
   const totalDueNow = Math.min(
     shortfallNow > 0 ? shortfallNow : Number(inst.monthly),
     Number(inst.remaining),
@@ -274,7 +277,7 @@ function BulkReminderModal({ onClose }: { onClose: () => void }) {
 
   function send(inst: Installment, daysOverdue?: number) {
     if (!shopData) return;
-    const shortfallNow = Number(inst.carriedShortfall ?? 0);
+    const shortfallNow = inst.paymentFrequency === 'daily' ? 0 : Number(inst.carriedShortfall ?? 0);
     const totalDueNow = Math.min(
       shortfallNow > 0 ? shortfallNow : Number(inst.monthly),
       Number(inst.remaining),

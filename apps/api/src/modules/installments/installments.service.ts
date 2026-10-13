@@ -917,7 +917,7 @@ export class InstallmentsService {
           daysOverdue,
           area,
           carriedShortfall: shortfall,
-          totalDueNow:      Math.min(shortfall > 0 ? shortfall : monthly, Number(inst.remaining)),
+          totalDueNow:      Math.min(inst.payment_frequency !== 'daily' && shortfall > 0 ? shortfall : monthly, Number(inst.remaining)),
         });
       }
     }
@@ -1033,7 +1033,7 @@ export class InstallmentsService {
         lastPaymentAmount:   inst.last_payment_amount != null ? Number(inst.last_payment_amount) : null,
         urgency:             diffDays < 0 ? 'overdue' : diffDays === 0 ? 'today' : 'upcoming',
         carriedShortfall:    shortfall,
-        totalDueNow:         Math.min(shortfall > 0 ? shortfall : monthly, Number(inst.remaining)),
+        totalDueNow:         Math.min(inst.payment_frequency !== 'daily' && shortfall > 0 ? shortfall : monthly, Number(inst.remaining)),
       });
     }
 
