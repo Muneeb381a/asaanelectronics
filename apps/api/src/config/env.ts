@@ -9,6 +9,12 @@ const schema = z.object({
   JWT_OTP_SECRET: z.string().min(32),
   JWT_PORTAL_SECRET: z.string().min(32),
   CNIC_HASH_PEPPER: z.string().min(16),
+  // Separate from CNIC_HASH_PEPPER on purpose — that one only ever produces an
+  // irreversible hash, this one can decrypt a real CNIC back to plaintext, so
+  // a leak of this key is a much bigger deal and shouldn't share a secret with
+  // the hash. Optional: without it, CNIC is only ever stored hashed (today's
+  // behavior) and the password-gated "view CNIC" field just stays unavailable.
+  CNIC_ENCRYPTION_KEY: z.string().min(16).optional(),
   CLOUDINARY_URL: z.string(),
   RESEND_API_KEY: z.string(),
   EMAIL_FROM: z.string().optional(),

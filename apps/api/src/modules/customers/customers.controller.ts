@@ -59,6 +59,10 @@ export async function getCustomer(req: AuthRequest, res: Response) {
   success(res, await svc.getOne(req.params['id']!, req.user!.sellerId!, await resolveStaffScopeForPayments(req)));
 }
 
+export async function getDecryptedCnic(req: AuthRequest, res: Response) {
+  success(res, await svc.getDecryptedCnic(req.params['id']!, req.user!.sellerId!));
+}
+
 export async function createCustomer(req: AuthRequest, res: Response) {
   const result = await svc.create(req.user!.sellerId!, req.body, req.user!.userId);
   success(res, result, 201);

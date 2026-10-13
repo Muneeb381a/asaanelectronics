@@ -468,6 +468,24 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
   const [cnicPhotosUnlocked, setCnicPhotosUnlocked] = useState(!isEdit);
   const [showCnicPasswordGate, setShowCnicPasswordGate] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [cnicFetchNote, setCnicFetchNote] = useState<string | null>(null);
+
+  async function handleCnicUnlocked() {
+    setCnicPhotosUnlocked(true);
+    setShowCnicPasswordGate(false);
+    if (!customer) return;
+    try {
+      const { cnic } = await customersApi.getDecryptedCnic(customer.id);
+      if (cnic) {
+        setValue('cnic', formatCnic(cnic), { shouldValidate: true });
+        setCnicFetchNote(null);
+      } else {
+        setCnicFetchNote('Ye purana record hai — number save nahi hua tha, is liye yahan dikh nahi sakta. Naya number type kar sakte hain.');
+      }
+    } catch {
+      setCnicFetchNote('Number fetch nahi ho saka — photo se parh lein ya naya type kar lein.');
+    }
+  }
 
   const schema = isEdit ? editSchema : createCustomerSchema;
 
@@ -692,10 +710,12 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
                   onChange={(e) => { e.target.value = formatCnic(e.target.value); register('cnic').onChange(e); }}
                   onBlur={(e) => { register('cnic').onBlur(e); void checkDuplicate(e.target.value); }} />
               )}
-              {isEdit && <p className="text-xs text-gray-400 mt-1">
-                {cnicPhotosUnlocked
-                  ? <>Current: {customer.cnicMasked} — leave blank to keep unchanged, or enter new CNIC to update</>
-                  : 'Edit karne ke liye lock pe click karein — password confirm karna hoga'}
+              {isEdit && <p className={`text-xs mt-1 ${cnicFetchNote ? 'text-amber-600' : 'text-gray-400'}`}>
+                {!cnicPhotosUnlocked
+                  ? 'Edit karne ke liye lock pe click karein — password confirm karna hoga'
+                  : cnicFetchNote
+                  ? cnicFetchNote
+                  : 'Ye asal number hai — zaroorat ho to edit kar lein'}
               </p>}
             </Field>
             {duplicateCustomer && (
@@ -856,9 +876,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
 
       <PasswordGateModal
         open={showCnicPasswordGate}
-        title="CNIC Photo Dekhein"
-        description="ID card ki poori photo dekhne ke liye apna password confirm karein."
-        onSuccess={() => { setCnicPhotosUnlocked(true); setShowCnicPasswordGate(false); }}
+        title="CNIC Dekhein"
+        description="ID card ka number aur photo dekhne ke liye apna password confirm karein."
+        onSuccess={handleCnicUnlocked}
         onCancel={() => setShowCnicPasswordGate(false)}
       />
 

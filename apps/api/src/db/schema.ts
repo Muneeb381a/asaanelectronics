@@ -219,6 +219,11 @@ export const customers = pgTable(
     name: text('name').notNull(),
     cnicHash: text('cnic_hash').notNull(),
     cnicMasked: text('cnic_masked').notNull(),
+    // Reversible (AES-256-GCM), populated only when CNIC_ENCRYPTION_KEY is set
+    // and the plaintext passes through create/update — see utils/hash.ts.
+    // Older rows / rows saved before that key existed stay null forever;
+    // cnicHash/cnicMasked remain the only data for those.
+    cnicEncrypted: text('cnic_encrypted'),
     phone: text('phone').notNull(),
     address: text('address'),
     occupation: text('occupation'),

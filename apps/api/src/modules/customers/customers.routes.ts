@@ -4,7 +4,7 @@ import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
 import { createCustomerSchema, updateCustomerSchema, assignAvoSchema, blacklistCustomerSchema, customerNoteSchema, createCustomerDocumentSchema, updateCustomerDocumentSchema, applyCreditSchema } from '@assaan/shared';
 import {
-  listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer, assignAvo,
+  listCustomers, getCustomer, getDecryptedCnic, createCustomer, updateCustomer, deleteCustomer, assignAvo,
   getLifecycleCounts, getRiskBreakdown, lookupByCnic, checkCnicExists, getUpcomingBirthdays, getReferralLeaderboard,
   nadraVerifyCnic, nadraStatus, blacklistCustomer, unblacklistCustomer,
 } from './customers.controller.js';
@@ -33,6 +33,7 @@ router.get('/lookup',           requirePermission(['canSearchCnic', 'canAddInsta
 router.get('/check-cnic',       requirePermission('canAddCustomer'), checkCnicExists);
 router.get('/',                 canAccessCustomers, listCustomers);
 router.get('/:id',              canAccessCustomers, getCustomer);
+router.get('/:id/cnic',         requirePermission('canEditCustomer'), getDecryptedCnic);
 router.get('/:id/risk-breakdown', requirePermission('canViewReports'), getRiskBreakdown);
 router.post('/',      requirePermission('canAddCustomer'),  validate(createCustomerSchema), createCustomer);
 router.patch('/:id',  requirePermission('canEditCustomer'), validate(updateCustomerSchema), updateCustomer);

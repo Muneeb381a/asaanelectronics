@@ -177,6 +177,9 @@ export const customersApi = {
   getOne: (id: string) =>
     api.get<{ data: Customer }>(`/customers/${id}`).then(unwrap<Customer>),
 
+  getDecryptedCnic: (id: string) =>
+    api.get<{ data: { cnic: string | null; masked: string } }>(`/customers/${id}/cnic`).then(unwrap<{ cnic: string | null; masked: string }>),
+
   create: (data: CreateCustomerInput) =>
     api.post<{ data: Customer }>('/customers', data).then(unwrap<Customer>),
 

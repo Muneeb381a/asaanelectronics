@@ -4,7 +4,7 @@ import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, sellers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { staffScopeSql, staffScopeOrTrue } from '../../utils/staffScope.js';
-import { hashCnic, hashCnicBoth, maskCnic } from '../../utils/hash.js';
+import { hashCnic, hashCnicBoth, maskCnic, encryptCnic, decryptCnic, cnicEncryptionConfigured } from '../../utils/hash.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
 
@@ -358,6 +358,22 @@ export class CustomersService {
     return { exists: !!row, customer: row ?? null };
   }
 
+  // Returns the plaintext CNIC — only exists for customers created/edited
+  // since CNIC_ENCRYPTION_KEY was set (see utils/hash.ts); older rows only
+  // have cnicHash/cnicMasked and genuinely cannot be recovered. The frontend
+  // gates the call behind a password re-prompt; this endpoint itself just
+  // requires the normal canEditCustomer auth, same trust level the CNIC
+  // photo URLs already have today.
+  async getDecryptedCnic(id: string, sellerId: string) {
+    const row = await db.query.customers.findFirst({
+      where: and(eq(customers.id, id), eq(customers.sellerId, sellerId)),
+      columns: { cnicEncrypted: true, cnicMasked: true },
+    });
+    if (!row) throw new AppError('Customer not found', 404);
+    if (!row.cnicEncrypted) return { cnic: null, masked: row.cnicMasked };
+    return { cnic: decryptCnic(row.cnicEncrypted), masked: row.cnicMasked };
+  }
+
   async lookupByCnic(sellerId: string, cnic: string) {
     const [hmacHash, legacyHash] = hashCnicBoth(cnic);
     const hash = hmacHash;
@@ -589,6 +605,7 @@ export class CustomersService {
           name: body.name,
           cnicHash: hash,
           cnicMasked: maskCnic(body.cnic),
+          cnicEncrypted: cnicEncryptionConfigured() ? encryptCnic(body.cnic) : null,
           phone: body.phone,
           fatherName: body.fatherName,
           cnicExpiry: body.cnicExpiry,
@@ -656,7 +673,7 @@ export class CustomersService {
       .set({
         ...(body.name && { name: body.name }),
         ...(body.phone && { phone: body.phone }),
-        ...(body.cnic && { cnicHash: hashCnic(body.cnic), cnicMasked: maskCnic(body.cnic) }),
+        ...(body.cnic && { cnicHash: hashCnic(body.cnic), cnicMasked: maskCnic(body.cnic), cnicEncrypted: cnicEncryptionConfigured() ? encryptCnic(body.cnic) : null }),
         ...(body.fatherName !== undefined && { fatherName: body.fatherName }),
         ...(body.cnicExpiry !== undefined && { cnicExpiry: body.cnicExpiry }),
         ...(body.address !== undefined && { address: body.address }),
