@@ -18,6 +18,10 @@ export const changePasswordSchema = z.object({
   newPassword:     z.string().min(10, 'New password must be at least 10 characters').max(128),
 });
 
+export const verifyPasswordSchema = z.object({
+  password: z.string().min(1, 'Password is required').max(128),
+});
+
 export const verifyOtpSchema = z.object({
   otpToken: z.string().min(1).max(4096),
   code:     z.string().min(4).max(8),

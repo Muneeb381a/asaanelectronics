@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createCustomerSchema } from '@assaan/shared';
-import { User, Shield, Image, ChevronRight, ChevronLeft, Check, ImageIcon, X, AlertTriangle, MapPin, Loader2 } from 'lucide-react';
+import { User, Shield, Image, ChevronRight, ChevronLeft, Check, ImageIcon, X, AlertTriangle, MapPin, Loader2, Lock, ZoomIn } from 'lucide-react';
 import { api } from '../../api/client.ts';
 import { customersApi, type Customer } from '../../api/customers.api.ts';
 import LocationPicker from '../../components/LocationPicker.tsx';
+import PasswordGateModal from '../../components/ui/PasswordGateModal.tsx';
 
 type OcrStatus = 'ok' | 'empty' | 'unavailable' | 'error';
 
@@ -209,10 +211,12 @@ const STAGE_LABEL: Record<Exclude<UploadStage, null>, string> = {
   scanning:    'Reading document…',
 };
 
-function PhotoUpload({ label, folder, value, onChange, required, hasError, compact }: {
+function PhotoUpload({ label, folder, value, onChange, required, hasError, compact, locked, onUnlockRequest, onView }: {
   label: string; folder: string; value: string | null;
   onChange: (url: string | null, hash?: string, extracted?: DocumentExtracted, ocrStatus?: OcrStatus) => void;
   required?: boolean; hasError?: boolean; compact?: boolean;
+  /** Gate the existing photo behind a password prompt instead of showing it directly. */
+  locked?: boolean; onUnlockRequest?: () => void; onView?: (url: string) => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<UploadStage>(null);
@@ -263,9 +267,24 @@ function PhotoUpload({ label, folder, value, onChange, required, hasError, compa
       <p className="text-xs font-semibold text-slate-600 mb-1.5">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </p>
-      {value ? (
+      {value && locked ? (
+        <button type="button" onClick={onUnlockRequest}
+          className={`relative w-full ${h} rounded-xl overflow-hidden border border-slate-200 shadow-sm`}>
+          <img src={value} alt={label} className="w-full h-full object-cover blur-md scale-110" />
+          <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1 text-white">
+            <Lock size={16} />
+            <span className="text-[10px] font-medium">Password required</span>
+          </div>
+        </button>
+      ) : value ? (
         <div className={`relative w-full ${h} rounded-xl overflow-hidden border border-slate-200 shadow-sm group`}>
           <img src={value} alt={label} className="w-full h-full object-cover" />
+          {onView && (
+            <button type="button" onClick={() => onView(value)}
+              className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition">
+              <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 transition" />
+            </button>
+          )}
           <button type="button" onClick={() => { onChange(null); setFileError(null); }}
             className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition">
             <X size={12} />
@@ -442,6 +461,14 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
   // staff fills in the rest of the form, not as a rejection after Save.
   const [duplicateCustomer, setDuplicateCustomer] = useState<{ id: string; name: string; cnicMasked: string } | null>(null);
 
+  // The customer's own CNIC photo is the only place the actual ID number is
+  // visible (the number itself is only stored hashed, never in plaintext) —
+  // gate it behind a password re-entry when editing an existing customer,
+  // same pattern as the already-uploaded-this-session create flow doesn't need.
+  const [cnicPhotosUnlocked, setCnicPhotosUnlocked] = useState(!isEdit);
+  const [showCnicPasswordGate, setShowCnicPasswordGate] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
   const schema = isEdit ? editSchema : createCustomerSchema;
 
   const { register, handleSubmit, trigger, setValue, reset, formState: { errors } } = useForm<FormData>({
@@ -603,6 +630,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
               <div className="grid grid-cols-2 gap-3">
                 <PhotoUpload label="CNIC Front" folder="assaan/cnic" value={cnicFrontUrl}
                   hasError={!!errors.cnicFrontUrl} compact
+                  locked={isEdit && !cnicPhotosUnlocked}
+                  onUnlockRequest={() => setShowCnicPasswordGate(true)}
+                  onView={(url) => setLightboxUrl(url)}
                   onChange={(v, hash, extracted, ocrStatus) => {
                     setCnicFrontUrl(v);
                     if (hash) setCnicFrontHash(hash);
@@ -622,6 +652,9 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
                   }} />
                 <PhotoUpload label="CNIC Back" folder="assaan/cnic" value={cnicBackUrl}
                   hasError={!!errors.cnicBackUrl} compact
+                  locked={isEdit && !cnicPhotosUnlocked}
+                  onUnlockRequest={() => setShowCnicPasswordGate(true)}
+                  onView={(url) => setLightboxUrl(url)}
                   onChange={(v, hash, extracted) => {
                     setCnicBackUrl(v);
                     if (hash) setCnicBackHash(hash);
@@ -808,6 +841,28 @@ export default function CustomerForm({ customer, onSubmit, isPending, onCancel, 
           )}
         </div>
       </form>
+
+      <PasswordGateModal
+        open={showCnicPasswordGate}
+        title="CNIC Photo Dekhein"
+        description="ID card ki poori photo dekhne ke liye apna password confirm karein."
+        onSuccess={() => { setCnicPhotosUnlocked(true); setShowCnicPasswordGate(false); }}
+        onCancel={() => setShowCnicPasswordGate(false)}
+      />
+
+      {lightboxUrl && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <img src={lightboxUrl} alt="CNIC" className="max-w-full max-h-full rounded-lg shadow-2xl" />
+          <button type="button" onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 transition">
+            <X size={20} />
+          </button>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

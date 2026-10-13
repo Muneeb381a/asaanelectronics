@@ -298,4 +298,15 @@ export class AuthService {
   async logout(token: string) {
     if (token) await db.delete(refreshTokens).where(tokenMatches(token));
   }
+
+  // Step-up re-auth: confirms the already-logged-in user's own password,
+  // without touching their session — used to gate viewing sensitive data
+  // (e.g. a customer's CNIC photo) that's visible in the UI but shouldn't
+  // be one glance away from anyone with the page open.
+  async verifyPassword(userId: string, password: string) {
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user || !(await comparePassword(password, user.password))) {
+      throw new AppError('Incorrect password', 401);
+    }
+  }
 }

@@ -38,6 +38,13 @@ export declare const changePasswordSchema: z.ZodObject<{
     currentPassword: string;
     newPassword: string;
 }>;
+export declare const verifyPasswordSchema: z.ZodObject<{
+    password: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    password: string;
+}, {
+    password: string;
+}>;
 export declare const verifyOtpSchema: z.ZodObject<{
     otpToken: z.ZodString;
     code: z.ZodString;

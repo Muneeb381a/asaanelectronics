@@ -70,6 +70,18 @@ export async function changePassword(req: AuthRequest, res: Response) {
   success(res, null);
 }
 
+export async function verifyPassword(req: AuthRequest, res: Response) {
+  const ip = clientIp(req);
+  try {
+    await svc.verifyPassword(req.user!.userId, (req.body as { password: string }).password);
+    recordSuccess(ip);
+    success(res, null);
+  } catch (err) {
+    if (err instanceof AppError && err.statusCode === 401) recordFailure(ip);
+    throw err;
+  }
+}
+
 export async function logout(req: Request, res: Response) {
   await svc.logout((req.body as { token: string }).token);
   success(res, null);

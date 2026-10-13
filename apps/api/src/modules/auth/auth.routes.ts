@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../../middleware/validate.js';
 import {
-  registerSchema, loginSchema, changePasswordSchema,
+  registerSchema, loginSchema, changePasswordSchema, verifyPasswordSchema,
   verifyOtpSchema, resendOtpSchema, forgotPasswordSchema, resetPasswordSchema, refreshTokenSchema,
 } from '@assaan/shared';
 import { ipBlockMiddleware } from '../../middleware/ipBlock.js';
@@ -10,7 +10,7 @@ import { authenticate } from '../../middleware/auth.js';
 import { requireTurnstile } from '../../middleware/turnstile.js';
 import {
   setup, register, login, verifyLoginOtp, resendOtp,
-  forgotPassword, resetPassword, refresh, logout, changePassword,
+  forgotPassword, resetPassword, refresh, logout, changePassword, verifyPassword,
 } from './auth.controller.js';
 
 const router = Router();
@@ -26,5 +26,6 @@ router.post('/reset-password',  ipBlockMiddleware, loginLimiter, validate(resetP
 router.post('/refresh',         validate(refreshTokenSchema), refresh);
 router.post('/logout',          validate(refreshTokenSchema), logout);
 router.post('/change-password', authenticate, validate(changePasswordSchema), changePassword);
+router.post('/verify-password', authenticate, ipBlockMiddleware, loginLimiter, validate(verifyPasswordSchema), verifyPassword);
 
 export default router;
