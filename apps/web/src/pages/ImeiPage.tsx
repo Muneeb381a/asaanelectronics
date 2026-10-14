@@ -1,5 +1,6 @@
 import { PageHeader, btn, shell } from '../components/ui/Page';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -524,8 +525,29 @@ function UnitPhotosModal({ unit, onClose }: { unit: ProductUnit; onClose: () => 
 function UnitActions({ unit, onDone, onPtaCheck, onPhotos }: { unit: ProductUnit; onDone: () => void; onPtaCheck: () => void; onPhotos: () => void }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // The table wraps in overflow-hidden (for its rounded corners), which clips
+  // a plain absolute-positioned dropdown near the table's edge instead of
+  // letting it float over the page — portal it to the body, positioned from
+  // the trigger's actual screen coordinates, same fix as InstallmentsPage's
+  // ⋮ menu.
+  const toggleOpen = () => {
+    if (open) { setOpen(false); return; }
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setMenuPos({ top: rect.bottom + 4, right: Math.max(8, window.innerWidth - rect.right) });
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => { window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); };
+  }, [open]);
 
   const mutation = useMutation({
     mutationFn: (body: Parameters<typeof productUnitsApi.update>[1]) => productUnitsApi.update(unit.id, body),
@@ -553,7 +575,7 @@ function UnitActions({ unit, onDone, onPtaCheck, onPhotos }: { unit: ProductUnit
   ].filter(Boolean) as { label: string; icon: React.ElementType; cls: string; fn: () => void }[];
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <ConfirmDialog
         open={confirmDelete}
         title="Unit delete karein?"
@@ -564,20 +586,24 @@ function UnitActions({ unit, onDone, onPtaCheck, onPhotos }: { unit: ProductUnit
         onConfirm={() => deleteMutation.mutate(undefined, { onSettled: () => setConfirmDelete(false) })}
         onCancel={() => setConfirmDelete(false)}
       />
-      <button onClick={() => setOpen((o) => !o)} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition">
+      <button ref={triggerRef} onClick={toggleOpen} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition">
         <ChevronDown size={13} />
       </button>
-      {open && (
+      {open && menuPos && createPortal(
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-6 z-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[160px]">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            className="bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[160px]"
+          >
             {actions.map(({ label, icon: Icon, cls, fn }) => (
               <button key={label} onClick={fn} className={`flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-gray-50 ${cls}`}>
                 <Icon size={12} />{label}
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );
