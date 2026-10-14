@@ -1,9 +1,10 @@
 import { and, asc, eq, ilike, isNull, isNotNull, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { db } from '../../db/index.js';
-import { products, installments, supplierInvoices, supplierInvoiceLines, cashSales, customers } from '../../db/schema.js';
+import { products, installments, supplierInvoices, supplierInvoiceLines, supplierPayments, suppliers, ledgerEntries, cashSales, customers } from '../../db/schema.js';
 import { AppError } from '../../middleware/error.js';
 import { registerUnitsInTx } from '../productUnits/productUnits.service.js';
+import { accountingSvc } from '../accounting/accounting.service.js';
 import type { CreateProductInput, UpdateProductInput } from '@assaan/shared';
 
 export interface BulkReceiveUnit {
@@ -199,7 +200,7 @@ export class ProductsService {
     return { fastMoving, slowMoving, demandForecast, reorderSuggestions };
   }
 
-  async bulkCreate(sellerId: string, input: BulkReceiveInput) {
+  async bulkCreate(sellerId: string, input: BulkReceiveInput, actorId?: string) {
     if (!input.units?.length) throw new AppError('At least one unit required', 400);
     if (input.units.length > 100) throw new AppError('Max 100 units per batch', 400);
 
@@ -286,6 +287,38 @@ export class ProductsService {
             unitPrice:   String(input.units[i]?.purchasePrice ?? 0),
           })),
         );
+
+        // paidAmount here was only ever written onto the invoice column — the
+        // cash actually leaving the shop never hit supplierPayments or the
+        // ledger, so Stock Receive purchases were invisible to the Wallet
+        // balance. Mirror exactly what suppliers.service.ts's recordPayment()
+        // does for a payment made any other way.
+        if (input.paidAmount && input.paidAmount > 0) {
+          const [supplierRow] = await tx.select({ name: suppliers.name }).from(suppliers).where(eq(suppliers.id, input.supplierId));
+          const paidOn = input.invoiceDate;
+          const memo = `Supplier payment — ${supplierRow?.name ?? 'Supplier'} (${desc})`;
+
+          const [payment] = await tx.insert(supplierPayments).values({
+            invoiceId: invoice!.id, supplierId: input.supplierId, sellerId,
+            amount:  String(input.paidAmount),
+            method:  input.paymentMethod ?? null,
+            note:    'Stock receive — paid at time of purchase',
+            paidOn,
+            recordedBy: actorId ?? null,
+          }).returning();
+
+          await tx.insert(ledgerEntries).values({
+            sellerId,
+            type: 'DEBIT',
+            category: 'PURCHASE',
+            amount: String(input.paidAmount),
+            description: memo,
+            date: new Date(paidOn),
+            referenceId: payment!.id,
+            refType: 'SUPPLIER_PAYMENT',
+          });
+          await accountingSvc.postSupplierPaymentEntry(sellerId, { paymentId: payment!.id, amount: input.paidAmount, memo, userId: actorId }, tx);
+        }
       }
 
       return created;

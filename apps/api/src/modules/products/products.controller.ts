@@ -72,7 +72,7 @@ export async function getProductHistory(req: AuthRequest, res: Response) {
 
 export async function bulkReceiveProducts(req: AuthRequest, res: Response) {
   const input = req.body as BulkReceiveInput;
-  const created = await svc.bulkCreate(req.user!.sellerId!, input);
+  const created = await svc.bulkCreate(req.user!.sellerId!, input, req.user!.userId);
   success(res, created, 201);
   void audit.log({
     sellerId: req.user!.sellerId!, userId: req.user!.userId,
