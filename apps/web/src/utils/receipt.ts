@@ -850,8 +850,21 @@ function buildPaymentHistoryReceiptHtml(d: PaymentHistoryReceiptData): string {
   const isDaily  = d.paymentFrequency === 'daily';
   const freqWord = isDaily ? 'Daily' : 'Monthly';
 
-  const sorted = [...d.payments].sort((a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime());
-  const totalPaid = sorted.reduce((s, p) => s + p.amount, 0);
+  // Installments created before isDownPayment existed (and anything brought in
+  // through bulk import) never got a payments row for the down payment — it
+  // only ever lived in installments.downPayment. Without this, every total
+  // below silently loses that amount: "Total Paid"/"% paid off" undercount it
+  // and the running "Balance After" column stays that much too high for the
+  // installment's entire history.
+  const hasDownPaymentRow = d.payments.some((p) => p.isDownPayment);
+  const payments = d.downPayment > 0 && !hasDownPaymentRow
+    ? [...d.payments, { amount: d.downPayment, paidOn: d.startDate, method: 'CASH', isDownPayment: true, receiptNumber: null }]
+    : d.payments;
+
+  const sorted = [...payments].sort((a, b) => new Date(a.paidOn).getTime() - new Date(b.paidOn).getTime());
+  // totalAmount - remaining, not a sum of payment rows — same reasoning as the
+  // balance column below: it's correct even when historical rows are missing.
+  const totalPaid = Math.max(0, d.totalAmount - d.remaining);
   const paidCount = sorted.filter((p) => !p.isDownPayment).length;
   const pct = d.totalAmount > 0 ? Math.round((totalPaid / d.totalAmount) * 100) : 0;
   const printedDate = new Date().toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' });
@@ -860,11 +873,25 @@ function buildPaymentHistoryReceiptHtml(d: PaymentHistoryReceiptData): string {
   // scheduled amount — so a partial payment (e.g. 1,000 against a 14,175
   // installment) visibly leaves the rest owing instead of just vanishing,
   // and an overpayment is just as visible.
-  let balance = d.totalAmount;
+  //
+  // Anchored to d.remaining (the DB's authoritative current balance) instead
+  // of summed forward from totalAmount: some installments — mainly ones
+  // brought in through bulk import — are missing payments rows for amounts
+  // collected before the import, so a forward sum can drift arbitrarily far
+  // from reality. Working backward from the one number guaranteed correct
+  // keeps at least the latest/current balance right even when older rows
+  // can't be perfectly reconstructed.
+  const balances: number[] = new Array(sorted.length);
+  if (sorted.length > 0) {
+    balances[sorted.length - 1] = d.remaining;
+    for (let i = sorted.length - 2; i >= 0; i--) {
+      balances[i] = balances[i + 1]! + sorted[i + 1]!.amount;
+    }
+  }
   const rows = sorted.length === 0
     ? `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Abhi tak koi payment record nahi.</td></tr>`
     : sorted.map((p, idx) => {
-        balance = Math.max(0, balance - p.amount);
+        const balance = Math.max(0, balances[idx]!);
         const diff = !p.isDownPayment && d.monthly > 0 ? p.amount - d.monthly : 0;
         const diffNote = diff > 0.5
           ? `<div style="font-size:8px;color:#2563eb;font-weight:600">+${pkr(diff)} zyada</div>`
