@@ -11,6 +11,7 @@ import {
 import { suppliersApi } from '../api/suppliers.api.ts';
 import { productsApi, type BulkReceiveUnit } from '../api/products.api.ts';
 import CategoryCombobox from '../components/ui/CategoryCombobox.tsx';
+import ProductNameCombobox from '../components/ui/ProductNameCombobox.tsx';
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
@@ -143,6 +144,11 @@ export default function StockReceivePage() {
   const { data: dbCategories = [] } = useQuery({
     queryKey: ['product-categories'],
     queryFn:  productsApi.getCategories,
+    staleTime: 5 * 60_000,
+  });
+  const { data: dbProductNames = [] } = useQuery({
+    queryKey: ['product-names'],
+    queryFn:  productsApi.getNames,
     staleTime: 5 * 60_000,
   });
 
@@ -470,8 +476,8 @@ export default function StockReceivePage() {
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">
                   Product Name <span className="text-red-500">*</span>
                 </label>
-                <input value={productName} onChange={(e) => setProductName(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition"
+                <ProductNameCombobox value={productName} onChange={setProductName}
+                  options={dbProductNames}
                   placeholder="e.g. Samsung Galaxy A15, Honda 125, iPhone 15 Pro" />
               </div>
               <div className="grid grid-cols-3 gap-2">

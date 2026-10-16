@@ -120,6 +120,19 @@ export class ProductsService {
     return rows.map((r) => r.category).filter(Boolean) as string[];
   }
 
+  // Past product names this shop has used — feeds Stock Receive's name
+  // autocomplete so staff reuse "SAMSUNG A07" instead of retyping a near-miss
+  // ("Samsung A07", "samsung a-07") that fragments the same product under
+  // different spellings.
+  async getProductNames(sellerId: string) {
+    const rows = await db
+      .selectDistinct({ name: products.name })
+      .from(products)
+      .where(and(eq(products.sellerId, sellerId), isNull(products.deletedAt)))
+      .orderBy(asc(products.name));
+    return rows.map((r) => r.name).filter(Boolean);
+  }
+
   async getIntelligence(sellerId: string) {
     type Row = {
       id: string; name: string; stock: number; purchase_price: string | null;

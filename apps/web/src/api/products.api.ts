@@ -139,6 +139,9 @@ export const productsApi = {
   getCategories: () =>
     api.get<{ data: string[] }>('/products/categories').then((r) => r.data.data),
 
+  getNames: () =>
+    api.get<{ data: string[] }>('/products/names').then((r) => r.data.data),
+
   getSaleHistory: (id: string) =>
     api.get<{ data: ProductSaleHistory }>(`/products/${id}/history`).then(unwrap<ProductSaleHistory>),
 
