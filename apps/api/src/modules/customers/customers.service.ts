@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import { nextDueDateSql, pktTodaySql } from '../../utils/dueDate.js';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products, sellers } from '../../db/schema.js';
@@ -7,6 +7,7 @@ import { staffScopeSql, staffScopeOrTrue } from '../../utils/staffScope.js';
 import { hashCnic, hashCnicBoth, maskCnic, encryptCnic, decryptCnic, cnicEncryptionConfigured } from '../../utils/hash.js';
 import { PLAN_LIMITS, isUnlimited } from '../../config/plans.js';
 import { clearSellerStatsCache } from '../stats/stats.service.js';
+import { periodRange } from '../../utils/period.js';
 
 type BureauShopRow = { shopName: string; activeCount: number; defaultedCount: number; completedCount: number; cancelledCount: number; totalRemaining: string };
 
@@ -109,7 +110,7 @@ type CreateBody = {
 type UpdateBody = Partial<CreateBody> & { tags?: string[] };
 
 export class CustomersService {
-  async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string, verificationStatus?: string, staffUserId?: string, sortBy?: string, sortDir?: string, tag?: string) {
+  async list(sellerId: string, page: number, limit: number, search?: string, lifecycle?: string, verificationStatus?: string, staffUserId?: string, sortBy?: string, sortDir?: string, tag?: string, period?: string) {
     const base = staffUserId
       ? and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), staffScopeSql(staffUserId, 'customers'))
       : and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt));
@@ -135,9 +136,13 @@ export class CustomersService {
     }
     const tagCond = tag ? and(searchCond, sql`${tag} = ANY(${customers.tags})`) : searchCond;
     const lifecycleCond = lifecycle ? and(tagCond, sql`${lifecycleSQL} = ${lifecycle}`) : tagCond;
-    const where = verificationStatus
+    const verifCond = verificationStatus
       ? and(lifecycleCond, eq(customers.verificationStatus, verificationStatus as 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED'))
       : lifecycleCond;
+    const range = periodRange(period);
+    const where = range
+      ? and(verifCond, gte(customers.createdAt, range.from), ...(range.to ? [lt(customers.createdAt, range.to)] : []))
+      : verifCond;
 
     const riskScore = sql<number>`LEAST(100, (
       CASE

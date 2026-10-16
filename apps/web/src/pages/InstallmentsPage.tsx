@@ -1482,6 +1482,7 @@ export default function InstallmentsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [frequencyFilter, setFrequencyFilter] = useState('');
+  const [periodFilter, setPeriodFilter] = useState('');
   const [sortBy,  setSortBy]  = useState('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [search, setSearch] = useState('');
@@ -1657,8 +1658,8 @@ export default function InstallmentsPage() {
   const staffMustSearch = !isOwner && committedSearch.trim().length < 2;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['installments', statusFilter, frequencyFilter, committedSearch, page, limit, sortBy, sortDir],
-    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, search: committedSearch || undefined, page, limit, sortBy, sortDir }),
+    queryKey: ['installments', statusFilter, frequencyFilter, periodFilter, committedSearch, page, limit, sortBy, sortDir],
+    queryFn: () => installmentsApi.list({ status: statusFilter || undefined, frequency: frequencyFilter || undefined, period: periodFilter || undefined, search: committedSearch || undefined, page, limit, sortBy, sortDir }),
     enabled: !staffMustSearch,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
@@ -1913,6 +1914,22 @@ export default function InstallmentsPage() {
                   : 'text-gray-600 hover:bg-gray-100'
               }`}>
               {f.label}
+            </button>
+          ))}
+          <div className="w-px bg-gray-200 mx-1 self-stretch" />
+          {([
+            { value: '',           label: 'Sab waqt' },
+            { value: 'this_month', label: 'Is mahine' },
+            { value: 'last_month', label: 'Pichle mahine' },
+          ]).map(({ value, label }) => (
+            <button key={value}
+              onClick={() => { setPeriodFilter(value); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-sm transition ${
+                periodFilter === value
+                  ? 'bg-gray-900 text-white font-medium'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}>
+              {label}
             </button>
           ))}
         </div>

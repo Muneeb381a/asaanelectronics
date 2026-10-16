@@ -255,6 +255,7 @@ export default function DashboardPage() {
   const [handoverNote,  setHandoverNote]  = useState('');
   const [receiveTarget, setReceiveTarget] = useState<StaffBalance | null>(null);
   const [logTarget,     setLogTarget]     = useState<string | null>(null);
+  const [newCustPeriod, setNewCustPeriod] = useState<'this' | 'last'>('this');
 
   /* ── queries ── */
   const { data: myBal } = useQuery<StaffBalance | null>({
@@ -405,7 +406,21 @@ export default function DashboardPage() {
               <StatCard label="Overdue" value={overdueCount.toLocaleString()} icon={AlertTriangle} tone={overdueCount > 0 ? 'red' : 'gray'} onClick={() => navigate('/recovery')}
                 sub={overdueCount > 0 ? `${pkrSh(d?.overdueAmount ?? 0)} late · ${pkrSh(totalPending)} kul baaki` : `Sab time par · ${pkrSh(totalPending)} baaki`} />
               <StatCard label="Customers" value={(d?.totalCustomers ?? 0).toLocaleString()} icon={Users} tone="gray" onClick={() => navigate('/customers')}
-                sub={`+${d?.newThisMonthCount ?? 0} naye is mahine`} />
+                sub={
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <b className="text-gray-700">+{newCustPeriod === 'this' ? (d?.newCustomersThisMonth ?? 0) : (d?.newCustomersLastMonth ?? 0)}</b> naye customer
+                    <span className="inline-flex rounded-md border border-gray-200 overflow-hidden ml-auto">
+                      {([{ k: 'this' as const, l: 'Is mahina' }, { k: 'last' as const, l: 'Pichla mahina' }]).map(({ k, l }) => (
+                        <span key={k} role="button" tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); setNewCustPeriod(k); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setNewCustPeriod(k); } }}
+                          className={`px-1.5 py-0.5 text-[10px] font-medium transition cursor-pointer select-none ${newCustPeriod === k ? 'bg-gray-700 text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`}>
+                          {l}
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                } />
             </div>
           )
         )}

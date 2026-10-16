@@ -1804,6 +1804,7 @@ export default function CustomersPage() {
   const [lifecycle, setLifecycle] = useState('');
   const [verifFilter, setVerifFilter] = useState('');
   const [tagFilter,   setTagFilter]   = useState('');
+  const [periodFilter, setPeriodFilter] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(15);
   const [sortBy, setSortBy] = useState('createdAt');
@@ -1835,15 +1836,16 @@ export default function CustomersPage() {
     window.history.replaceState({}, '');
   }, [openCustomerId]);
 
-  useEffect(() => { setPage(1); }, [committedSearch, lifecycle, verifFilter, tagFilter, sortBy, sortDir, limit]);
+  useEffect(() => { setPage(1); }, [committedSearch, lifecycle, verifFilter, tagFilter, periodFilter, sortBy, sortDir, limit]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['customers', committedSearch, lifecycle, verifFilter, tagFilter, page, limit, sortBy, sortDir],
+    queryKey: ['customers', committedSearch, lifecycle, verifFilter, tagFilter, periodFilter, page, limit, sortBy, sortDir],
     queryFn: () => customersApi.list({
       search: committedSearch || undefined,
       lifecycle: lifecycle || undefined,
       verificationStatus: verifFilter || undefined,
       tag: tagFilter || undefined,
+      period: periodFilter || undefined,
       page,
       limit,
       sortBy,
@@ -1961,6 +1963,25 @@ export default function CustomersPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
                 verifFilter === value
                   ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {([
+            { value: '',           label: 'Sab waqt' },
+            { value: 'this_month', label: 'Is mahine' },
+            { value: 'last_month', label: 'Pichle mahine' },
+          ]).map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setPeriodFilter(value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                periodFilter === value
+                  ? 'bg-gray-900 text-white border-gray-900'
                   : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
               }`}
             >

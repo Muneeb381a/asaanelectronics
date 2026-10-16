@@ -222,10 +222,14 @@ export class StatsService {
         monthExpenseTotal:       0,
         monthInstTarget:         0,
         totalCustomers:          0,
+        newCustomersThisMonth:   0,
+        newCustomersLastMonth:   0,
       };
     }
 
-    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth, completingSoon, monthInstTarget, totalCustomersRow] = await Promise.all([
+    const lastMonthStart = pktMonthStart(undefined, 1);
+
+    const [todayCollections, monthCollections, todayCashSales, monthCashSales, activeCount, overdueCount, recent, lowStockItems, promisesData, guarantorRisk, sellerRow, monthExpenses, frequencyStats, newThisMonth, completedThisMonth, completingSoon, monthInstTarget, totalCustomersRow, newCustomersThisMonthRow, newCustomersLastMonthRow] = await Promise.all([
       db
         .select({ total: sum(payments.amount) })
         .from(payments)
@@ -511,6 +515,14 @@ export class StatsService {
       db.select({ total: count() })
         .from(customers)
         .where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt))),
+
+      // New customers this calendar month / last calendar month
+      db.select({ total: count() })
+        .from(customers)
+        .where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), gte(customers.createdAt, monthStart))),
+      db.select({ total: count() })
+        .from(customers)
+        .where(and(eq(customers.sellerId, sellerId), isNull(customers.deletedAt), gte(customers.createdAt, lastMonthStart), lt(customers.createdAt, monthStart))),
     ]);
 
     const budgetLimits = (sellerRow?.settings?.expenseBudgets ?? {}) as Partial<Record<string, number>>;
@@ -556,6 +568,8 @@ export class StatsService {
       })),
       monthInstTarget:  Number((monthInstTarget[0] as { target: string } | undefined)?.target ?? 0),
       totalCustomers:   Number(totalCustomersRow[0]?.total ?? 0),
+      newCustomersThisMonth: Number(newCustomersThisMonthRow[0]?.total ?? 0),
+      newCustomersLastMonth: Number(newCustomersLastMonthRow[0]?.total ?? 0),
     };
   }
 

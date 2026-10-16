@@ -12,10 +12,10 @@ export function pktDayStart(now = new Date()): Date {
   return new Date(Date.UTC(y, m, d) - PKT_OFFSET_MS);
 }
 
-/** UTC instant at which the current Pakistan month started. */
-export function pktMonthStart(now = new Date()): Date {
+/** UTC instant at which the current Pakistan month started, or `monthsAgo` months before it. */
+export function pktMonthStart(now = new Date(), monthsAgo = 0): Date {
   const { y, m } = pktParts(now);
-  return new Date(Date.UTC(y, m, 1) - PKT_OFFSET_MS);
+  return new Date(Date.UTC(y, m - monthsAgo, 1) - PKT_OFFSET_MS);
 }
 
 /** YYYY-MM-DD for today in Pakistan. */

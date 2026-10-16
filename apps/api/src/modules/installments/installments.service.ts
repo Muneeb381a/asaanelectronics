@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { and, asc, desc, eq, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { customers, installments, ledgerEntries, payments, products } from '../../db/schema.js';
@@ -11,6 +11,7 @@ import { fsm } from '../../utils/fsm.js';
 import { staffScopeSql, staffScopeOrTrue } from '../../utils/staffScope.js';
 import { isOverdueSql, nextDueDateSql, overdueAmountSql } from '../../utils/dueDate.js';
 import { hashCnicBoth, maskCnic } from '../../utils/hash.js';
+import { periodRange } from '../../utils/period.js';
 import type { ImportInstallmentRow } from '@assaan/shared';
 
 // Elapsed-but-unpaid periods, in rupees, as of `asOf` — the JS-side twin of
@@ -74,7 +75,7 @@ export class InstallmentsService {
     sellerId: string, page: number, limit: number,
     status?: string, search?: string, customerId?: string, frequency?: string,
     sortBy: string = 'createdAt', sortDir: string = 'desc',
-    staffUserId?: string,
+    staffUserId?: string, period?: string,
   ) {
     const conditions: SQL[] = [eq(customers.sellerId, sellerId), isNull(installments.deletedAt)];
     // Restrict to staff's own customers when they lack canViewAllInstallments
@@ -123,6 +124,11 @@ export class InstallmentsService {
     }
     if (customerId) conditions.push(eq(installments.customerId, customerId));
     if (frequency)  conditions.push(eq(installments.paymentFrequency, frequency as 'monthly' | 'daily'));
+    const range = periodRange(period);
+    if (range) {
+      conditions.push(gte(installments.createdAt, range.from));
+      if (range.to) conditions.push(lt(installments.createdAt, range.to));
+    }
     const statusFilter = and(...conditions);
 
     const sortColMap: Record<string, Parameters<typeof asc>[0]> = {
