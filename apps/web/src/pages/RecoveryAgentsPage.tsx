@@ -12,10 +12,12 @@ import { fmtDateShort } from '../utils/dateFormat.ts';
 /* ── helpers ── */
 const pkr = (v: number) => 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 const pkrSh = (v: number) => {
-  if (v >= 10_00_000) return `${(v / 10_00_000).toFixed(1)}M`;
-  if (v >= 1_00_000)  return `${(v / 1_00_000).toFixed(v % 1_00_000 === 0 ? 0 : 1)}L`;
-  if (v >= 1_000)     return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}K`;
-  return String(v);
+  const sign = v < 0 ? '-' : '';
+  const a = Math.abs(v);
+  if (a >= 10_00_000) return `${sign}${(a / 10_00_000).toFixed(1)}M`;
+  if (a >= 1_00_000)  return `${sign}${(a / 1_00_000).toFixed(a % 1_00_000 === 0 ? 0 : 1)}L`;
+  if (a >= 1_000)     return `${sign}${(a / 1_000).toFixed(a % 1_000 === 0 ? 0 : 1)}K`;
+  return String(Math.round(v));
 };
 const timeAgo = (iso: string) => {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);

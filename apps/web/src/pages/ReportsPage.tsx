@@ -130,10 +130,10 @@ function ForecastSection({ months }: { months: ForecastMonth[] }) {
   const textC  = ['text-indigo-700', 'text-indigo-600', 'text-indigo-400'];
 
   return (
-    <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl ring-1 ring-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5">
-        <div className="w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center">
-          <CalendarDays size={15} className="text-indigo-600"/>
+        <div className="w-9 h-9 bg-linear-to-br from-indigo-50 to-indigo-100 rounded-xl flex items-center justify-center ring-1 ring-black/[0.03]">
+          <CalendarDays size={16} className="text-indigo-600"/>
         </div>
         <div>
           <p className="text-sm font-bold text-slate-900">3-Month Collection Forecast</p>
@@ -145,9 +145,9 @@ function ForecastSection({ months }: { months: ForecastMonth[] }) {
           const barPct = maxAmt > 0 ? (m.expectedAmount / maxAmt) * 100 : 0;
           return (
             <div key={m.month} className="flex flex-col gap-3">
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <div className="bg-linear-to-br from-slate-50 to-slate-100/60 rounded-2xl p-4 ring-1 ring-inset ring-slate-200/70">
                 <p className="text-xs font-semibold text-slate-400 mb-1">{m.monthName.split(' ')[0]} {m.monthName.split(' ')[1]}</p>
-                <p className={`text-xl font-bold ${textC[i]}`}>{pkr(m.expectedAmount)}</p>
+                <p className={`text-xl font-bold tracking-tight ${textC[i]}`}>{pkr(m.expectedAmount)}</p>
                 <p className="text-xs text-slate-400 mt-1">{m.installmentCount} installment{m.installmentCount !== 1 ? 's' : ''}</p>
                 {m.dailyAmount > 0 && (
                   <div className="mt-2 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
@@ -156,7 +156,7 @@ function ForecastSection({ months }: { months: ForecastMonth[] }) {
                   </div>
                 )}
               </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-slate-100/80 rounded-full overflow-hidden ring-1 ring-black/[0.02]">
                 <div
                   className={`h-full rounded-full bg-linear-to-r ${shades[i]} transition-all duration-700`}
                   style={{ width: `${barPct}%` }}
@@ -176,8 +176,11 @@ function pkrSh(v: number) {
   const abs = Math.abs(v);
   const sign = v < 0 ? '-' : '';
   if (abs >= 10_00_000) return `${sign}${(abs / 10_00_000).toFixed(1)}M`;
+  if (abs >= 1_00_000)  return `${sign}${(abs / 1_00_000).toFixed(abs % 1_00_000 === 0 ? 0 : 1)}L`;
   if (abs >= 1_000)     return `${sign}${(abs / 1_000).toFixed(abs % 1_000 === 0 ? 0 : 1)}K`;
-  return `${sign}${abs}`;
+  // Unrounded backend floats (e.g. 285.29411764705878) must never reach the
+  // screen as-is — same bug already fixed once on DashboardPage.tsx.
+  return `${sign}${Math.round(abs)}`;
 }
 
 function ProfitSection() {
@@ -199,10 +202,10 @@ function ProfitSection() {
   const totalMissingCost = ranked.reduce((a, p) => a + p.missingCostCount, 0);
 
   return (
-    <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl ring-1 ring-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5">
-        <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
-          <Wallet size={15} className="text-emerald-600"/>
+        <div className="w-9 h-9 bg-linear-to-br from-emerald-50 to-emerald-100 rounded-xl flex items-center justify-center ring-1 ring-black/[0.03]">
+          <Wallet size={16} className="text-emerald-600"/>
         </div>
         <div>
           <p className="text-sm font-bold text-slate-900">Profit &amp; Margin</p>
@@ -215,23 +218,23 @@ function ProfitSection() {
       ) : pnl ? (
         <div className="p-6 border-b border-slate-100">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div>
+            <div className="rounded-xl bg-slate-50/70 p-3">
               <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Sales</p>
-              <p className="text-lg font-bold text-slate-900 tabular-nums">{pkrSh(pnl.totalRevenue)}</p>
+              <p className="text-lg font-bold text-slate-900 tabular-nums tracking-tight">{pkrSh(pnl.totalRevenue)}</p>
             </div>
-            <div>
+            <div className="rounded-xl bg-slate-50/70 p-3">
               <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Maal ki cost</p>
-              <p className="text-lg font-bold text-slate-700 tabular-nums">{pkrSh(pnl.cogsSales)}</p>
+              <p className="text-lg font-bold text-slate-700 tabular-nums tracking-tight">{pkrSh(pnl.cogsSales)}</p>
             </div>
-            <div>
+            <div className="rounded-xl bg-slate-50/70 p-3">
               <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Gross profit</p>
-              <p className={`text-lg font-bold tabular-nums ${pnl.grossProfit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
+              <p className={`text-lg font-bold tabular-nums tracking-tight ${pnl.grossProfit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
                 {pkrSh(pnl.grossProfit)} <span className="text-xs font-medium text-slate-400">({pnl.grossMarginPct}%)</span>
               </p>
             </div>
-            <div>
-              <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Net munafa</p>
-              <p className={`text-lg font-bold tabular-nums ${pnl.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            <div className={`rounded-xl p-3 ring-1 ring-inset ${pnl.netProfit >= 0 ? 'bg-linear-to-br from-emerald-50 to-emerald-100/60 ring-emerald-200/60' : 'bg-linear-to-br from-red-50 to-red-100/60 ring-red-200/60'}`}>
+              <p className={`text-[11px] font-semibold uppercase tracking-wide ${pnl.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>Net munafa</p>
+              <p className={`text-lg font-bold tabular-nums tracking-tight ${pnl.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                 {pkrSh(pnl.netProfit)} <span className="text-xs font-medium opacity-70">({pnl.netMarginPct}%)</span>
               </p>
             </div>
@@ -603,7 +606,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
           {/* Collection rate ring */}
-          <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-6 flex flex-col items-center justify-center gap-3">
+          <div className="bg-white rounded-2xl ring-1 ring-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] p-6 flex flex-col items-center justify-center gap-3">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Collection Rate</p>
             <RateRing rate={collectionRate.rate}/>
             <div className="text-center space-y-0.5">
@@ -613,14 +616,14 @@ export default function ReportsPage() {
           </div>
 
           {/* This month */}
-          <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-6 flex flex-col justify-between">
+          <div className="bg-white rounded-2xl ring-1 ring-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] p-6 flex flex-col justify-between">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">This Month</p>
-              <p className="text-3xl font-bold text-slate-900">{pkr(thisMonth)}</p>
+              <p className="text-3xl font-bold text-slate-900 tracking-tight">{pkr(thisMonth)}</p>
             </div>
             <div className="mt-4 space-y-1.5">
               {momChange !== null && (
-                <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg ${
+                <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg ring-1 ring-inset ring-black/[0.03] ${
                   momChange >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
                 }`}>
                   {momChange >= 0 ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
@@ -632,16 +635,16 @@ export default function ReportsPage() {
           </div>
 
           {/* Overdue */}
-          <div className={`rounded-2xl ring-1 shadow-sm p-6 flex flex-col justify-between ${
+          <div className={`rounded-2xl ring-1 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] p-6 flex flex-col justify-between ${
             totalOverdue > 0
-              ? 'bg-red-50 ring-red-200'
-              : 'bg-emerald-50 ring-emerald-200'
+              ? 'bg-linear-to-br from-red-50 to-red-100/50 ring-red-200/70'
+              : 'bg-linear-to-br from-emerald-50 to-emerald-100/50 ring-emerald-200/70'
           }`}>
             <div>
               <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${totalOverdue > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                 Overdue Installments
               </p>
-              <p className={`text-3xl font-bold ${totalOverdue > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+              <p className={`text-3xl font-bold tracking-tight ${totalOverdue > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
                 {totalOverdue}
               </p>
             </div>

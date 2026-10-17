@@ -18,7 +18,7 @@ const pkrSh = (v: number) => {
   if (abs >= 10_00_000) return `${sign}${(abs / 10_00_000).toFixed(1)}M`;
   if (abs >= 1_00_000)  return `${sign}${(abs / 1_00_000).toFixed(abs % 1_00_000 === 0 ? 0 : 1)}L`;
   if (abs >= 1_000)     return `${sign}${(abs / 1_000).toFixed(abs % 1_000 === 0 ? 0 : 1)}K`;
-  return `${sign}${abs}`;
+  return `${sign}${Math.round(abs)}`;
 };
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const currentPeriod = () => todayStr().slice(0, 7);
