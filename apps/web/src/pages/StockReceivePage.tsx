@@ -6,7 +6,7 @@ import { getErrorMessage } from '../utils/error.ts';
 import {
   ArrowLeft, Plus, Trash2, Copy, ChevronDown,
   Package, Smartphone, Bike, AlertCircle, CheckCircle2,
-  ClipboardList, UserPlus, X, Loader2,
+  UserPlus, X, Loader2,
 } from 'lucide-react';
 import { suppliersApi } from '../api/suppliers.api.ts';
 import { productsApi, type BulkReceiveUnit } from '../api/products.api.ts';
@@ -339,22 +339,27 @@ export default function StockReceivePage() {
     <div className="min-h-full bg-canvas">
 
       {/* ── Header ── */}
-      <div className="sticky top-0 z-20 bg-white border-b border-slate-100 shadow-sm">
+      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-slate-100 shadow-sm">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/products')} className="p-2 rounded-xl hover:bg-slate-100 transition text-slate-500">
+            <button onClick={() => navigate('/products')} className="p-2 rounded-xl hover:bg-slate-100 transition text-slate-500 hover:text-slate-700">
               <ArrowLeft size={18} />
             </button>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900">Maal Aya — Stock Receive</h1>
-              <p className="text-xs text-slate-400">Supplier se maal aya tu yahan add karein</p>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex w-9 h-9 rounded-xl bg-linear-to-br from-blue-500 to-blue-700 text-white items-center justify-center shadow-sm shadow-blue-600/20">
+                <Package size={17} />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-900 tracking-tight">Maal Aya — Stock Receive</h1>
+                <p className="text-xs text-slate-400">Supplier se maal aya tu yahan add karein</p>
+              </div>
             </div>
           </div>
           {tableReady && (
             <button
               onClick={handleSave}
               disabled={saveMutation.isPending}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition shadow-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition shadow-sm shadow-blue-600/25"
             >
               <CheckCircle2 size={15} />
               {saveMutation.isPending ? 'Save ho raha hai...' : `${rows.length} Products Save Karein`}
@@ -366,10 +371,10 @@ export default function StockReceivePage() {
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         {/* ── Setup Card ── */}
-        <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-50 flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
-              <ClipboardList size={15} className="text-blue-600" />
+        <div className="bg-white rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/80 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-50 flex items-center gap-3">
+            <div className="w-9 h-9 bg-linear-to-br from-blue-50 to-blue-100 rounded-xl flex items-center justify-center ring-1 ring-black/[0.03] shrink-0">
+              <span className="text-sm font-extrabold text-blue-600">1</span>
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900">Step 1 — Setup</p>
@@ -401,22 +406,22 @@ export default function StockReceivePage() {
 
               {/* Inline quick-add panel */}
               {showQuickSupplier && (
-                <div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-2">
+                <div className="mt-2 rounded-xl ring-1 ring-inset ring-indigo-200/70 bg-linear-to-br from-indigo-50 to-indigo-100/40 p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-bold text-indigo-700 flex items-center gap-1"><UserPlus size={12}/> Naya Supplier</p>
                     <button type="button" onClick={() => { setShowQuickSupplier(false); setQuickSupErr(''); }} className="text-indigo-400 hover:text-indigo-700"><X size={13}/></button>
                   </div>
                   <input value={quickSupName} onChange={e => setQuickSupName(e.target.value)} placeholder="Naam *"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-400 bg-white" autoFocus/>
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 bg-white transition" autoFocus/>
                   <input value={quickSupPhone} onChange={e => setQuickSupPhone(e.target.value)} placeholder="Phone (optional)"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-400 bg-white" type="tel"/>
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 bg-white transition" type="tel"/>
                   {quickSupErr && <p className="text-xs text-red-600">{quickSupErr}</p>}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => { setShowQuickSupplier(false); setQuickSupErr(''); }}
                       className="flex-1 py-1.5 text-xs border border-indigo-200 rounded-lg text-indigo-500 hover:bg-white transition">Cancel</button>
                     <button type="button" disabled={!quickSupName.trim() || quickSupplierMut.isPending}
                       onClick={() => { setQuickSupErr(''); if (!quickSupName.trim()) return setQuickSupErr('Naam zaruri hai'); quickSupplierMut.mutate(); }}
-                      className="flex-1 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60 transition flex items-center justify-center gap-1">
+                      className="flex-1 py-1.5 text-xs font-bold text-white bg-linear-to-br from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-lg disabled:opacity-60 transition flex items-center justify-center gap-1 shadow-sm shadow-indigo-600/20">
                       {quickSupplierMut.isPending ? <><Loader2 size={11} className="animate-spin"/> Saving…</> : <><UserPlus size={11}/> Save</>}
                     </button>
                   </div>
@@ -512,10 +517,10 @@ export default function StockReceivePage() {
                 <div className="flex flex-col gap-1.5">
                   {(['mobile', 'vehicle', 'other'] as ProductType[]).map((t) => (
                     <button key={t} type="button" onClick={() => setProductType(t)}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm font-bold transition ${
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm font-bold transition ${
                         productType === t
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                          ? 'border-blue-500 bg-linear-to-br from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-600/20'
+                          : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
                       }`}>
                       {typeIcons[t]}
                       {t === 'mobile' ? 'Mobile Phone' : t === 'vehicle' ? 'Vehicle (Bike/Car)' : 'Other Item'}
@@ -529,7 +534,7 @@ export default function StockReceivePage() {
                   className="w-full px-3 py-2.5 text-lg font-bold border border-slate-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition text-center tabular-nums" />
               </div>
               <button onClick={generateTable}
-                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2">
+                className="w-full py-2.5 bg-linear-to-br from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
                 <Plus size={15} /> Table Banao
               </button>
             </div>
@@ -538,11 +543,11 @@ export default function StockReceivePage() {
           {/* Default prices */}
           {tableReady && (
             <div className="px-5 pb-5">
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
+              <div className="bg-linear-to-br from-blue-50 to-blue-100/50 ring-1 ring-inset ring-blue-200/60 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
                   <p className="text-sm font-bold text-blue-800">Default Prices — Ek baar fill karo, sab rows pe apply karo</p>
                   <button onClick={applyDefaults}
-                    className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition">
+                    className="text-xs font-bold text-white bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-3 py-1.5 rounded-lg transition shadow-sm shadow-blue-600/20">
                     Sab Rows Pe Apply ↓
                   </button>
                 </div>
@@ -567,15 +572,20 @@ export default function StockReceivePage() {
 
         {/* ── Table ── */}
         {tableReady && (
-          <div id="stock-table" className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-              <div>
-                <p className="text-sm font-bold text-slate-900">Step 2 — Har Unit Ki Details</p>
-                <p className="text-[11px] text-slate-400">
-                  {rows.length} units · {productName} · {productType === 'mobile' ? 'IMEI required' : productType === 'vehicle' ? 'Chassis required' : 'Optional serial'}
-                </p>
+          <div id="stock-table" className="bg-white rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/80 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50 gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 bg-linear-to-br from-emerald-50 to-emerald-100 rounded-xl flex items-center justify-center ring-1 ring-black/[0.03] shrink-0">
+                  <span className="text-sm font-extrabold text-emerald-600">2</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900">Step 2 — Har Unit Ki Details</p>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {rows.length} units · {productName} · {productType === 'mobile' ? 'IMEI required' : productType === 'vehicle' ? 'Chassis required' : 'Optional serial'}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {productType === 'mobile' && (
                   <button onClick={pasteImeis}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition">
@@ -897,10 +907,10 @@ export default function StockReceivePage() {
 
         {/* ── Summary + Save ── */}
         {tableReady && (
-          <div className="bg-slate-900 rounded-2xl p-5 lg:p-6 text-white">
+          <div className="bg-linear-to-br from-slate-900 to-slate-950 rounded-2xl p-5 lg:p-6 text-white ring-1 ring-white/5 shadow-xl shadow-slate-900/20">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-4">Summary</p>
             {missingBuyPrices && (
-              <div className="flex items-center gap-2 bg-amber-500/20 border border-amber-400/30 rounded-xl px-4 py-2.5 mb-4 text-amber-300 text-xs font-bold">
+              <div className="flex items-center gap-2 bg-amber-500/15 ring-1 ring-inset ring-amber-400/30 rounded-xl px-4 py-2.5 mb-4 text-amber-300 text-xs font-bold">
                 <AlertCircle size={13} /> Purchase prices nahi bhari — Gross Profit sahi nahi hoga. Invoice total bhi 0 jayegi.
               </div>
             )}
@@ -911,9 +921,9 @@ export default function StockReceivePage() {
                 { label: 'Sale Value',    val: `PKR ${pkr(totalSale)}`,                               cls: 'text-emerald-300' },
                 { label: 'Gross Profit',  val: missingBuyPrices ? '—' : `PKR ${pkr(profit)}`,        cls: missingBuyPrices ? 'text-slate-600' : profit >= 0 ? 'text-emerald-400' : 'text-red-400' },
               ].map(({ label, val, cls }) => (
-                <div key={label} className="bg-white/8 rounded-2xl p-4">
+                <div key={label} className="bg-white/[0.06] rounded-2xl p-4 ring-1 ring-inset ring-white/5">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-                  <p className={`text-xl lg:text-2xl font-bold tabular-nums ${cls}`}>{val}</p>
+                  <p className={`text-xl lg:text-2xl font-bold tabular-nums tracking-tight ${cls}`}>{val}</p>
                 </div>
               ))}
             </div>
@@ -924,7 +934,7 @@ export default function StockReceivePage() {
                   : 'Supplier select nahi kia — sirf products add honge'}
               </p>
               <button onClick={handleSave} disabled={saveMutation.isPending}
-                className="flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-base rounded-xl transition shadow-lg shadow-blue-900/30">
+                className="flex items-center gap-2 px-8 py-3 bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 disabled:opacity-50 text-white font-bold text-base rounded-xl transition shadow-lg shadow-blue-900/30">
                 <CheckCircle2 size={18} />
                 {saveMutation.isPending ? 'Save ho raha hai...' : `${rows.length} Products Save Karein`}
               </button>
