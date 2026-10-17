@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, ShieldCheck, ShieldX, Clock, AlertTriangle, CheckCircle2, UserX, Loader2 } from 'lucide-react';
-import { customersApi, type CustomerLookupResult } from '../../api/customers.api.ts';
+import { Search, ShieldCheck, ShieldX, Clock, AlertTriangle, CheckCircle2, UserX, Loader2, ShieldAlert, BadgeCheck } from 'lucide-react';
+import { customersApi, type CustomerLookupResult, type BureauData } from '../../api/customers.api.ts';
 
 function formatCnic(raw: string): string {
   const d = raw.replace(/\D/g, '').slice(0, 13);
@@ -32,6 +32,76 @@ interface Props {
   subtitle?: string;
 }
 
+function pkr(v: number) { return 'PKR ' + Math.round(v).toLocaleString('en-PK'); }
+
+function BureauAlert({ bureau }: { bureau: BureauData }) {
+  const remaining = Number(bureau.totalRemaining);
+
+  if (bureau.totalDefaulted > 0) {
+    return (
+      <div className="mb-4 bg-linear-to-br from-red-50 to-red-100/60 ring-1 ring-red-200 rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-red-500 to-red-700 text-white flex items-center justify-center shrink-0 shadow-sm shadow-red-600/20"><ShieldAlert size={16} /></div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-red-800">Cross-Shop Alert — Dusri Shops Mein Default</p>
+            <p className="text-xs text-red-700 mt-0.5">
+              Is CNIC ka <b>{bureau.shops.length}</b> dusri shop{bureau.shops.length !== 1 ? 's' : ''} mein record hai —
+              {' '}<b>{bureau.totalDefaulted}</b> default{bureau.totalDefaulted !== 1 ? 's' : ''}
+              {remaining > 0 && <> · <b>{pkr(remaining)}</b> baqaya</>}. Credit dene se pehle ehtiyat karein.
+            </p>
+            <ul className="mt-2 space-y-1">
+              {bureau.shops.map((s) => (
+                <li key={s.shopName} className="text-[11px] text-red-700/90 flex items-center justify-between bg-white/60 rounded-lg px-2.5 py-1.5 ring-1 ring-red-200/60">
+                  <span className="font-medium truncate">{s.shopName}</span>
+                  <span className="shrink-0 ml-2">
+                    {s.defaultedCount > 0 && <b className="text-red-700">{s.defaultedCount} default</b>}
+                    {s.activeCount > 0 && <span className="ml-2">{s.activeCount} active</span>}
+                    {s.completedCount > 0 && <span className="ml-2 text-emerald-700">{s.completedCount} completed</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (remaining > 0) {
+    return (
+      <div className="mb-4 bg-linear-to-br from-amber-50 to-amber-100/60 ring-1 ring-amber-200 rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm"><AlertTriangle size={16} /></div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-amber-800">Cross-Shop Alert — Active Installment Kisi Aur Shop Mein</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Is CNIC ka <b>{bureau.shops.length}</b> dusri shop{bureau.shops.length !== 1 ? 's' : ''} mein active installment hai — <b>{pkr(remaining)}</b> baqaya. Naya credit dene se pehle customer ki total liability dhyan mein rakhein.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (bureau.totalCompleted > 0) {
+    return (
+      <div className="mb-4 bg-linear-to-br from-emerald-50 to-emerald-100/60 ring-1 ring-emerald-200 rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-600/20"><BadgeCheck size={16} /></div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-emerald-800">Achi Khabar — Dusri Shop Mein Saaf Record</p>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              Is customer ne kisi aur shop mein <b>{bureau.totalCompleted}</b> installment{bureau.totalCompleted !== 1 ? 's' : ''} successfully complete kiye hain, koi default nahi.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export default function CnicCustomerLookup({ onFound, onAddNew, title, subtitle }: Props) {
   const [rawCnic, setRawCnic]     = useState('');
   const [searchCnic, setSearchCnic] = useState('');
@@ -47,6 +117,7 @@ export default function CnicCustomerLookup({ onFound, onAddNew, title, subtitle 
   });
 
   const customer = data?.ownRecord ?? null;
+  const bureau   = data?.bureau ?? null;
   const searched = searchCnic.length >= 12;
 
   function handleSearch() {
@@ -109,6 +180,9 @@ export default function CnicCustomerLookup({ onFound, onAddNew, title, subtitle 
           Search failed. Check your connection and try again.
         </div>
       )}
+
+      {/* Cross-shop bureau alert (shown whether or not found at this shop) */}
+      {searched && !isFetching && bureau && <BureauAlert bureau={bureau} />}
 
       {/* Found */}
       {searched && !isFetching && customer && (
