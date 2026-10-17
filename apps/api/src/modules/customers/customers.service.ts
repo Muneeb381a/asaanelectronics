@@ -23,6 +23,27 @@ function buildBureau(rows: BureauShopRow[]) {
   };
 }
 
+/** Extra risk points from this CNIC's installment history at OTHER shops on the platform. */
+function crossShopRiskSql(c: typeof customers) {
+  return sql<number>`(
+    CASE
+      WHEN EXISTS (
+        SELECT 1 FROM customers c2
+        JOIN installments i2 ON i2.customer_id = c2.id AND i2.deleted_at IS NULL
+        WHERE c2.cnic_hash = ${c.cnicHash} AND c2.seller_id <> ${c.sellerId} AND c2.deleted_at IS NULL
+          AND i2.status = 'DEFAULTED'
+      ) THEN 25
+      WHEN EXISTS (
+        SELECT 1 FROM customers c2
+        JOIN installments i2 ON i2.customer_id = c2.id AND i2.deleted_at IS NULL
+        WHERE c2.cnic_hash = ${c.cnicHash} AND c2.seller_id <> ${c.sellerId} AND c2.deleted_at IS NULL
+          AND i2.status = 'ACTIVE' AND i2.remaining::numeric > 0
+      ) THEN 12
+      ELSE 0
+    END
+  )`;
+}
+
 function riskLabel(score: number): 'GOOD' | 'AVERAGE' | 'RISKY' | 'BLACKLIST' {
   if (score <= 30) return 'GOOD';
   if (score <= 60) return 'AVERAGE';
@@ -154,6 +175,7 @@ export class CustomersService {
       + CASE ${customers.verificationStatus} WHEN 'APPROVED' THEN 0 WHEN 'UNDER_REVIEW' THEN 8 WHEN 'PENDING' THEN 15 WHEN 'REJECTED' THEN 20 ELSE 15 END
       + CASE WHEN ${customers.occupation} IS NULL AND ${customers.employer} IS NULL THEN 10 WHEN ${customers.employer} IS NULL THEN 5 ELSE 0 END
       + COALESCE((SELECT CASE WHEN COUNT(*) >= 3 THEN 10 WHEN COUNT(*) >= 2 THEN 5 ELSE 0 END FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL), 0)
+      + ${crossShopRiskSql(customers)}
     )::int)`;
 
     const sortColMap: Record<string, typeof customers.createdAt | typeof customers.name> = {
@@ -394,6 +416,7 @@ export class CustomersService {
       + CASE WHEN ${customers.occupation} IS NULL AND ${customers.employer} IS NULL THEN 10 WHEN ${customers.employer} IS NULL THEN 5 ELSE 0 END
       + (SELECT CASE WHEN cnt >= 3 THEN 10 WHEN cnt >= 2 THEN 5 ELSE 0 END
              FROM (SELECT COUNT(*) AS cnt FROM installments i WHERE i.customer_id = ${customers.id} AND i.status = 'ACTIVE' AND i.deleted_at IS NULL) _c)
+      + ${crossShopRiskSql(customers)}
     )::int)`;
 
     const rows = await db.select({
@@ -758,7 +781,7 @@ export class CustomersService {
       .from(installments)
       .where(and(eq(installments.customerId, id), eq(installments.status, 'ACTIVE'), isNull(installments.deletedAt)));
 
-    const [hasDefaulted, hasOverdue] = await Promise.all([
+    const [hasDefaulted, hasOverdue, crossShop] = await Promise.all([
       db.query.installments.findFirst({
         where: and(eq(installments.customerId, id), eq(installments.status, 'DEFAULTED'), isNull(installments.deletedAt)),
         columns: { id: true },
@@ -772,10 +795,26 @@ export class CustomersService {
             AND ${nextDueDateSql('')} < ${pktTodaySql}
         ) AS overdue
       `),
+      db.execute<{ defaulted: boolean; unpaid: boolean }>(sql`
+        SELECT
+          EXISTS (
+            SELECT 1 FROM customers c2
+            JOIN installments i2 ON i2.customer_id = c2.id AND i2.deleted_at IS NULL
+            WHERE c2.cnic_hash = ${customer.cnicHash} AND c2.seller_id <> ${sellerId} AND c2.deleted_at IS NULL
+              AND i2.status = 'DEFAULTED'
+          ) AS defaulted,
+          EXISTS (
+            SELECT 1 FROM customers c2
+            JOIN installments i2 ON i2.customer_id = c2.id AND i2.deleted_at IS NULL
+            WHERE c2.cnic_hash = ${customer.cnicHash} AND c2.seller_id <> ${sellerId} AND c2.deleted_at IS NULL
+              AND i2.status = 'ACTIVE' AND i2.remaining::numeric > 0
+          ) AS unpaid
+      `),
     ]);
 
     const isOverdue = (hasOverdue as unknown as Array<{ overdue: boolean }>)[0]?.overdue ?? false;
     const activeCount = Number(activeCountRow[0]?.count ?? 0);
+    const crossShopRow = (crossShop as unknown as Array<{ defaulted: boolean; unpaid: boolean }>)[0];
 
     const factors = {
       defaultHistory:    hasDefaulted ? 40 : (isOverdue ? 22 : 0),
@@ -789,6 +828,7 @@ export class CustomersService {
         : 20,
       employmentInfo:    !customer.occupation && !customer.employer ? 10 : !customer.employer ? 5 : 0,
       activeInstallments: activeCount >= 3 ? 10 : activeCount === 2 ? 5 : 0,
+      crossShopHistory:  crossShopRow?.defaulted ? 25 : crossShopRow?.unpaid ? 12 : 0,
     };
 
     const total = Math.min(100, Object.values(factors).reduce((a, b) => a + b, 0));
@@ -802,6 +842,7 @@ export class CustomersService {
         verificationStatus:{ score: factors.verificationStatus,max: 20, label: 'Verification Status' },
         employmentInfo:    { score: factors.employmentInfo,    max: 10, label: 'Employment Info' },
         activeInstallments:{ score: factors.activeInstallments,max: 10, label: 'Active Installment Load' },
+        crossShopHistory:  { score: factors.crossShopHistory,  max: 25, label: 'Cross-Shop History' },
       },
     };
   }
