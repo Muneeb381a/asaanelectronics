@@ -111,12 +111,12 @@ function StatCard({ label, value, sub, icon: Icon, tone, onClick, progress }: {
   onClick?: () => void; progress?: number | null;
 }) {
   const tones: Record<string, { icon: string; bar: string; wash: string }> = {
-    blue:    { icon: 'bg-linear-to-br from-blue-500 to-blue-700 text-white',       bar: 'bg-blue-600',    wash: 'from-blue-50/60'    },
-    emerald: { icon: 'bg-linear-to-br from-emerald-500 to-emerald-700 text-white', bar: 'bg-emerald-600', wash: 'from-emerald-50/60' },
-    amber:   { icon: 'bg-linear-to-br from-amber-400 to-amber-600 text-white',     bar: 'bg-amber-500',   wash: 'from-amber-50/60'   },
-    red:     { icon: 'bg-linear-to-br from-red-500 to-red-700 text-white',         bar: 'bg-red-600',     wash: 'from-red-50/60'     },
-    violet:  { icon: 'bg-linear-to-br from-violet-500 to-violet-700 text-white',   bar: 'bg-violet-600',  wash: 'from-violet-50/60'  },
-    gray:    { icon: 'bg-linear-to-br from-gray-600 to-gray-800 text-white',       bar: 'bg-gray-700',    wash: 'from-gray-100/60'   },
+    blue:    { icon: 'bg-linear-to-br from-blue-500 to-blue-700 text-white',       bar: 'bg-linear-to-r from-blue-500 to-blue-600',       wash: 'from-blue-50/60'    },
+    emerald: { icon: 'bg-linear-to-br from-emerald-500 to-emerald-700 text-white', bar: 'bg-linear-to-r from-emerald-500 to-emerald-600', wash: 'from-emerald-50/60' },
+    amber:   { icon: 'bg-linear-to-br from-amber-400 to-amber-600 text-white',     bar: 'bg-linear-to-r from-amber-400 to-amber-500',     wash: 'from-amber-50/60'   },
+    red:     { icon: 'bg-linear-to-br from-red-500 to-red-700 text-white',         bar: 'bg-linear-to-r from-red-500 to-red-600',         wash: 'from-red-50/60'     },
+    violet:  { icon: 'bg-linear-to-br from-violet-500 to-violet-700 text-white',   bar: 'bg-linear-to-r from-violet-500 to-violet-600',   wash: 'from-violet-50/60'  },
+    gray:    { icon: 'bg-linear-to-br from-gray-600 to-gray-800 text-white',       bar: 'bg-linear-to-r from-gray-600 to-gray-700',       wash: 'from-gray-100/60'   },
   };
   const t = tones[tone]!;
   const Tag = onClick ? 'button' : 'div';
@@ -129,7 +129,7 @@ function StatCard({ label, value, sub, icon: Icon, tone, onClick, progress }: {
       <p className="text-[28px] font-bold text-gray-900 tabular-nums leading-none tracking-tight">{value}</p>
       {progress !== undefined && progress !== null ? (
         <div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-gray-100/80 rounded-full overflow-hidden ring-1 ring-black/[0.02]">
             <div className={`h-full rounded-full transition-all duration-700 ${t.bar}`} style={{ width: `${Math.min(100, progress)}%` }} />
           </div>
           {sub && <p className="text-[11px] text-gray-500 mt-1.5">{sub}</p>}
@@ -489,7 +489,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       {a.installment_status && (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${a.installment_status === 'ACTIVE' ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'}`}>{a.installment_status}</span>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ring-1 ring-inset ring-black/[0.04] ${a.installment_status === 'ACTIVE' ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'}`}>{a.installment_status}</span>
                       )}
                       <div className="flex items-center gap-1.5">
                         {canLog && a.installment_id && (
@@ -538,10 +538,10 @@ export default function DashboardPage() {
                 subtitle={!briefing ? 'Load ho raha…' : allClear ? 'Koi due, overdue ya wada nahi' : `${totalWork} items`}
                 action={briefing && totalWork > 0 && (
                   <div className="flex items-center gap-1 flex-wrap justify-end">
-                    {bPending > 0  && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">{bPending} approve</span>}
-                    {bOverdue > 0  && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700">{bOverdue} late</span>}
-                    {bDueToday > 0 && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{bDueToday} aaj</span>}
-                    {pDueCount > 0 && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">{pDueCount} wada</span>}
+                    {bPending > 0  && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ring-1 ring-inset ring-black/[0.04] bg-violet-50 text-violet-700">{bPending} approve</span>}
+                    {bOverdue > 0  && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ring-1 ring-inset ring-black/[0.04] bg-red-50 text-red-700">{bOverdue} late</span>}
+                    {bDueToday > 0 && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ring-1 ring-inset ring-black/[0.04] bg-blue-50 text-blue-700">{bDueToday} aaj</span>}
+                    {pDueCount > 0 && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ring-1 ring-inset ring-black/[0.04] bg-amber-50 text-amber-700">{pDueCount} wada</span>}
                   </div>
                 )} />
 
@@ -620,7 +620,7 @@ export default function DashboardPage() {
                             <p className="text-sm font-semibold text-gray-900 truncate">{p.customerName}</p>
                             <p className="text-[11px] text-gray-500 truncate">{p.productName}{p.note ? ` · ${p.note}` : ''}</p>
                           </div>
-                          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-50 text-amber-700"><Bell size={10} /> Wada</span>
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ring-1 ring-inset ring-black/[0.04] bg-amber-50 text-amber-700"><Bell size={10} /> Wada</span>
                           <WaButton phone={p.customerPhone} msg={`Assalam-o-Alaikum ${p.customerName}! Aap ne aaj payment ka wada kiya tha. Kab tak jama karwa rahe hain? Shukriya.`} />
                         </div>
                       ))}
@@ -663,8 +663,8 @@ export default function DashboardPage() {
                               <p className="text-sm font-semibold text-gray-900 truncate">{s.staffName}</p>
                               <p className={`text-sm font-bold tabular-nums ${s.total > 0 ? 'text-gray-900' : 'text-gray-300'}`}>{s.total > 0 ? pkrSh(s.total) : '—'}</p>
                             </div>
-                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1.5">
-                              <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
+                            <div className="h-1.5 bg-gray-100/80 rounded-full overflow-hidden mt-1.5">
+                              <div className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-600 transition-all duration-700" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
                         </div>
@@ -699,8 +699,8 @@ export default function DashboardPage() {
                               <p className="text-lg font-semibold text-gray-700 tabular-nums">{pkrSh(exp)}</p>
                             </div>
                           </div>
-                          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-600' : 'bg-amber-500'}`} style={{ width: `${pct}%` }} />
+                          <div className="h-2.5 bg-gray-100/80 rounded-full overflow-hidden ring-1 ring-black/[0.02]">
+                            <div className={`h-full rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-linear-to-r from-emerald-500 to-emerald-600' : pct >= 50 ? 'bg-linear-to-r from-blue-500 to-blue-600' : 'bg-linear-to-r from-amber-400 to-amber-500'}`} style={{ width: `${pct}%` }} />
                           </div>
                           <div className="flex justify-between text-[11px] mt-1.5">
                             <span className="text-gray-500">{pct}% aa gaya</span>
@@ -723,9 +723,9 @@ export default function DashboardPage() {
                       <div className="flex justify-between"><span className="text-gray-500">− Maal ki cost</span><span className="text-gray-700 tabular-nums">{pkrSh(pnl.cogsSales)}</span></div>
                       <div className="flex justify-between border-t border-gray-100 pt-2"><span className="text-gray-600 font-medium">Gross profit</span><span className="font-semibold text-gray-900 tabular-nums">{pkrSh(pnl.grossProfit)} <span className="text-[11px] text-gray-400">({pnl.grossMarginPct}%)</span></span></div>
                       <div className="flex justify-between"><span className="text-gray-500">− Kharche</span><span className="text-gray-700 tabular-nums">{pkrSh(pnl.totalExpenses)}</span></div>
-                      <div className={`flex justify-between rounded-lg px-3 py-2 -mx-1 ${pnl.netProfit >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                      <div className={`flex justify-between items-center rounded-xl px-3.5 py-2.5 -mx-1 mt-1 ring-1 ring-inset ${pnl.netProfit >= 0 ? 'bg-linear-to-br from-emerald-50 to-emerald-100/60 ring-emerald-200/60' : 'bg-linear-to-br from-red-50 to-red-100/60 ring-red-200/60'}`}>
                         <span className={`font-semibold ${pnl.netProfit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>Net munafa</span>
-                        <span className={`font-bold tabular-nums ${pnl.netProfit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{pnl.netProfit < 0 ? '-' : ''}{pkrSh(Math.abs(pnl.netProfit))} <span className="text-[11px] font-medium opacity-70">({pnl.netMarginPct}%)</span></span>
+                        <span className={`text-base font-bold tabular-nums ${pnl.netProfit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{pnl.netProfit < 0 ? '-' : ''}{pkrSh(Math.abs(pnl.netProfit))} <span className="text-[11px] font-medium opacity-70">({pnl.netMarginPct}%)</span></span>
                       </div>
                       {pnl.supplierOutstanding > 0 && <p className="text-[11px] text-amber-700">Suppliers ko {pkrSh(pnl.supplierOutstanding)} dena baaki hai</p>}
                       {pnl.missingCostRevenue > 0 && (
@@ -748,11 +748,11 @@ export default function DashboardPage() {
                   {!valuation ? <div className="p-5"><RowSkeleton rows={2} /></div> : (
                     <div className="p-5">
                       <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                        <div className="rounded-xl bg-linear-to-br from-gray-50 to-gray-100/60 ring-1 ring-inset ring-gray-200/70 p-3.5">
                           <p className="text-[11px] text-gray-500">Kharid value</p>
                           <p className="text-lg font-bold text-gray-900 tabular-nums">{pkrSh(valuation.totalStockValue)}</p>
                         </div>
-                        <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
+                        <div className="rounded-xl bg-linear-to-br from-emerald-50 to-emerald-100/60 ring-1 ring-inset ring-emerald-200/60 p-3.5">
                           <p className="text-[11px] text-emerald-700">Mumkin munafa</p>
                           <p className="text-lg font-bold text-emerald-800 tabular-nums">{pkrSh(valuation.potentialProfit)}</p>
                         </div>
@@ -813,10 +813,10 @@ export default function DashboardPage() {
                       <div>
                         <div className="flex items-end justify-between mb-1.5">
                           <p className="text-xs text-gray-500">Collection rate</p>
-                          <p className={`text-2xl font-bold tabular-nums ${reports.collectionRate.rate >= 80 ? 'text-emerald-700' : reports.collectionRate.rate >= 60 ? 'text-amber-700' : 'text-red-700'}`}>{reports.collectionRate.rate}%</p>
+                          <p className={`text-[28px] font-bold tabular-nums tracking-tight ${reports.collectionRate.rate >= 80 ? 'text-emerald-700' : reports.collectionRate.rate >= 60 ? 'text-amber-700' : 'text-red-700'}`}>{reports.collectionRate.rate}%</p>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${reports.collectionRate.rate >= 80 ? 'bg-emerald-500' : reports.collectionRate.rate >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${Math.min(100, reports.collectionRate.rate)}%` }} />
+                        <div className="h-2.5 bg-gray-100/80 rounded-full overflow-hidden ring-1 ring-black/[0.02]">
+                          <div className={`h-full rounded-full transition-all duration-700 ${reports.collectionRate.rate >= 80 ? 'bg-linear-to-r from-emerald-500 to-emerald-600' : reports.collectionRate.rate >= 60 ? 'bg-linear-to-r from-amber-400 to-amber-500' : 'bg-linear-to-r from-red-500 to-red-600'}`} style={{ width: `${Math.min(100, reports.collectionRate.rate)}%` }} />
                         </div>
                         <div className="flex justify-between text-[11px] text-gray-500 mt-1.5 tabular-nums">
                           <span>Wasool <b className="text-gray-800">{pkrSh(reports.collectionRate.totalCollected)}</b></span>
@@ -905,7 +905,7 @@ export default function DashboardPage() {
                           <p className="text-sm font-bold text-gray-900 tabular-nums">{pkr(Number(inst.remaining))}</p>
                           <p className="text-[10px] text-gray-400">baaki · {pkrSh(Number(inst.monthly))}/qist</p>
                         </div>
-                        <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${s.cls}`}>{s.label}</span>
+                        <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ring-1 ring-inset ring-black/[0.04] ${s.cls}`}>{s.label}</span>
                       </button>
                     );
                   })}
@@ -922,18 +922,18 @@ export default function DashboardPage() {
                 <CardHead icon={AlertTriangle} tone="red" title="Overdue breakdown" subtitle={`${agingTotal} accounts`} action={<LinkBtn onClick={() => navigate('/recovery')}>Recovery</LinkBtn>} />
                 <div className="p-5 space-y-3">
                   {([
-                    { label: '1–7 din',   v: aging.days0_7,    bar: 'bg-amber-400'  },
-                    { label: '8–30 din',  v: aging.days8_30,   bar: 'bg-orange-500' },
-                    { label: '31–90 din', v: aging.days31_90,  bar: 'bg-red-500'    },
-                    { label: '90+ din',   v: aging.days90plus, bar: 'bg-red-800'    },
+                    { label: '1–7 din',   v: aging.days0_7,    bar: 'bg-linear-to-r from-amber-400 to-amber-500'   },
+                    { label: '8–30 din',  v: aging.days8_30,   bar: 'bg-linear-to-r from-orange-500 to-orange-600' },
+                    { label: '31–90 din', v: aging.days31_90,  bar: 'bg-linear-to-r from-red-500 to-red-600'       },
+                    { label: '90+ din',   v: aging.days90plus, bar: 'bg-linear-to-r from-red-700 to-red-900'       },
                   ]).map((b) => (
                     <div key={b.label}>
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-gray-600 font-medium">{b.label}</span>
                         <span className={`font-bold tabular-nums ${b.v > 0 ? 'text-gray-900' : 'text-gray-300'}`}>{b.v}</span>
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${b.bar}`} style={{ width: `${agingTotal ? Math.round((b.v / agingTotal) * 100) : 0}%` }} />
+                      <div className="h-2 bg-gray-100/80 rounded-full overflow-hidden ring-1 ring-black/[0.02]">
+                        <div className={`h-full rounded-full transition-all duration-700 ${b.bar}`} style={{ width: `${agingTotal ? Math.round((b.v / agingTotal) * 100) : 0}%` }} />
                       </div>
                     </div>
                   ))}
