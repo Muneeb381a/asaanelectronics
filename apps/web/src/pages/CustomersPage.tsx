@@ -36,7 +36,7 @@ const VSTATUS: Record<VerificationStatus, { label: string; cls: string; icon: Re
 function VerifBadge({ status }: { status: VerificationStatus }) {
   const s = VSTATUS[status];
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${s.cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1 ring-inset ring-black/[0.04] ${s.cls}`}>
       {s.icon}{s.label}
     </span>
   );
@@ -101,7 +101,7 @@ const RISK_STYLES: Record<RiskLabel, { label: string; scoreCls: string; badgeCls
 function RiskBadge({ score, label }: { score: number; label: RiskLabel }) {
   const s = RISK_STYLES[label];
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${s.badgeCls}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 ring-inset ring-black/[0.04] ${s.badgeCls}`}>
       {s.label}
       <span className={`font-mono font-bold ${s.scoreCls}`}>{100 - score}</span>
     </span>
@@ -119,7 +119,7 @@ function GradeBadge({ grade }: { grade: 'A' | 'B' | 'C' | 'D' | null | undefined
   if (!grade) return null;
   const s = GRADE_STYLE[grade];
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${s.bg} ${s.text}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ring-inset ring-black/[0.04] ${s.bg} ${s.text}`}>
       Grade {grade}
     </span>
   );
@@ -140,7 +140,7 @@ const LIFECYCLE_ORDER: LifecycleStage[] = ['LEAD','VERIFIED','ACTIVE','AT_RISK',
 function LifecycleBadge({ stage }: { stage: LifecycleStage }) {
   const m = LIFECYCLE_META[stage];
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${m.cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 ring-inset ring-black/[0.04] ${m.cls}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
       {m.label}
     </span>
@@ -1917,7 +1917,7 @@ export default function CustomersPage() {
   return (
     <div className={shell.wide}>
       <div className="mb-6">
-        <PageHeader title="Customers" subtitle={`${data?.total ?? 0} registered`}
+        <PageHeader title="Customers" subtitle={`${data?.total ?? 0} registered`} icon={Users}
           actions={<button onClick={() => setModal({ mode: 'add' })} className={btn.primary}>+ Add customer</button>} />
       </div>
 
@@ -1930,7 +1930,7 @@ export default function CustomersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); }}
-              className={`w-52 sm:w-64 pl-3 ${search ? 'pr-7' : 'pr-3'} py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition`}
+              className={`w-52 sm:w-64 pl-3 ${search ? 'pr-7' : 'pr-3'} py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition`}
             />
             {search && (
               <button
@@ -1944,7 +1944,7 @@ export default function CustomersPage() {
           </div>
           <button
             onClick={submitSearch}
-            className="shrink-0 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+            className="shrink-0 px-3 py-2 bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-medium rounded-lg transition shadow-sm shadow-blue-600/20"
           >
             Search
           </button>
@@ -1962,7 +1962,7 @@ export default function CustomersPage() {
               onClick={() => setVerifFilter(value)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
                 verifFilter === value
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-linear-to-br from-blue-600 to-blue-700 text-white border-blue-600 shadow-sm shadow-blue-600/20'
                   : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -1981,7 +1981,7 @@ export default function CustomersPage() {
               onClick={() => setPeriodFilter(value)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
                 periodFilter === value
-                  ? 'bg-gray-900 text-white border-gray-900'
+                  ? 'bg-linear-to-br from-gray-800 to-gray-900 text-white border-gray-900 shadow-sm'
                   : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -2025,7 +2025,7 @@ export default function CustomersPage() {
         </div>
       ) : null}
 
-      <div className="bg-white rounded-2xl border border-gray-100">
+      <div className="bg-white rounded-2xl ring-1 ring-gray-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] overflow-hidden">
         {isLoading ? (
           <>
             <div className="md:hidden p-4 space-y-3">
@@ -2055,7 +2055,7 @@ export default function CustomersPage() {
               {data.data.map((c) => (
                 <div key={c.id} className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5">
+                    <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5 shadow-sm shadow-blue-600/20">
                       {c.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -2137,18 +2137,18 @@ export default function CustomersPage() {
             {/* Desktop table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="bg-linear-to-b from-gray-50 to-gray-50/60 border-b border-gray-200">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">
+                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">
                       <button onClick={() => toggleSort('name')} className="flex items-center hover:text-gray-800 transition">
                         Name<SortIcon col="name" />
                       </button>
                     </th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">CNIC</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Credit</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Verification</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">
+                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">CNIC</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Phone</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Credit</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Verification</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">
                       <button onClick={() => toggleSort('createdAt')} className="flex items-center hover:text-gray-800 transition">
                         Added<SortIcon col="createdAt" />
                       </button>
@@ -2158,7 +2158,7 @@ export default function CustomersPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {data.data.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-50 transition">
+                    <tr key={c.id} className="hover:bg-blue-50/30 transition">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <button
@@ -2283,7 +2283,7 @@ export default function CustomersPage() {
                         onClick={() => setPage(p as number)}
                         className={`min-w-[32px] px-2 py-1.5 text-xs rounded-lg border transition font-medium ${
                           page === p
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                            ? 'bg-linear-to-br from-blue-600 to-blue-700 border-blue-600 text-white shadow-sm shadow-blue-600/20'
                             : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                         }`}
                       >{p}</button>
