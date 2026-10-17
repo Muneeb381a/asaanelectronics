@@ -28,8 +28,8 @@ function pkr(v: number) { return 'PKR ' + v.toLocaleString('en-PK', { maximumFra
 function formatPKR(v: string) { return 'PKR ' + Number(v).toLocaleString('en-PK'); }
 
 function StockBadge({ stock }: { stock: number }) {
-  if (stock === 0)        return <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">OUT</span>;
-  if (stock <= LOW_STOCK) return <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">LOW</span>;
+  if (stock === 0)        return <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 ring-1 ring-inset ring-red-200/60">OUT</span>;
+  if (stock <= LOW_STOCK) return <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200/60">LOW</span>;
   return null;
 }
 
@@ -213,9 +213,9 @@ function IntelligenceView({ data, isLoading }: { data: InventoryIntelligence | u
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       {panels.map((p) => (
-        <div key={p.key} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className={`flex items-center gap-2 px-4 py-3 border-b border-gray-100 ${p.bg}`}>
-            {p.icon}
+        <div key={p.key} className="bg-white rounded-2xl ring-1 ring-gray-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] overflow-hidden">
+          <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-gray-100 bg-linear-to-b from-gray-50/80 to-white">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ring-1 ring-black/[0.03] ${p.bg}`}>{p.icon}</div>
             <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{p.title}</h3>
           </div>
           <div className="p-4">{p.content}</div>
@@ -306,19 +306,19 @@ export default function ProductsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 mb-5 border-b border-gray-200">
+      <div className="flex items-center gap-1.5 mb-5 bg-gray-100/80 ring-1 ring-gray-200/60 rounded-xl p-1 w-fit">
         {([
           { key: 'inventory',    label: 'Inventory',    icon: <Package size={13} /> },
           { key: 'intelligence', label: 'Intelligence', icon: <Brain size={13} />,
             badge: (urgentReorders + criticalSlow) > 0 ? urgentReorders + criticalSlow : null },
         ] as const).map((t) => (
           <button key={t.key} onClick={() => { setTab(t.key); setPage(1); }}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition relative ${
-              tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-lg transition relative ${
+              tab === t.key ? 'bg-white text-blue-700 shadow-[0_1px_3px_rgba(15,23,42,0.1)] ring-1 ring-black/[0.02]' : 'text-gray-500 hover:text-gray-700'
             }`}>
             {t.icon}{t.label}
             {'badge' in t && t.badge ? (
-              <span className="ml-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+              <span className="ml-1 bg-linear-to-br from-red-500 to-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shadow-sm shadow-red-600/30">
                 {t.badge}
               </span>
             ) : null}
@@ -334,17 +334,17 @@ export default function ProductsPage() {
           {valuation && valuation.totalStockValue > 0 && (
             <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: 'Stock Cost',       value: pkr(valuation.totalStockValue),  icon: DollarSign, color: 'text-blue-600',    bg: 'bg-blue-50' },
-                { label: 'Sale Value',        value: pkr(valuation.totalSaleValue),   icon: TrendingUp,  color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { label: 'Potential Profit',  value: pkr(valuation.potentialProfit),  icon: BarChart3,   color: 'text-purple-600',  bg: 'bg-purple-50' },
-                { label: 'Total Units',       value: `${valuation.totalUnits} units`, icon: Package,     color: 'text-amber-600',   bg: 'bg-amber-50' },
-              ].map(({ label, value, icon: Icon, color, bg }) => (
-                <div key={label} className={`${bg} rounded-xl px-4 py-3 flex items-center gap-3`}>
-                  <Icon size={16} className={color} />
-                  <div>
-                    <p className="text-[10px] text-gray-500 font-medium">{label}</p>
-                    <p className={`text-sm font-bold ${color}`}>{value}</p>
+                { label: 'Stock Cost',       value: pkr(valuation.totalStockValue),  icon: DollarSign, tone: 'from-blue-500 to-blue-700',       wash: 'from-blue-50/60' },
+                { label: 'Sale Value',        value: pkr(valuation.totalSaleValue),   icon: TrendingUp,  tone: 'from-emerald-500 to-emerald-700', wash: 'from-emerald-50/60' },
+                { label: 'Potential Profit',  value: pkr(valuation.potentialProfit),  icon: BarChart3,   tone: 'from-violet-500 to-violet-700',   wash: 'from-violet-50/60' },
+                { label: 'Total Units',       value: `${valuation.totalUnits} units`, icon: Package,     tone: 'from-amber-400 to-amber-600',     wash: 'from-amber-50/60' },
+              ].map(({ label, value, icon: Icon, tone, wash }) => (
+                <div key={label} className={`bg-linear-to-br ${wash} to-white rounded-2xl ring-1 ring-gray-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] p-4`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] font-semibold text-gray-500">{label}</p>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm bg-linear-to-br ${tone} text-white`}><Icon size={14} /></div>
                   </div>
+                  <p className="text-lg font-bold text-gray-900 tabular-nums tracking-tight">{value}</p>
                 </div>
               ))}
             </div>
@@ -352,30 +352,31 @@ export default function ProductsPage() {
 
           {/* Low stock banner */}
           {lowStockItems.length > 0 && (
-            <div className="mb-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <span className="text-amber-600 text-sm font-semibold">
-                ⚠ {lowStockItems.filter((p) => p.stock === 0).length > 0
+            <div className="mb-4 flex items-center gap-3 bg-linear-to-br from-amber-50 to-amber-100/60 ring-1 ring-amber-200/70 rounded-xl px-4 py-3 shadow-sm shadow-amber-600/5">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm"><AlertTriangle size={14} /></div>
+              <span className="text-amber-700 text-sm font-semibold">
+                {lowStockItems.filter((p) => p.stock === 0).length > 0
                   ? `${lowStockItems.filter((p) => p.stock === 0).length} out of stock · `
                   : ''}{lowStockItems.length} product{lowStockItems.length !== 1 ? 's' : ''} need restocking
               </span>
-              <span className="text-xs text-amber-500">Threshold: {LOW_STOCK} units</span>
+              <span className="text-xs text-amber-600/80 ml-auto">Threshold: {LOW_STOCK} units</span>
             </div>
           )}
 
           <div className="mb-4">
             <input type="text" placeholder="Search products…" value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" />
+              className="w-full max-w-sm px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-2xl ring-1 ring-gray-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] overflow-hidden">
             {isLoading ? <TableSkeleton rows={5} cols={5} />
               : isError ? <div className="p-8 text-center text-sm text-red-500">Failed to load products.</div>
               : !data?.data.length ? (
                 <EmptyState icon={<Package size={32} />} title="No products yet"
                   action={
                     <button onClick={() => setModal({ mode: 'add' })}
-                      className="px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-xl hover:bg-blue-700 transition">
+                      className="px-4 py-2 bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-semibold rounded-xl shadow-sm shadow-blue-600/25 transition">
                       Add your first product
                     </button>
                   } />
@@ -414,17 +415,17 @@ export default function ProductsPage() {
                           </div>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5 mt-2">
-                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center border border-gray-100">
+                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center ring-1 ring-gray-100">
                             <p className="text-[9px] text-gray-400">Cash</p>
                             <p className="text-xs font-bold text-gray-900">{formatPKR(p.price)}</p>
                           </div>
-                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center border border-gray-100">
+                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center ring-1 ring-gray-100">
                             <p className="text-[9px] text-gray-400">Install</p>
                             <p className="text-xs font-bold text-blue-700">
                               {p.installmentPrice ? formatPKR(p.installmentPrice) : '—'}
                             </p>
                           </div>
-                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center border border-gray-100">
+                          <div className="bg-white rounded-lg px-1.5 py-1.5 text-center ring-1 ring-gray-100">
                             <p className="text-[9px] text-gray-400">Margin</p>
                             {(() => {
                               const cost = Number(p.purchasePrice);
@@ -450,23 +451,23 @@ export default function ProductsPage() {
                   {/* ── Desktop table (≥ md) ───────────────────────────────── */}
                   <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 border-b border-gray-100">
+                      <thead className="bg-linear-to-b from-gray-50 to-gray-50/60 border-b border-gray-200">
                         <tr>
-                          <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-                          <th className="text-left px-4 py-3 font-medium text-gray-600">Serial</th>
-                          <th className="text-right px-4 py-3 font-medium text-gray-600">Cash Price</th>
-                          <th className="text-right px-4 py-3 font-medium text-gray-600">Install Price</th>
-                          <th className="text-right px-4 py-3 font-medium text-gray-600">Margin</th>
-                          <th className="text-right px-4 py-3 font-medium text-gray-600">Stock</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Name</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Serial</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Cash Price</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Install Price</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Margin</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Stock</th>
                           <th className="px-4 py-3" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {data.data.map((p) => (
                           <tr key={p.id} className={`transition ${
-                            p.stock === 0       ? 'bg-red-50 hover:bg-red-100'
-                            : p.stock <= LOW_STOCK ? 'bg-amber-50 hover:bg-gray-50'
-                            : 'hover:bg-gray-50'
+                            p.stock === 0       ? 'bg-red-50/70 hover:bg-red-100'
+                            : p.stock <= LOW_STOCK ? 'bg-amber-50/70 hover:bg-amber-100/60'
+                            : 'hover:bg-blue-50/30'
                           }`}>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
@@ -535,12 +536,12 @@ export default function ProductsPage() {
               </p>
               <div className="flex items-center gap-2">
                 <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="px-3 py-1.5 text-sm bg-white ring-1 ring-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:ring-gray-300 shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed">
                   Previous
                 </button>
                 <span className="text-sm text-gray-600 font-medium">{page} / {Math.ceil(data.total / LIMIT)}</span>
                 <button onClick={() => setPage((p) => p + 1)} disabled={page * LIMIT >= data.total}
-                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="px-3 py-1.5 text-sm bg-white ring-1 ring-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:ring-gray-300 shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed">
                   Next
                 </button>
               </div>
