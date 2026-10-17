@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate, requireSeller, requireOwner } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/checkPermission.js';
 import { validate } from '../../middleware/validate.js';
-import { createCustomerSchema, updateCustomerSchema, assignAvoSchema, blacklistCustomerSchema, customerNoteSchema, createCustomerDocumentSchema, updateCustomerDocumentSchema, applyCreditSchema } from '@assaan/shared';
+import { createCustomerSchema, updateCustomerSchema, assignAvoSchema, blacklistCustomerSchema, customerNoteSchema, createCustomerDocumentSchema, updateCustomerDocumentSchema, applyCreditSchema, createPromiseSchema } from '@assaan/shared';
 import {
   listCustomers, getCustomer, getDecryptedCnic, createCustomer, updateCustomer, deleteCustomer, assignAvo,
   getLifecycleCounts, getRiskBreakdown, lookupByCnic, checkCnicExists, getUpcomingBirthdays, getReferralLeaderboard,
@@ -12,6 +12,7 @@ import { listGuarantors } from './guarantors.controller.js';
 import { listNotes, addNote, deleteNote } from './customer-notes.controller.js';
 import { listCustomerDocs, addCustomerDoc, updateCustomerDoc, deleteCustomerDoc } from './customer-documents.controller.js';
 import { getCredit, applyCredit } from './customer-credits.controller.js';
+import { listPromises, createPromise, cancelPromise, listPromiseFollowUps } from './payment-promises.controller.js';
 
 const router = Router();
 
@@ -29,6 +30,7 @@ router.get('/nadra-status',         nadraStatus);
 router.post('/nadra-verify',        requireOwner, nadraVerifyCnic);
 router.get('/upcoming-birthdays',   getUpcomingBirthdays);
 router.get('/referral-leaderboard', requirePermission('canViewReports'), getReferralLeaderboard);
+router.get('/promises/followups', requirePermission(['canRecordPayment', 'canAddInstallment', 'canViewReports']), listPromiseFollowUps);
 router.get('/lookup',           requirePermission(['canSearchCnic', 'canAddInstallment', 'canAddCustomer', 'canRecordPayment']), lookupByCnic);
 router.get('/check-cnic',       requirePermission('canAddCustomer'), checkCnicExists);
 router.get('/',                 canAccessCustomers, listCustomers);
@@ -53,5 +55,9 @@ router.delete('/:customerId/documents/:docId',    requireOwner, deleteCustomerDo
 
 router.get('/:customerId/credit',       canAccessCustomers, getCredit);
 router.post('/:customerId/credit/apply', requirePermission('canRecordPayment'), validate(applyCreditSchema), applyCredit);
+
+router.get('/:customerId/promises',              canAccessCustomers, listPromises);
+router.post('/:customerId/promises',             requirePermission(['canRecordPayment', 'canAddInstallment']), validate(createPromiseSchema), createPromise);
+router.delete('/:customerId/promises/:promiseId', requireOwner, cancelPromise);
 
 export default router;

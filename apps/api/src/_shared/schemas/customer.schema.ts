@@ -70,6 +70,13 @@ export const customerNoteSchema      = z.object({ note: z.string().min(1).max(20
 export const assignAvoSchema         = z.object({ avoId: z.string().min(1) });
 export const applyCreditSchema       = z.object({ installmentId: z.string().min(1), amount: z.number().positive() });
 
+export const createPromiseSchema = z.object({
+  installmentId:  z.string().min(1),
+  promisedDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
+  promisedAmount: z.number().positive().optional(),
+  note:           z.string().max(500).optional(),
+});
+
 const docStatus = z.enum(['PENDING', 'RECEIVED', 'VERIFIED']);
 export const createCustomerDocumentSchema = z.object({
   docType: z.string().min(1).max(50),

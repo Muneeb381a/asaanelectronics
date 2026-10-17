@@ -6,7 +6,7 @@ import { getErrorMessage } from '../utils/error.ts';
 import {
   X, Send, CheckCircle, Wallet, Clock, ChevronRight, Plus, Gift, Package, Bell, Users,
   ArrowUpRight, CheckSquare, TrendingUp, AlertTriangle, BadgeCheck, MessageCircle, Receipt,
-  CalendarDays, Target, Activity, ClipboardList,
+  CalendarDays, Target, Activity, ClipboardList, CalendarClock,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store.ts';
 import { statsApi } from '../api/stats.api.ts';
@@ -17,6 +17,7 @@ import { installmentsApi } from '../api/installments.api.ts';
 import { recoveryApi } from '../api/recovery.api.ts';
 import { sellersApi } from '../api/sellers.api.ts';
 import { customersApi } from '../api/customers.api.ts';
+import { paymentPromisesApi } from '../api/paymentPromises.api.ts';
 import { handoversApi, type StaffBalance } from '../api/handovers.api.ts';
 import { agentPortfolioApi } from '../api/agentPortfolio.api.ts';
 import { RowSkeleton, BlockSkeleton } from '../components/ui/Skeleton.tsx';
@@ -313,6 +314,7 @@ export default function DashboardPage() {
   });
   const { data: shop } = useQuery({ queryKey: ['shop-me'], queryFn: sellersApi.getMe, staleTime: 5 * 60_000 });
   const { data: birthdays = [] } = useQuery({ queryKey: ['upcoming-birthdays'], queryFn: customersApi.getUpcomingBirthdays, staleTime: 60 * 60_000 });
+  const { data: promiseFollowUps = [] } = useQuery({ queryKey: ['promise-followups'], queryFn: paymentPromisesApi.followUps, staleTime: 5 * 60_000 });
 
   const { data: myAssignments = [] } = useQuery({ queryKey: ['my-assignments'], queryFn: () => agentPortfolioApi.list(), enabled: !isOwner, staleTime: 2 * 60_000 });
 
@@ -1017,6 +1019,29 @@ export default function DashboardPage() {
               </Card>
             )}
 
+            {promiseFollowUps.length > 0 && (
+              <Card>
+                <CardHead icon={CalendarClock} tone="violet" title="Promise Follow-ups" subtitle={`${promiseFollowUps.length} aaj due ya broken`} />
+                <div className="divide-y divide-gray-50">
+                  {promiseFollowUps.map((p) => (
+                    <div key={p.id} className="flex items-center gap-2.5 px-5 py-3">
+                      <Avatar name={p.customerName} tone="violet" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{p.customerName}</p>
+                        <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                          {fmtDate(p.promisedDate)} tak wada{p.note ? ` — ${p.note}` : ''}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${p.status === 'BROKEN' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+                        {p.status === 'BROKEN' ? 'Broken' : 'Aaj'}
+                      </span>
+                      <WaButton phone={p.customerPhone} msg={`Assalam-o-Alaikum ${p.customerName}! Aap ne ${fmtDate(p.promisedDate)} tak payment ka wada kiya tha. Kripya jald adaigi karein. Shukriya!`} />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
             {birthdays.length > 0 && (
               <Card>
                 <CardHead icon={Gift} tone="pink" title="Birthdays" subtitle={`${birthdays.length} is hafte`} />
@@ -1042,7 +1067,7 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {isOwner && !isLoading && staffCash.length === 0 && completingSoon.length === 0 && lowStock.length === 0 && birthdays.length === 0 && !(aging && agingTotal > 0) && (
+            {isOwner && !isLoading && staffCash.length === 0 && completingSoon.length === 0 && lowStock.length === 0 && birthdays.length === 0 && promiseFollowUps.length === 0 && !(aging && agingTotal > 0) && (
               <Card className="p-6 text-center">
                 <ArrowUpRight size={22} className="mx-auto text-gray-300 mb-2" />
                 <p className="text-sm text-gray-500">Koi alert nahi — sab theek chal raha hai.</p>

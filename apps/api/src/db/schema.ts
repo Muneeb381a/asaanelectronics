@@ -694,6 +694,29 @@ export const customerNotes = pgTable('customer_notes', {
   index('idx_customer_notes_seller').on(t.sellerId),
 ]);
 
+// ── Promise-to-Pay ────────────────────────────────────────────────────────────
+// A recovery agent logs a date an overdue customer committed to pay by. Status is
+// always derived at read time (see payment-promises.service.ts) from whether a
+// payment landed on the installment after the promise was made and whether the
+// promised date has passed — never stored, so it can't drift out of sync.
+export const paymentPromises = pgTable('payment_promises', {
+  id:              text('id').primaryKey().$defaultFn(() => randomUUID()),
+  sellerId:        text('seller_id').notNull().references(() => sellers.id, { onDelete: 'cascade' }),
+  customerId:      text('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  installmentId:   text('installment_id').notNull().references(() => installments.id, { onDelete: 'cascade' }),
+  promisedDate:    date('promised_date').notNull(),
+  promisedAmount:  decimal('promised_amount', { precision: 12, scale: 2 }),
+  note:            text('note'),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+  cancelledAt:     timestamp('cancelled_at'),
+  cancelledBy:     text('cancelled_by').references(() => users.id, { onDelete: 'set null' }),
+}, (t) => [
+  index('idx_payment_promises_customer').on(t.customerId),
+  index('idx_payment_promises_installment').on(t.installmentId),
+  index('idx_payment_promises_seller').on(t.sellerId),
+]);
+
 export const returns = pgTable('returns', {
   id:                   text('id').primaryKey().$defaultFn(() => randomUUID()),
   sellerId:             text('seller_id').notNull().references(() => sellers.id),

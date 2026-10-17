@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/error.ts';
 import { fmtDate, fmtMonthYear } from '../utils/dateFormat.ts';
-import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon, UserPlus, UserCog, Wallet, Share2, Loader2 } from 'lucide-react';
+import { X, CreditCard, TrendingUp, MessageCircle, ShieldCheck, ShieldX, Clock, MapPin, Printer, StickyNote, Trash2, Send, Users, ChevronUp, ChevronDown, ArrowUpDown, AlertOctagon, UserPlus, UserCog, Wallet, Share2, Loader2, CalendarClock } from 'lucide-react';
 import { customersApi, type Customer, type CustomerDoc, type CustomerCreditEntry, type RiskLabel, type LifecycleStage, type VerificationStatus } from '../api/customers.api.ts';
 import type { CreateCustomerInput } from '@assaan/shared';
 import { installmentsApi, type Installment, type InstallmentStatus } from '../api/installments.api.ts';
@@ -18,6 +18,7 @@ import InstallmentForm from '../features/installments/InstallmentForm.tsx';
 import PaymentModal from '../features/installments/PaymentModal.tsx';
 import { useDebounce } from '../hooks/useDebounce.ts';
 import { sellersApi } from '../api/sellers.api.ts';
+import { paymentPromisesApi, type PromiseStatus } from '../api/paymentPromises.api.ts';
 import { openWhatsApp, reminderMessage, balanceStatementMessage } from '../utils/whatsapp.ts';
 import { useAuthStore } from '../store/auth.store.ts';
 import CustomerAgreementPrint from '../components/CustomerAgreementPrint.tsx';
@@ -854,6 +855,14 @@ function DocsTab({ customer, canEdit, isOwner }: { customer: Customer; canEdit: 
   );
 }
 
+const PROMISE_STATUS_CFG: Record<PromiseStatus, { label: string; cls: string }> = {
+  PENDING:   { label: 'Pending',    cls: 'bg-blue-50 text-blue-700 ring-blue-200/60' },
+  KEPT:      { label: 'Kept',       cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200/60' },
+  KEPT_LATE: { label: 'Kept (late)', cls: 'bg-amber-50 text-amber-700 ring-amber-200/60' },
+  BROKEN:    { label: 'Broken',     cls: 'bg-red-50 text-red-700 ring-red-200/60' },
+  CANCELLED: { label: 'Cancelled',  cls: 'bg-gray-100 text-gray-400 ring-gray-200/60 line-through' },
+};
+
 function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onClose: () => void }) {
   const [showPrint, setShowPrint] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
@@ -927,6 +936,36 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
   const { data: verifReport } = useQuery({
     queryKey: ['verif-report', customer.id],
     queryFn: () => verificationsApi.getReport(customer.id),
+  });
+
+  const { data: promises } = useQuery({
+    queryKey: ['payment-promises', customer.id],
+    queryFn: () => paymentPromisesApi.list(customer.id),
+  });
+  const [addingPromiseFor, setAddingPromiseFor] = useState<string | null>(null);
+  const [promiseDate, setPromiseDate]           = useState('');
+  const [promiseNote, setPromiseNote]           = useState('');
+
+  const createPromiseMutation = useMutation({
+    mutationFn: (installmentId: string) =>
+      paymentPromisesApi.create(customer.id, { installmentId, promisedDate: promiseDate, note: promiseNote.trim() || undefined }),
+    onSuccess: () => {
+      qcDrawer.invalidateQueries({ queryKey: ['payment-promises', customer.id] });
+      setAddingPromiseFor(null);
+      setPromiseDate('');
+      setPromiseNote('');
+      toast.success('Promise note ho gaya');
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Promise save nahi hua')),
+  });
+
+  const cancelPromiseMutation = useMutation({
+    mutationFn: (promiseId: string) => paymentPromisesApi.cancel(customer.id, promiseId),
+    onSuccess: () => {
+      qcDrawer.invalidateQueries({ queryKey: ['payment-promises', customer.id] });
+      toast.success('Promise cancel ho gaya');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const tagMutation = useMutation({
@@ -1402,8 +1441,74 @@ function CustomerHistoryDrawer({ customer, onClose }: { customer: Customer; onCl
                             <MessageCircle size={12} />
                           </button>
                         )}
+                        {canRecordPaymentInDrawer && (
+                          <button
+                            onClick={() => setAddingPromiseFor(addingPromiseFor === inst.id ? null : inst.id)}
+                            title="Promise to Pay note karo"
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 text-xs font-medium transition">
+                            <CalendarClock size={12} />
+                          </button>
+                        )}
                       </div>
                     )}
+
+                    {/* Promise to Pay — inline add form */}
+                    {addingPromiseFor === inst.id && (
+                      <div className="mt-3 p-3 bg-violet-50/60 ring-1 ring-violet-200/60 rounded-xl space-y-2">
+                        <p className="text-xs font-semibold text-violet-800">Customer ne kab tak pay karne ka wada kiya?</p>
+                        <input type="date" value={promiseDate} min={new Date().toISOString().slice(0, 10)}
+                          onChange={(e) => setPromiseDate(e.target.value)}
+                          className="w-full px-2.5 py-1.5 border border-violet-200 rounded-lg text-xs outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition" />
+                        <input type="text" value={promiseNote} onChange={(e) => setPromiseNote(e.target.value)}
+                          placeholder="Note (optional) — jaise 'Salary milne par'"
+                          maxLength={500}
+                          className="w-full px-2.5 py-1.5 border border-violet-200 rounded-lg text-xs outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition" />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => createPromiseMutation.mutate(inst.id)}
+                            disabled={!promiseDate || createPromiseMutation.isPending}
+                            className="flex-1 py-1.5 rounded-lg bg-linear-to-br from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white text-xs font-semibold shadow-sm shadow-violet-600/20 disabled:opacity-40 transition">
+                            {createPromiseMutation.isPending ? 'Saving…' : 'Save Promise'}
+                          </button>
+                          <button onClick={() => setAddingPromiseFor(null)}
+                            className="px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 text-xs font-medium transition">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Promise to Pay — history for this installment */}
+                    {(() => {
+                      const instPromises = (promises ?? []).filter((p) => p.installmentId === inst.id);
+                      if (!instPromises.length) return null;
+                      return (
+                        <div className="mt-3 space-y-1.5">
+                          {instPromises.map((p) => {
+                            const cfg = PROMISE_STATUS_CFG[p.status];
+                            return (
+                              <div key={p.id} className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg ring-1 ring-inset text-[11px] ${cfg.cls}`}>
+                                <span className="flex items-center gap-1.5 min-w-0">
+                                  <CalendarClock size={11} className="shrink-0" />
+                                  <span className="truncate">
+                                    {fmtDate(p.promisedDate)} tak wada{p.note ? ` — ${p.note}` : ''}
+                                  </span>
+                                </span>
+                                <span className="flex items-center gap-1.5 shrink-0">
+                                  <span className="font-semibold">{cfg.label}</span>
+                                  {isOwnerInDrawer && p.status !== 'CANCELLED' && (
+                                    <button onClick={() => cancelPromiseMutation.mutate(p.id)} title="Cancel promise"
+                                      className="text-gray-400 hover:text-red-500 transition">
+                                      <X size={11} />
+                                    </button>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
