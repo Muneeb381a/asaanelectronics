@@ -25,6 +25,7 @@ const URGENCY = {
 export default function CollectionSheetPage() {
   const [days,       setDays]       = useState(7);
   const [areaFilter, setAreaFilter] = useState('');
+  const [freqFilter, setFreqFilter] = useState<'' | 'daily' | 'monthly'>('');
   const [collapsed,  setCollapsed]  = useState<Set<string>>(new Set());
 
   const today     = new Date();
@@ -47,8 +48,15 @@ export default function CollectionSheetPage() {
   // Collect unique areas for filter
   const allAreas = [...new Set(allItems.map((i) => i.area))].sort();
 
-  // Apply area filter
-  const items = areaFilter ? allItems.filter((i) => i.area === areaFilter) : allItems;
+  // Apply area + frequency filters — e.g. print daily customers and monthly
+  // customers as two separate runs, so a field agent working a daily route
+  // doesn't have to flip past monthly accounts mixed into the same sheet.
+  const items = allItems.filter((i) =>
+    (!areaFilter || i.area === areaFilter) &&
+    (!freqFilter || i.paymentFrequency === freqFilter),
+  );
+  const dailyCount   = allItems.filter((i) => i.paymentFrequency === 'daily').length;
+  const monthlyCount = allItems.filter((i) => i.paymentFrequency !== 'daily').length;
 
   // Group by area, sort areas alphabetically
   const areaMap = new Map<string, CollectionScheduleItem[]>();
@@ -121,6 +129,29 @@ export default function CollectionSheetPage() {
                 </button>
               ))}
 
+              {/* Frequency filter — pick one, then Print, for two separate printouts */}
+              {(dailyCount > 0 && monthlyCount > 0) && (
+                <div className="flex gap-1 p-0.5 bg-gray-100 rounded-xl">
+                  {([
+                    { label: 'Sab',     value: '' as const,        count: allItems.length },
+                    { label: 'Daily',   value: 'daily' as const,   count: dailyCount },
+                    { label: 'Monthly', value: 'monthly' as const, count: monthlyCount },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setFreqFilter(opt.value)}
+                      className={`px-3 py-1 text-xs font-medium rounded-lg transition ${
+                        freqFilter === opt.value
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {opt.label} <span className="tabular-nums opacity-60">({opt.count})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Area filter */}
               {allAreas.length > 1 && (
                 <select
@@ -158,6 +189,11 @@ export default function CollectionSheetPage() {
               <p className="text-xs">{todayFmt}</p>
             </div>
           </div>
+          {freqFilter && (
+            <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: freqFilter === 'daily' ? '#2563eb' : '#7c3aed' }}>
+              {freqFilter === 'daily' ? 'Daily Customers Only' : 'Monthly Customers Only'}
+            </p>
+          )}
           <div className="border-b-2 border-gray-800 mb-3" />
         </div>
 
@@ -262,6 +298,11 @@ export default function CollectionSheetPage() {
                                   {item.urgency === 'overdue' && ` ${Math.abs(item.daysUntilDue)}d`}
                                   {item.urgency === 'upcoming' && ` +${item.daysUntilDue}d`}
                                 </span>
+                                {!freqFilter && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${item.paymentFrequency === 'daily' ? 'bg-blue-50 text-blue-600' : 'bg-violet-50 text-violet-600'}`}>
+                                    {item.paymentFrequency === 'daily' ? 'Daily' : 'Monthly'}
+                                  </span>
+                                )}
                               </div>
                               <p className="text-xs text-gray-400">{item.productName}</p>
                               {item.customerAddress && (
@@ -344,7 +385,14 @@ export default function CollectionSheetPage() {
                           <td>{idx + 1}</td>
                           <td style={{ fontWeight: 600 }}>{item.customerName}</td>
                           <td>{item.customerPhone}</td>
-                          <td>{item.productName}</td>
+                          <td>
+                            {item.productName}
+                            {!freqFilter && (
+                              <span style={{ marginLeft: '4px', fontWeight: 700, color: item.paymentFrequency === 'daily' ? '#2563eb' : '#7c3aed' }}>
+                                [{item.paymentFrequency === 'daily' ? 'D' : 'M'}]
+                              </span>
+                            )}
+                          </td>
                           <td style={{ fontWeight: 600 }}>{pkr(item.totalDueNow)}</td>
                           <td>{pkr(item.remaining)}</td>
                           <td>
