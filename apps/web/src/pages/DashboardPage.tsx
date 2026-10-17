@@ -27,10 +27,16 @@ import { getStage, CollectionStageBadge, ACTION_META } from '../utils/collection
 /* ─── helpers ────────────────────────────────────────────────────────────── */
 const pkr   = (v: number) => 'PKR ' + v.toLocaleString('en-PK', { maximumFractionDigits: 0 });
 const pkrSh = (v: number) => {
-  if (v >= 10_00_000) return `${(v / 10_00_000).toFixed(1)}M`;
-  if (v >= 1_00_000)  return `${(v / 1_00_000).toFixed(v % 1_00_000 === 0 ? 0 : 1)}L`;
-  if (v >= 1_000)     return `${(v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1)}K`;
-  return String(v);
+  // Abs for the threshold checks so a negative value (e.g. a loss) still
+  // abbreviates instead of falling through to the raw-number branch below —
+  // and that branch always rounds, since an unrounded backend float
+  // (285.29411764705878) rendered as-is looked like a bug, not a number.
+  const sign = v < 0 ? '-' : '';
+  const a = Math.abs(v);
+  if (a >= 10_00_000) return `${sign}${(a / 10_00_000).toFixed(1)}M`;
+  if (a >= 1_00_000)  return `${sign}${(a / 1_00_000).toFixed(a % 1_00_000 === 0 ? 0 : 1)}L`;
+  if (a >= 1_000)     return `${sign}${(a / 1_000).toFixed(a % 1_000 === 0 ? 0 : 1)}K`;
+  return String(Math.round(v));
 };
 const greet = () => {
   const h = new Date().getHours();
@@ -41,7 +47,7 @@ const waLink = (phone: string, msg: string) =>
 
 /* ─── primitives ─────────────────────────────────────────────────────────── */
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <section className={`bg-white rounded-2xl ring-1 ring-gray-200 shadow-sm ${className}`}>{children}</section>;
+  return <section className={`bg-white rounded-2xl ring-1 ring-gray-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] transition-shadow hover:shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_28px_-14px_rgba(15,23,42,0.16)] ${className}`}>{children}</section>;
 }
 
 function CardHead({ title, subtitle, action, icon: Icon, tone = 'gray' }: {
@@ -50,14 +56,18 @@ function CardHead({ title, subtitle, action, icon: Icon, tone = 'gray' }: {
   tone?: 'gray' | 'blue' | 'red' | 'amber' | 'emerald' | 'violet' | 'pink';
 }) {
   const tones: Record<string, string> = {
-    gray: 'bg-gray-100 text-gray-600', blue: 'bg-blue-50 text-blue-600', red: 'bg-red-50 text-red-600',
-    amber: 'bg-amber-50 text-amber-600', emerald: 'bg-emerald-50 text-emerald-600', violet: 'bg-violet-50 text-violet-600',
-    pink: 'bg-pink-50 text-pink-600',
+    gray:    'bg-linear-to-br from-gray-100 to-gray-200 text-gray-600',
+    blue:    'bg-linear-to-br from-blue-50 to-blue-100 text-blue-600',
+    red:     'bg-linear-to-br from-red-50 to-red-100 text-red-600',
+    amber:   'bg-linear-to-br from-amber-50 to-amber-100 text-amber-600',
+    emerald: 'bg-linear-to-br from-emerald-50 to-emerald-100 text-emerald-600',
+    violet:  'bg-linear-to-br from-violet-50 to-violet-100 text-violet-600',
+    pink:    'bg-linear-to-br from-pink-50 to-pink-100 text-pink-600',
   };
   return (
     <header className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
       <div className="flex items-center gap-3 min-w-0">
-        {Icon && <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tones[tone]}`}><Icon size={15} /></div>}
+        {Icon && <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-black/[0.03] ${tones[tone]}`}><Icon size={16} /></div>}
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold text-gray-900 leading-tight truncate">{title}</h2>
           {subtitle && <p className="text-xs text-gray-400 mt-0.5 truncate">{subtitle}</p>}
@@ -100,23 +110,23 @@ function StatCard({ label, value, sub, icon: Icon, tone, onClick, progress }: {
   tone: 'blue' | 'emerald' | 'amber' | 'red' | 'violet' | 'gray';
   onClick?: () => void; progress?: number | null;
 }) {
-  const tones: Record<string, { icon: string; bar: string }> = {
-    blue:    { icon: 'bg-blue-600 text-white',    bar: 'bg-blue-600'    },
-    emerald: { icon: 'bg-emerald-600 text-white', bar: 'bg-emerald-600' },
-    amber:   { icon: 'bg-amber-500 text-white',   bar: 'bg-amber-500'   },
-    red:     { icon: 'bg-red-600 text-white',     bar: 'bg-red-600'     },
-    violet:  { icon: 'bg-violet-600 text-white',  bar: 'bg-violet-600'  },
-    gray:    { icon: 'bg-gray-700 text-white',    bar: 'bg-gray-700'    },
+  const tones: Record<string, { icon: string; bar: string; wash: string }> = {
+    blue:    { icon: 'bg-linear-to-br from-blue-500 to-blue-700 text-white',       bar: 'bg-blue-600',    wash: 'from-blue-50/60'    },
+    emerald: { icon: 'bg-linear-to-br from-emerald-500 to-emerald-700 text-white', bar: 'bg-emerald-600', wash: 'from-emerald-50/60' },
+    amber:   { icon: 'bg-linear-to-br from-amber-400 to-amber-600 text-white',     bar: 'bg-amber-500',   wash: 'from-amber-50/60'   },
+    red:     { icon: 'bg-linear-to-br from-red-500 to-red-700 text-white',         bar: 'bg-red-600',     wash: 'from-red-50/60'     },
+    violet:  { icon: 'bg-linear-to-br from-violet-500 to-violet-700 text-white',   bar: 'bg-violet-600',  wash: 'from-violet-50/60'  },
+    gray:    { icon: 'bg-linear-to-br from-gray-600 to-gray-800 text-white',       bar: 'bg-gray-700',    wash: 'from-gray-100/60'   },
   };
   const t = tones[tone]!;
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag onClick={onClick} className={`text-left bg-white rounded-2xl ring-1 ring-gray-200 shadow-sm p-4 flex flex-col gap-3 ${onClick ? 'hover:ring-blue-300 hover:shadow-md transition' : ''}`}>
+    <Tag onClick={onClick} className={`text-left bg-linear-to-br ${t.wash} to-white rounded-2xl ring-1 ring-gray-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-14px_rgba(15,23,42,0.12)] p-4 flex flex-col gap-3 ${onClick ? 'hover:-translate-y-0.5 hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.18)] hover:ring-gray-300 transition-all duration-200' : ''}`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-500">{label}</p>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.icon}`}><Icon size={15} /></div>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm ${t.icon}`}><Icon size={16} /></div>
       </div>
-      <p className="text-2xl font-bold text-gray-900 tabular-nums leading-none">{value}</p>
+      <p className="text-[28px] font-bold text-gray-900 tabular-nums leading-none tracking-tight">{value}</p>
       {progress !== undefined && progress !== null ? (
         <div>
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -356,15 +366,29 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
 
         {/* ── Greeting + actions ─────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-sm text-gray-500">{greet()}, {firstName}</p>
-            <h1 className="text-2xl font-bold text-gray-900 leading-tight mt-0.5">
-              {allClear ? 'Aaj sab clear hai' : briefing ? `${totalWork} kaam aaj ke liye` : 'Dashboard'}
-            </h1>
-            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5"><CalendarDays size={12} /> {fmtDate(new Date())}</p>
+        <div className={`relative overflow-hidden rounded-3xl ring-1 p-5 sm:p-7 flex flex-wrap items-end justify-between gap-4 ${
+          allClear
+            ? 'bg-linear-to-br from-emerald-50 via-white to-blue-50/40 ring-emerald-100'
+            : 'bg-linear-to-br from-blue-50 via-white to-indigo-50/40 ring-blue-100'
+        }`}>
+          {/* soft decorative glow, purely visual */}
+          <div className={`pointer-events-none absolute -top-16 -right-16 w-56 h-56 rounded-full blur-3xl opacity-40 ${allClear ? 'bg-emerald-200' : 'bg-blue-200'}`} />
+
+          <div className="relative flex items-start gap-3.5 min-w-0">
+            <div className={`hidden sm:flex w-12 h-12 rounded-2xl items-center justify-center shrink-0 shadow-sm ring-1 ring-black/[0.03] ${
+              allClear ? 'bg-linear-to-br from-emerald-500 to-emerald-700 text-white' : 'bg-linear-to-br from-blue-500 to-blue-700 text-white'
+            }`}>
+              {allClear ? <CheckCircle size={22} /> : <Activity size={22} />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm text-gray-500">{greet()}, {firstName}</p>
+              <h1 className="text-[26px] sm:text-3xl font-bold text-gray-900 leading-tight mt-0.5 tracking-tight">
+                {allClear ? 'Aaj sab clear hai' : briefing ? `${totalWork} kaam aaj ke liye` : 'Dashboard'}
+              </h1>
+              <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1.5"><CalendarDays size={12} /> {fmtDate(new Date())}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex items-center gap-2 flex-wrap">
             {!isOwner && myPending > 0 && (
               <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border ${myBal?.pendingHandover ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
                 <Wallet size={13} /> {pkrSh(myPending)} haath mein {myBal?.pendingHandover && '· pending'}
@@ -378,13 +402,13 @@ export default function DashboardPage() {
             )}
             {(isOwner || perms?.canRecordPayment) && (
               <button onClick={() => navigate('/installments')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-gray-700 bg-white ring-1 ring-gray-200 hover:bg-gray-50 transition">
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-gray-700 bg-white ring-1 ring-gray-200 hover:bg-gray-50 hover:ring-gray-300 shadow-sm transition">
                 <Receipt size={14} /> Payment record
               </button>
             )}
             {(isOwner || perms?.canAddInstallment) && (
               <button onClick={() => navigate('/installments')}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition">
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm shadow-blue-600/25 transition">
                 <Plus size={14} /> Naya plan
               </button>
             )}
@@ -605,7 +629,7 @@ export default function DashboardPage() {
 
                   {allClear && (
                     <div className="py-14 flex flex-col items-center text-center">
-                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3"><CheckCircle size={26} /></div>
+                      <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center mb-3.5 shadow-sm shadow-emerald-600/20"><CheckCircle size={28} /></div>
                       <p className="text-sm font-semibold text-gray-900">Sab clear hai</p>
                       <p className="text-xs text-gray-500 mt-1">Koi due, overdue ya wada nahi. Mashaallah!</p>
                     </div>
