@@ -812,8 +812,23 @@ export class InstallmentsService {
         errors.push({ row: rr.rowNum, message: `Duplicate — installment for ${rr.row.customerName} (${rr.row.productName}) on this start date already exists` });
         continue;
       }
+      // Same invariants create() enforces for a manually-added installment —
+      // import had none of these, so one bad cell in a spreadsheet (a typo'd
+      // "remaining" column, or down payment >= total) silently wrote an
+      // impossible installment straight into the database: remaining greater
+      // than what was ever financed, with no error and no trace of how.
+      if (rr.row.downPayment >= rr.row.totalAmount) {
+        errors.push({ row: rr.rowNum, message: `Down payment (${rr.row.downPayment}) must be less than total amount (${rr.row.totalAmount})` });
+        continue;
+      }
+      const maxRemaining = rr.row.totalAmount - rr.row.downPayment;
+      if (rr.row.remaining !== undefined && (rr.row.remaining < 0 || rr.row.remaining > maxRemaining + 0.01)) {
+        errors.push({ row: rr.rowNum, message: `Remaining (${rr.row.remaining}) must be between 0 and ${maxRemaining} (total minus down payment)` });
+        continue;
+      }
+
       dupSet.add(dupKey);
-      const remaining = rr.row.remaining !== undefined ? rr.row.remaining : rr.row.totalAmount - rr.row.downPayment;
+      const remaining = rr.row.remaining !== undefined ? rr.row.remaining : maxRemaining;
       toInsert.push({
         customerId:       rr.customerId,
         productId:        rr.productId,
